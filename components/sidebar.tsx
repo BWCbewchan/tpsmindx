@@ -7,10 +7,36 @@ import { ChevronDown, FileText, GraduationCap, Home, LayoutDashboard, LogOut, Me
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+const adminMenuItems = [
+  { href: "/admin/dashboard", label: "Dashboard", icon: Home },
+  { href: "/admin/page1", label: "Thông tin GV", icon: LayoutDashboard },
+  { href: "/admin/page2", label: "màn hình 2", icon: Users },
+  { href: "/admin/page3", label: "Màn hình 3", icon: Users },
+  { href: "/admin/page4", label: "Màn hình 4", icon: Settings },
+  {
+    label: "Đào tạo nâng cao",
+    icon: FileText,
+    submenu: [
+      { href: "/admin/page5", label: "Quản lý đào tạo nâng cao" },
+      { href: "/admin/training-dashboard", label: "Thống kê" },
+      { href: "/admin/assignments", label: "Quản lý Assignments" },
+    ]
+  },
+  { href: "/admin/giaitrinh", label: "Quản lý Giải trình", icon: MessageSquare },
+  { href: "/admin/truyenthong", label: "Quản lý truyền thông", icon: Megaphone },
+];
+
+const userMenuItems = [
+  { href: "/user/truyenthong", label: "Thông tin mới", icon: Megaphone },
+  { href: "/user/thongtingv", label: "Thông tin của tôi", icon: Home },
+  { href: "/user/training", label: "Đào tạo nâng cao", icon: GraduationCap },
+  { href: "/user/assignments", label: "My Assignments", icon: FileText },
+  { href: "/user/giaitrinh", label: "Giải trình kiểm tra", icon: MessageSquare },
+];
+
 export function Sidebar() {
   const { isOpen, setIsOpen } = useSidebar();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
-  const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, logout } = useAuth();
   const pathname = usePathname();
 
@@ -19,18 +45,20 @@ export function Sidebar() {
     const saved = localStorage.getItem('expandedMenus');
     if (saved) {
       try {
+        // eslint-disable-next-line
         setExpandedMenus(JSON.parse(saved));
-      } catch (e) {
+      } catch {
         // Ignore parse errors
       }
     }
   }, []);
 
+  // Determine menu items based on current path (admin or user)
+  const isUserArea = pathname.startsWith('/user');
+  const menuItems = isUserArea ? userMenuItems : adminMenuItems;
+
   // Auto-expand submenu if current page is in it
   useEffect(() => {
-    const isUserArea = pathname.startsWith('/user');
-    const menuItems = isUserArea ? userMenuItems : adminMenuItems;
-    
     menuItems.forEach((item) => {
       if ('submenu' in item && item.submenu) {
         const isInSubmenu = item.submenu.some(sub => pathname === sub.href || pathname.startsWith(sub.href + '/'));
@@ -43,40 +71,7 @@ export function Sidebar() {
         }
       }
     });
-  }, [pathname]);
-
-  // Determine menu items based on current path (admin or user)
-  const isUserArea = pathname.startsWith('/user');
-  
-  const adminMenuItems = [
-    { href: "/admin/dashboard", label: "Dashboard", icon: Home },
-    { href: "/admin/page1", label: "Thông tin GV", icon: LayoutDashboard },
-    { href: "/admin/page2", label: "màn hình 2", icon: Users },
-    { href: "/admin/page3", label: "Màn hình 3", icon: Users },
-    { href: "/admin/page4", label: "Màn hình 4", icon: Settings },
-    { 
-      label: "Đào tạo nâng cao", 
-      icon: FileText,
-      submenu: [
-        { href: "/admin/page5", label: "Quản lý đào tạo nâng cao" },
-        { href: "/admin/training-dashboard", label: "Thống kê" },
-        { href: "/admin/assignments", label: "Quản lý Assignments" },
-      ]
-    },
-    { href: "/admin/giaitrinh", label: "Quản lý Giải trình", icon: MessageSquare },
-    { href: "/admin/truyenthong", label: "Quản lý truyền thông", icon: Megaphone },
-  ];
-
-  const userMenuItems = [
-    { href: "/user/truyenthong", label: "Thông tin mới", icon: Megaphone },
-    { href: "/user/thongtingv", label: "Thông tin của tôi", icon: Home },
-    { href: "/user/training", label: "Đào tạo nâng cao", icon: GraduationCap },
-    { href: "/user/assignments", label: "My Assignments", icon: FileText },
-    { href: "/user/giaitrinh", label: "Giải trình kiểm tra", icon: MessageSquare },
-  ];
-
-
-  const menuItems = isUserArea ? userMenuItems : adminMenuItems;
+  }, [pathname, menuItems, expandedMenus]);
 
   const toggleSubmenu = (label: string) => {
     setExpandedMenus(prev => {

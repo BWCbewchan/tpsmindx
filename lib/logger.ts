@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Logger utility for development debugging
  * Provides structured logging with color-coded output

@@ -1,7 +1,7 @@
 "use client";
 
 import { logger } from '@/lib/logger';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { createContext, useContext, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
 
@@ -36,7 +36,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     // Check authentication status - only run once on mount
@@ -54,8 +53,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         logger.info('No stored auth found');
       }
-    } catch (error: any) {
-      logger.error('Error initializing auth', { error: error.message });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('Error initializing auth', { error: message });
       // Clear corrupted data
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -77,8 +77,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logger.success('User logged out successfully');
       
       router.push('/login');
-    } catch (error: any) {
-      logger.error('Error during logout', { error: error.message });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('Error during logout', { error: message });
       toast.error('Có lỗi khi đăng xuất');
     }
   };
@@ -93,8 +94,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(newToken);
       
       logger.success('Auth context updated successfully', { email: newUser.email });
-    } catch (error: any) {
-      logger.error('Error updating user', { error: error.message });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      logger.error('Error updating user', { error: message });
       toast.error('Có lỗi khi cập nhật thông tin');
     }
   };

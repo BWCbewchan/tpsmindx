@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 interface Post {
     id: string | number
@@ -25,6 +25,13 @@ export default function Slider({ posts }: SliderProps) {
     const [autoPlay, setAutoPlay] = useState(true)
     const [isTransitioning, setIsTransitioning] = useState(false)
 
+    const handleSlideChange = useCallback((newIndex: number) => {
+        if (isTransitioning) return
+        setIsTransitioning(true)
+        setCurrentSlide(newIndex)
+        setTimeout(() => setIsTransitioning(false), 800) // Smoother transition
+    }, [isTransitioning])
+
     useEffect(() => {
         if (!autoPlay || posts.length <= 1) return
 
@@ -33,14 +40,7 @@ export default function Slider({ posts }: SliderProps) {
         }, 6000) // Slower for better reading
 
         return () => clearInterval(timer)
-    }, [autoPlay, posts.length, currentSlide])
-
-    const handleSlideChange = (newIndex: number) => {
-        if (isTransitioning) return
-        setIsTransitioning(true)
-        setCurrentSlide(newIndex)
-        setTimeout(() => setIsTransitioning(false), 800) // Smoother transition
-    }
+    }, [autoPlay, posts.length, currentSlide, handleSlideChange])
 
     const goToPrevious = () => {
         handleSlideChange((currentSlide - 1 + posts.length) % posts.length)

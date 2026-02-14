@@ -45,20 +45,19 @@ export function AssignmentWizard({ onSubmit, onCancel, initialData, isSubmitting
   }, [onCancel]);
 
   useEffect(() => {
+    const fetchVideos = async () => {
+      try {
+        const response = await fetch('/api/training-videos');
+        const data = await response.json();
+        if (data.success) {
+          setVideos(data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching videos:', error);
+      }
+    };
     fetchVideos();
   }, []);
-
-  const fetchVideos = async () => {
-    try {
-      const response = await fetch('/api/training-videos');
-      const data = await response.json();
-      if (data.success) {
-        setVideos(data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching videos:', error);
-    }
-  };
 
   const steps = [
     { number: 1, title: 'Chọn video', icon: Video },

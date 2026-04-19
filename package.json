@@ -55,7 +55,7 @@
     "dotenv": "^17.2.3",
     "formidable": "^3.5.4",
     "formidable-serverless": "^1.1.1",
-    "framer-motion": "^12.31.0",
+    "framer-motion": "^12.38.0",
     "googleapis": "^169.0.0",
     "html2canvas": "^1.4.1",
     "isomorphic-dompurify": "^2.36.0",

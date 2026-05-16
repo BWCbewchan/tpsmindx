@@ -5,7 +5,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import { TeacherProvider } from "@/lib/teacher-context";
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
-import { Exo } from "next/font/google";
+import { Exo, Kaushan_Script } from "next/font/google";
 import { Toaster } from 'react-hot-toast';
 import "./globals.css";
 import StoreProvider from "./StoreProvider";
@@ -14,6 +14,12 @@ const exo = Exo({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-exo",
+});
+
+const kaushanScript = Kaushan_Script({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-kaushan-script",
 });
 
 export const metadata: Metadata = {
@@ -34,15 +40,7 @@ export default function RootLayout({
   const showAnalytics = process.env.NODE_ENV === 'production'
   return (
     <html lang="vi">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Kaushan+Script&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className={`${exo.variable} font-exo bg-background text-foreground antialiased`}>
+      <body className={`${exo.variable} ${kaushanScript.variable} font-exo bg-background text-foreground antialiased`}>
         <ErrorBoundary>
           <StoreProvider>
             <AuthProvider>

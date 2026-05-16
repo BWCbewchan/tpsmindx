@@ -694,7 +694,7 @@ export function BirthdayWishPopup({
 
                   <p
                     className="mt-1 mb-1 text-center relative z-20 text-[30px] leading-[1.12] tracking-wide bg-linear-to-b from-[#1d3f78] via-[#10274f] to-[#0a0f1e] bg-clip-text text-transparent drop-shadow-[0_2px_2px_rgba(0,0,0,0.16)] sm:mt-2 sm:mb-2 sm:text-[44px]"
-                    style={{ fontFamily: 'Kaushan Script, cursive' }}
+                    style={{ fontFamily: 'var(--font-kaushan-script), cursive' }}
                     data-export="title"
                   >
                     Happy Birthday

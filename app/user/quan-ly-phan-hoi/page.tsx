@@ -11,11 +11,6 @@ export default function QuanLyPhanHoiPage() {
   const [refreshSignal, setRefreshSignal] = useState(0)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
 
-  // Show skeleton during initial load
-  if (isInitialLoading) {
-    return <PageSkeleton variant="default" itemCount={6} showHeader={true} />
-  }
-
   return (
     <PageLayout>
       <PageLayoutContent spacing="lg">
@@ -34,14 +29,20 @@ export default function QuanLyPhanHoiPage() {
           }
         />
 
-        <UserFeedbackManagePanel
-          showInlineRefresh={false}
-          externalRefreshSignal={refreshSignal}
-          onInitialLoadComplete={() => {
-            console.log('[QuanLyPhanHoi] Initial load complete callback called')
-            setIsInitialLoading(false)
-          }}
-        />
+        {isInitialLoading && (
+          <PageSkeleton variant="default" itemCount={6} showHeader={false} />
+        )}
+
+        <div className={isInitialLoading ? 'hidden' : ''}>
+          <UserFeedbackManagePanel
+            showInlineRefresh={false}
+            externalRefreshSignal={refreshSignal}
+            onInitialLoadComplete={() => {
+              console.log('[QuanLyPhanHoi] Initial load complete callback called')
+              setIsInitialLoading(false)
+            }}
+          />
+        </div>
       </PageLayoutContent>
     </PageLayout>
   )

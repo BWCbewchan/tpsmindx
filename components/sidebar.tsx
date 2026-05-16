@@ -513,7 +513,6 @@ export function Sidebar() {
     if (path === '/user/truyenthong') return 'tour-nav-truyenthong'
     if (path === '/user/thong-tin-giao-vien') return 'tour-nav-thongtin'
     if (path === '/user/hoat-dong-hang-thang') return 'tour-nav-hoatdong'
-    if (path === '/user/xin-nghi-mot-buoi') return 'tour-nav-xinnghi'
     if (path === '/user/nhan-lop-1-buoi') return 'tour-nav-nhanlop'
     if (path === '/user/dao-tao-nang-cao') return 'tour-nav-training'
     if (path === '/user/assignments') return 'tour-nav-assignments'
@@ -883,10 +882,10 @@ export function Sidebar() {
                         : ''}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-gray-900 truncate">
+                    <p className="text-xs font-bold text-gray-900 break-words leading-snug line-clamp-2">
                       {user.displayName || user.email?.split('@')[0]}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-gray-500 break-all leading-snug line-clamp-2">
                       {user.email}
                     </p>
                   </div>

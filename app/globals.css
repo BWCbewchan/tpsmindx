@@ -103,6 +103,11 @@
   --color-primary: #a1001f;
   --color-primary-foreground: #ffffff;
 
+  /* MindX brand (Tailwind v4: tailwind.config.js colors are not applied unless mirrored here) */
+  --color-mindx-red: #a1001f;
+  --color-mindx-red-dark: #8a0019;
+  --color-mindx-red-light: #c41230;
+
   /* Destructive */
   --color-destructive: #dc2626;
   --color-destructive-foreground: #ffffff;

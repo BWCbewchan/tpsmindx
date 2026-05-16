@@ -182,7 +182,7 @@ const InfoItem = memo(
         <div className="text-gray-500 mt-0.5">{icon}</div>
         <div className="flex-1 min-w-0">
           <div className="text-xs text-gray-500">{label}</div>
-          <div className="text-sm font-semibold text-gray-900 truncate">
+          <div className="text-sm font-semibold text-gray-900 break-words leading-snug">
             {sensitive && !revealed ? '••••••' : value}
           </div>
         </div>
@@ -1212,7 +1212,7 @@ export default function Page1() {
                   {teacher.name.split(' ').pop()?.charAt(0)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-base sm:text-lg font-bold truncate">
+                  <h2 className="text-base sm:text-lg font-bold break-words text-pretty leading-snug">
                     {teacher.name}
                   </h2>
                   <p className="text-xs opacity-90">{teacher.code}</p>
@@ -2301,7 +2301,7 @@ export default function Page1() {
                 className={`${modalType === 'expertise' ? 'bg-gradient-to-r from-blue-600 to-blue-800' : 'bg-gradient-to-r from-purple-600 to-purple-800'} text-white px-3 sm:px-6 py-3 sm:py-5 flex items-center justify-between gap-2`}
               >
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-xl font-bold truncate">
+                  <h3 className="text-base sm:text-xl font-bold break-words text-pretty leading-snug">
                     Test T{modalMonth}
                   </h3>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1 sm:mt-2">
@@ -2424,7 +2424,7 @@ export default function Page1() {
                         </TableCell>
                         <TableCell>
                           {record.emailExplanation ? (
-                            <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-orange-50 text-orange-700 rounded-md text-[10px] sm:text-xs font-medium truncate max-w-[150px] sm:max-w-full">
+                            <span className="inline-flex min-w-0 max-w-[150px] items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-orange-50 text-orange-700 rounded-md text-[10px] sm:text-xs font-medium break-words leading-snug sm:max-w-full">
                               <svg
                                 className="w-3 h-3 flex-shrink-0"
                                 fill="currentColor"
@@ -2433,7 +2433,7 @@ export default function Page1() {
                                 <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                                 <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                               </svg>
-                              <span className="truncate">
+                              <span className="min-w-0 break-words">
                                 {record.emailExplanation}
                               </span>
                             </span>

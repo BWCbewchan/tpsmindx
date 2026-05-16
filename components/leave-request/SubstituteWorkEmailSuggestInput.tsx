@@ -180,7 +180,9 @@ export function SubstituteWorkEmailSuggestInput({
               <span className="font-medium text-gray-900">
                 {(row.full_name || '(Chưa có tên)').trim()}
               </span>
-              <span className="truncate text-xs text-blue-800">{row.work_email}</span>
+              <span className="w-full break-all text-xs text-blue-800 leading-snug">
+                {row.work_email}
+              </span>
             </button>
           ))}
         </div>

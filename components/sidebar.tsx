@@ -209,12 +209,25 @@ export function Sidebar() {
             { href: '/admin/thu-vien-de', label: 'Thư viện đề chuyên môn' },
           ],
         },
+      ],
+    },
+    {
+      label: 'Tài liệu nội bộ',
+      icon: BookOpen,
+      submenu: [
         {
           label: 'Quy Trình, Quy Định K12 Teaching',
-          icon: BookOpen,
           submenu: [
             { href: '/admin/page2', label: 'Xem Tài Liệu' },
             { href: '/admin/page2/manage', label: 'Quản Lý Tài Liệu' },
+          ],
+        },
+        {
+          label: 'Tài Liệu Giảng Dạy',
+          submenu: [
+            { href: '/admin/giao-trinh-trai-nghiem', label: 'Giáo trình trải nghiệm' },
+            { href: '/admin/giao-trinh-chuyen-mon', label: 'Giáo trình chuyên môn' },
+            { href: '/admin/quan-ly-tai-lieu-giang-day', label: 'Quản lý tài liệu' },
           ],
         },
       ],

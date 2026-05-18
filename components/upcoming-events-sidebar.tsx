@@ -48,6 +48,7 @@ interface Birthday {
     teachingLevel: string
     masked?: boolean
     isCurrentUser?: boolean
+    avatar_url?: string | null
 }
 
 interface SenderCandidate {
@@ -469,11 +470,20 @@ export function UpcomingEventsSidebar() {
                                     : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20'
                             }`}
                         >
-                            <div className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-200">
-                                {person.masked
-                                    ? <Lock className="w-4 h-4 text-white/70" />
-                                    : <Users className="w-4.5 h-4.5 text-white" />
-                                }
+                            <div className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center shrink-0 shadow-lg group-hover:scale-110 transition-transform duration-200 overflow-hidden">
+                                {person.masked ? (
+                                    <Lock className="w-4 h-4 text-white/70" />
+                                ) : person.avatar_url ? (
+                                    <img 
+                                        src={person.avatar_url} 
+                                        alt={person.name} 
+                                        className="h-full w-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="flex items-center justify-center w-full h-full text-white font-bold text-sm">
+                                        {person.name ? person.name.charAt(0).toUpperCase() : <Users className="w-4.5 h-4.5" />}
+                                    </div>
+                                )}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className={`font-bold text-sm tracking-wide ${

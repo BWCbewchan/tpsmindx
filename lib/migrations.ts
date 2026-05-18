@@ -1979,6 +1979,25 @@ const migrations: Migration[] = [
         ON system_events(session_id, created_at DESC);
     `,
   },
+  {
+    name: 'V78_teacher_avatars',
+    version: 78,
+    sql: `
+      CREATE TABLE IF NOT EXISTS teacher_avatars (
+        teacher_email VARCHAR(255) PRIMARY KEY,
+        avatar_url TEXT NOT NULL,
+        avatar_storage_key TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      DROP TRIGGER IF EXISTS trg_teacher_avatars_updated_at ON teacher_avatars;
+      CREATE TRIGGER trg_teacher_avatars_updated_at
+        BEFORE UPDATE ON teacher_avatars
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    `,
+  },
 ]
 
 // ========== HÀM CHẠY MIGRATIONS ==========

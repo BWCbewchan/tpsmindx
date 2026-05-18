@@ -12,6 +12,7 @@ interface BirthdayPerson {
   name: string
   date: string
   masked?: boolean
+  avatar_url?: string | null
 }
 
 interface WishItem {
@@ -118,7 +119,7 @@ export function BirthdayWishPopup({
     () =>
       birthdays
         .filter((b) => !b.masked)
-        .map((b) => ({ name: b.name, date: formatBirthdayDate(b.date) })),
+        .map((b) => ({ name: b.name, date: formatBirthdayDate(b.date), avatar_url: b.avatar_url || null })),
     [birthdays],
   )
   const shouldScrollReceivedWishes = wishes.length > 5
@@ -715,38 +716,49 @@ export function BirthdayWishPopup({
                     />
                   </div>
 
-                  <div
-                    className="mt-2 text-center relative z-20"
-                    data-export="header"
-                  >
-                    <div className="space-y-1.5">
-                      {visibleBirthdays.length > 0 ? (
-                        visibleBirthdays.map((person, index) => (
-                          <div
-                            key={`${person.name}-${index}`}
-                            className="text-black"
-                          >
-                            <p
-                              className="text-[24px] sm:text-[38px] font-black leading-tight tracking-tight"
-                              data-export="name"
+                    <div
+                      className="mt-2 text-center relative z-20"
+                      data-export="header"
+                    >
+                      <div className="space-y-2">
+                        {visibleBirthdays.length > 0 ? (
+                          visibleBirthdays.map((person, index) => (
+                            <div
+                              key={`${person.name}-${index}`}
+                              className="text-black flex flex-col items-center gap-1"
                             >
-                              {person.name}
-                            </p>
-                            <p
-                              className="text-sm sm:text-lg text-black font-medium"
-                              data-export="date"
-                            >
-                              {person.date}
-                            </p>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-black text-base" data-export="name">
-                          Đội ngũ giáo viên MindX
-                        </p>
-                      )}
+                              {person.avatar_url && (
+                                <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-full overflow-hidden border-4 border-rose-300 shadow-lg mx-auto">
+                                  <img
+                                    src={person.avatar_url}
+                                    alt={person.name}
+                                    className="w-full h-full object-cover"
+                                    crossOrigin="anonymous"
+                                    data-export="avatar"
+                                  />
+                                </div>
+                              )}
+                              <p
+                                className="text-[24px] sm:text-[38px] font-black leading-tight tracking-tight"
+                                data-export="name"
+                              >
+                                {person.name}
+                              </p>
+                              <p
+                                className="text-sm sm:text-lg text-black font-medium"
+                                data-export="date"
+                              >
+                                {person.date}
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-black text-base" data-export="name">
+                            Đội ngũ giáo viên MindX
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
                   <div
                     className="mt-2 rounded-2xl bg-white/90 border border-rose-300 border-dashed p-3 text-center min-h-14 max-h-20 sm:max-h-28 overflow-y-auto custom-scrollbar flex items-start justify-center relative z-20 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"

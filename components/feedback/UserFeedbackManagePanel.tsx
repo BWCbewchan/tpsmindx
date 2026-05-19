@@ -180,19 +180,36 @@ function UserFeedbackManagePanelWithOptions({
         requestEmail: user.email,
       })
 
+      const controller = new AbortController()
+      const timeoutMs = 10000
+      const to = window.setTimeout(() => controller.abort(), timeoutMs)
+
       const response = await fetch(`/api/feedback?${params.toString()}`, {
         cache: 'no-store',
+        credentials: 'same-origin',
+        signal: controller.signal,
       })
-      const data = await response.json()
+
+      window.clearTimeout(to)
+
+      let data: any = null
+      try {
+        data = await response.json()
+      } catch (err) {
+        throw new Error(response.statusText || 'Không thể phân tích phản hồi từ server')
+      }
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Không thể tải danh sách phản hồi')
+        throw new Error(data?.error || response.statusText || 'Không thể tải danh sách phản hồi')
       }
 
       setItems(data.items || [])
       console.log('[UserFeedbackManagePanel] Loaded items:', data.items?.length || 0)
     } catch (error: any) {
-      const message = error.message || 'Lỗi tải phản hồi'
+      const message =
+        error?.name === 'AbortError'
+          ? 'Yêu cầu lấy dữ liệu quá thời gian. Vui lòng thử lại.'
+          : error.message || 'Lỗi tải phản hồi'
       setLoadingError(message)
       toast.error(message)
       console.error('[UserFeedbackManagePanel] Load error:', error)

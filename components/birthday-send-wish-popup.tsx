@@ -10,6 +10,7 @@ interface BirthdayPerson {
   name: string
   date: string
   masked?: boolean
+  avatar_url?: string | null
 }
 
 interface SenderCandidate {

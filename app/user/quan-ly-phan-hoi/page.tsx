@@ -33,12 +33,18 @@ export default function QuanLyPhanHoiPage() {
           />
         )}
 
-        {/* Luôn mount panel để fetch data; ẩn cho đến khi load xong */}
-        <div className={isInitialLoading ? 'sr-only' : undefined}>
+        {isInitialLoading && (
+          <PageSkeleton variant="default" itemCount={6} showHeader={false} />
+        )}
+
+        <div className={isInitialLoading ? 'hidden' : ''}>
           <UserFeedbackManagePanel
             showInlineRefresh={false}
             externalRefreshSignal={refreshSignal}
-            onInitialLoadComplete={() => setIsInitialLoading(false)}
+            onInitialLoadComplete={() => {
+              console.log('[QuanLyPhanHoi] Initial load complete callback called')
+              setIsInitialLoading(false)
+            }}
           />
         </div>
       </PageLayoutContent>

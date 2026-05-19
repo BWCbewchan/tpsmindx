@@ -37,6 +37,11 @@ const ALLOWED_ORIGINS = Array.from(
   ]),
 );
 
+// Convenience: in local development allow common localhost origins so
+// same-origin fetches from the browser are not accidentally rejected.
+if (process.env.NODE_ENV === 'development') {
+  ALLOWED_ORIGINS.push('http://localhost:3000', 'http://127.0.0.1:3000');
+}
 // Secret server-only — so khớp header x-api-key (cron / công cụ), không lộ ra bundle
 const API_SECRET_KEY = getApiSecret();
 

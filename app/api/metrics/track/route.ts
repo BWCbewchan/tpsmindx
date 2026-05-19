@@ -66,10 +66,10 @@ async function postTrack(request: NextRequest) {
 
     return NextResponse.json({ success: true, count: batch.length })
   } catch (error: any) {
-    console.error('[metrics/track] Error:', error.message)
+    console.warn('[metrics/track] Non-fatal error:', error.message)
     return NextResponse.json(
-      { success: false, error: 'Internal error' },
-      { status: 500 },
+      { success: false, error: 'Tracking unavailable' },
+      { status: 200 },
     )
   }
 }

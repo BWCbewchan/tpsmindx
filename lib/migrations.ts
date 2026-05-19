@@ -1953,6 +1953,51 @@ const migrations: Migration[] = [
       $$;
     `,
   },
+  {
+    name: 'V77_system_events_tracking',
+    version: 77,
+    sql: `
+      -- V77: Core tracking table used by metrics endpoints and client-side event batching
+      CREATE TABLE IF NOT EXISTS system_events (
+        id BIGSERIAL PRIMARY KEY,
+        event_name VARCHAR(100) NOT NULL,
+        user_id VARCHAR(255),
+        session_id VARCHAR(100),
+        properties JSONB NOT NULL DEFAULT '{}'::jsonb,
+        user_agent VARCHAR(500) DEFAULT '',
+        ip_address VARCHAR(45),
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_system_events_event_name_created_at
+        ON system_events(event_name, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_system_events_created_at
+        ON system_events(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_system_events_user_id_created_at
+        ON system_events(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_system_events_session_id_created_at
+        ON system_events(session_id, created_at DESC);
+    `,
+  },
+  {
+    name: 'V78_teacher_avatars',
+    version: 78,
+    sql: `
+      CREATE TABLE IF NOT EXISTS teacher_avatars (
+        teacher_email VARCHAR(255) PRIMARY KEY,
+        avatar_url TEXT NOT NULL,
+        avatar_storage_key TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      DROP TRIGGER IF EXISTS trg_teacher_avatars_updated_at ON teacher_avatars;
+      CREATE TRIGGER trg_teacher_avatars_updated_at
+        BEFORE UPDATE ON teacher_avatars
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+    `,
+  },
 ]
 
 // ========== HÀM CHẠY MIGRATIONS ==========

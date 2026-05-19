@@ -149,8 +149,10 @@ export function SubstituteWorkEmailSuggestInput({
           }
         }}
         className={inputClassName}
+        role="combobox"
         aria-autocomplete="list"
         aria-expanded={open && items.length > 0}
+        aria-haspopup="listbox"
         aria-controls={`${id}-suggest-list`}
       />
       {open && (loading || items.length > 0) ? (

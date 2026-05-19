@@ -5,7 +5,10 @@ import {
 } from "@/lib/datasource-api-auth";
 import pool from "@/lib/db";
 import { checkTeacherExistsByEmailDetailed } from "@/lib/db-helpers";
-import { loadTeacherProfileBundle } from "@/lib/teacher-profile-bundle";
+import {
+  findTeacherRowByLookupQuery,
+  loadTeacherProfileBundle,
+} from "@/lib/teacher-profile-bundle";
 import { NextRequest, NextResponse } from "next/server";
 
 export const GET = withApiProtection(async (request: NextRequest) => {
@@ -51,17 +54,75 @@ export const GET = withApiProtection(async (request: NextRequest) => {
       );
     }
 
+    let lookupCode = code;
+    if (code && !email) {
+      const found = await findTeacherRowByLookupQuery(pool, code);
+
+      if (found.matches && found.matches.length > 1) {
+        const allowedMatches: typeof found.matches = [];
+        for (const candidate of found.matches) {
+          const denied = await rejectIfDatasourceLookupForbidden(
+            sessionEmail,
+            privileged,
+            "",
+            candidate.code,
+          );
+          if (!denied) allowedMatches.push(candidate);
+        }
+
+        if (allowedMatches.length === 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Không có quyền xem giáo viên khớp tên này",
+            },
+            { status: 403 },
+          );
+        }
+
+        if (allowedMatches.length === 1) {
+          lookupCode = allowedMatches[0].code;
+        } else {
+          return NextResponse.json({
+            success: true,
+            exists: false,
+            chooseTeacher: true,
+            matches: allowedMatches,
+            teacher: null,
+            expertise: null,
+            experience: null,
+            certificates: null,
+            training: null,
+          });
+        }
+      } else if (!found.row) {
+        return NextResponse.json({
+          success: true,
+          exists: false,
+          teacher: null,
+          expertise: null,
+          experience: null,
+          certificates: null,
+          training: null,
+        });
+      } else {
+        lookupCode = String(
+          (found.row as Record<string, unknown>).code ?? "",
+        ).trim();
+      }
+    }
+
     const deniedLookup = await rejectIfDatasourceLookupForbidden(
       sessionEmail,
       privileged,
       email,
-      code,
+      lookupCode || code,
     );
     if (deniedLookup) return deniedLookup;
 
     const bundle = await loadTeacherProfileBundle(
       pool,
-      email ? { email, fast } : { code, fast },
+      email ? { email, fast } : { code: lookupCode, fast },
     );
 
     return NextResponse.json({

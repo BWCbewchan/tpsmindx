@@ -54,6 +54,100 @@ export async function findTeacherRowByEmailOrCode(
   return null;
 }
 
+export type TeacherLookupCandidate = {
+  code: string;
+  fullName: string;
+  center: string;
+};
+
+export type TeacherLookupResult = {
+  row: Record<string, unknown> | null;
+  /** Nhiều giáo viên khớp — client hiển thị danh sách chọn */
+  matches?: TeacherLookupCandidate[];
+};
+
+const NAME_LOOKUP_LIMIT = 12;
+
+export function teacherRowToLookupCandidate(
+  row: Record<string, unknown>,
+): TeacherLookupCandidate | null {
+  const code = String(row.code ?? "").trim();
+  if (!code) return null;
+  const fullName = String(
+    row.full_name ?? row["Full name"] ?? row.name ?? "",
+  ).trim();
+  const center = String(
+    row.main_centre ?? row["Main centre"] ?? row.centers ?? row.branch ?? "",
+  ).trim();
+  return {
+    code,
+    fullName: fullName || code,
+    center: center || "—",
+  };
+}
+
+function rowsToCandidates(rows: Record<string, unknown>[]): TeacherLookupCandidate[] {
+  const seen = new Set<string>();
+  const out: TeacherLookupCandidate[] = [];
+  for (const row of rows) {
+    const c = teacherRowToLookupCandidate(row);
+    if (!c || seen.has(c.code.toLowerCase())) continue;
+    seen.add(c.code.toLowerCase());
+    out.push(c);
+  }
+  return out;
+}
+
+/** Tìm theo mã/username/email trước, sau đó theo họ tên (khớp chính xác hoặc một phần). */
+export async function findTeacherRowByLookupQuery(
+  pool: Pool,
+  query: string,
+): Promise<TeacherLookupResult> {
+  const q = query.trim();
+  if (!q) return { row: null };
+
+  const byCode = await findTeacherRowByEmailOrCode(pool, { code: q });
+  if (byCode) return { row: byCode };
+
+  const exact = await pool.query(
+    `SELECT * FROM teachers
+     WHERE LOWER(TRIM(COALESCE(full_name, ''))) = LOWER(TRIM($1))
+        OR LOWER(TRIM(COALESCE("Full name", ''))) = LOWER(TRIM($1))
+     ORDER BY LENGTH(COALESCE(full_name, COALESCE("Full name", ''))) ASC
+     LIMIT ${NAME_LOOKUP_LIMIT}`,
+    [q],
+  );
+  const exactCandidates = rowsToCandidates(
+    exact.rows as Record<string, unknown>[],
+  );
+  if (exactCandidates.length === 1) {
+    return { row: exact.rows[0] as Record<string, unknown> };
+  }
+  if (exactCandidates.length > 1) {
+    return { row: null, matches: exactCandidates };
+  }
+
+  const partial = await pool.query(
+    `SELECT * FROM teachers
+     WHERE LOWER(TRIM(COALESCE(full_name, ''))) LIKE '%' || LOWER(TRIM($1)) || '%'
+        OR LOWER(TRIM(COALESCE("Full name", ''))) LIKE '%' || LOWER(TRIM($1)) || '%'
+     ORDER BY LENGTH(COALESCE(full_name, COALESCE("Full name", ''))) ASC
+     LIMIT ${NAME_LOOKUP_LIMIT}`,
+    [q],
+  );
+  const partialCandidates = rowsToCandidates(
+    partial.rows as Record<string, unknown>[],
+  );
+  if (partialCandidates.length === 1) {
+    return { row: partial.rows[0] as Record<string, unknown> };
+  }
+  if (partialCandidates.length > 1) {
+    return { row: null, matches: partialCandidates };
+  }
+
+  return { row: null };
+}
+
 /** Gom mã GV dùng để khớp `chuyen_sau_results.ma_giao_vien` (đôi khi trùng `code`, đôi khi chỉ trùng `user_name`). */
 function collectTeacherCodeAliases(code: string, alternateCodes?: string[]): string[] {
   const set = new Set<string>();
@@ -420,7 +514,12 @@ export async function loadTeacherProfileBundle(
   opts: { email?: string; code?: string; fast?: boolean }
 ): Promise<TeacherProfileBundle> {
   const { fast, ...lookup } = opts;
-  const raw = await findTeacherRowByEmailOrCode(pool, lookup);
+  let raw: Record<string, unknown> | null = null;
+  if (lookup.email) {
+    raw = await findTeacherRowByEmailOrCode(pool, lookup);
+  } else if (lookup.code) {
+    raw = (await findTeacherRowByLookupQuery(pool, lookup.code)).row;
+  }
   if (!raw) {
     return {
       exists: false,

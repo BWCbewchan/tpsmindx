@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/lib/auth-context'
 import { authHeaders } from '@/lib/auth-headers'
+import { isUnauthorizedStatus, parseJsonSafe } from '@/lib/auth-error-handling'
 import { ArrowLeft, Mail, MessageCircle, ShieldAlert } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -82,7 +83,7 @@ export default function AppLayout({
           `/api/checkdatasource/status?email=${encodeURIComponent(user!.email)}&brief=1`,
           { cache: 'no-store', headers: authHeaders(token) },
         )
-        const data = (await res.json()) as {
+        const data = ((await parseJsonSafe(res)) ?? {}) as {
           success?: boolean
           exists?: boolean
           dbUnavailable?: boolean
@@ -104,7 +105,9 @@ export default function AppLayout({
         }
         router.replace('/checkdatasource')
       } catch {
-        if (!cancelled) router.replace('/checkdatasource')
+        if (cancelled) return
+        setTeacherGateAllowUnknown(true)
+        setTeacherGateBlocking(false)
       }
     })()
     return () => {
@@ -145,7 +148,7 @@ export default function AppLayout({
           cache: 'no-store',
           headers: bearer ? authHeaders(bearer) : {},
         })
-        const data = (await res.json()) as {
+        const data = ((await parseJsonSafe(res)) ?? {}) as {
           success?: boolean
           isAdmin?: boolean
           role?: string
@@ -164,8 +167,12 @@ export default function AppLayout({
           setAdminAccessState('denied')
           if (!hasRedirected.current) {
             hasRedirected.current = true
-            logout()
-            router.replace(redirectPath)
+            if (isUnauthorizedStatus(res.status)) {
+              logout()
+              router.replace(redirectPath)
+            } else {
+              router.replace('/user/thong-tin-giao-vien')
+            }
           }
           return
         }
@@ -211,13 +218,13 @@ export default function AppLayout({
         }
         setAdminAccessState('allowed')
         hasRedirected.current = false
-      } catch {
+      } catch (error) {
         if (cancelled) return
+        console.warn('[AppLayout] Admin access check failed', error)
         setAdminAccessState('denied')
         if (!hasRedirected.current) {
           hasRedirected.current = true
-          logout()
-          router.replace(redirectPath)
+          router.replace('/user/thong-tin-giao-vien')
         }
       }
     })()
@@ -385,7 +392,7 @@ export default function AppLayout({
           `/api/checkdatasource/status?email=${encodeURIComponent(user.email)}&brief=1`,
           { cache: 'no-store', headers: authHeaders(token) },
         )
-        const data = (await response.json()) as {
+        const data = ((await parseJsonSafe(response)) ?? {}) as {
           success?: boolean
           exists?: boolean
           dbUnavailable?: boolean

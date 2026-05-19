@@ -17,6 +17,8 @@ import { toast } from '@/lib/app-toast'
 import { useAuth } from '@/lib/auth-context'
 import { authHeaders } from '@/lib/auth-headers'
 import { lockBodyScroll, unlockBodyScroll } from '@/lib/body-scroll-lock'
+import { setVideo } from '@/lib/redux/features/trainingSlice'
+import { useAppDispatch } from '@/lib/redux/hooks'
 import { mapTeachersDbRowToTeacher } from '@/lib/teacher-db-mapper'
 import {
     Briefcase,
@@ -44,6 +46,7 @@ import useSWR, { useSWRConfig } from 'swr'
 // Cache for processed data
 const dataCache = new Map()
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+const SCORE_CYCLE_MONTHS = 12
 
 interface TeacherAvailability {
   timestamp: string
@@ -95,9 +98,21 @@ interface MonthlyAverage {
 import type { Teacher } from '@/types/teacher'
 
 interface TrainingLesson {
+  id?: number
   name: string
   score: number
   link?: string
+  segments?: Array<{
+    id: number
+    url: string
+    duration_minutes: number
+    duration_seconds?: number | null
+  }>
+  duration_minutes?: number
+  lesson_number?: number
+  completion_status?: string
+  completed_at?: string
+  time_spent_seconds?: number
 }
 
 interface TrainingData {
@@ -113,6 +128,15 @@ interface TrainingData {
   position: string
   averageScore: number
   lessons: TrainingLesson[]
+}
+
+interface TrainingAssignment {
+  id: number
+  video_id?: number | null
+}
+
+interface TrainingAssignmentsResponse {
+  data?: TrainingAssignment[]
 }
 
 type TeacherDbRow = Record<string, unknown>
@@ -132,6 +156,10 @@ const AVAILABILITY_PERIOD_OPTIONS: ReadonlyArray<{
   { value: 'month', label: 'Tháng' },
   { value: 'year', label: 'Năm' },
 ]
+
+const isTrainingLessonCompleted = (lesson: TrainingLesson) =>
+  lesson.completion_status === 'completed' ||
+  (!lesson.completion_status && Number(lesson.score || 0) > 0)
 
 // Memoized InfoItem component — supports `sensitive` to mask value behind eye toggle
 const InfoItem = memo(
@@ -456,6 +484,7 @@ export default function Page1() {
   const { user, token } = useAuth()
   const { mutate: globalMutate } = useSWRConfig()
   const router = useRouter()
+  const dispatch = useAppDispatch()
   const [searchCode, setSearchCode] = useState('')
   const [submitCode, setSubmitCode] = useState('')
   const [hasAutoSearched, setHasAutoSearched] = useState(false)
@@ -635,6 +664,45 @@ export default function Page1() {
     revalidateIfStale: false,
   })
 
+  const advancedTrainingUrl =
+    !isLoadingProfile &&
+    user?.email &&
+    profileBundle &&
+    (profileBundle as { success?: boolean }).success !== false &&
+    profileBundle.exists &&
+    teacherLmsCode
+      ? `/api/training-db?code=${encodeURIComponent(teacherLmsCode)}`
+      : null
+
+  const {
+    data: advancedTrainingData,
+    isLoading: isLoadingAdvancedTraining,
+  } = useSWR<TrainingData>(advancedTrainingUrl, secureFetcher, {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: false,
+    dedupingInterval: 30000,
+    shouldRetryOnError: false,
+  })
+
+  const trainingAssignmentsUrl =
+    advancedTrainingUrl && teacherLmsCode
+      ? `/api/training-assignments?teacher_code=${encodeURIComponent(
+          teacherLmsCode,
+        )}`
+      : null
+
+  const { data: trainingAssignmentsData } =
+    useSWR<TrainingAssignmentsResponse>(
+      trainingAssignmentsUrl,
+      secureFetcher,
+      {
+        revalidateOnFocus: true,
+        revalidateOnReconnect: false,
+        dedupingInterval: 30000,
+        shouldRetryOnError: false,
+      },
+    )
+
   const mergedProfileBundle = useMemo(() => {
     if (!profileBundle) return undefined
     const s = scoresBundle as
@@ -676,8 +744,7 @@ export default function Page1() {
     isLoadingTraining,
   } = useMemo(() => {
     const bundle = mergedProfileBundle
-    const trainingStat = bundle?.training?.data?.[0] ?? null
-    const trainingData = trainingStat as TrainingData | null
+    const trainingData = advancedTrainingData ?? null
     const expertiseData = bundle?.expertise?.monthlyData ?? []
     const experienceData = bundle?.experience?.monthlyData ?? []
     const scoresReady =
@@ -685,7 +752,9 @@ export default function Page1() {
       bundle !== undefined &&
       bundle !== null &&
       (!teacherLmsCode || !isLoadingScores)
-    const isLoadingTraining = isLoadingProfile
+    const isLoadingTraining =
+      isLoadingProfile ||
+      Boolean(advancedTrainingUrl && isLoadingAdvancedTraining)
     return {
       trainingData,
       expertiseData,
@@ -693,12 +762,92 @@ export default function Page1() {
       scoresLoaded: scoresReady,
       isLoadingTraining,
     }
-  }, [mergedProfileBundle, isLoadingProfile, isLoadingScores, teacherLmsCode])
+  }, [
+    advancedTrainingData,
+    advancedTrainingUrl,
+    isLoadingAdvancedTraining,
+    isLoadingProfile,
+    isLoadingScores,
+    mergedProfileBundle,
+    teacherLmsCode,
+  ])
 
   const trainingLessons = trainingData?.lessons ?? []
+  const trainingLessonTotalCount = trainingLessons.length
   const completedTrainingLessonCount = trainingLessons.filter(
-    (lesson) => lesson.score > 0,
+    isTrainingLessonCompleted,
   ).length
+  const trainingLessonTotalLabel = trainingLessonTotalCount || 10
+  const trainingCompletionPercent =
+    trainingLessonTotalCount > 0
+      ? (completedTrainingLessonCount / trainingLessonTotalCount) * 100
+      : 0
+  const trainingAssignmentByVideoId = useMemo(() => {
+    const map = new Map<number, TrainingAssignment>()
+    ;(trainingAssignmentsData?.data ?? []).forEach((assignment) => {
+      const videoId = Number(assignment.video_id)
+      if (Number.isFinite(videoId) && videoId > 0 && !map.has(videoId)) {
+        map.set(videoId, assignment)
+      }
+    })
+    return map
+  }, [trainingAssignmentsData])
+  const getTrainingAssignmentForLesson = useCallback(
+    (lesson: TrainingLesson) => {
+      const videoIds = [
+        lesson.id,
+        ...(lesson.segments?.map((segment) => Number(segment.id)) ?? []),
+      ].filter(
+        (id): id is number =>
+          typeof id === 'number' && Number.isFinite(id) && id > 0,
+      )
+
+      for (const videoId of videoIds) {
+        const assignment = trainingAssignmentByVideoId.get(videoId)
+        if (assignment) return assignment
+      }
+
+      return null
+    },
+    [trainingAssignmentByVideoId],
+  )
+
+  const openAdvancedTrainingLesson = useCallback(
+    (lesson: TrainingLesson) => {
+      if (!lesson.id || !lesson.link) return
+
+      dispatch(
+        setVideo({
+          id: lesson.id,
+          link: lesson.link,
+          duration: lesson.duration_minutes || 0,
+          title: lesson.name,
+          segments: lesson.segments,
+        }),
+      )
+      router.push(`/user/dao-tao-nang-cao/lesson?id=${lesson.id}`)
+    },
+    [dispatch, router],
+  )
+
+  const openAdvancedTrainingAssignment = useCallback(
+    (lesson: TrainingLesson) => {
+      if (!lesson.id) return
+
+      const assignment = getTrainingAssignmentForLesson(lesson)
+      if (!assignment) {
+        toast.warning('Chưa có form làm bài', {
+          message: 'Bài học này chưa được gắn bài kiểm tra để cải thiện điểm.',
+        })
+        return
+      }
+
+      router.push(
+        `/user/dao-tao-nang-cao?start_assignment_id=${assignment.id}`,
+      )
+    },
+    [getTrainingAssignmentForLesson, router],
+  )
 
   // Show feedback modal 30 seconds after successful teacher search
   useEffect(() => {
@@ -1048,8 +1197,8 @@ export default function Page1() {
     }
   }
 
-  // Tính điểm theo chu kỳ 6 tháng:
-  // - Khi có điểm tháng X → áp dụng cho tháng X, X+1, X+2, X+3, X+4, X+5
+  // Tính điểm theo chu kỳ 1 năm:
+  // - Khi có điểm tháng X → áp dụng cho tháng X đến X+11
   // - Nếu trong chu kỳ có điểm MỚI CAO HƠN → reset chu kỳ từ tháng đó
   // - Sau khi hết chu kỳ mà không có điểm mới → trả về "N/A"
   const computeCycleScore = useCallback(
@@ -1063,6 +1212,7 @@ export default function Page1() {
           const [mStr, yStr] = d.month.split('/')
           return { idx: parseInt(yStr) * 12 + parseInt(mStr), score: d.average }
         })
+        .filter((entry) => entry.idx <= currentIdx)
         .sort((a, b) => a.idx - b.idx)
 
       if (scoredMonths.length === 0) return 'N/A'
@@ -1076,22 +1226,22 @@ export default function Page1() {
         if (!hasCycle) {
           hasCycle = true
           cycleScore = entry.score
-          cycleEnd = entry.idx + 5
+          cycleEnd = entry.idx + SCORE_CYCLE_MONTHS - 1
         } else if (entry.idx <= cycleEnd) {
           // Trong chu kỳ: chỉ reset nếu điểm CAO HƠN
           if (entry.score > cycleScore) {
             cycleScore = entry.score
-            cycleEnd = entry.idx + 5
+            cycleEnd = entry.idx + SCORE_CYCLE_MONTHS - 1
           }
         } else {
           // Đã qua chu kỳ: bắt đầu chu kỳ mới
           cycleScore = entry.score
-          cycleEnd = entry.idx + 5
+          cycleEnd = entry.idx + SCORE_CYCLE_MONTHS - 1
         }
       }
 
       // Kiểm tra tháng hiện tại có nằm trong chu kỳ active không
-      const cycleStart = cycleEnd - 5
+      const cycleStart = cycleEnd - SCORE_CYCLE_MONTHS + 1
       if (hasCycle && currentIdx >= cycleStart && currentIdx <= cycleEnd) {
         return cycleScore.toFixed(1)
       }
@@ -1122,7 +1272,7 @@ export default function Page1() {
     const currentYear = parseInt(selectedYear)
     const months: string[] = []
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < SCORE_CYCLE_MONTHS; i++) {
       let month = currentMonth - i
       let year = currentYear
 
@@ -1743,7 +1893,7 @@ export default function Page1() {
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="inline-block w-3 h-3 sm:w-4 sm:h-4 bg-orange-50 border border-dashed border-orange-300 rounded shrink-0"></span>
-                        <span>Điểm kế thừa chu kỳ (6 tháng)</span>
+                        <span>Điểm kế thừa chu kỳ (1 năm)</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="inline-block w-3 h-3 sm:w-4 sm:h-4 bg-gray-200 border border-gray-300 rounded shrink-0"></span>
@@ -1772,7 +1922,7 @@ export default function Page1() {
                     Đào tạo nâng cao
                   </h3>
                   <p className="text-xs sm:text-sm opacity-90 mt-0.5">
-                    Điểm học trực tuyến - 10 bài học
+                    Điểm học trực tuyến - {trainingLessonTotalLabel} bài học
                   </p>
                 </div>
               </div>
@@ -1804,14 +1954,14 @@ export default function Page1() {
                         <div>
                           Hoàn thành:{' '}
                           {completedTrainingLessonCount}
-                          /10
+                          /{trainingLessonTotalLabel}
                         </div>
                         <div className="mt-1">
                           <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-[#a1001f] rounded-full transition-all"
                               style={{
-                                width: `${(completedTrainingLessonCount / 10) * 100}%`,
+                                width: `${trainingCompletionPercent}%`,
                               }}
                             />
                           </div>
@@ -1821,12 +1971,23 @@ export default function Page1() {
                   </div>
 
                   {/* Lessons Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {trainingLessons.map((lesson, idx) => {
+                  {trainingLessonTotalCount === 0 ? (
+                    <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-6 text-center text-sm text-gray-500">
+                      Chưa có bài học nâng cao
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {trainingLessons.map((lesson, idx) => {
                       const score = lesson.score || 0
                       const hasScore = score > 0
                       const isPerfect = score >= 10
                       const notStarted = !hasScore
+                      const assignment = getTrainingAssignmentForLesson(lesson)
+                      const canOpenLesson = Boolean(lesson.id && lesson.link)
+                      const canOpenAssignment = Boolean(assignment)
+                      const actionAvailable = notStarted
+                        ? canOpenLesson
+                        : canOpenAssignment
 
                       const scoreColor = hasScore
                         ? 'text-[#a1001f]'
@@ -1837,13 +1998,13 @@ export default function Page1() {
 
                       return (
                         <div
-                          key={idx}
+                          key={lesson.id ?? idx}
                           className={`border rounded-lg p-3 transition-all hover:shadow-md ${bgColor}`}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <div className="text-xs font-bold text-[#a1001f] mb-1">
-                                Lesson {idx + 1}
+                                Lesson {lesson.lesson_number ?? idx + 1}
                               </div>
                               <div className="text-xs text-gray-700 line-clamp-2 mb-2">
                                 {lesson.name.replace(/^Lesson \d+:\s*/, '')}
@@ -1851,11 +2012,16 @@ export default function Page1() {
 
                               {/* Buttons - Show only for lessons not perfect (< 10 points) */}
                               {!isPerfect &&
-                                (lesson.link ? (
-                                  <a
-                                    href={lesson.link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
+                                (actionAvailable ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (notStarted) {
+                                        openAdvancedTrainingLesson(lesson)
+                                      } else {
+                                        openAdvancedTrainingAssignment(lesson)
+                                      }
+                                    }}
                                     className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded transition-colors ${
                                       notStarted
                                         ? 'bg-[#a1001f] hover:bg-[#870019] text-white cursor-pointer'
@@ -1882,10 +2048,10 @@ export default function Page1() {
                                       />
                                     </svg>
                                     {notStarted ? 'Xem đào tạo' : 'Cải thiện điểm'}
-                                  </a>
+                                  </button>
                                 ) : (
                                   <span className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded bg-gray-300 text-gray-500 cursor-not-allowed">
-                                    Chưa có link
+                                    {notStarted ? 'Chưa có link' : 'Chưa có bài làm'}
                                   </span>
                                 ))}
                             </div>
@@ -1900,18 +2066,31 @@ export default function Page1() {
                           </div>
                         </div>
                       )
-                    })}
-                  </div>
+                      })}
+                    </div>
+                  )}
 
                   {/* Legend */}
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex flex-wrap gap-4 text-xs text-gray-600">
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-600">
                       <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 bg-purple-50 border border-purple-200 rounded"></div>
-                        <span>Đã hoàn thành</span>
+                        <span className="w-4 h-4 rounded border bg-emerald-100 border-emerald-200" />
+                        <span>Xuất sắc (10)</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 bg-gray-100 border border-gray-200 rounded"></div>
+                        <span className="w-4 h-4 rounded border bg-green-100 border-green-200" />
+                        <span>Đạt yêu cầu (≥7)</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="w-4 h-4 rounded border bg-amber-100 border-amber-200" />
+                        <span>Chưa đạt</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="w-4 h-4 rounded border bg-sky-100 border-sky-200" />
+                        <span>Đang học</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="w-4 h-4 rounded border bg-gray-100 border-gray-200" />
                         <span>Chưa học</span>
                       </div>
                     </div>

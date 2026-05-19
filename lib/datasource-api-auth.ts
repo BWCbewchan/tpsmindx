@@ -8,7 +8,10 @@ import {
     TPS_SESSION_COOKIE,
     verifySessionCookieValue,
 } from '@/lib/session-cookie'
-import { findTeacherRowByEmailOrCode } from '@/lib/teacher-profile-bundle'
+import {
+  findTeacherRowByEmailOrCode,
+  findTeacherRowByLookupQuery,
+} from '@/lib/teacher-profile-bundle'
 import {
     teacherRowWorkEmail,
     verifyBearerGetSession,
@@ -214,10 +217,9 @@ export async function rejectIfDatasourceLookupForbidden(
   if (!e && !c) return null
 
   const lookupByEmail = Boolean(e)
-  const row = await findTeacherRowByEmailOrCode(
-    pool,
-    lookupByEmail ? { email: e } : { code: c },
-  )
+  const row = lookupByEmail
+    ? await findTeacherRowByEmailOrCode(pool, { email: e })
+    : (await findTeacherRowByLookupQuery(pool, c)).row
 
   if (!row) return null
 

@@ -5,16 +5,9 @@ import { AuthProvider } from "@/lib/auth-context";
 import { TeacherProvider } from "@/lib/teacher-context";
 import { Analytics } from "@vercel/analytics/react";
 import type { Metadata } from "next";
-import { Exo } from "next/font/google";
 import { Toaster } from 'react-hot-toast';
 import "./globals.css";
 import StoreProvider from "./StoreProvider";
-
-const exo = Exo({
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-exo",
-});
 
 export const metadata: Metadata = {
   title: "Teaching Portal System (TPS)",
@@ -42,7 +35,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className={`${exo.variable} font-exo bg-background text-foreground antialiased`}>
+      <body className="font-sans bg-background text-foreground antialiased">
         <ErrorBoundary>
           <StoreProvider>
             <AuthProvider>

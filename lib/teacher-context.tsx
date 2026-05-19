@@ -1,6 +1,11 @@
 "use client";
 
 import { authHeaders } from '@/lib/auth-headers';
+import {
+  createHttpError,
+  isTransientFetchError,
+  parseJsonSafe,
+} from '@/lib/auth-error-handling';
 import { parseLegacyTeacherFromInfoJson } from '@/lib/teacher-db-mapper';
 import { Teacher } from '@/types/teacher';
 import { createContext, useContext, useMemo } from 'react';
@@ -28,11 +33,9 @@ export const useTeacher = () => useContext(TeacherContext);
 
 async function teacherInfoFetcher([url, token]: readonly [string, string | null]) {
   const res = await fetch(url, { headers: authHeaders(token) });
-  const data = await res.json();
+  const data = await parseJsonSafe(res);
   if (!res.ok) {
-    const err = new Error('Teacher info request failed') as Error & { status?: number };
-    err.status = res.status;
-    throw err;
+    throw createHttpError('Teacher info request failed', res, data);
   }
   return data;
 }
@@ -47,12 +50,18 @@ export function TeacherProvider({ children }: { children: React.ReactNode }) {
       ] as const)
     : null;
 
-  const { data, error, isLoading, mutate } = useSWR(swrKey, teacherInfoFetcher, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: true,
-    dedupingInterval: 120_000,
-    shouldRetryOnError: false,
-  });
+  const { data, error, isLoading, isValidating, mutate } = useSWR(
+    swrKey,
+    teacherInfoFetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      dedupingInterval: 120_000,
+      shouldRetryOnError: isTransientFetchError,
+      errorRetryCount: 2,
+      errorRetryInterval: 3_000,
+    },
+  );
 
   const teacherProfile = useMemo((): Teacher | null => {
     if (!data) return null;
@@ -68,17 +77,29 @@ export function TeacherProvider({ children }: { children: React.ReactNode }) {
     logger.warn('Teacher profile fetch error', { error });
   }
 
+  const transientProfileError = Boolean(error && isTransientFetchError(error));
+
   const value = useMemo(
     () => ({
       teacherProfile,
-      isLoading: Boolean(user?.email) && isLoading,
+      isLoading:
+        Boolean(user?.email) &&
+        (isLoading || (transientProfileError && !data && isValidating)),
       refreshProfile: async () => {
         await mutate();
       },
       currentBranch: teacherProfile?.branchCurrent || null,
       currentCode: teacherProfile?.code || null,
     }),
-    [teacherProfile, user?.email, isLoading, mutate],
+    [
+      teacherProfile,
+      user?.email,
+      isLoading,
+      transientProfileError,
+      data,
+      isValidating,
+      mutate,
+    ],
   );
 
   return (

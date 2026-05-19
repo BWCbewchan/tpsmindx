@@ -164,7 +164,7 @@ const extractCodeFromEmail = (email: string): string | null => {
 }
 
 export default function TeacherAssignmentPage() {
-  const { user, logout, token } = useAuth()
+  const { user, token } = useAuth()
   const { teacherProfile, isLoading: isTeacherLoading } = useTeacher()
   const router = useRouter()
   const pathname = usePathname()
@@ -434,11 +434,8 @@ export default function TeacherAssignmentPage() {
 
         if (!teacherProfile) {
           toast.error(
-            'Thiếu thông tin giáo viên. Vui lòng đăng xuất và đăng nhập lại.',
+            'Thiếu thông tin giáo viên. Vui lòng tải lại dữ liệu rồi thử lại.',
           )
-          setTimeout(() => {
-            logout()
-          }, 1500)
           return
         }
 
@@ -553,7 +550,6 @@ export default function TeacherAssignmentPage() {
     },
     [
       isTeacherLoading,
-      logout,
       submitAssignment,
       teacherCode,
       teacherProfile,

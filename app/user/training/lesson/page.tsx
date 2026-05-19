@@ -183,11 +183,10 @@ function LessonContent() {
 
     // Check if teacher profile is valid
     if (!teacherProfile) {
-      // Clear session data and redirect
-      localStorage.removeItem('token')
-      localStorage.removeItem('refreshToken')
-      localStorage.removeItem('user')
-      router.replace('/login')
+      flatToast.error(
+        'Chưa đồng bộ được thông tin giáo viên. Vui lòng thử lại sau.',
+      )
+      router.replace('/user/dao-tao-nang-cao')
     }
   }, [user, isTeacherLoading, teacherProfile, router])
 

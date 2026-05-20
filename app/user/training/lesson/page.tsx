@@ -183,11 +183,10 @@ function LessonContent() {
 
     // Check if teacher profile is valid
     if (!teacherProfile) {
-      // Clear session data and redirect
-      localStorage.removeItem('token')
-      localStorage.removeItem('refreshToken')
-      localStorage.removeItem('user')
-      router.replace('/login')
+      flatToast.error(
+        'Chưa đồng bộ được thông tin giáo viên. Vui lòng thử lại sau.',
+      )
+      router.replace('/user/dao-tao-nang-cao')
     }
   }, [user, isTeacherLoading, teacherProfile, router])
 
@@ -1199,7 +1198,7 @@ function LessonContent() {
               />
             </svg>
           </button>
-          <h1 className="text-sm font-bold text-white truncate flex-1">
+          <h1 className="min-w-0 flex-1 text-sm font-bold text-white break-words text-pretty leading-snug line-clamp-2 text-center">
             {title || 'Bài học'}
           </h1>
           <div className="text-xs text-white/80">

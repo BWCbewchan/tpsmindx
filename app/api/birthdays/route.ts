@@ -20,6 +20,7 @@ interface Birthday {
     area?: string
     masked?: boolean
     isCurrentUser?: boolean
+    avatar_url?: string | null
 }
 
 interface TeacherListRecord {
@@ -105,6 +106,7 @@ function parseBirthdayRecord(record: Record<string, unknown>, id: number, fallba
         teachingLevel: teachingLevel || '',
         email: String(record.emailCongViec || record.email || record.Email || ''),
         username: String(record.usernameLms || record.username || ''),
+        avatar_url: (record.avatar_url as string) || null,
     }
 }
 
@@ -113,19 +115,21 @@ async function getBirthdaysFromDB(month: number): Promise<Record<string, unknown
     try {
         const result = await pool.query(
             `SELECT
-                code AS "usernameLms",
-                full_name AS "hoVaTen",
-                work_email AS "emailCongViec",
-                COALESCE(NULLIF(course_line, ''), NULLIF(khoi_final, '')) AS "boPhan",
-                main_centre AS area,
-                birth_day AS "ngaySinhTrongThang",
-                birth_month AS month
-             FROM teachers
-             WHERE birth_month = $1
-               AND birth_day IS NOT NULL
-               AND birth_day > 0
-               AND status = 'Active'
-             ORDER BY birth_day ASC`,
+                t.code AS "usernameLms",
+                t.full_name AS "hoVaTen",
+                t.work_email AS "emailCongViec",
+                COALESCE(NULLIF(t.course_line, ''), NULLIF(t.khoi_final, '')) AS "boPhan",
+                t.main_centre AS area,
+                t.birth_day AS "ngaySinhTrongThang",
+                t.birth_month AS month,
+                ta.avatar_url
+             FROM teachers t
+             LEFT JOIN teacher_avatars ta ON LOWER(t.work_email) = LOWER(ta.teacher_email)
+             WHERE t.birth_month = $1
+               AND t.birth_day IS NOT NULL
+               AND t.birth_day > 0
+               AND t.status = 'Active'
+             ORDER BY t.birth_day ASC`,
             [month]
         )
         return result.rows

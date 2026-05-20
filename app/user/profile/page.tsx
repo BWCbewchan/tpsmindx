@@ -8,6 +8,7 @@ import {
   Award,
   BookOpen,
   Calendar,
+  Camera,
   ChevronDown,
   Eye,
   EyeOff,
@@ -71,6 +72,17 @@ export default function TeacherProfilePage() {
   const certTypeDropdownRef = useRef<HTMLDivElement>(null)
   const [isCertTypeOpen, setIsCertTypeOpen] = useState(false)
   const [selectedCertFile, setSelectedCertFile] = useState<File | null>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+
+  const [showAvatarModal, setShowAvatarModal] = useState(false)
+  const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null)
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [avatarSource, setAvatarSource] = useState<'upload' | 'camera'>('upload')
+  const [cameraError, setCameraError] = useState<string | null>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const cameraStreamRef = useRef<MediaStream | null>(null)
 
   // Certificate form state
   const [certForm, setCertForm] = useState({
@@ -94,6 +106,26 @@ export default function TeacherProfilePage() {
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [isCertTypeOpen])
 
+  useEffect(() => {
+    if (!showAvatarModal) {
+      stopCamera()
+      resetAvatarSelection()
+      return
+    }
+
+    if (avatarSource === 'camera') {
+      void startCamera()
+    } else {
+      stopCamera()
+    }
+  }, [showAvatarModal, avatarSource])
+
+  useEffect(() => {
+    return () => {
+      stopCamera()
+    }
+  }, [])
+
   // Fetch certificates
   const { data: certificatesData, mutate: mutateCertificates } = useSWR(
     user?.email ? `/api/teacher-certificates?email=${user.email}` : null,
@@ -114,9 +146,15 @@ export default function TeacherProfilePage() {
     fetcher,
   )
 
+  const { data: avatarData, mutate: mutateAvatar } = useSWR(
+    user?.email ? '/api/teacher-avatar' : null,
+    fetcher,
+  )
+
   const certificates = certificatesData?.data || []
   const privacySettings = privacyData?.data
   const teacherInfo = parseLegacyTeacherFromInfoJson(rawTeacherData)?.teacher || null
+  const avatarUrl = avatarData?.data?.avatar_url || null
 
   // Handle privacy setting toggle
   const handlePrivacyToggle = async (
@@ -188,6 +226,145 @@ export default function TeacherProfilePage() {
     }
 
     return null
+  }
+
+  const validateAvatarFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      return 'File phải là hình ảnh'
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return 'Kích thước ảnh tối đa 5MB'
+    }
+
+    return null
+  }
+
+  const resetAvatarSelection = () => {
+    if (avatarPreviewUrl) {
+      URL.revokeObjectURL(avatarPreviewUrl)
+    }
+    setAvatarPreviewUrl(null)
+    setSelectedAvatarFile(null)
+  }
+
+  const stopCamera = () => {
+    if (cameraStreamRef.current) {
+      cameraStreamRef.current.getTracks().forEach((track) => track.stop())
+      cameraStreamRef.current = null
+    }
+  }
+
+  const startCamera = async () => {
+    try {
+      stopCamera()
+      setCameraError(null)
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        const message = 'Trình duyệt không hỗ trợ camera'
+        setCameraError(message)
+        toast.error(message)
+        return
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user' },
+      })
+      cameraStreamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+    } catch (error) {
+      console.error('Camera error:', error)
+      const err = error as { name?: string; message?: string }
+      const message =
+        err?.name === 'NotAllowedError'
+          ? 'Bạn cần cấp quyền camera để chụp ảnh'
+          : err?.name === 'NotFoundError'
+            ? 'Không tìm thấy camera trên thiết bị'
+            : 'Không thể truy cập camera'
+      setCameraError(message)
+      toast.error(message)
+    }
+  }
+
+  const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const validationError = validateAvatarFile(file)
+    if (validationError) {
+      toast.error(validationError)
+      resetAvatarSelection()
+      return
+    }
+
+    resetAvatarSelection()
+    setSelectedAvatarFile(file)
+    setAvatarPreviewUrl(URL.createObjectURL(file))
+  }
+
+  const handleCaptureFromCamera = async () => {
+    if (!videoRef.current || !canvasRef.current) return
+
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    canvas.width = video.videoWidth || 640
+    canvas.height = video.videoHeight || 480
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+
+    canvas.toBlob((blob) => {
+      if (!blob) return
+      const file = new File([blob], `avatar-${Date.now()}.jpg`, {
+        type: 'image/jpeg',
+      })
+      resetAvatarSelection()
+      setSelectedAvatarFile(file)
+      setAvatarPreviewUrl(URL.createObjectURL(file))
+      stopCamera()
+    }, 'image/jpeg', 0.92)
+  }
+
+  const handleUploadAvatar = async () => {
+    if (!selectedAvatarFile) {
+      toast.error('Vui lòng chọn ảnh đại diện')
+      return
+    }
+
+    const validationError = validateAvatarFile(selectedAvatarFile)
+    if (validationError) {
+      toast.error(validationError)
+      return
+    }
+
+    setIsUploadingAvatar(true)
+    const toastId = toast.loading('Đang tải ảnh đại diện...')
+
+    try {
+      const formData = new FormData()
+      formData.append('image', selectedAvatarFile)
+
+      const response = await fetch('/api/teacher-avatar', {
+        method: 'POST',
+        headers: authHeaders(token),
+        body: formData,
+      })
+
+      if (!response.ok) throw new Error('Failed to upload avatar')
+
+      toast.success('Cập nhật ảnh đại diện thành công', { id: toastId })
+      await mutateAvatar()
+      setShowAvatarModal(false)
+      resetAvatarSelection()
+      stopCamera()
+    } catch (error) {
+      console.error('Upload avatar error:', error)
+      toast.error('Lỗi khi tải ảnh đại diện', { id: toastId })
+    } finally {
+      setIsUploadingAvatar(false)
+    }
   }
 
   const handleCertificateUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -352,10 +529,26 @@ export default function TeacherProfilePage() {
           <div className="flex flex-col md:flex-row items-center gap-6">
             {/* Avatar */}
             <div className="relative group">
-              <div className="w-32 h-32 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center shadow-2xl">
-                <User className="w-16 h-16 text-white" />
+              <div className="relative w-32 h-32 rounded-full bg-white/20 backdrop-blur-sm border-4 border-white/30 flex items-center justify-center shadow-2xl overflow-hidden">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt="Avatar"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-4xl font-bold text-white">
+                    {user.displayName
+                      ? user.displayName.charAt(0).toUpperCase()
+                      : user.email?.charAt(0).toUpperCase()}
+                  </span>
+                )}
               </div>
-              <button className="absolute bottom-0 right-0 w-10 h-10 bg-white text-blue-600 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
+              <button
+                type="button"
+                onClick={() => setShowAvatarModal(true)}
+                className="absolute bottom-0 right-0 w-10 h-10 bg-white text-blue-600 rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform"
+              >
                 <Upload className="w-5 h-5" />
               </button>
             </div>
@@ -754,12 +947,153 @@ export default function TeacherProfilePage() {
         </div>
       </div>
 
+      {/* Avatar Upload Modal */}
+      {showAvatarModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start pt-20 sm:items-center sm:justify-center sm:pt-0 justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-[#a1001f] p-6 border-b border-[#870019] flex items-center justify-between">
+              <h2 className="text-2xl font-black text-white">
+                Cập nhật ảnh đại diện
+              </h2>
+              <button
+                onClick={() => {
+                  setShowAvatarModal(false)
+                  setAvatarSource('upload')
+                  stopCamera()
+                  resetAvatarSelection()
+                }}
+                className="w-10 h-10 bg-white/10 hover:bg-white/20 text-white rounded-xl flex items-center justify-center transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAvatarSource('upload')}
+                  className={`flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-colors ${
+                    avatarSource === 'upload'
+                      ? 'border-[#a1001f] bg-[#fff5f7] text-[#a1001f]'
+                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <ImageIcon className="w-4 h-4" />
+                  Tải ảnh lên
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAvatarSource('camera')}
+                  className={`flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-3 text-sm font-semibold transition-colors ${
+                    avatarSource === 'camera'
+                      ? 'border-[#a1001f] bg-[#fff5f7] text-[#a1001f]'
+                      : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  <Camera className="w-4 h-4" />
+                  Chụp ảnh
+                </button>
+              </div>
+
+              <div className="rounded-2xl border border-dashed border-gray-300 p-4">
+                {avatarPreviewUrl ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="relative h-40 w-40 overflow-hidden rounded-full border border-gray-200">
+                      <img
+                        src={avatarPreviewUrl}
+                        alt="Preview"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={resetAvatarSelection}
+                      className="text-sm font-semibold text-gray-600 hover:text-gray-800"
+                    >
+                      Chọn lại ảnh
+                    </button>
+                  </div>
+                ) : avatarSource === 'upload' ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarFileChange}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 hover:border-[#a1001f] hover:bg-[#fff5f7]"
+                    >
+                      Chọn ảnh từ máy (tối đa 5MB)
+                    </button>
+                    <p className="text-xs text-gray-500">
+                      Hỗ trợ JPG, PNG, WEBP
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    {cameraError && (
+                      <div className="w-full rounded-xl border border-[#f1d1d8] bg-[#fff5f7] p-3 text-sm text-[#6b1223]">
+                        <p className="font-semibold">Không thể mở camera</p>
+                        <p className="mt-1">
+                          {cameraError}. Hãy cấp quyền camera trong trình duyệt
+                          và thử lại. Lưu ý: camera chỉ hoạt động trên HTTPS
+                          hoặc localhost.
+                        </p>
+                      </div>
+                    )}
+                    <video
+                      ref={videoRef}
+                      className="w-full max-w-sm rounded-2xl bg-gray-100"
+                      playsInline
+                      muted
+                    />
+                    <canvas ref={canvasRef} className="hidden" />
+                    <div className="flex flex-col sm:flex-row gap-3 w-full">
+                      <button
+                        type="button"
+                        onClick={() => void startCamera()}
+                        className="flex-1 rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                      >
+                        Bật lại camera
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCaptureFromCamera}
+                        className="flex-1 rounded-xl bg-[#a1001f] px-4 py-3 text-sm font-semibold text-white hover:bg-[#870019]"
+                      >
+                        Chụp ảnh
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-[#f1d1d8] pt-4">
+                <Button
+                  type="button"
+                  onClick={handleUploadAvatar}
+                  disabled={isUploadingAvatar || !selectedAvatarFile}
+                  className="w-full bg-[#a1001f] hover:bg-[#870019] text-white"
+                >
+                  {isUploadingAvatar ? 'Đang cập nhật...' : 'Lưu ảnh đại diện'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add Certificate Modal */}
       {showCertModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start pt-20 sm:items-center sm:justify-center sm:pt-0 justify-center z-50 p-4">
           <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="sticky top-0 bg-[#a1001f] p-6 border-b border-[#870019] flex items-center justify-between">
+            <div className="sticky top-0 z-10 bg-[#a1001f] p-6 border-b border-[#870019] flex items-center justify-between">
               <h2 className="text-2xl font-black text-white">
                 Thêm chứng chỉ mới
               </h2>

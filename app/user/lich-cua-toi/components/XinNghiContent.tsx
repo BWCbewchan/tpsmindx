@@ -35,6 +35,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { LeaveBuNotice } from '@/components/leave-request/LeaveBuNotice'
 import { SubstituteWorkEmailSuggestInput } from '@/components/leave-request/SubstituteWorkEmailSuggestInput'
+import {
+  LeaveSessionField,
+  parseLeaveSessionNumber,
+} from '@/components/leave-request/LeaveSessionField'
+import { Time24Select } from '@/components/leave-request/Time24Select'
 
 interface LeaveRequest {
   id: number
@@ -70,19 +75,12 @@ interface LeaveRequest {
 type StatusVariant = 'warning' | 'info' | 'success' | 'danger'
 
 const STORAGE_KEY = 'teacher_leave_request_auto_fill_data'
-const LEAVE_SESSION_OPTIONS = Array.from(
-  { length: 14 },
-  (_, index) => `Buổi ${index + 1}`,
-)
-
 const SELECT_BASE_CLASS =
   'w-full min-w-0 max-w-full min-h-11 appearance-none rounded-lg border border-gray-300 bg-white px-3 py-3 pr-10 text-[16px] text-gray-900 shadow-sm outline-none transition-colors focus:border-[#a1001f] focus:ring-2 focus:ring-[#a1001f]/20 sm:text-sm'
 const INPUT_BASE_CLASS =
   'w-full min-w-0 max-w-full min-h-11 rounded-lg border border-gray-300 px-3 py-3 text-[16px] text-gray-900 shadow-sm outline-none transition-colors focus:border-[#a1001f] focus:ring-2 focus:ring-[#a1001f]/20 sm:text-sm'
 const TEXTAREA_BASE_CLASS =
   'w-full min-w-0 max-w-full rounded-lg border border-gray-300 px-3 py-2.5 text-[16px] text-gray-900 shadow-sm outline-none transition-colors focus:border-[#a1001f] focus:ring-2 focus:ring-[#a1001f]/20 sm:text-sm'
-/** input[type=time]: bước 1 phút */
-const TIME_INPUT_CLASS = `${INPUT_BASE_CLASS} tabular-nums`
 const MIN_ADVANCE_HOURS = 72
 const MAX_REQUESTS_PER_CLASS = 2
 
@@ -1037,8 +1035,8 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
       return 'Giờ kết thúc phải sau giờ bắt đầu.'
     }
 
-    if (!formData.leave_session.trim()) {
-      return 'Vui lòng chọn buổi học xin nghỉ.'
+    if (!parseLeaveSessionNumber(formData.leave_session)) {
+      return 'Vui lòng nhập số buổi học xin nghỉ (Buổi 1 – Buổi 14).'
     }
 
     if (formData.reason.trim().length < 10) {
@@ -1153,8 +1151,8 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
       return 'Giờ kết thúc phải sau giờ bắt đầu.'
     }
 
-    if (!editForm.leave_session.trim()) {
-      return 'Vui lòng chọn buổi học xin nghỉ.'
+    if (!parseLeaveSessionNumber(editForm.leave_session)) {
+      return 'Vui lòng nhập số buổi học xin nghỉ (Buổi 1 – Buổi 14).'
     }
 
     if (editForm.reason.trim().length < 10) {
@@ -1468,7 +1466,7 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
               onClick={() => setShowCampusDropdown(!showCampusDropdown)}
               className="flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-left text-sm hover:bg-gray-50 md:min-w-45"
             >
-              <span className="truncate">
+              <span className="min-w-0 flex-1 text-left break-words leading-snug line-clamp-2">
                 {campusFilter.length === 0
                   ? 'Tất cả'
                   : `${campusFilter.length} cơ sở`}
@@ -1783,11 +1781,11 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
                 }
               >
                 <span className="min-w-0 flex-1 text-left">
-                  <span className="block truncate font-medium text-gray-900">
+                  <span className="block break-words font-medium text-gray-900 leading-snug">
                     {selectedCampusOption?.label || formData.campus || 'Chọn cơ sở'}
                   </span>
                   {selectedCampusOption?.label || formData.campus ? (
-                    <span className="mt-0.5 block truncate text-xs text-gray-600 break-all">
+                    <span className="mt-0.5 block break-all text-xs text-gray-600 leading-snug">
                       {selectedCampusOption?.email?.trim() ||
                         formData.campus_email?.trim() ||
                         'Chưa có email trên danh sách cơ sở'}
@@ -1835,16 +1833,16 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
                               isSelected ? 'bg-[#a1001f]/5 ring-1 ring-[#a1001f]/10' : ''
                             }`}
                           >
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-gray-900">
+                            <div className="min-w-0 flex-1">
+                              <p className="break-words text-sm font-medium text-gray-900 leading-snug">
                                 {option.label}
                               </p>
                               {option.email?.trim() ? (
-                                <p className="mt-0.5 truncate text-xs text-gray-600 break-all">
+                                <p className="mt-0.5 break-all text-xs text-gray-600 leading-snug">
                                   {option.email.trim()}
                                 </p>
                               ) : option.shortCode ? (
-                                <p className="mt-0.5 truncate text-xs text-gray-500">
+                                <p className="mt-0.5 break-words text-xs text-gray-500 leading-snug">
                                   {option.shortCode}
                                 </p>
                               ) : (
@@ -1912,7 +1910,8 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
                 Thời gian học *
               </label>
               <p className="mb-3 text-xs text-gray-500">
-                Dùng định dạng 24 giờ (00:00 - 23:59). Mobile sẽ mở bánh xe giờ/phút.
+                Chọn giờ bắt đầu và giờ kết thúc (định dạng 24 giờ, 00:00–23:59).
+                Giờ kết thúc phải sau giờ bắt đầu.
               </p>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="min-w-0">
@@ -1922,18 +1921,13 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
                   >
                     Giờ bắt đầu
                   </label>
-                  <input
+                  <Time24Select
                     id="class-time-start"
-                    type="time"
-                    step={60}
-                    lang="en-GB"
-                    value={classTimeStart ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      setClassTimeStart(v ? v.slice(0, 5) : null)
-                    }}
-                    className={TIME_INPUT_CLASS}
-                    aria-label="Giờ và phút bắt đầu"
+                    value={classTimeStart}
+                    onChange={setClassTimeStart}
+                    groupAriaLabel="Giờ bắt đầu"
+                    hourLabel="Giờ bắt đầu"
+                    minuteLabel="Phút bắt đầu"
                   />
                 </div>
                 <div className="min-w-0">
@@ -1943,18 +1937,13 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
                   >
                     Giờ kết thúc
                   </label>
-                  <input
+                  <Time24Select
                     id="class-time-end"
-                    type="time"
-                    step={60}
-                    lang="en-GB"
-                    value={classTimeEnd ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      setClassTimeEnd(v ? v.slice(0, 5) : null)
-                    }}
-                    className={TIME_INPUT_CLASS}
-                    aria-label="Giờ và phút kết thúc"
+                    value={classTimeEnd}
+                    onChange={setClassTimeEnd}
+                    groupAriaLabel="Giờ kết thúc"
+                    hourLabel="Giờ kết thúc"
+                    minuteLabel="Phút kết thúc"
                   />
                 </div>
               </div>
@@ -1963,24 +1952,12 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
               <label className="mb-1.5 block text-sm font-medium text-gray-700">
                 Buổi học xin nghỉ *
               </label>
-              <div className="relative">
-                <select
-                  required
-                  value={formData.leave_session}
-                  onChange={(e) =>
-                    handleChange('leave_session', e.target.value)
-                  }
-                  className={SELECT_BASE_CLASS}
-                >
-                  <option value="">Chọn buổi học</option>
-                  {LEAVE_SESSION_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              </div>
+              <LeaveSessionField
+                id="leave-session"
+                required
+                value={formData.leave_session}
+                onChange={(v) => handleChange('leave_session', v)}
+              />
             </div>
             <div className="md:col-span-2">
               <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-700">
@@ -2306,6 +2283,10 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
                       <label className="mb-1.5 block text-sm font-medium text-gray-700">
                         Thời gian học *
                       </label>
+                      <p className="mb-3 text-xs text-gray-500">
+                        Chọn giờ bắt đầu và giờ kết thúc (định dạng 24 giờ, 00:00–23:59).
+                        Giờ kết thúc phải sau giờ bắt đầu.
+                      </p>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
                           <label
@@ -2314,17 +2295,13 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
                           >
                             Giờ bắt đầu
                           </label>
-                          <input
+                          <Time24Select
                             id="edit-class-time-start"
-                            type="time"
-                            step={60}
-                            lang="en-GB"
-                            value={editClassTimeStart ?? ''}
-                            onChange={(e) => {
-                              const v = e.target.value
-                              setEditClassTimeStart(v ? v.slice(0, 5) : null)
-                            }}
-                            className={TIME_INPUT_CLASS}
+                            value={editClassTimeStart}
+                            onChange={setEditClassTimeStart}
+                            groupAriaLabel="Giờ bắt đầu"
+                            hourLabel="Giờ bắt đầu"
+                            minuteLabel="Phút bắt đầu"
                           />
                         </div>
                         <div>
@@ -2334,17 +2311,13 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
                           >
                             Giờ kết thúc
                           </label>
-                          <input
+                          <Time24Select
                             id="edit-class-time-end"
-                            type="time"
-                            step={60}
-                            lang="en-GB"
-                            value={editClassTimeEnd ?? ''}
-                            onChange={(e) => {
-                              const v = e.target.value
-                              setEditClassTimeEnd(v ? v.slice(0, 5) : null)
-                            }}
-                            className={TIME_INPUT_CLASS}
+                            value={editClassTimeEnd}
+                            onChange={setEditClassTimeEnd}
+                            groupAriaLabel="Giờ kết thúc"
+                            hourLabel="Giờ kết thúc"
+                            minuteLabel="Phút kết thúc"
                           />
                         </div>
                       </div>
@@ -2353,24 +2326,12 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
                       <label className="mb-1.5 block text-sm font-medium text-gray-700">
                         Buổi học xin nghỉ *
                       </label>
-                      <div className="relative">
-                        <select
-                          required
-                          value={editForm.leave_session}
-                          onChange={(e) =>
-                            editFormChange('leave_session', e.target.value)
-                          }
-                          className={SELECT_BASE_CLASS}
-                        >
-                          <option value="">Chọn buổi học</option>
-                          {LEAVE_SESSION_OPTIONS.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                      </div>
+                      <LeaveSessionField
+                        id="edit-leave-session"
+                        required
+                        value={editForm.leave_session}
+                        onChange={(v) => editFormChange('leave_session', v)}
+                      />
                     </div>
                     <div className="md:col-span-2">
                       <label className="mb-1.5 block text-sm font-medium text-gray-700">

@@ -90,16 +90,6 @@ const ALL_TOUR_STEPS: TourStep[] = [
     mascotAction: 'jump',
   },
   {
-    id: 'xinnghi',
-    title: 'Tạo yêu cầu xin nghỉ 1 buổi',
-    description:
-      'Tạo yêu cầu xin nghỉ 1 buổi và theo dõi trạng thái xử lý từ đội ngũ Quản Lí.',
-    target: 'tour-nav-xinnghi',
-    route: '/user/xin-nghi-mot-buoi',
-    submenuLabels: ['Lịch & Hoạt động'],
-    mascotAction: 'jump',
-  },
-  {
     id: 'nhanlop',
     title: 'Tiếp nhận xin nghỉ 1 buổi',
     description: 'Xem danh sách tiếp nhận xin nghỉ 1 buổi theo cơ sở được phân công.',

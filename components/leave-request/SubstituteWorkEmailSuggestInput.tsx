@@ -149,8 +149,10 @@ export function SubstituteWorkEmailSuggestInput({
           }
         }}
         className={inputClassName}
+        role="combobox"
         aria-autocomplete="list"
         aria-expanded={open && items.length > 0}
+        aria-haspopup="listbox"
         aria-controls={`${id}-suggest-list`}
       />
       {open && (loading || items.length > 0) ? (
@@ -180,7 +182,9 @@ export function SubstituteWorkEmailSuggestInput({
               <span className="font-medium text-gray-900">
                 {(row.full_name || '(Chưa có tên)').trim()}
               </span>
-              <span className="truncate text-xs text-blue-800">{row.work_email}</span>
+              <span className="w-full break-all text-xs text-blue-800 leading-snug">
+                {row.work_email}
+              </span>
             </button>
           ))}
         </div>

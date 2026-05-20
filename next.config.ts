@@ -66,7 +66,6 @@ const nextConfig: NextConfig = {
     localPatterns: [
       {
         pathname: '/api/storage-image',
-        search: '**',
       },
     ],
     remotePatterns: [

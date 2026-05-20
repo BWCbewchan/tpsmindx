@@ -75,7 +75,7 @@ export function InfoCard({
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-xs text-gray-500">{label}</div>
-        <div className="text-sm font-semibold text-gray-900 truncate">
+        <div className="text-sm font-semibold text-gray-900 break-words leading-snug">
           {displayValue}
         </div>
       </div>

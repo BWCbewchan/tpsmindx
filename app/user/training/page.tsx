@@ -127,9 +127,14 @@ export default function TrainingPage() {
   const prewarmInFlightRef = useRef<Map<string, Promise<void>>>(new Map())
   const prewarmLastAtRef = useRef<Map<string, number>>(new Map())
   const prewarmTimerByLessonRef = useRef<Map<number, NodeJS.Timeout>>(new Map())
-  const { teacherProfile, isLoading: isTeacherLoading } = useTeacher() as {
+  const {
+    teacherProfile,
+    isLoading: isTeacherLoading,
+    refreshProfile,
+  } = useTeacher() as {
     teacherProfile: Teacher | null | undefined
     isLoading: boolean
+    refreshProfile: () => Promise<void>
   }
 
   // ── Guard: block non-admin users if teacher profile is missing ──
@@ -172,13 +177,9 @@ export default function TrainingPage() {
     }
   }, [user, isTeacherLoading, teacherProfile])
 
-  const handleForceLogout = () => {
-    try {
-      localStorage.removeItem('token')
-      localStorage.removeItem('refreshToken')
-      localStorage.removeItem('user')
-    } catch {}
-    router.push('/login')
+  const handleRetryProfile = async () => {
+    setMissingProfile(false)
+    await refreshProfile()
   }
 
   const secureFetcher = useCallback(async (url: string) => {
@@ -470,17 +471,17 @@ export default function TrainingPage() {
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 text-center">
           <div className="text-4xl mb-4">⚠️</div>
           <h2 className="text-lg font-bold text-slate-800 mb-2">
-            Phiên làm việc không hợp lệ
+            Chưa đồng bộ được thông tin
           </h2>
           <p className="text-slate-500 text-sm mb-6">
-            Không tìm thấy thông tin giáo viên trong hệ thống. Vui lòng đăng
-            xuất và đăng nhập lại để tiếp tục.
+            Không tải được thông tin giáo viên. Vui lòng tải lại dữ liệu rồi
+            thử lại.
           </p>
           <button
-            onClick={handleForceLogout}
+            onClick={handleRetryProfile}
             className="w-full bg-[#a1001f] text-white font-semibold py-2.5 rounded-xl hover:bg-[#80001a] transition-colors"
           >
-            Đăng xuất và đăng nhập lại
+            Tải lại dữ liệu
           </button>
         </div>
       </div>

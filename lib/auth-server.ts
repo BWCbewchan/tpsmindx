@@ -1,4 +1,7 @@
-import { resolveAppUserAccessForEmail } from '@/lib/app-user-access';
+import {
+  resolveAppUserAccessForEmail,
+  type AppUserAccess,
+} from '@/lib/app-user-access';
 import { requireBearerSession } from '@/lib/datasource-api-auth';
 import pool from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
@@ -9,6 +12,7 @@ export type DbRoleResult =
 
 export async function getDbRoleForEmail(
   email: string,
+  preResolvedAccess?: AppUserAccess | null,
 ): Promise<string | null> {
   const normalized = email.trim().toLowerCase();
   try {
@@ -21,7 +25,9 @@ export async function getDbRoleForEmail(
       return dbRole
     }
 
-    const access = await resolveAppUserAccessForEmail(normalized)
+    const access =
+      preResolvedAccess ??
+      (await resolveAppUserAccessForEmail(normalized))
     return access.found && access.isActive ? access.role : null
   } catch {
     return null;
@@ -37,7 +43,10 @@ export async function requireBearerDbRoles(
   if (!auth.ok) {
     return { ok: false, response: auth.response };
   }
-  const role = await getDbRoleForEmail(auth.sessionEmail);
+  const role = await getDbRoleForEmail(
+    auth.sessionEmail,
+    auth.resolvedAccess,
+  );
   if (!role || !allowedRoles.includes(role)) {
     return {
       ok: false,

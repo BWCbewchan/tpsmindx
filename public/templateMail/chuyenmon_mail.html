@@ -1,0 +1,126 @@
+<div style="font-family: Arial, sans-serif;
+  max-width: 700px;
+  margin: 30px auto;
+  background: #ffffff;
+  padding: 24px 32px;
+  border-radius: 16px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  border: 1px solid #f0f0f0;">
+
+  <!-- HEADER -->
+  <div style="text-align:center; margin-bottom:20px;">
+    <img src="https://static.ladipage.net/5cefbc1ed062e8345a24dfe8/logo-mau-20240513110258-jalnx.png" alt="MindX Logo" style="width:120px;height:64px;object-fit:contain;display:block;margin:0 auto 12px;">
+    <div style="font-size:22px;font-weight:bold;color:#d0021b;
+      text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">
+      THÔNG TIN KIỂM TRA CHUYÊN MÔN CHUYÊN SÂU
+    </div>
+    <div style="font-size:14px;color:#555;">
+      Tháng @{items('For_each')?['Tháng ĐK']}/@{items('For_each')?['Năm ĐK']} – Đợt bổ sung
+    </div>
+  </div>
+
+  <!-- OPENING -->
+  <p style="font-size:15px;">
+    <strong>@{item()?['Họ và tên']}</strong> thân mến,
+  </p>
+
+  <p style="font-size:15px;">
+    Lời đầu tiên, bộ phận học vụ MindX xin gửi lời cảm ơn chân thành đến bạn vì đã dành thời gian tham gia bài
+    <strong>KIỂM TRA CHUYÊN MÔN CHUYÊN SÂU – Tháng @{items('For_each')?['Tháng ĐK']}/@{items('For_each')?['Năm ĐK']}  (Đợt bổ sung)</strong>.
+    Team xin phép phổ biến thông tin bài kiểm tra và hình thức kiểm tra như sau:
+  </p>
+
+  <!-- INFO TABLE -->
+  <div style="border-left:4px solid #d0021b;border-radius:12px;overflow:hidden;">
+    <table style="width:100%;border-collapse:collapse;font-size:15px;">
+      <tbody><tr>
+        <td style="padding:12px 16px;font-weight:bold;background:#f8f9fa;">Họ và tên</td>
+        <td style="padding:12px 16px;">@{item()?['Họ và tên']}</td>
+      </tr>
+      <tr>
+        <td style="padding:12px 16px;font-weight:bold;background:#f8f9fa;">Môn</td>
+        <td style="padding:12px 16px;">
+          <span style="background:yellow;color:#d0021b;font-weight:bold;">
+            @{item()?['Bộ môn đăng ký test chuyên sâu']}
+          </span>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:12px 16px;font-weight:bold;background:#f8f9fa;">Link bài làm</td>
+        <td style="padding:12px 16px;">
+          <a href="@{item()?['Link']}" style="color:#d0021b;font-weight:bold;text-decoration:none;">
+            @{item()?['Link']}
+          </a>
+        </td>
+      </tr>
+    </tbody></table>
+  </div>
+
+  <!-- TIME -->
+  <p style="margin-top:16px;font-size:15px;font-weight:bold;">
+    Thời gian làm bài: theo các khung giờ bên dưới
+  </p>
+
+  <div style="border-radius:12px;overflow:hidden;margin-bottom:12px;">
+    <table style="width:100%;border-collapse:collapse;font-size:15px;">
+      <thead>
+        <tr>
+          <th style="background:#d0021b;color:#fff;padding:12px;">Đợt / Ngày</th>
+          <th style="background:#d0021b;color:#fff;padding:12px;">Giờ kiểm tra</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td style="padding:12px;background:#f5f5f5;font-weight:bold;">ĐỢT BỔ SUNG 1</td>
+          <td style="padding:12px;background:#f5f5f5;">21:00 – 21:45, ngày 29/01/2026</td>
+        </tr>
+        <tr>
+          <td style="padding:12px;background:#f5f5f5;font-weight:bold;">ĐỢT BỔ SUNG 2</td>
+          <td style="padding:12px;background:#f5f5f5;">21:00 – 21:45, ngày 30/01/2026</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="color:#d0021b;font-weight:bold;">
+    * Riêng đối với khối ART, thời lượng làm bài là 60 phút
+  </p>
+
+  <!-- NOTE -->
+  <p style="font-weight:bold;font-size:18px;color:#d0021b;">! Lưu ý:</p>
+
+  <ul style="background:#fff2f2;padding:14px 18px;border-radius:10px;
+    border:1px solid #ffcfcf;font-size:15px;list-style:none;">
+    <li>• Mỗi bài làm có <strong>mã đề khác nhau</strong>. Vui lòng làm bài đúng link được gửi trong mail.</li>
+    <li>• Link bài làm chỉ mở/đóng đúng theo lịch đã công bố
+      <a href="https://docs.google.com/spreadsheets/d/1Cg45SOg5g9W_AqLnmW10dWoIV7R_kQ7QP6VHltXDyNI/edit?gid=678464926#gid=678464926" style="color:#d0021b;font-weight:bold;text-decoration:none;">tại đây</a>.
+    </li>
+    <li>• Sử dụng <strong>Email công việc MindX cấp</strong> (đuôi @mindx.net.vn) khi làm bài.</li>
+    <li>• Form sẽ <strong>tự động đóng đúng giờ</strong>, quá thời gian hệ thống sẽ không ghi nhận kết quả.</li>
+    <li>• Trường hợp không thể tham gia, vui lòng thực hiện <strong>giải trình và đăng ký kiểm tra bổ sung</strong> theo
+      <a href="https://cxohok12.gitbook.io/quy-trinh-quy-dinh-danh-cho-giao-vien/iv.-quy-trinh-quy-dinh-chung/quy-trinh-quy-dinh-kiem-tra-chuyen-mon-chuyen-sau-va-quy-trinh-ky-nang-trai-nghiem#id-2.2.-quy-trinh-dang-ky-kiem-tra-bo-sung" style="color:#d0021b;font-weight:bold;text-decoration:none;">quy trình</a>.
+    </li>
+  </ul>
+
+  <p style="font-size:15px;margin-top:16px;">
+    Nếu có bất kỳ câu hỏi hoặc thắc mắc nào, bạn vui lòng liên hệ Quản lý trực tiếp để được hỗ trợ nhanh nhất.
+  </p>
+
+  <p style="font-size:15px;">Trân trọng,</p>
+  <p style="font-weight:bold;font-size:15px;">Teaching K12.</p>
+
+  <!-- CONTACT -->
+  <div style="background:#fafafa;padding:12px 18px;border-radius:10px;
+    border-left:4px solid #d0021b;margin:20px 0;font-size:15px;">
+    <div><strong style="color:#d0021b;">M</strong> +84 775 463 088</div>
+    <div><strong style="color:#d0021b;">E</strong> academick12@mindx.com.vn</div>
+  </div>
+
+  <!-- SIGNATURE -->
+  <div style="border-top:1px solid #eee;padding-top:16px;font-size:14px;color:#444;">
+    <p><strong>Trường học Công nghệ MindX</strong></p>
+    <p>Be extraordinary</p>
+    <p><strong style="color:#d0021b;">HO</strong> Hanoi: 5th fl., 71 Nguyen Chi Thanh, Dong Da</p>
+    <p>HCMC: 9th fl., International Plaza, 343 Pham Ngu Lao, Dist.1</p>
+  </div>
+</div>

@@ -1,6 +1,21 @@
 #!/usr/bin/env node
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+function getPublicBaseUrl() {
+  const raw = (process.env.NEXT_PUBLIC_BASE_URL || '').trim()
+  if (!raw) return 'http://localhost:3000'
+  try {
+    const u = new URL(raw)
+    if (/\.ngro$/i.test(u.hostname)) {
+      u.hostname = u.hostname.replace(/\.ngro$/i, '.ngrok-free.app')
+      return u.origin
+    }
+    return raw.replace(/\/+$/, '')
+  } catch {
+    return 'http://localhost:3000'
+  }
+}
+
+const BASE_URL = getPublicBaseUrl()
 
 async function clearCache() {
   try {

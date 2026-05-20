@@ -92,6 +92,85 @@ function formatDateKey(date: Date) {
 
 type DetailModalData = { date: Date; khung: KhungGio; center: CenterData; pairCenter?: CenterData }
 
+function renderMentorItem(m: Mentor, i: number) {
+  return (
+    <li key={m.ma_gv} className="flex items-center gap-2 py-1 text-sm text-gray-700">
+      <span className="text-xs text-gray-400 w-4 text-right flex-shrink-0">{i + 1}.</span>
+      <span className="font-medium truncate">{m.teacher_name}</span>
+      <span className="ml-auto text-xs text-gray-400 whitespace-nowrap flex-shrink-0">{m.gio_bat_dau?.slice(0, 5)} – {m.gio_ket_thuc?.slice(0, 5)}</span>
+    </li>
+  )
+}
+
+function KhoiSubSection({ mentors }: { mentors: Mentor[] }) {
+  const KHOI_LIST = ['Robotics', 'Coding', 'X-Art'] as const
+  const khoiColors: Record<string, string> = {
+    Robotics: 'text-yellow-700',
+    Coding: 'text-blue-600',
+    'X-Art': 'text-red-600',
+  }
+
+  const unknown = mentors.filter(m => !getKhoiLabel(m.khoi_final))
+
+  return (
+    <div className="space-y-2">
+      {KHOI_LIST.map(khoi => {
+        const group = mentors.filter(m => getKhoiLabel(m.khoi_final) === khoi)
+        if (group.length === 0) return null
+        return (
+          <div key={khoi}>
+            <p className={`text-[10px] font-semibold mb-0.5 ${khoiColors[khoi]}`}>{khoi}</p>
+            <ul className="space-y-0.5">
+              {group.map((m, i) => renderMentorItem(m, i))}
+            </ul>
+          </div>
+        )
+      })}
+      {unknown.length > 0 && (
+        <div>
+          <p className="text-[10px] font-semibold text-gray-400 mb-0.5">Khác</p>
+          <ul className="space-y-0.5">
+            {unknown.map((m, i) => renderMentorItem(m, i))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ColumnSection({ title, uuTien, linhHoat }: { title: string; uuTien: Mentor[]; linhHoat: Mentor[] }) {
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      <p className="text-xs font-bold uppercase tracking-wide text-gray-500 border-b border-gray-100 pb-2 mb-3 flex-shrink-0">{title}</p>
+      <div className="flex flex-col flex-1 min-h-0 gap-3">
+        <div className="flex flex-col flex-1 min-h-0">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-[#a1001f] mb-1.5 flex-shrink-0">
+            Ưu tiên {uuTien.length > 0 && <span className="font-normal text-gray-400">({uuTien.length})</span>}
+          </p>
+          <div className="flex-1 overflow-y-auto min-h-[60px]">
+            {uuTien.length > 0
+              ? <KhoiSubSection mentors={uuTien} />
+              : <p className="text-xs text-gray-300 italic">Không có mentor rảnh khung này.</p>
+            }
+          </div>
+        </div>
+        <div className="border-t border-gray-100 flex-shrink-0" />
+        <div className="flex flex-col flex-1 min-h-0">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-1.5 flex-shrink-0">
+            Linh hoạt {linhHoat.length > 0 && <span className="font-normal text-gray-400">({linhHoat.length})</span>}
+          </p>
+          <div className="flex-1 overflow-y-auto min-h-[60px]">
+            {linhHoat.length > 0
+              ? <KhoiSubSection mentors={linhHoat} />
+              : <p className="text-xs text-gray-300 italic">Không có mentor rảnh khung này.</p>
+            }
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Filter Dialog ─────────────────────────────────────────────────────────────
 function FilterDialog({ filter, setFilter, allCenters, onClose }: {
   filter: FilterState
@@ -197,87 +276,6 @@ function DetailModal({ detail, filter, areas, isSuperAdmin, onClose }: {
   onClose: () => void
 }) {
   const hasKhoiFilter = filter.khoi !== null
-
-  const renderMentorItem = (m: Mentor, i: number) => (
-    <li key={m.ma_gv} className="flex items-center gap-2 py-1 text-sm text-gray-700">
-      <span className="text-xs text-gray-400 w-4 text-right flex-shrink-0">{i + 1}.</span>
-      <span className="font-medium truncate">{m.teacher_name}</span>
-      <span className="ml-auto text-xs text-gray-400 whitespace-nowrap flex-shrink-0">{m.gio_bat_dau?.slice(0, 5)} – {m.gio_ket_thuc?.slice(0, 5)}</span>
-    </li>
-  )
-
-  // Sub-section theo khối — label có màu theo khối, không in nghiêng, không đếm số
-  const KhoiSubSection = ({ mentors }: { mentors: Mentor[] }) => {
-    const KHOI_LIST = ['Robotics', 'Coding', 'X-Art'] as const
-    const khoiColors: Record<string, string> = {
-      Robotics: 'text-yellow-700',
-      Coding: 'text-blue-600',
-      'X-Art': 'text-red-600',
-    }
-    return (
-      <div className="space-y-2">
-        {KHOI_LIST.map(khoi => {
-          const group = mentors.filter(m => getKhoiLabel(m.khoi_final) === khoi)
-          if (group.length === 0) return null
-          return (
-            <div key={khoi}>
-              <p className={`text-[10px] font-semibold mb-0.5 ${khoiColors[khoi]}`}>{khoi}</p>
-              <ul className="space-y-0.5">
-                {group.map((m, i) => renderMentorItem(m, i))}
-              </ul>
-            </div>
-          )
-        })}
-        {(() => {
-          const unknown = mentors.filter(m => !getKhoiLabel(m.khoi_final))
-          if (unknown.length === 0) return null
-          return (
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 mb-0.5">Khác</p>
-              <ul className="space-y-0.5">
-                {unknown.map((m, i) => renderMentorItem(m, i))}
-              </ul>
-            </div>
-          )
-        })()}
-      </div>
-    )
-  }
-
-  // Column section — Ưu tiên và Linh hoạt cố định, mỗi phần scroll riêng
-  const ColumnSection = ({ title, uuTien, linhHoat }: { title: string; uuTien: Mentor[]; linhHoat: Mentor[] }) => (
-    <div className="flex flex-col h-full overflow-hidden">
-      <p className="text-xs font-bold uppercase tracking-wide text-gray-500 border-b border-gray-100 pb-2 mb-3 flex-shrink-0">{title}</p>
-      <div className="flex flex-col flex-1 min-h-0 gap-3">
-        {/* Ưu tiên — cố định header, scroll nội dung */}
-        <div className="flex flex-col flex-1 min-h-0">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-[#a1001f] mb-1.5 flex-shrink-0">
-            Ưu tiên {uuTien.length > 0 && <span className="font-normal text-gray-400">({uuTien.length})</span>}
-          </p>
-          <div className="flex-1 overflow-y-auto min-h-[60px]">
-            {uuTien.length > 0
-              ? <KhoiSubSection mentors={uuTien} />
-              : <p className="text-xs text-gray-300 italic">Không có mentor rảnh khung này.</p>
-            }
-          </div>
-        </div>
-        {/* Divider */}
-        <div className="border-t border-gray-100 flex-shrink-0" />
-        {/* Linh hoạt — cố định header, scroll nội dung */}
-        <div className="flex flex-col flex-1 min-h-0">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 mb-1.5 flex-shrink-0">
-            Linh hoạt {linhHoat.length > 0 && <span className="font-normal text-gray-400">({linhHoat.length})</span>}
-          </p>
-          <div className="flex-1 overflow-y-auto min-h-[60px]">
-            {linhHoat.length > 0
-              ? <KhoiSubSection mentors={linhHoat} />
-              : <p className="text-xs text-gray-300 italic">Không có mentor rảnh khung này.</p>
-            }
-          </div>
-        </div>
-      </div>
-    </div>
-  )
 
   // Khu vực admin quản lý
   const managesHCM4 = isSuperAdmin || areas === null || (areas || []).includes('HCM 4')

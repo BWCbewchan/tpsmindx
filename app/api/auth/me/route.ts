@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
       id: center.id,
       full_name: center.full_name,
       short_code: center.short_code,
+      email: center.email,
     }));
 
     console.log(

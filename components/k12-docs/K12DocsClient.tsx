@@ -196,7 +196,7 @@ function mapGitbookHref(href: string, basePath: string, documents: K12ClientDocI
     const gitbookMarker = 'cxohok12.gitbook.io/quy-trinh-quy-dinh-danh-cho-giao-vien/'
     const markerIndex = cleanHref.indexOf(gitbookMarker)
     if (markerIndex >= 0) {
-      let extractedPath = cleanHref.slice(markerIndex + gitbookMarker.length).replace(/\.md$/i, '')
+      const extractedPath = cleanHref.slice(markerIndex + gitbookMarker.length).replace(/\.md$/i, '')
       
       // If the path is empty (root GitBook URL), return to default doc
       if (!extractedPath) {
@@ -230,7 +230,7 @@ function mapGitbookHref(href: string, basePath: string, documents: K12ClientDocI
   }
 
   // Remove common prefixes for relative paths
-  let extractedPath = cleanHref
+  const extractedPath = cleanHref
     .replace(/^\/quy-trinh-quy-dinh-danh-cho-giao-vien\//, '')
     .replace(/^quy-trinh-quy-dinh-danh-cho-giao-vien\//, '')
     .replace(/^\//, '')

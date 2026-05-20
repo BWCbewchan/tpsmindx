@@ -18,7 +18,7 @@ import {
   Trash2,
   Users2,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   CenterCardDragHeader,
   DraggableLeaderRow,
@@ -129,6 +129,28 @@ function CentersLeadersPanel() {
   const [expandedCenters, setExpandedCenters] = useState<Set<number>>(new Set())
   const [expandAll, setExpandAll] = useState(false)
 
+  const emptyNewCenter = () => ({
+    full_name: '',
+    short_code: '',
+    display_name: '',
+    region: '',
+    email: '',
+    status: 'Active' as string,
+  })
+  const [newCenterOpen, setNewCenterOpen] = useState(false)
+  const [newCenterDraft, setNewCenterDraft] = useState(emptyNewCenter)
+
+  const regionOptions = useMemo(() => {
+    const s = new Set<string>()
+    for (const a of filters.areas) {
+      if (a?.trim()) s.add(a.trim())
+    }
+    for (const c of centers) {
+      if (c.region?.trim()) s.add(c.region.trim())
+    }
+    return Array.from(s).sort((a, b) => a.localeCompare(b, 'vi'))
+  }, [filters.areas, centers])
+
   // Leader CRUD
   const [editLeader, setEditLeader] = useState<Leader | null>(null)
   const [editCenter, setEditCenter] = useState<Center | null>(null)
@@ -154,11 +176,12 @@ function CentersLeadersPanel() {
       if (e.key === 'Escape') {
         if (editLeader) setEditLeader(null)
         if (editCenter) setEditCenter(null)
+        if (newCenterOpen) setNewCenterOpen(false)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [editLeader, editCenter])
+  }, [editLeader, editCenter, newCenterOpen])
 
   useEffect(() => {
     loadAll()
@@ -387,6 +410,45 @@ function CentersLeadersPanel() {
   }
 
   // Center CRUD
+  const handleCreateCenter = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const fn = newCenterDraft.full_name.trim()
+    const sc = newCenterDraft.short_code.trim()
+    if (!fn || !sc) {
+      toast.error('Tên đầy đủ và mã ngắn (short_code) là bắt buộc.')
+      return
+    }
+    setSaving(true)
+    try {
+      const r = await fetch('/api/app-auth/data', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+        body: JSON.stringify({
+          table: 'centers',
+          full_name: fn,
+          short_code: sc,
+          display_name: newCenterDraft.display_name.trim() || fn,
+          region: newCenterDraft.region.trim() || null,
+          email: newCenterDraft.email.trim() || null,
+          status: newCenterDraft.status.trim() || 'Active',
+        }),
+      })
+      const d = await r.json()
+      if (d.success) {
+        toast.success('Đã thêm cơ sở')
+        setNewCenterOpen(false)
+        setNewCenterDraft(emptyNewCenter())
+        loadAll()
+      } else {
+        toast.error(d.error || 'Không thêm được cơ sở')
+      }
+    } catch {
+      toast.error('Lỗi mạng')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleSaveCenter = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editCenter) return
@@ -613,6 +675,17 @@ function CentersLeadersPanel() {
           className="px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50"
         >
           {expandAll ? 'Thu gọn' : 'Mở rộng'} tất cả
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setNewCenterDraft(emptyNewCenter())
+            setNewCenterOpen(true)
+          }}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-800 hover:bg-gray-50"
+        >
+          <Plus className="h-4 w-4" />
+          Thêm Center
         </button>
         <button
           onClick={() => openNewLeader()}
@@ -1147,6 +1220,171 @@ function CentersLeadersPanel() {
       {filteredCenters.length === 0 && (
         <div className="text-center py-12 text-gray-500">
           Không tìm thấy center nào
+        </div>
+      )}
+
+      {newCenterOpen && (
+        <div
+          className="cursor-pointer fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 overflow-y-auto"
+          onClick={() => !saving && setNewCenterOpen(false)}
+        >
+          <div
+            className="cursor-pointer bg-white rounded-xl shadow-2xl p-6 w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-5 border-b pb-3">
+              <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-[#a1001f]" />
+                Thêm cơ sở (Center)
+              </h3>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => setNewCenterOpen(false)}
+                className="text-gray-400 hover:text-gray-600 rounded-full p-1 hover:bg-gray-100 transition-colors"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <form onSubmit={handleCreateCenter} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên đầy đủ (full_name) *
+                </label>
+                <input
+                  required
+                  value={newCenterDraft.full_name}
+                  onChange={(e) =>
+                    setNewCenterDraft((d) => ({
+                      ...d,
+                      full_name: e.target.value,
+                    }))
+                  }
+                  placeholder="Ví dụ: MindX Tokyo"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#a1001f]/20 focus:border-[#a1001f]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Mã ngắn (short_code, duy nhất) *
+                </label>
+                <input
+                  required
+                  value={newCenterDraft.short_code}
+                  onChange={(e) =>
+                    setNewCenterDraft((d) => ({
+                      ...d,
+                      short_code: e.target.value,
+                    }))
+                  }
+                  placeholder="Ví dụ: MX_TOKYO"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#a1001f]/20 focus:border-[#a1001f]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tên hiển thị (display_name)
+                </label>
+                <input
+                  value={newCenterDraft.display_name}
+                  onChange={(e) =>
+                    setNewCenterDraft((d) => ({
+                      ...d,
+                      display_name: e.target.value,
+                    }))
+                  }
+                  placeholder="Để trống sẽ dùng trùng full_name"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#a1001f]/20 focus:border-[#a1001f]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Khu vực (region)
+                </label>
+                <input
+                  list="center-region-suggestions"
+                  value={newCenterDraft.region}
+                  onChange={(e) =>
+                    setNewCenterDraft((d) => ({
+                      ...d,
+                      region: e.target.value,
+                    }))
+                  }
+                  placeholder="Chọn hoặc gõ khu vực"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#a1001f]/20 focus:border-[#a1001f]"
+                />
+                <datalist id="center-region-suggestions">
+                  {regionOptions.map((a) => (
+                    <option key={a} value={a} />
+                  ))}
+                </datalist>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email BU / contact
+                </label>
+                <input
+                  type="email"
+                  value={newCenterDraft.email}
+                  onChange={(e) =>
+                    setNewCenterDraft((d) => ({ ...d, email: e.target.value }))
+                  }
+                  placeholder="contact.center@mindx.com.vn"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#a1001f]/20 focus:border-[#a1001f]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Trạng thái
+                </label>
+                <select
+                  value={newCenterDraft.status}
+                  onChange={(e) =>
+                    setNewCenterDraft((d) => ({
+                      ...d,
+                      status: e.target.value,
+                    }))
+                  }
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#a1001f]/20 focus:border-[#a1001f]"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Deactive">Deactive</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-3 pt-4 mt-2 border-t font-medium">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={saving}
+                  onClick={() => setNewCenterOpen(false)}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={saving}
+                  loading={saving}
+                  size="lg"
+                  className="min-w-[10.5rem] border-2 border-[#7d0018] bg-[#a1001f] text-base font-semibold text-white shadow-md hover:bg-[#8a001a] hover:shadow-lg focus-visible:ring-[#a1001f]"
+                >
+                  <Plus className="!size-5 shrink-0" aria-hidden />
+                  Thêm cơ sở
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

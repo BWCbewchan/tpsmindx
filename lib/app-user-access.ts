@@ -16,6 +16,7 @@ export type AppUserAccess = {
     id: number
     full_name: string
     short_code: string | null
+    email?: string | null
   }>
 }
 

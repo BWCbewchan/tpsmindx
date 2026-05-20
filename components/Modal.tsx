@@ -136,7 +136,7 @@ export default function Modal({
         >
           <div className="flex items-center justify-between">
             <div className="flex-1 min-w-0 pr-4">
-              <h2 className="text-lg sm:text-xl font-semibold text-white truncate">
+              <h2 className="text-lg sm:text-xl font-semibold text-white break-words text-pretty leading-snug">
                 {title}
               </h2>
               {subtitle && (

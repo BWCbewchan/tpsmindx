@@ -300,22 +300,8 @@ export async function POST(request: Request) {
 
     await client.query('COMMIT')
 
-    // 5. Gá»­i email thĂ´ng bĂ¡o (best-effort)
-    let emailNotSent = false
-    try {
-      const emailResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/send-explanation-email`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type: 'new', explanation: gtResult.rows[0] }),
-        },
-      )
-      const emailData = await emailResponse.json()
-      if (emailData.emailNotSent) emailNotSent = true
-    } catch {
-      emailNotSent = true
-    }
+    // Mail giải trình kiểm tra chuyên sâu đã tắt — chỉ còn luồng mail xin nghỉ (/api/emails).
+    const emailNotSent = true
 
     return NextResponse.json(
       {
@@ -415,64 +401,8 @@ export async function PATCH(request: Request) {
 
     await client.query('COMMIT')
 
-    // 3. Fetch full explanation data for email (JOIN results + monhoc)
-    const fullDataResult = await client.query(
-      `SELECT
-         g.id,
-         g.id_ket_qua                                        AS result_id,
-         g.noi_dung_giai_thich                               AS reason,
-         g.html_giai_thich                                   AS admin_note,
-         g.tao_luc                                           AS created_at,
-         COALESCE(r.ho_ten, '')                              AS teacher_name,
-         COALESCE(r.ma_giao_vien, '')                        AS lms_code,
-         COALESCE(r.dia_chi_email, '')                       AS email,
-         COALESCE(r.co_so_lam_viec, '')                      AS campus,
-         COALESCE(mh.ten_mon, mh.ma_mon, r.id_mon::text, '') AS subject,
-         COALESCE(
-           es.bat_dau_luc AT TIME ZONE 'Asia/Ho_Chi_Minh',
-           CASE
-             WHEN COALESCE(r.thoi_gian_kiem_tra, '') ~ '^[0-9]{1,2}:[0-9]{2} [0-9]{2}/[0-9]{2}/[0-9]{4}$'
-               THEN to_timestamp(r.thoi_gian_kiem_tra, 'HH24:MI DD/MM/YYYY')
-             ELSE NULL
-           END,
-           make_timestamp(COALESCE(r.nam_dk, EXTRACT(YEAR FROM NOW())::int),
-                         COALESCE(r.thang_dk, EXTRACT(MONTH FROM NOW())::int), 1, 0, 0, 0)
-         )                                                   AS test_date
-       FROM chuyen_sau_giaitrinh g
-       JOIN chuyen_sau_results r   ON r.id = g.id_ket_qua
-       LEFT JOIN chuyen_sau_monhoc mh ON mh.id = r.id_mon
-       LEFT JOIN event_schedules es ON es.id::text = r.id_su_kien::text
-       WHERE g.id = $1`,
-      [id],
-    )
-
-    const emailPayload = {
-      ...(fullDataResult.rows[0] || {}),
-      admin_name: admin_name || null,
-      admin_email: admin_email || null,
-      admin_note: admin_note || null,
-      updated_at: new Date().toISOString(),
-    }
-
-    // 4. Send email notification (best-effort)
-    let emailNotSent = false
-    try {
-      const emailResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/send-explanation-email`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: status === 'accepted' ? 'accepted' : 'rejected',
-            explanation: emailPayload,
-          }),
-        },
-      )
-      const emailData = await emailResponse.json()
-      if (emailData.emailNotSent) emailNotSent = true
-    } catch {
-      emailNotSent = true
-    }
+    // Mail giải trình kiểm tra chuyên sâu đã tắt — chỉ còn luồng mail xin nghỉ (/api/emails).
+    const emailNotSent = true
 
     return NextResponse.json({
       success: true,

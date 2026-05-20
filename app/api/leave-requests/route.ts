@@ -5,6 +5,12 @@ import {
     rejectIfEmailNotSelf,
     requireBearerSession,
 } from '@/lib/datasource-api-auth';
+import {
+  SUBSTITUTE_DECLINE_AUDIT_PREFIX,
+  stripSubstituteDeclineAuditFromAdminNote,
+  withAdminNoteRedactedForTeacherView,
+} from '@/lib/leave-request-admin-note-sanitize';
+import { getPublicBaseUrl } from '@/lib/public-base-url';
 import pool from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -22,6 +28,8 @@ const VALID_STATUS: LeaveStatus[] = [
   'rejected',
   'substitute_confirmed'
 ];
+
+const MIN_ADVANCE_HOURS_TEACHER = 72;
 
 type AccessibleCenter = {
   id: number;
@@ -252,9 +260,13 @@ export async function GET(request: NextRequest) {
 
     const result = await client.query(query, values);
 
+    const data = auth.privileged
+      ? result.rows
+      : result.rows.map((r) => withAdminNoteRedactedForTeacherView(r));
+
     return NextResponse.json({
       success: true,
-      data: result.rows,
+      data,
       count: result.rowCount
     });
   } catch (error: any) {
@@ -341,9 +353,105 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const studentCountTrim =
+      student_count === undefined || student_count === null
+        ? ''
+        : String(student_count).trim();
+    if (!studentCountTrim) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Vui lòng nhập số học viên (số nguyên lớn hơn 0).',
+        },
+        { status: 400 },
+      );
+    }
+    const studentCountNum = Number(studentCountTrim);
+    if (
+      !Number.isFinite(studentCountNum) ||
+      !Number.isInteger(studentCountNum) ||
+      studentCountNum <= 0
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Số học viên phải là số nguyên lớn hơn 0.',
+        },
+        { status: 400 },
+      );
+    }
+    const normalizedStudentCount = String(studentCountNum);
+
     const normalizedHasSubstitute = Boolean(has_substitute);
 
+    const center_id_raw =
+      (body as { center_id?: unknown; centerId?: unknown }).center_id ??
+      (body as { centerId?: unknown }).centerId;
+    const campus_bu_email_raw =
+      (body as { campus_bu_email?: unknown; campus_email?: unknown })
+        .campus_bu_email ?? (body as { campus_email?: unknown }).campus_email;
+
+    let resolvedCenterId: number | null = null;
+    if (
+      center_id_raw !== undefined &&
+      center_id_raw !== null &&
+      center_id_raw !== ''
+    ) {
+      const cid = Number(center_id_raw);
+      if (!Number.isFinite(cid) || cid <= 0) {
+        return NextResponse.json(
+          { success: false, error: 'center_id không hợp lệ.' },
+          { status: 400 },
+        );
+      }
+      resolvedCenterId = cid;
+    }
+
+    let campusBuEmailDb: string | null = null;
+    if (
+      typeof campus_bu_email_raw === 'string' &&
+      campus_bu_email_raw.trim().length > 0
+    ) {
+      const em = campus_bu_email_raw.trim();
+      if (em.length > 255) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Email BU cơ sở không quá 255 ký tự.',
+          },
+          { status: 400 },
+        );
+      }
+      if (!/\S+@\S+\.\S+/.test(em)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Email BU cơ sở chưa đúng định dạng.',
+          },
+          { status: 400 },
+        );
+      }
+      campusBuEmailDb = em;
+    }
+
     client = await pool.connect();
+
+    if (resolvedCenterId != null) {
+      const ccheck = await client.query(
+        `SELECT id FROM centers WHERE id = $1 AND status = 'Active' LIMIT 1`,
+        [resolvedCenterId],
+      );
+      if (ccheck.rowCount === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'Cơ sở đã chọn không tồn tại hoặc không còn hoạt động (center_id).',
+          },
+          { status: 400 },
+        );
+      }
+    }
 
     const countSameClass = await client.query(
       `
@@ -385,11 +493,13 @@ export async function POST(request: NextRequest) {
         class_status,
         email_subject,
         email_body,
+        center_id,
+        campus_bu_email,
         status
       ) VALUES (
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10, $11, $12,
-        $13, $14, $15, $16, 'pending_admin'
+        $13, $14, $15, $16, $17, $18, 'pending_admin'
       )
       RETURNING *
     `;
@@ -402,7 +512,7 @@ export async function POST(request: NextRequest) {
       leave_date,
       reason,
       trimmedClassCode,
-      student_count || null,
+      normalizedStudentCount,
       trimmedClassTime,
       trimmedLeaveSession,
       normalizedHasSubstitute,
@@ -410,7 +520,9 @@ export async function POST(request: NextRequest) {
       substitute_email || null,
       class_status || null,
       email_subject || null,
-      email_body || null
+      email_body || null,
+      resolvedCenterId,
+      campusBuEmailDb,
     ];
 
     const result = await client.query(insertQuery, values);
@@ -454,8 +566,6 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    client = await pool.connect();
-
     if (action === 'admin_review') {
       const gate = await requireBearerDbRoles(request, [
         'super_admin',
@@ -490,6 +600,8 @@ export async function PATCH(request: NextRequest) {
         );
       }
 
+      client = await pool.connect();
+
       if (decision === 'rejected') {
         const rejectedQuery = `
           UPDATE leave_requests
@@ -513,7 +625,69 @@ export async function PATCH(request: NextRequest) {
           return NextResponse.json({ success: false, error: 'Không tìm thấy yêu cầu' }, { status: 404 });
         }
 
-        return NextResponse.json({ success: true, data: rejectedResult.rows[0] });
+        const rejectedRow = rejectedResult.rows[0] as Record<string, unknown>;
+
+        try {
+          await fetch(
+            `${getPublicBaseUrl()}/api/emails`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                type: 'leave_admin_rejected',
+                data: {
+                  request_id: String(rejectedRow.id ?? id),
+                  teacher_name: String(rejectedRow.teacher_name ?? ''),
+                  teacher_email: String(rejectedRow.email ?? '').trim() || undefined,
+                  campus:
+                    rejectedRow.campus != null
+                      ? String(rejectedRow.campus)
+                      : undefined,
+                  class_code:
+                    rejectedRow.class_code != null
+                      ? String(rejectedRow.class_code)
+                      : undefined,
+                  leave_date:
+                    rejectedRow.leave_date != null
+                      ? String(rejectedRow.leave_date)
+                      : undefined,
+                  class_time:
+                    rejectedRow.class_time != null
+                      ? String(rejectedRow.class_time)
+                      : undefined,
+                  leave_session:
+                    rejectedRow.leave_session != null
+                      ? String(rejectedRow.leave_session)
+                      : undefined,
+                  reason:
+                    rejectedRow.reason != null
+                      ? String(rejectedRow.reason)
+                      : undefined,
+                  admin_note:
+                    rejectedRow.admin_note != null
+                      ? String(rejectedRow.admin_note)
+                      : undefined,
+                  admin_name:
+                    rejectedRow.admin_name != null
+                      ? String(rejectedRow.admin_name)
+                      : undefined,
+                  admin_email:
+                    rejectedRow.admin_email != null
+                      ? String(rejectedRow.admin_email)
+                      : undefined,
+                  campus_bu_email:
+                    rejectedRow.campus_bu_email != null
+                      ? String(rejectedRow.campus_bu_email).trim() || undefined
+                      : undefined,
+                },
+              }),
+            },
+          );
+        } catch (mailError) {
+          console.error('leave-requests admin_review reject email error:', mailError);
+        }
+
+        return NextResponse.json({ success: true, data: rejectedRow });
       }
 
       const hasAssignedSubstitute = Boolean(substitute_teacher || substitute_email);
@@ -549,6 +723,363 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ success: true, data: approvedResult.rows[0] });
     }
 
+    if (action === 'teacher_update') {
+      const idNum = Number(id);
+      if (!Number.isFinite(idNum) || idNum <= 0) {
+        return NextResponse.json(
+          { success: false, error: 'Mã yêu cầu không hợp lệ' },
+          { status: 400 },
+        );
+      }
+
+      const {
+        teacher_name,
+        lms_code,
+        email: bodyEmail,
+        campus,
+        leave_date,
+        reason,
+        class_code,
+        student_count,
+        class_time,
+        leave_session,
+        has_substitute,
+        substitute_teacher,
+        substitute_email,
+        class_status,
+        email_subject,
+        email_body,
+      } = body;
+
+      client = await pool.connect();
+
+      const sel = await client.query(
+        'SELECT * FROM leave_requests WHERE id = $1 LIMIT 1',
+        [idNum],
+      );
+      if (sel.rowCount === 0) {
+        return NextResponse.json(
+          { success: false, error: 'Không tìm thấy yêu cầu' },
+          { status: 404 },
+        );
+      }
+
+      const existingRow = sel.rows[0] as Record<string, unknown>;
+      if (String(existingRow.status ?? '') !== 'pending_admin') {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'Chỉ chỉnh sửa được khi yêu cầu đang chờ TC/Leader duyệt.',
+          },
+          { status: 400 },
+        );
+      }
+
+      const deniedTeacher = rejectIfEmailNotSelf(
+        auth.sessionEmail,
+        auth.privileged,
+        String(existingRow.email ?? ''),
+      );
+      if (deniedTeacher) return deniedTeacher;
+
+      if (
+        bodyEmail != null &&
+        String(bodyEmail).trim().toLowerCase() !==
+          String(existingRow.email ?? '')
+            .trim()
+            .toLowerCase()
+      ) {
+        return NextResponse.json(
+          { success: false, error: 'Không được đổi email của yêu cầu.' },
+          { status: 400 },
+        );
+      }
+
+      if (
+        !teacher_name ||
+        !lms_code ||
+        !campus ||
+        !leave_date ||
+        !reason
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Vui lòng điền đầy đủ thông tin bắt buộc',
+          },
+          { status: 400 },
+        );
+      }
+
+      const trimmedClassCode =
+        typeof class_code === 'string' ? class_code.trim() : '';
+      if (!trimmedClassCode) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'Vui lòng nhập mã lớp (tối đa 2 yêu cầu cho mỗi mã lớp).',
+          },
+          { status: 400 },
+        );
+      }
+
+      const trimmedClassTime =
+        typeof class_time === 'string' ? class_time.trim() : '';
+      const trimmedLeaveSession =
+        typeof leave_session === 'string' ? leave_session.trim() : '';
+      if (!trimmedClassTime || !trimmedLeaveSession) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Vui lòng điền đầy đủ thời gian học và buổi học xin nghỉ.',
+          },
+          { status: 400 },
+        );
+      }
+
+      const studentCountTrim =
+        student_count === undefined || student_count === null
+          ? ''
+          : String(student_count).trim();
+      if (!studentCountTrim) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Vui lòng nhập số học viên (số nguyên lớn hơn 0).',
+          },
+          { status: 400 },
+        );
+      }
+      const studentCountNum = Number(studentCountTrim);
+      if (
+        !Number.isFinite(studentCountNum) ||
+        !Number.isInteger(studentCountNum) ||
+        studentCountNum <= 0
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Số học viên phải là số nguyên lớn hơn 0.',
+          },
+          { status: 400 },
+        );
+      }
+      const normalizedStudentCount = String(studentCountNum);
+
+      if (String(reason).trim().length < 10) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Lý do xin nghỉ cần rõ ràng hơn (tối thiểu 10 ký tự).',
+          },
+          { status: 400 },
+        );
+      }
+
+      const ldRaw = String(leave_date);
+      const ld =
+        ldRaw.includes('T') ? ldRaw.split('T')[0]! : ldRaw.slice(0, 10);
+      const leaveDateMs = new Date(`${ld}T00:00:00`).getTime();
+      const diffHours = (leaveDateMs - Date.now()) / (1000 * 60 * 60);
+      if (diffHours < MIN_ADVANCE_HOURS_TEACHER) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Ngày xin nghỉ cần cách thời điểm hiện tại tối thiểu ${MIN_ADVANCE_HOURS_TEACHER} giờ.`,
+          },
+          { status: 400 },
+        );
+      }
+
+      const normalizedHasSubstitute = Boolean(has_substitute);
+      if (normalizedHasSubstitute) {
+        const st = String(substitute_teacher ?? '').trim();
+        const se = String(substitute_email ?? '').trim();
+        if (!st || !se) {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                'Nếu có giáo viên thay thế, cần nhập đầy đủ tên và email.',
+            },
+            { status: 400 },
+          );
+        }
+        if (!/\S+@\S+\.\S+/.test(se)) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Email giáo viên thay thế chưa đúng định dạng.',
+            },
+            { status: 400 },
+          );
+        }
+      }
+
+      const center_id_raw =
+        (body as { center_id?: unknown; centerId?: unknown }).center_id ??
+        (body as { centerId?: unknown }).centerId;
+      const campus_bu_email_raw =
+        (body as { campus_bu_email?: unknown; campus_email?: unknown })
+          .campus_bu_email ?? (body as { campus_email?: unknown }).campus_email;
+
+      let resolvedCenterId: number | null = null;
+      if (
+        center_id_raw !== undefined &&
+        center_id_raw !== null &&
+        center_id_raw !== ''
+      ) {
+        const cid = Number(center_id_raw);
+        if (!Number.isFinite(cid) || cid <= 0) {
+          return NextResponse.json(
+            { success: false, error: 'center_id không hợp lệ.' },
+            { status: 400 },
+          );
+        }
+        resolvedCenterId = cid;
+      }
+
+      let campusBuEmailDb: string | null = null;
+      if (
+        typeof campus_bu_email_raw === 'string' &&
+        campus_bu_email_raw.trim().length > 0
+      ) {
+        const em = campus_bu_email_raw.trim();
+        if (em.length > 255) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Email BU cơ sở không quá 255 ký tự.',
+            },
+            { status: 400 },
+          );
+        }
+        if (!/\S+@\S+\.\S+/.test(em)) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'Email BU cơ sở chưa đúng định dạng.',
+            },
+            { status: 400 },
+          );
+        }
+        campusBuEmailDb = em;
+      }
+
+      if (resolvedCenterId != null) {
+        const ccheck = await client.query(
+          `SELECT id FROM centers WHERE id = $1 AND status = 'Active' LIMIT 1`,
+          [resolvedCenterId],
+        );
+        if (ccheck.rowCount === 0) {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                'Cơ sở đã chọn không tồn tại hoặc không còn hoạt động (center_id).',
+            },
+            { status: 400 },
+          );
+        }
+      }
+
+      const rowEmail = String(existingRow.email ?? '').trim();
+      const dup = await client.query(
+        `
+        SELECT COUNT(*)::int AS cnt
+        FROM leave_requests
+        WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))
+          AND LOWER(TRIM(class_code)) = LOWER(TRIM($2))
+          AND id <> $3
+        `,
+        [rowEmail, trimmedClassCode, idNum],
+      );
+      const dupCnt = dup.rows[0]?.cnt ?? 0;
+      if (dupCnt >= 2) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'Mỗi mã lớp chỉ được tối đa 2 yêu cầu xin nghỉ. Bạn đã đạt giới hạn cho mã lớp này.',
+          },
+          { status: 400 },
+        );
+      }
+
+      const subT = normalizedHasSubstitute
+        ? String(substitute_teacher ?? '').trim() || null
+        : null;
+      const subE = normalizedHasSubstitute
+        ? String(substitute_email ?? '').trim() || null
+        : null;
+
+      const updateQuery = `
+        UPDATE leave_requests
+        SET
+          teacher_name = $1,
+          lms_code = $2,
+          campus = $3,
+          leave_date = $4,
+          reason = $5,
+          class_code = $6,
+          student_count = $7,
+          class_time = $8,
+          leave_session = $9,
+          has_substitute = $10,
+          substitute_teacher = $11,
+          substitute_email = $12,
+          class_status = $13,
+          email_subject = $14,
+          email_body = $15,
+          center_id = $16,
+          campus_bu_email = $17
+        WHERE id = $18
+          AND status = 'pending_admin'
+        RETURNING *
+      `;
+
+      const upd = await client.query(updateQuery, [
+        teacher_name,
+        lms_code,
+        campus,
+        leave_date,
+        reason,
+        trimmedClassCode,
+        normalizedStudentCount,
+        trimmedClassTime,
+        trimmedLeaveSession,
+        normalizedHasSubstitute,
+        subT,
+        subE,
+        typeof class_status === 'string' && class_status.trim()
+          ? class_status.trim()
+          : null,
+        email_subject || null,
+        email_body || null,
+        resolvedCenterId,
+        campusBuEmailDb,
+        idNum,
+      ]);
+
+      if (upd.rowCount === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Không cập nhật được (trạng thái đã thay đổi?).',
+          },
+          { status: 400 },
+        );
+      }
+
+      const updatedRow = upd.rows[0] as Record<string, unknown>;
+      const outRow = auth.privileged
+        ? updatedRow
+        : withAdminNoteRedactedForTeacherView(updatedRow);
+      return NextResponse.json({ success: true, data: outRow });
+    }
+
     if (action === 'assign_substitute') {
       const gate = await requireBearerDbRoles(request, [
         'super_admin',
@@ -577,6 +1108,8 @@ export async function PATCH(request: NextRequest) {
         );
       }
 
+      client = await pool.connect();
+
       const assignQuery = `
         UPDATE leave_requests
         SET
@@ -586,6 +1119,7 @@ export async function PATCH(request: NextRequest) {
           admin_email = COALESCE($3, admin_email),
           admin_name = COALESCE($4, admin_name)
         WHERE id = $5
+          AND status IN ('approved_unassigned', 'approved_assigned')
         RETURNING *
       `;
 
@@ -598,10 +1132,104 @@ export async function PATCH(request: NextRequest) {
       ]);
 
       if (assignResult.rowCount === 0) {
-        return NextResponse.json({ success: false, error: 'Không tìm thấy yêu cầu' }, { status: 404 });
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'Không tìm thấy yêu cầu hoặc trạng thái không cho phép gán/sửa GV thay (chỉ khi đã duyệt và chưa hoàn tất).',
+          },
+          { status: 400 },
+        );
       }
 
       return NextResponse.json({ success: true, data: assignResult.rows[0] });
+    }
+
+    if (action === 'admin_save_fields') {
+      const gate = await requireBearerDbRoles(request, [
+        'super_admin',
+        'admin',
+        'manager',
+      ]);
+      if (!gate.ok) return gate.response;
+
+      const campusDenied = await rejectIfLeaveRequestNotAccessible(
+        gate.sessionEmail,
+        gate.role === 'super_admin',
+        id,
+      );
+      if (campusDenied) return campusDenied;
+
+      const { admin_note, substitute_teacher, substitute_email } = body;
+
+      const t = String(substitute_teacher ?? '').trim();
+      const e = String(substitute_email ?? '').trim();
+      if ((t || e) && (!t || !e)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Vui lòng nhập đủ tên và email giáo viên thay thế.',
+          },
+          { status: 400 },
+        );
+      }
+      if (e && !/\S+@\S+\.\S+/.test(e)) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Email giáo viên thay thế chưa đúng định dạng.',
+          },
+          { status: 400 },
+        );
+      }
+
+      client = await pool.connect();
+
+      const saveQuery = `
+        UPDATE leave_requests
+        SET
+          admin_note = $1,
+          substitute_teacher = $2,
+          substitute_email = $3,
+          status = CASE
+            WHEN status = 'approved_unassigned'
+              AND NULLIF(TRIM($5), '') IS NOT NULL
+              AND NULLIF(TRIM($6), '') IS NOT NULL
+            THEN 'approved_assigned'
+            ELSE status
+          END
+        WHERE id = $4
+          AND status IN (
+            'pending_admin',
+            'approved_unassigned',
+            'approved_assigned'
+          )
+        RETURNING *
+      `;
+
+      const saveResult = await client.query(saveQuery, [
+        typeof admin_note === 'string' && admin_note.trim()
+          ? admin_note.trim()
+          : null,
+        t || null,
+        e || null,
+        id,
+        t || null,
+        e || null,
+      ]);
+
+      if (saveResult.rowCount === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'Không lưu được: chỉ khi yêu cầu ở trạng thái chờ duyệt, đã duyệt chưa có GV thay, hoặc đã gửi GV thay.',
+          },
+          { status: 400 },
+        );
+      }
+
+      return NextResponse.json({ success: true, data: saveResult.rows[0] });
     }
 
     if (action === 'substitute_confirm') {
@@ -609,6 +1237,8 @@ export async function PATCH(request: NextRequest) {
       const sub = String(substitute_email || '').trim().toLowerCase();
       const denied = rejectIfEmailNotSelf(auth.sessionEmail, false, sub);
       if (denied) return denied;
+
+      client = await pool.connect();
 
       const confirmQuery = `
         UPDATE leave_requests
@@ -633,7 +1263,122 @@ export async function PATCH(request: NextRequest) {
         );
       }
 
-      return NextResponse.json({ success: true, data: confirmResult.rows[0] });
+      const confirmedRow = confirmResult.rows[0];
+
+      try {
+        await fetch(`${getPublicBaseUrl()}/api/emails`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'leave_approved_substitute_confirmed',
+            data: {
+              teacher_name: confirmedRow.teacher_name,
+              teacher_email: confirmedRow.email,
+              campus: confirmedRow.campus,
+              class_code: confirmedRow.class_code,
+              leave_date: confirmedRow.leave_date,
+              class_time: confirmedRow.class_time,
+              leave_session: confirmedRow.leave_session,
+              substitute_teacher: confirmedRow.substitute_teacher,
+              substitute_email: confirmedRow.substitute_email,
+              reason: confirmedRow.reason,
+              admin_note: confirmedRow.admin_note,
+              admin_name: confirmedRow.admin_name,
+              admin_email: confirmedRow.admin_email,
+              substitute_confirmed_at: confirmedRow.substitute_confirmed_at,
+              campus_bu_email:
+                confirmedRow.campus_bu_email != null
+                  ? String(confirmedRow.campus_bu_email).trim() || undefined
+                  : undefined,
+            },
+          }),
+        });
+      } catch (mailError) {
+        console.error('leave-requests substitute_confirm email error:', mailError);
+      }
+
+      const outRow = auth.privileged
+        ? confirmedRow
+        : withAdminNoteRedactedForTeacherView(
+            confirmedRow as Record<string, unknown>,
+          );
+      return NextResponse.json({ success: true, data: outRow });
+    }
+
+    if (action === 'substitute_decline') {
+      const { substitute_email, decline_reason } = body;
+      const sub = String(substitute_email || '').trim().toLowerCase();
+      const denied = rejectIfEmailNotSelf(auth.sessionEmail, false, sub);
+      if (denied) return denied;
+
+      const reason =
+        typeof decline_reason === 'string' ? decline_reason.trim() : '';
+      if (reason.length > 2000) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Lý do từ chối không quá 2000 ký tự.',
+          },
+          { status: 400 },
+        );
+      }
+
+      const stamp =
+        `${SUBSTITUTE_DECLINE_AUDIT_PREFIX} Thời điểm: ` +
+        new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+      const suffix =
+        reason.length > 0 ? `\nLý do: ${reason}` : '';
+
+      client = await pool.connect();
+
+      const declineQuery = `
+        UPDATE leave_requests
+        SET
+          status = 'approved_unassigned',
+          substitute_teacher = NULL,
+          substitute_email = NULL,
+          substitute_confirmed_at = NULL,
+          admin_note = TRIM(
+            CASE
+              WHEN COALESCE(admin_note, '') = '' THEN $1::text
+              ELSE COALESCE(admin_note, '') || E'\\n\\n---\\n' || $1::text
+            END
+          )
+        WHERE id = $2
+          AND status = 'approved_assigned'
+          AND LOWER(TRIM(substitute_email)) = LOWER(TRIM($3::text))
+        RETURNING *
+      `;
+
+      const declineNote = `${stamp}${suffix}`;
+
+      const declineResult = await client.query(declineQuery, [
+        declineNote,
+        id,
+        substitute_email || '',
+      ]);
+
+      if (declineResult.rowCount === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              'Không tìm thấy yêu cầu phù hợp để từ chối (chỉ khi đang chờ GV thay xác nhận và đúng email được phân).',
+          },
+          { status: 404 },
+        );
+      }
+
+      const declined = declineResult.rows[0] as Record<string, unknown>;
+      const outDeclined = auth.privileged
+        ? declined
+        : {
+            ...declined,
+            admin_note: stripSubstituteDeclineAuditFromAdminNote(
+              declined.admin_note as string | null | undefined,
+            ),
+          };
+      return NextResponse.json({ success: true, data: outDeclined });
     }
 
     return NextResponse.json(

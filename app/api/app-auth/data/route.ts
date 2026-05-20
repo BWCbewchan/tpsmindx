@@ -168,6 +168,41 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const { table, ...data } = body;
 
+        if (table === 'centers') {
+            const row = data as Record<string, unknown>;
+            const full_name = String(row.full_name ?? '').trim();
+            const short_code = String(row.short_code ?? '').trim();
+            if (!full_name || !short_code) {
+                return NextResponse.json(
+                    { error: 'full_name và short_code là bắt buộc' },
+                    { status: 400 },
+                );
+            }
+            const display_name = String(row.display_name ?? '').trim() || full_name;
+            const regionRaw = row.region != null ? String(row.region).trim() : '';
+            const region = regionRaw ? regionRaw : null;
+            const emailRaw = row.email != null ? String(row.email).trim() : '';
+            const email = emailRaw ? emailRaw : null;
+            const status = String(row.status ?? 'Active').trim() || 'Active';
+            try {
+                await pool.query(
+                    `INSERT INTO centers (full_name, short_code, display_name, region, email, status)
+                     VALUES ($1, $2, $3, $4, $5, $6)`,
+                    [full_name, short_code, display_name, region, email, status],
+                );
+            } catch (e: unknown) {
+                const err = e as { code?: string };
+                if (err.code === '23505') {
+                    return NextResponse.json(
+                        { error: 'Mã cơ sở (short_code) đã tồn tại. Chọn mã khác.' },
+                        { status: 409 },
+                    );
+                }
+                throw e;
+            }
+            return NextResponse.json({ success: true });
+        }
+
         if (table === 'teaching_leaders') {
             const { code, full_name, email, role_code, role_name, center, courses, area, areas, status } = data;
             const areasList: string[] = Array.isArray(areas)

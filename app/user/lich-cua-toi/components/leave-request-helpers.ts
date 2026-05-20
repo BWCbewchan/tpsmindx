@@ -1,6 +1,8 @@
 // Shared types and helpers for leave request tab
 export interface LeaveRequest {
   id: number; teacher_name: string; lms_code: string; email: string; campus: string
+  center_id?: number | null
+  campus_bu_email?: string | null
   leave_date: string; reason: string; class_code?: string; student_count?: string
   class_time?: string; leave_session?: string; has_substitute: boolean
   substitute_teacher?: string; substitute_email?: string; class_status?: string

@@ -27,6 +27,7 @@ type CenterRow = {
   full_name: string
   short_code: string | null
   region: string | null
+  email: string | null
 }
 
 function dedupeCenters(rows: CenterRow[]) {
@@ -45,7 +46,7 @@ function sortCenters(rows: CenterRow[]) {
 async function queryLeaderCenters(email: string): Promise<CenterRow[]> {
   const hasAreas = await getTeachingLeadersHasAreasColumn()
   const leaderQuery = hasAreas
-    ? `SELECT DISTINCT c.id, c.full_name, c.short_code, c.region
+    ? `SELECT DISTINCT c.id, c.full_name, c.short_code, c.region, c.email
        FROM teaching_leaders tl
        JOIN centers c ON c.region = ANY(
          COALESCE(
@@ -57,7 +58,7 @@ async function queryLeaderCenters(email: string): Promise<CenterRow[]> {
        WHERE LOWER(TRIM(tl.email)) = $1
          AND tl.status = 'Active'
        ORDER BY c.full_name`
-    : `SELECT DISTINCT c.id, c.full_name, c.short_code, c.region
+    : `SELECT DISTINCT c.id, c.full_name, c.short_code, c.region, c.email
        FROM teaching_leaders tl
        JOIN centers c ON c.region = ANY(
          string_to_array(COALESCE(tl.area, ''), ',')
@@ -84,6 +85,7 @@ export async function getAccessibleCenters(
     full_name: string
     short_code: string | null
     region: string | null
+    email: string | null
   }>
 > {
   if (!email?.trim()) return []
@@ -107,7 +109,7 @@ export async function getAccessibleCenters(
 
     if (appUser.role === 'super_admin') {
       const allCenters = await pool.query(
-        `SELECT id, full_name, short_code, region
+        `SELECT id, full_name, short_code, region, email
          FROM centers
          WHERE status = 'Active'
          ORDER BY full_name`,
@@ -118,7 +120,7 @@ export async function getAccessibleCenters(
 
     const [managerCenters, leaderCenters] = await Promise.all([
       pool.query(
-        `SELECT DISTINCT c.id, c.full_name, c.short_code, c.region
+        `SELECT DISTINCT c.id, c.full_name, c.short_code, c.region, c.email
          FROM manager_centers mc
          JOIN centers c ON c.id = mc.center_id
          WHERE mc.user_id = $1 AND c.status = 'Active'

@@ -2,8 +2,15 @@
   "name": "teaching-portal-system",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.19.5"
+  },
+  "overrides": {
+    "jsdom": "26.1.0"
+  },
   "scripts": {
     "predev": "node scripts/dev-prep.js",
+    "prebuild": "node scripts/prebuild-clean-next-dev.js",
     "dev": "next dev --port 3000 --turbopack",
     "dev:webpack": "next dev --port 3000 --webpack",
     "dev:turbo": "next dev --port 3000 --turbopack",
@@ -26,6 +33,7 @@
     "@ffmpeg/util": "^0.12.2",
     "@headlessui/react": "^2.2.9",
     "@heroicons/react": "^2.2.0",
+    "@ilamy/calendar": "^1.6.3",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-separator": "^1.1.8",
@@ -53,6 +61,7 @@
     "cloudinary": "^2.8.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "dayjs": "^1.11.20",
     "dotenv": "^17.2.3",
     "formidable": "^3.5.4",
     "formidable-serverless": "^1.1.1",
@@ -60,6 +69,7 @@
     "googleapis": "^169.0.0",
     "html2canvas": "^1.4.1",
     "isomorphic-dompurify": "^2.36.0",
+    "jsdom": "26.1.0",
     "jose": "^6.2.2",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.561.0",
@@ -87,7 +97,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "^4.3.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^20",
@@ -95,11 +105,13 @@
     "@types/react-dom": "^19",
     "baseline-browser-mapping": "^2.10.20",
     "cross-env": "^10.1.0",
+    "csv-parse": "^6.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
     "kill-port": "^2.0.1",
     "ngrok": "^5.0.0-beta.2",
-    "tailwindcss": "^4",
+    "tailwindcss": "^4.3.0",
+    "tailwindcss-animate": "^1.0.7",
     "typescript": "^5"
   }
 }

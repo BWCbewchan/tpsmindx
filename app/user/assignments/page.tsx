@@ -33,11 +33,12 @@ import {
 
 import { toast } from '@/lib/app-toast'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 interface Assignment {
   id: number
+  video_id?: number
   video_title: string
   assignment_title: string
   assignment_type: string
@@ -48,6 +49,7 @@ interface Assignment {
   due_date: string
   status: string
   question_count: number
+  video_completion_status?: string
   recent_submission?: {
     score: number
     percentage: number
@@ -162,9 +164,10 @@ const extractCodeFromEmail = (email: string): string | null => {
 }
 
 export default function TeacherAssignmentPage() {
-  const { user, logout, token } = useAuth()
+  const { user, token } = useAuth()
   const { teacherProfile, isLoading: isTeacherLoading } = useTeacher()
   const router = useRouter()
+  const pathname = usePathname()
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [examAssignments, setExamAssignments] = useState<ExamAssignment[]>([])
   const [currentAssignment, setCurrentAssignment] = useState<Assignment | null>(
@@ -284,7 +287,7 @@ export default function TeacherAssignmentPage() {
         setTimerActive(false)
 
         // Calculate score synchronously
-        let totalScore = 0
+        let correctCount = 0
         console.log(
           '[Assignment] Starting score calculation for',
           questions.length,
@@ -309,26 +312,25 @@ export default function TeacherAssignmentPage() {
             isCorrect = userAnswer.trim().toLowerCase() === correctAnswer.toLowerCase()
           }
 
-          const points = parseFloat(question.points?.toString() || '0')
-          const pointsEarned = isCorrect ? points : 0
+          if (isCorrect) correctCount++
 
           console.log(`[Assignment] Q${idx + 1}:`, {
             questionId: question.id,
-            points,
             userAnswer,
             correctAnswer,
             isCorrect,
-            pointsEarned,
           })
-
-          totalScore += pointsEarned
         })
 
+        // Tính điểm theo thang 10 dựa trên số câu đúng / tổng câu hỏi
+        const totalQuestions = questions.length || 1
+        const totalScore = Math.round((correctCount / totalQuestions) * 10 * 100) / 100
+
         console.log(
-          '[Assignment] Final calculated total score:',
+          '[Assignment] Score calculation:',
+          `${correctCount}/${totalQuestions} correct →`,
           totalScore,
-          'type:',
-          typeof totalScore,
+          '/ 10',
         )
 
         // Ensure score is a valid number
@@ -345,10 +347,12 @@ export default function TeacherAssignmentPage() {
           return
         }
 
-        // Update submission
-        const isPassed = totalScore >= currentAssignment!.passing_score
+        // Update submission — ngưỡng đạt cố định 7/10 (passing_score đã bị xóa khỏi DB)
+        const PASSING_SCORE = 7.0
+        const isPassed = totalScore >= PASSING_SCORE
 
         // Prepare answers payload
+        const pointsPerQuestion = 10 / (questions.length || 1)
         const answersPayload = questions.map((q) => {
           const userAnswer = answers[q.id] || ''
           const correctAnswer = (q.correct_answer || '').trim()
@@ -366,8 +370,7 @@ export default function TeacherAssignmentPage() {
             isCorrect = userAnswer.trim().toLowerCase() === correctAnswer.toLowerCase()
           }
 
-          const points = parseFloat(q.points?.toString() || '0')
-          const pointsEarned = isCorrect ? points : 0
+          const pointsEarned = isCorrect ? Math.round(pointsPerQuestion * 100) / 100 : 0
 
           return {
             question_id: q.id,
@@ -410,6 +413,17 @@ export default function TeacherAssignmentPage() {
   const startAssignment = useCallback(
     async (assignment: Assignment) => {
       try {
+        if (
+          assignment.video_id &&
+          assignment.video_completion_status !== 'completed'
+        ) {
+          toast.error(
+            `Bạn cần hoàn thành xem video "${assignment.video_title}" trước khi làm bài tập này.`,
+            { icon: '📺' },
+          )
+          return
+        }
+
         // 1. Check teacher profile from context to insure data integrity
         if (isTeacherLoading) {
           toast(
@@ -420,11 +434,8 @@ export default function TeacherAssignmentPage() {
 
         if (!teacherProfile) {
           toast.error(
-            'Thiếu thông tin giáo viên. Vui lòng đăng xuất và đăng nhập lại.',
+            'Thiếu thông tin giáo viên. Vui lòng tải lại dữ liệu rồi thử lại.',
           )
-          setTimeout(() => {
-            logout()
-          }, 1500)
           return
         }
 
@@ -539,7 +550,6 @@ export default function TeacherAssignmentPage() {
     },
     [
       isTeacherLoading,
-      logout,
       submitAssignment,
       teacherCode,
       teacherProfile,
@@ -552,8 +562,8 @@ export default function TeacherAssignmentPage() {
       try {
         setTrainingLoading(true)
 
-        // 1. Fetch assignments list
-        const response = await fetch('/api/training-assignments?status=published')
+        // 1. Fetch assignments list with teacher_code to get video completion status
+        const response = await fetch(`/api/training-assignments?status=published&teacher_code=${teacherCode}`)
         const data = await response.json()
 
         if (data.success) {
@@ -562,15 +572,15 @@ export default function TeacherAssignmentPage() {
           // 2. Fetch all submissions for teacher (instead of N+1 requests)
           if (teacherCode) {
             try {
-              // Fetch ALL submissions for this teacher, ordered by created_at DESC
+              // Fetch only graded/submitted submissions, ordered by created_at DESC
               const subRes = await fetch(
-                `/api/training-submissions?teacher_code=${teacherCode}`,
+                `/api/training-submissions?teacher_code=${teacherCode}&status=graded`,
               )
               const subData: { success?: boolean; data?: TrainingSubmissionSummary[] } =
                 await subRes.json()
 
               if (subData.success && Array.isArray(subData.data)) {
-                // Map assignment_id to its LATEST submission
+                // Map assignment_id to its LATEST graded submission
                 subData.data.forEach((sub: TrainingSubmissionSummary) => {
                   if (!submissionsMap.has(sub.assignment_id)) {
                     submissionsMap.set(sub.assignment_id, sub)
@@ -695,11 +705,22 @@ export default function TeacherAssignmentPage() {
       } else if (assignments.length > 0 && view === 'list') {
         const target = assignments.find((a) => a.id.toString() === startId)
         if (target) {
+          if (
+            target.video_id &&
+            target.video_completion_status !== 'completed'
+          ) {
+            toast.error(
+              `Bạn cần hoàn thành xem video "${target.video_title}" trước khi làm bài kiểm tra.`,
+              { icon: '📺' },
+            )
+            router.replace(pathname || '/user/dao-tao-nang-cao')
+            return
+          }
           startAssignment(target)
         }
       }
     }
-  }, [startId, activeMainTab, assignments, startAssignment, view])
+  }, [startId, activeMainTab, assignments, startAssignment, view, pathname, router])
 
   // Helper function to safely parse percentage
   const formatPercentage = (
@@ -718,7 +739,7 @@ export default function TeacherAssignmentPage() {
 
     // 1. Try from context first (fastest)
     if (teacherProfile?.code) {
-      setTeacherCode(teacherProfile.code)
+      setTeacherCode(teacherProfile.code.toLowerCase().trim())
       return
     }
 
@@ -732,7 +753,7 @@ export default function TeacherAssignmentPage() {
           )
           const data = await res.json()
           if (data?.teacher?.code) {
-            setTeacherCode(data.teacher.code)
+            setTeacherCode(data.teacher.code.toLowerCase().trim())
             return          }
         } catch {
           console.warn(
@@ -743,7 +764,7 @@ export default function TeacherAssignmentPage() {
         // Fallback: extract code from email
         const code = extractCodeFromEmail(user.email)
         if (code) {
-          setTeacherCode(code)
+          setTeacherCode(code.toLowerCase().trim())
         }
       })()
     }
@@ -825,7 +846,7 @@ export default function TeacherAssignmentPage() {
 
   const handleStopAndSubmit = () => {
     setIsStopConfirmOpen(false)
-    submitAssignment(true)
+    router.back()
   }
 
   // Timer countdown
@@ -1735,9 +1756,9 @@ export default function TeacherAssignmentPage() {
               isOpen={isStopConfirmOpen}
               onClose={() => setIsStopConfirmOpen(false)}
               onConfirm={handleStopAndSubmit}
-              title="Xác nhận nộp bài"
-              message="Bạn có chắc muốn dừng và nộp bài luôn không? Kết quả hiện tại sẽ được lưu."
-              confirmText="Nộp bài"
+              title="Xác nhận thoát bài làm"
+              message="Bạn có chắc muốn thoát không? Bài làm hiện tại sẽ không được lưu."
+              confirmText="Thoát"
               cancelText="Tiếp tục làm"
               type="warning"
               icon="warning"
@@ -2887,18 +2908,30 @@ export default function TeacherAssignmentPage() {
                   )}
 
                   <Button
-                    onClick={() => startAssignment(assignment)}
+                    onClick={() => {
+                      if (assignment.video_id && assignment.video_completion_status !== 'completed') {
+                        toast.error(`Bạn cần hoàn thành xem video "${assignment.video_title}" trước khi làm bài tập này.`, {
+                          icon: '📺'
+                        });
+                        return;
+                      }
+                      startAssignment(assignment);
+                    }}
                     disabled={assignment.status !== 'published'}
                     className={`w-full py-2 text-sm font-semibold h-auto cursor-pointer disabled:cursor-not-allowed ${
                       assignment.status === 'published'
-                        ? 'shadow-sm hover:shadow-md'
+                        ? assignment.video_id && assignment.video_completion_status !== 'completed'
+                          ? 'bg-gray-400 text-white hover:bg-gray-500'
+                          : 'shadow-sm hover:shadow-md bg-[#a1001f] text-white hover:bg-[#840018]'
                         : 'bg-gray-200 text-gray-500 hover:bg-gray-200'
                     }`}
                   >
                     {assignment.status === 'published'
-                      ? assignment.recent_submission
-                        ? 'Làm lại'
-                        : 'Bắt đầu'
+                      ? assignment.video_id && assignment.video_completion_status !== 'completed'
+                        ? 'Cần xem video'
+                        : assignment.recent_submission
+                          ? 'Làm lại'
+                          : 'Bắt đầu'
                       : 'Chưa mở'}
                   </Button>
                 </div>

@@ -1,5 +1,8 @@
-import { redirect } from 'next/navigation'
+'use client'
 
-export default function XinNghiMotBuoiRedirect() {
-  redirect('/user/lich-cua-toi?tab=xin-nghi')
+import TabXinNghi from '../lich-cua-toi/components/TabXinNghi'
+
+/** Trang riêng — không redirect sang lich-cua-toi. */
+export default function XinNghiMotBuoiPage() {
+  return <TabXinNghi />
 }

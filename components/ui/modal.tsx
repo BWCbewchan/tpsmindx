@@ -136,7 +136,7 @@ export function Modal({
   maxWidth: maxWidthProp,
   title,
   subtitle,
-  headerColor = 'bg-mindx-red',
+  headerColor = 'bg-[#a1001f]',
   footer,
   overflowContent = 'auto',
 }: ModalProps) {
@@ -237,10 +237,10 @@ export function Modal({
         <div
           ref={modalRef}
           className={cn(
-            'relative my-0.5 flex h-[calc(100dvh-1rem)] w-full flex-col rounded-xl border border-border bg-card text-card-foreground shadow-2xl sm:my-4 sm:h-auto sm:max-h-[95dvh]',
+            'relative my-0.5 flex w-full flex-col rounded-xl border border-border bg-card text-card-foreground shadow-2xl sm:my-4 sm:h-auto sm:max-h-[95dvh]',
             sizeClasses[size],
             'animate-in zoom-in-95 duration-200',
-            overflowContent === 'visible' ? 'overflow-visible' : 'overflow-hidden',
+            'overflow-hidden',
             containerClassName
           )}
           onClick={(e) => e.stopPropagation()}
@@ -250,13 +250,13 @@ export function Modal({
           {/* Header */}
           <div
             className={cn(
-              'sticky top-0 z-10 shrink-0 rounded-t-xl px-4 py-4 sm:px-6',
+              'flex-shrink-0 rounded-t-xl px-4 py-4 sm:px-6',
               headerClassName
             )}
           >
             <div className="flex items-center justify-between">
               <div className="flex-1 min-w-0 pr-4">
-                <h2 className="text-lg sm:text-xl font-semibold text-white truncate">
+                <h2 className="text-lg sm:text-xl font-semibold text-white break-words text-pretty leading-snug">
                   {title}
                 </h2>
                 {subtitle && (
@@ -290,8 +290,7 @@ export function Modal({
           {/* Body */}
           <div
             className={cn(
-              'px-4 py-5 sm:px-6 sm:py-6',
-              overflowContent === 'visible' ? 'overflow-visible' : 'flex-1 overflow-y-auto'
+              'px-4 py-5 sm:px-6 sm:py-6 flex-1 min-h-0 overflow-y-auto overscroll-contain'
             )}
           >
             {children}
@@ -299,7 +298,7 @@ export function Modal({
 
           {/* Footer */}
           {footer && (
-            <div className="rounded-b-xl border-t border-gray-200 bg-gray-50 px-4 py-4 sm:px-6">
+            <div className="shrink-0 rounded-b-xl border-t border-gray-200 bg-gray-50 px-4 py-4 sm:px-6">
               {footer}
             </div>
           )}

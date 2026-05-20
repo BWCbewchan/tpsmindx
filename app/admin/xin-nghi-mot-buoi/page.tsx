@@ -14,11 +14,18 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { CAMPUS_LIST, normalizeText } from '@/lib/campus-data'
+import { resolveCenterBuEmail } from '@/lib/center-bu-email-fallback'
 import { useAuth } from '@/lib/auth-context'
 import { authHeaders } from '@/lib/auth-headers'
 import { AlertCircle, RefreshCcw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from '@/lib/app-toast'
+import {
+  mergeAdminNoteWithDeclineAudits,
+  stripSubstituteDeclineAuditFromAdminNote,
+} from '@/lib/leave-request-admin-note-sanitize'
+import { LeaveBuNotice } from '@/components/leave-request/LeaveBuNotice'
 
 interface LeaveRequest {
   id: number
@@ -26,6 +33,8 @@ interface LeaveRequest {
   lms_code: string
   email: string
   campus: string
+  center_id?: number | null
+  campus_bu_email?: string | null
   leave_date: string
   reason: string
   class_code?: string
@@ -125,6 +134,13 @@ export default function AdminXinNghiMotBuoiPage() {
   const [substituteTeacher, setSubstituteTeacher] = useState('')
   const [substituteEmail, setSubstituteEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  /** Khóa form mặc định; bấm Chỉnh sửa mới sửa, Gửi chỉnh sửa để lưu. */
+  const [detailFormEditing, setDetailFormEditing] = useState(false)
+
+  /** Giống form tạo xin nghỉ: GET /api/leave-requests/campuses + resolveCenterBuEmail. */
+  const [campusBuByKey, setCampusBuByKey] = useState<Map<string, string>>(
+    () => new Map(),
+  )
 
   const fetchData = useCallback(async (showToast = false) => {
     try {
@@ -157,6 +173,72 @@ export default function AdminXinNghiMotBuoiPage() {
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  useEffect(() => {
+    if (!token?.trim()) {
+      setCampusBuByKey(new Map())
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      try {
+        const r = await fetch('/api/leave-requests/campuses', {
+          headers: authHeaders(token),
+          cache: 'no-store',
+        })
+        const d = await r.json()
+        if (cancelled || !r.ok || !d?.success) return
+        const list = Array.isArray(d.data) ? d.data : []
+        const m = new Map<string, string>()
+        for (const row of list) {
+          const fn = String(
+            (row as { full_name?: string }).full_name ?? '',
+          ).trim()
+          if (!fn) continue
+          const em =
+            resolveCenterBuEmail({
+              email: (row as { email?: string | null }).email,
+              short_code: (row as { short_code?: string | null }).short_code,
+              full_name: fn,
+            })?.trim() || ''
+          if (!em) continue
+          m.set(fn.toLowerCase(), em)
+          m.set(normalizeText(fn), em)
+        }
+        if (!cancelled) setCampusBuByKey(m)
+      } catch {
+        if (!cancelled) setCampusBuByKey(new Map())
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [token])
+
+  const lookupBuEmailLikeTeacherForm = useCallback(
+    (campus: string | undefined | null) => {
+      const c = campus?.trim() ?? ''
+      if (!c) return ''
+      const fromCentersList =
+        campusBuByKey.get(c.toLowerCase()) ||
+        campusBuByKey.get(normalizeText(c))
+      if (fromCentersList) return fromCentersList
+      const canon = CAMPUS_LIST.find(
+        (label) =>
+          normalizeText(label) === normalizeText(c) ||
+          normalizeText(c).includes(normalizeText(label)) ||
+          normalizeText(label).includes(normalizeText(c)),
+      )
+      if (canon) {
+        const fromCanon =
+          campusBuByKey.get(canon.toLowerCase()) ||
+          campusBuByKey.get(normalizeText(canon))
+        if (fromCanon) return fromCanon
+      }
+      return resolveCenterBuEmail({ full_name: c })?.trim() || ''
+    },
+    [campusBuByKey],
+  )
 
   // Danh sách campus duy nhất
   const campusOptions = useMemo(() => {
@@ -245,9 +327,32 @@ export default function AdminXinNghiMotBuoiPage() {
 
   const openDetail = (item: LeaveRequest) => {
     setSelected(item)
-    setAdminNote(item.admin_note || '')
+    setDetailFormEditing(false)
+    setAdminNote(
+      stripSubstituteDeclineAuditFromAdminNote(item.admin_note) ?? '',
+    )
     setSubstituteTeacher(item.substitute_teacher || '')
     setSubstituteEmail(item.substitute_email || '')
+  }
+
+  const closeDetail = () => {
+    setDetailFormEditing(false)
+    setSelected(null)
+  }
+
+  const canDetailFormEditMode = (status: LeaveRequest['status']) =>
+    status === 'pending_admin' ||
+    status === 'approved_unassigned' ||
+    status === 'approved_assigned'
+
+  const cancelDetailFormEdit = () => {
+    if (!selected) return
+    setDetailFormEditing(false)
+    setAdminNote(
+      stripSubstituteDeclineAuditFromAdminNote(selected.admin_note) ?? '',
+    )
+    setSubstituteTeacher(selected.substitute_teacher || '')
+    setSubstituteEmail(selected.substitute_email || '')
   }
 
   const validateSubstituteFields = () => {
@@ -297,7 +402,7 @@ export default function AdminXinNghiMotBuoiPage() {
         toast.success(
           decision === 'approved' ? 'Đã duyệt yêu cầu' : 'Đã từ chối yêu cầu',
         )
-        setSelected(null)
+        closeDetail()
         fetchData()
       } else {
         toast.error(data.error || 'Không thể cập nhật')
@@ -310,19 +415,12 @@ export default function AdminXinNghiMotBuoiPage() {
     }
   }
 
-  const submitAssignSubstitute = async () => {
+  const submitAdminSaveFields = async () => {
     if (!selected) return
 
-    const teacher = substituteTeacher.trim()
-    const email = substituteEmail.trim()
-
-    if (!teacher || !email) {
-      toast.error('Vui lòng nhập đủ tên và email giáo viên thay thế.')
-      return
-    }
-
-    if (!/\S+@\S+\.\S+/.test(email)) {
-      toast.error('Email giáo viên thay thế chưa đúng định dạng.')
+    const substituteValidationError = validateSubstituteFields()
+    if (substituteValidationError) {
+      toast.error(substituteValidationError)
       return
     }
 
@@ -335,28 +433,57 @@ export default function AdminXinNghiMotBuoiPage() {
           ...authHeaders(token),
         },
         body: JSON.stringify({
-          action: 'assign_substitute',
+          action: 'admin_save_fields',
           id: selected.id,
-          substitute_teacher: teacher,
-          substitute_email: email,
-          admin_email: user?.email,
-          admin_name: user?.displayName || user?.email,
+          admin_note: mergeAdminNoteWithDeclineAudits(
+            adminNote,
+            selected.admin_note,
+          ),
+          substitute_teacher: substituteTeacher.trim(),
+          substitute_email: substituteEmail.trim(),
         }),
       })
 
       const data = await res.json()
       if (data.success) {
-        toast.success('Đã phân giáo viên thay thế')
-        setSelected(null)
+        const updated = data.data as LeaveRequest
+        const wasUnassigned = selected.status === 'approved_unassigned'
+        const nowAssigned = updated.status === 'approved_assigned'
+        if (wasUnassigned && nowAssigned) {
+          toast.success('Đã lưu và phân giáo viên thay thế')
+        } else {
+          toast.success('Đã lưu nội dung chỉnh sửa')
+        }
+        setSelected(updated)
+        setAdminNote(
+          stripSubstituteDeclineAuditFromAdminNote(updated.admin_note) ?? '',
+        )
+        setSubstituteTeacher(updated.substitute_teacher || '')
+        setSubstituteEmail(updated.substitute_email || '')
+        setDetailFormEditing(false)
         fetchData()
       } else {
-        toast.error(data.error || 'Không thể phân giáo viên thay thế')
+        toast.error(data.error || 'Không thể lưu')
       }
     } catch (error) {
       console.error(error)
-      toast.error('Có lỗi xảy ra khi cập nhật')
+      toast.error('Có lỗi xảy ra khi lưu')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const submitDetailFormChanges = async () => {
+    if (!selected) return
+    if (selected.status === 'pending_admin') {
+      await submitAdminSaveFields()
+      return
+    }
+    if (
+      selected.status === 'approved_unassigned' ||
+      selected.status === 'approved_assigned'
+    ) {
+      await submitAdminSaveFields()
     }
   }
 
@@ -687,9 +814,48 @@ export default function AdminXinNghiMotBuoiPage() {
 
       <Modal
         isOpen={!!selected}
-        onClose={() => setSelected(null)}
+        onClose={closeDetail}
         title={selected ? `Yêu cầu #${selected.id}` : 'Chi tiết yêu cầu'}
         maxWidth="5xl"
+        footer={
+          selected ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+              {selected.status === 'pending_admin' && (
+                <>
+                  <Button
+                    variant="outline"
+                    disabled={submitting}
+                    onClick={() => submitAdminReview('rejected')}
+                    className="w-full sm:w-auto"
+                  >
+                    Từ chối
+                  </Button>
+                  <Button
+                    disabled={submitting}
+                    onClick={() => submitAdminReview('approved')}
+                    className="w-full border-2 border-[#7d0018] bg-[#a1001f] text-white shadow-md hover:bg-[#8a001a] sm:w-auto"
+                  >
+                    Duyệt yêu cầu
+                  </Button>
+                </>
+              )}
+
+              {(selected.status === 'approved_unassigned' ||
+                selected.status === 'approved_assigned' ||
+                selected.status === 'substitute_confirmed' ||
+                selected.status === 'rejected') && (
+                <Button
+                  variant="outline"
+                  className="w-full sm:w-auto"
+                  disabled={submitting}
+                  onClick={closeDetail}
+                >
+                  Đóng
+                </Button>
+              )}
+            </div>
+          ) : null
+        }
       >
         {selected && (
           <div className="space-y-4">
@@ -718,6 +884,12 @@ export default function AdminXinNghiMotBuoiPage() {
                 <p className="text-xs text-gray-600">Email GV xin nghỉ</p>
                 <p className="text-sm font-medium text-gray-900 break-all">
                   {selected.email}
+                </p>
+              </div>
+              <div className="rounded-lg bg-gray-50 p-3">
+                <p className="text-xs text-gray-600">Cơ sở</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {selected.campus || '-'}
                 </p>
               </div>
               <div className="rounded-lg bg-gray-50 p-3">
@@ -795,34 +967,114 @@ export default function AdminXinNghiMotBuoiPage() {
               </div>
             </div>
 
+            <LeaveBuNotice
+              key={selected.id}
+              campus={selected.campus}
+              centerId={selected.center_id}
+              campusBuEmail={
+                selected.campus_bu_email?.trim() ||
+                lookupBuEmailLikeTeacherForm(selected.campus) ||
+                null
+              }
+            />
+
             <div className="space-y-3 rounded-xl border border-gray-200 p-4">
+              {canDetailFormEditMode(selected.status) && (
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+                  <p className="text-sm font-medium text-gray-800">
+                    Ghi chú và giáo viên thay
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {!detailFormEditing ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setDetailFormEditing(true)}
+                      >
+                        Chỉnh sửa
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          disabled={submitting}
+                          onClick={cancelDetailFormEdit}
+                        >
+                          Hủy chỉnh sửa
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          disabled={submitting}
+                          onClick={submitDetailFormChanges}
+                          className="bg-[#1152D4] text-white hover:bg-[#0d45b0]"
+                        >
+                          Gửi chỉnh sửa
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <label className="block text-sm font-medium text-gray-700">
                 Ghi chú duyệt
+                {canDetailFormEditMode(selected.status) && (
+                  <span className="ml-1 font-normal text-gray-500">
+                    (bấm Chỉnh sửa; log GV thay từ chối tự ghép phía sau khi lưu)
+                  </span>
+                )}
               </label>
               <textarea
                 rows={3}
                 value={adminNote}
                 onChange={(e) => setAdminNote(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
+                disabled={
+                  !canDetailFormEditMode(selected.status) ||
+                  !detailFormEditing
+                }
+                className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-gray-100"
               />
 
               <label className="block text-sm font-medium text-gray-700">
-                Giáo viên thay thế (nếu có)
+                {selected.status === 'approved_assigned'
+                  ? 'Giáo viên thay (sửa nếu sai tên hoặc email)'
+                  : 'Giáo viên thay thế (nếu có)'}
               </label>
+              {selected.status === 'approved_assigned' && (
+                <p className="text-xs text-gray-600">
+                  Bấm Chỉnh sửa → sửa → Gửi chỉnh sửa. Sau khi sửa email đúng, GV
+                  thay đăng nhập đúng tài khoản mới thấy yêu cầu trong mục Nhận
+                  lớp.
+                </p>
+              )}
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <input
                   type="text"
                   value={substituteTeacher}
                   onChange={(e) => setSubstituteTeacher(e.target.value)}
                   placeholder="Tên giáo viên thay thế"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
+                  disabled={
+                    selected.status === 'substitute_confirmed' ||
+                    selected.status === 'rejected' ||
+                    !detailFormEditing
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-gray-100"
                 />
                 <input
                   type="email"
                   value={substituteEmail}
                   onChange={(e) => setSubstituteEmail(e.target.value)}
                   placeholder="Email giáo viên thay thế"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm"
+                  disabled={
+                    selected.status === 'substitute_confirmed' ||
+                    selected.status === 'rejected' ||
+                    !detailFormEditing
+                  }
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm disabled:cursor-not-allowed disabled:bg-gray-100"
                 />
               </div>
             </div>
@@ -835,40 +1087,6 @@ export default function AdminXinNghiMotBuoiPage() {
                 </p>
               </div>
             )}
-
-            <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
-              {selected.status === 'pending_admin' && (
-                <>
-                  <Button
-                    variant="outline"
-                    disabled={submitting}
-                    onClick={() => submitAdminReview('rejected')}
-                  >
-                    Từ chối
-                  </Button>
-                  <Button
-                    disabled={submitting}
-                    onClick={() => submitAdminReview('approved')}
-                  >
-                    Duyệt yêu cầu
-                  </Button>
-                </>
-              )}
-
-              {selected.status === 'approved_unassigned' && (
-                <Button disabled={submitting} onClick={submitAssignSubstitute}>
-                  Phân giáo viên thay thế
-                </Button>
-              )}
-
-              {(selected.status === 'approved_assigned' ||
-                selected.status === 'substitute_confirmed' ||
-                selected.status === 'rejected') && (
-                <Button variant="outline" onClick={() => setSelected(null)}>
-                  Đóng
-                </Button>
-              )}
-            </div>
           </div>
         )}
       </Modal>

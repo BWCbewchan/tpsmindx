@@ -44,6 +44,10 @@ interface ApiResponse {
   success: boolean;
   teacher: TeacherDetail;
   video_scores: VideoScore[];
+  stats?: {
+    total_public_videos: number;
+    watched_videos: number;
+  };
   error?: string;
 }
 
@@ -58,8 +62,8 @@ function StatusBadge({ status }: { status: string | null }) {
   if (status === 'completed') {
     return <Badge variant="success" size="sm" shape="pill">✓ Hoàn thành</Badge>;
   }
-  if (status === 'in_progress') {
-    return <Badge variant="info" size="sm" shape="pill">🔄 Đang xem</Badge>;
+  if (status === 'in_progress' || status === 'watched') {
+    return <Badge variant="info" size="sm" shape="pill">👁 Đã xem</Badge>;
   }
   return <Badge variant="default" size="sm" shape="pill">— Chưa xem</Badge>;
 }
@@ -74,13 +78,23 @@ export default function TrainingDetailPage() {
   const videoScores = data?.video_scores || [];
 
   const allAttemptLogs = useMemo(() => {
+    // Đánh số thứ tự lại theo từng video (1, 2, 3...) thay vì dùng attempt_number từ DB
+    // vì DB có thể có gaps (lần 1 bị bỏ qua do không có answers)
+    const videoAttemptCounters = new Map<string, number>();
+
     const flattened = videoScores.flatMap((video) =>
-      (video.attempt_logs || []).map((attempt) => ({
-        ...attempt,
-        video_id: video.video_id,
-        video_title: video.video_title,
-        latest_time: attempt.graded_at || attempt.submitted_at || attempt.created_at,
-      }))
+      (video.attempt_logs || []).map((attempt) => {
+        const key = String(video.video_id);
+        const displayIndex = (videoAttemptCounters.get(key) ?? 0) + 1;
+        videoAttemptCounters.set(key, displayIndex);
+        return {
+          ...attempt,
+          display_attempt_number: displayIndex,
+          video_id: video.video_id,
+          video_title: video.video_title,
+          latest_time: attempt.graded_at || attempt.submitted_at || attempt.created_at,
+        };
+      })
     );
 
     return flattened.sort((a, b) => {
@@ -126,7 +140,9 @@ export default function TrainingDetailPage() {
   }
 
   const { teacher, video_scores } = data;
-  const completedCount = video_scores.filter(v => v.completion_status === 'completed').length;
+  const totalVideos = data.stats?.total_public_videos ?? video_scores.length;
+  const watchedCount = data.stats?.watched_videos ?? 0;
+  const completionPct = totalVideos > 0 ? Math.round((watchedCount / totalVideos) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-white">
@@ -170,17 +186,15 @@ export default function TrainingDetailPage() {
           {/* Summary stats */}
           <div className="grid grid-cols-3 gap-3 mt-5 pt-5 border-t border-slate-100">
             <div className="text-center">
-              <div className="text-2xl font-bold text-slate-800">{video_scores.length}</div>
+              <div className="text-2xl font-bold text-slate-800">{totalVideos}</div>
               <div className="text-xs text-slate-500">Video được giao</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-emerald-600">{completedCount}</div>
-              <div className="text-xs text-slate-500">Đã hoàn thành</div>
+              <div className="text-2xl font-bold text-emerald-600">{watchedCount}</div>
+              <div className="text-xs text-slate-500">Đã xem</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {video_scores.length > 0 ? Math.round((completedCount / video_scores.length) * 100) : 0}%
-              </div>
+              <div className="text-2xl font-bold text-blue-600">{completionPct}%</div>
               <div className="text-xs text-slate-500">Tỉ lệ hoàn thành</div>
             </div>
           </div>
@@ -279,16 +293,16 @@ export default function TrainingDetailPage() {
                                   {v.attempt_logs.length} luot lam
                                 </span>
                                 <div className="flex flex-wrap items-center justify-center gap-1.5">
-                                  {v.attempt_logs.slice(0, 2).map((attempt) => (
+                                  {v.attempt_logs.slice(0, 2).map((attempt, idx) => (
                                     <a
                                       key={attempt.submission_id}
                                       href={`/public/training-submission-detail/${attempt.submission_id}`}
                                       target="_blank"
                                       rel="noopener noreferrer"
                                       className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-medium text-blue-700 bg-blue-50 border border-blue-100 rounded hover:bg-blue-100 transition-colors"
-                                      title={`Lan ${attempt.attempt_number} - ${attempt.answers_count} cau tra loi`}
+                                      title={`Lan ${idx + 1} - ${attempt.answers_count} cau tra loi`}
                                     >
-                                      Lan {attempt.attempt_number}
+                                      Lan {idx + 1}
                                     </a>
                                   ))}
                                   
@@ -304,7 +318,7 @@ export default function TrainingDetailPage() {
                                             Các lượt làm khác
                                           </div>
                                          <div className="max-h-40 overflow-y-auto custom-scrollbar flex flex-col gap-1">
-                                           {v.attempt_logs.slice(2).map((attempt) => (
+                                           {v.attempt_logs.slice(2).map((attempt, idx) => (
                                              <a
                                                key={attempt.submission_id}
                                                href={`/public/training-submission-detail/${attempt.submission_id}`}
@@ -312,7 +326,7 @@ export default function TrainingDetailPage() {
                                                rel="noopener noreferrer"
                                                className="flex items-center justify-between px-2 py-1.5 rounded-md hover:bg-slate-50 text-[11px] transition-colors group/item"
                                              >
-                                               <span className="font-medium text-slate-700">Lan {attempt.attempt_number}</span>
+                                               <span className="font-medium text-slate-700">Lan {idx + 3}</span>
                                                <span className="text-slate-400 group-hover/item:text-blue-500 font-mono">
                                                  {attempt.score !== null ? attempt.score.toFixed(1) : '—'} đ
                                                </span>
@@ -389,7 +403,7 @@ export default function TrainingDetailPage() {
                             <div className="font-medium text-slate-800">{attempt.video_title}</div>
                             <div className="text-[11px] text-slate-400">Video ID: {attempt.video_id}</div>
                           </td>
-                          <td className="px-4 py-3 text-center font-medium text-slate-700">{attempt.attempt_number}</td>
+                          <td className="px-4 py-3 text-center font-medium text-slate-700">{attempt.display_attempt_number}</td>
                           <td className="px-4 py-3 text-center">
                             {attempt.score != null ? (
                               <span className="font-semibold text-blue-600">{attempt.score.toFixed(1)}</span>

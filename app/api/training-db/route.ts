@@ -5,6 +5,12 @@ import {
 import { withApiProtection } from '@/lib/api-protection';
 import pool from '@/lib/db';
 import { normalizeStorageUrl } from '@/lib/storage-url';
+import {
+  effectiveVideoCompletionFromRaw,
+  hasTmsWatchEvidenceForVideoIds,
+  lessonDurationSecondsFromSegments,
+  mergedWatchSecondsForVideoIds,
+} from '@/lib/training-effective-video-completion';
 import { NextRequest, NextResponse } from 'next/server';
 
 export const GET = withApiProtection(async (request: NextRequest) => {
@@ -89,7 +95,41 @@ export const GET = withApiProtection(async (request: NextRequest) => {
       WHERE status = 'active'
       ORDER BY lesson_number ASC
     `;
-    const videosResult = await pool.query(videosQuery);
+    const quizEvidenceByVideoQuery = `
+      SELECT DISTINCT tva.video_id
+      FROM training_assignment_submissions tas
+      INNER JOIN training_video_assignments tva ON tva.id = tas.assignment_id
+      WHERE tas.teacher_code = $1
+        AND tva.video_id IS NOT NULL
+        AND (
+          tas.status = 'graded'
+          OR (tas.submitted_at IS NOT NULL AND tas.status IN ('submitted', 'graded'))
+        )
+    `;
+
+    const [videosResult, scoresResult, quizEvidenceResult] = await Promise.all([
+      pool.query(videosQuery),
+      pool.query(
+        `
+      SELECT 
+        video_id,
+        score,
+        completion_status,
+        completed_at,
+        time_spent_seconds,
+        COALESCE(server_time_seconds, 0) AS server_time_seconds,
+        last_heartbeat_at
+      FROM training_teacher_video_scores
+      WHERE teacher_code = $1
+    `,
+        [teacherCode],
+      ),
+      pool.query(quizEvidenceByVideoQuery, [teacherCode]),
+    ]);
+
+    const quizEvidenceVideoIds = new Set<number>(
+      quizEvidenceResult.rows.map((r: { video_id: number }) => r.video_id),
+    );
 
     // Auto-update duration for videos with placeholder (30 mins) or missing duration
     const durationUpdates = videosResult.rows
@@ -104,27 +144,34 @@ export const GET = withApiProtection(async (request: NextRequest) => {
       await Promise.all(durationUpdates);
     }
 
-    // Fetch teacher's scores for each video
-    const scoresQuery = `
-      SELECT 
-        video_id,
-        score,
-        completion_status,
-        completed_at,
-        time_spent_seconds
-      FROM training_teacher_video_scores
-      WHERE teacher_code = $1
-    `;
-    const scoresResult = await pool.query(scoresQuery, [teacherCode]);
-
     // Create a map of video_id to score
-    const scoresMap = new Map();
-    scoresResult.rows.forEach(row => {
+    const scoresMap = new Map<
+      number,
+      {
+        score: number
+        completion_status: string
+        completed_at: unknown
+        time_spent_seconds: number
+        server_time_seconds: number
+        last_heartbeat_at: string | Date | null
+      }
+    >();
+    scoresResult.rows.forEach((row: {
+      video_id: number
+      score: unknown
+      completion_status: string
+      completed_at: unknown
+      time_spent_seconds: number | null
+      server_time_seconds: number | null
+      last_heartbeat_at: string | Date | null
+    }) => {
       scoresMap.set(row.video_id, {
-        score: parseFloat(row.score) || 0,
+        score: parseFloat(String(row.score)) || 0,
         completion_status: row.completion_status,
         completed_at: row.completed_at,
-        time_spent_seconds: row.time_spent_seconds || 0
+        time_spent_seconds: row.time_spent_seconds || 0,
+        server_time_seconds: Number(row.server_time_seconds) || 0,
+        last_heartbeat_at: row.last_heartbeat_at ?? null,
       });
     });
 
@@ -197,27 +244,65 @@ export const GET = withApiProtection(async (request: NextRequest) => {
           }, scoreCandidates[0])
         : null;
 
+      const durationSeconds = lessonDurationSecondsFromSegments(
+        video.segments,
+        video.duration_minutes,
+      );
+      const mergedWatchedSeconds = mergedWatchSecondsForVideoIds(sourceIds, scoresMap);
+      const displayWatchedSeconds =
+        durationSeconds > 0
+          ? Math.min(mergedWatchedSeconds, Math.ceil(durationSeconds * 1.05))
+          : mergedWatchedSeconds;
+
+      const hasQuizEvidenceForLesson = sourceIds.some((id) =>
+        quizEvidenceVideoIds.has(id),
+      );
+      
+      const hasTmsWatchHeartbeat = hasTmsWatchEvidenceForVideoIds(
+        sourceIds,
+        scoresMap,
+      );
+
+      const effective = effectiveVideoCompletionFromRaw({
+        rawCompletionStatus: scoreData ? scoreData.completion_status : 'not_started',
+        rawCompletedAt: scoreData ? (scoreData.completed_at as string | Date | null) : null,
+        mergedWatchedSeconds,
+        durationSeconds,
+        hasPlatformQuizEvidenceForVideo: hasQuizEvidenceForLesson,
+        hasTmsWatchHeartbeat,
+      });
+
       return {
         id: video.id,
         name: video.title || `Video ${video.id}`,
         score: scoreData ? scoreData.score : 0,
         link: normalizeStorageUrl(video.video_link),
-        segments: video.segments, // Included chunks 
-        thumbnail_url: video.thumbnail_url,
+        segments: video.segments, // Included chunks
+        thumbnail_url: normalizeStorageUrl(video.thumbnail_url) || null,
         description: video.description,
         duration_minutes: video.duration_minutes,
         lesson_number: video.lesson_number || (index + 1),
-        completion_status: scoreData ? scoreData.completion_status : 'not_started',
-        completed_at: scoreData ? scoreData.completed_at : null,
-        time_spent_seconds: scoreData ? scoreData.time_spent_seconds : 0
+        completion_status: effective.completion_status,
+        completed_at: effective.completed_at,
+        time_spent_seconds: displayWatchedSeconds,
       };
     });
 
-    // Calculate average score from completed lessons
-    const completedLessons = lessons.filter(l => l.score > 0);
-    const averageScore = completedLessons.length > 0
-      ? completedLessons.reduce((sum, l) => sum + l.score, 0) / completedLessons.length
-      : 0;
+    // Tính averageScore từ submissions thực tế — giống công thức tại public/training-detail
+    // Lấy điểm cao nhất mỗi assignment đã nộp (submitted/graded) rồi tính trung bình
+    const assignmentScoreResult = await pool.query(
+      `SELECT COALESCE(AVG(best_score), 0) as avg_score
+       FROM (
+         SELECT assignment_id, MAX(score) as best_score
+         FROM training_assignment_submissions
+         WHERE LOWER(TRIM(teacher_code)) = LOWER(TRIM($1))
+           AND status IN ('submitted', 'graded')
+           AND score IS NOT NULL
+         GROUP BY assignment_id
+       ) sub`,
+      [teacherCode]
+    );
+    const averageScore = parseFloat(assignmentScoreResult.rows[0]?.avg_score) || 0;
 
     const trainingData = {
       no: teacherStats.id,
@@ -237,7 +322,10 @@ export const GET = withApiProtection(async (request: NextRequest) => {
 
     console.log('[Training DB API] Successfully fetched data for:', teacherCode);
     console.log('[Training DB API] Total lessons:', lessons.length);
-    console.log('[Training DB API] Completed lessons:', completedLessons.length);
+    console.log(
+      '[Training DB API] Effective completed lessons:',
+      lessons.filter((l) => l.completion_status === 'completed').length,
+    );
     console.log('[Training DB API] Average score:', averageScore.toFixed(2));
 
     return NextResponse.json(trainingData);

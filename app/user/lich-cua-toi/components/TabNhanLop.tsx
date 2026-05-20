@@ -14,6 +14,7 @@ import { authHeaders } from '@/lib/auth-headers'
 import { AlertCircle, RefreshCcw } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from '@/lib/app-toast'
+import { LeaveBuNotice } from '@/components/leave-request/LeaveBuNotice'
 
 interface LeaveRequest {
   id: number
@@ -21,6 +22,8 @@ interface LeaveRequest {
   lms_code?: string
   email?: string
   campus: string
+  center_id?: number | null
+  campus_bu_email?: string | null
   leave_date: string
   class_code?: string
   class_time?: string
@@ -38,6 +41,10 @@ interface LeaveRequest {
 }
 
 type StatusVariant = 'warning' | 'info' | 'success' | 'danger'
+
+function isAwaitingSubstituteResponse(status: LeaveRequest['status']): boolean {
+  return String(status).toLowerCase().trim() === 'approved_assigned'
+}
 
 function getStatusMeta(status: LeaveRequest['status']): { label: string; variant: StatusVariant } {
   switch (status) {
@@ -60,13 +67,16 @@ export default function TabNhanLop({ onRefreshBadge }: TabNhanLopProps) {
   const [loading, setLoading] = useState(true)
   const [loadingError, setLoadingError] = useState<string | null>(null)
   const [selected, setSelected] = useState<LeaveRequest | null>(null)
-  const [confirming, setConfirming] = useState(false)
+  const [submittingKind, setSubmittingKind] = useState<null | 'confirm' | 'decline'>(null)
+  const [declineReason, setDeclineReason] = useState('')
+  const busy = submittingKind !== null
   const [activeTab, setActiveTab] = useState('all')
   const [campusFilter, setCampusFilter] = useState<string[]>([])
   const [fromDate, setFromDate] = useState<string>('')
   const [toDate, setToDate] = useState<string>('')
   const [showCampusDropdown, setShowCampusDropdown] = useState(false)
   const [campusSearchText, setCampusSearchText] = useState('')
+  const [declineConfirmOpen, setDeclineConfirmOpen] = useState(false)
 
   const fetchData = useCallback(async (showToast = false) => {
     if (!user?.email) return
@@ -105,7 +115,7 @@ export default function TabNhanLop({ onRefreshBadge }: TabNhanLopProps) {
 
   const filteredItems = useMemo(() => {
     let result = items
-    if (activeTab === 'pending') result = result.filter(i => i.status === 'approved_assigned')
+    if (activeTab === 'pending') result = result.filter(i => isAwaitingSubstituteResponse(i.status))
     else if (activeTab === 'done') result = result.filter(i => i.status === 'substitute_confirmed')
     if (campusFilter.length > 0) result = result.filter(i => campusFilter.includes(i.campus))
     if (fromDate) result = result.filter(i => new Date(i.leave_date) >= new Date(fromDate))
@@ -115,18 +125,18 @@ export default function TabNhanLop({ onRefreshBadge }: TabNhanLopProps) {
 
   const tabs = useMemo(() => [
     { id: 'all', label: 'Tất cả', count: items.length },
-    { id: 'pending', label: 'Chờ xác nhận', count: items.filter(i => i.status === 'approved_assigned').length },
+    { id: 'pending', label: 'Chờ xác nhận', count: items.filter(i => isAwaitingSubstituteResponse(i.status)).length },
     { id: 'done', label: 'Đã xác nhận', count: items.filter(i => i.status === 'substitute_confirmed').length },
   ], [items])
 
   const handleConfirm = async (id: number) => {
     if (!user?.email) return
     const item = items.find(i => i.id === id)
-    if (!item || item.status !== 'approved_assigned') {
+    if (!item || !isAwaitingSubstituteResponse(item.status)) {
       toast.error('Yêu cầu này không ở trạng thái chờ xác nhận.')
       return
     }
-    setConfirming(true)
+    setSubmittingKind('confirm')
     try {
       const res = await fetch('/api/leave-requests', {
         method: 'PATCH',
@@ -137,6 +147,7 @@ export default function TabNhanLop({ onRefreshBadge }: TabNhanLopProps) {
       if (data.success) {
         toast.success('Đã xác nhận nhận thông tin lớp 1 buổi')
         setSelected(null)
+        setDeclineReason('')
         fetchData()
         onRefreshBadge?.()
       } else {
@@ -146,7 +157,56 @@ export default function TabNhanLop({ onRefreshBadge }: TabNhanLopProps) {
       console.error(error)
       toast.error('Có lỗi xảy ra khi xác nhận')
     } finally {
-      setConfirming(false)
+      setSubmittingKind(null)
+    }
+  }
+
+  const requestDeclineConfirm = (id: number) => {
+    if (!user?.email) return
+    const item = items.find(i => i.id === id)
+    if (!item || !isAwaitingSubstituteResponse(item.status)) {
+      toast.error('Yêu cầu này không ở trạng thái chờ xác nhận.')
+      return
+    }
+    setDeclineConfirmOpen(true)
+  }
+
+  const executeDecline = async (id: number) => {
+    if (!user?.email) return
+    const item = items.find(i => i.id === id)
+    if (!item || !isAwaitingSubstituteResponse(item.status)) {
+      toast.error('Yêu cầu này không ở trạng thái chờ xác nhận.')
+      setDeclineConfirmOpen(false)
+      return
+    }
+    setSubmittingKind('decline')
+    try {
+      const res = await fetch('/api/leave-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+        body: JSON.stringify({
+          action: 'substitute_decline',
+          id,
+          substitute_email: user.email,
+          decline_reason: declineReason.trim() || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        toast.success('Đã từ chối nhận lớp thay')
+        setDeclineConfirmOpen(false)
+        setSelected(null)
+        setDeclineReason('')
+        fetchData()
+        onRefreshBadge?.()
+      } else {
+        toast.error(data.error || 'Không thể từ chối')
+      }
+    } catch (error) {
+      console.error(error)
+      toast.error('Có lỗi xảy ra khi từ chối')
+    } finally {
+      setSubmittingKind(null)
     }
   }
 
@@ -314,7 +374,57 @@ export default function TabNhanLop({ onRefreshBadge }: TabNhanLopProps) {
         </div>
       </div>
 
-      <Modal open={!!selected} onClose={() => setSelected(null)} title={selected ? `Lớp nhận thay #${selected.id}` : 'Chi tiết'} size="2xl">
+      <Modal
+        open={!!selected}
+        onClose={() => {
+          setDeclineConfirmOpen(false)
+          setDeclineReason('')
+          setSelected(null)
+        }}
+        title={selected ? `Lớp nhận thay #${selected.id}` : 'Chi tiết'}
+        size="2xl"
+        footer={
+          selected && isAwaitingSubstituteResponse(selected.status) ? (
+            <div className="flex w-full flex-col gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-700" htmlFor="substitute-decline-reason">
+                  Lý do từ chối (tuỳ chọn)
+                </label>
+                <textarea
+                  id="substitute-decline-reason"
+                  value={declineReason}
+                  onChange={e => setDeclineReason(e.target.value)}
+                  disabled={busy}
+                  rows={2}
+                  maxLength={2000}
+                  placeholder="VD: Trùng lịch cá nhân, không dạy được buổi này…"
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100"
+                />
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => requestDeclineConfirm(selected.id)}
+                  className="w-full border-red-200 text-red-800 hover:bg-red-50 sm:w-auto"
+                >
+                  Từ chối nhận lớp
+                </Button>
+                <Button
+                  type="button"
+                  variant="mindx"
+                  disabled={busy}
+                  onClick={() => handleConfirm(selected.id)}
+                  className="w-full sm:w-auto"
+                >
+                  {submittingKind === 'confirm' ? 'Đang xác nhận...' : 'Xác nhận đã nhận thông tin'}
+                </Button>
+              </div>
+            </div>
+          ) : undefined
+        }
+      >
         {selected && (
           <div className="space-y-4">
             <Stepper steps={[
@@ -349,15 +459,56 @@ export default function TabNhanLop({ onRefreshBadge }: TabNhanLopProps) {
                 <p className="mt-2 text-xs text-emerald-900/80">{selected.substitute_confirmed_at ? `Thời điểm xác nhận: ${new Date(selected.substitute_confirmed_at).toLocaleString('vi-VN')}` : 'Chưa xác nhận nhận lớp.'}</p>
               </div>
             </div>
-            {selected.status !== 'substitute_confirmed' && (
-              <div className="flex justify-end">
-                <Button disabled={confirming} onClick={() => handleConfirm(selected.id)}>
-                  {confirming ? 'Đang xác nhận...' : 'Xác nhận đã nhận thông tin'}
-                </Button>
-              </div>
+            <LeaveBuNotice
+              campus={selected.campus}
+              centerId={selected.center_id}
+              campusBuEmail={selected.campus_bu_email}
+            />
+            {isAwaitingSubstituteResponse(selected.status) && (
+              <p className="text-sm text-gray-600">
+                Dùng các nút <strong className="font-semibold text-gray-800">Từ chối</strong> hoặc{' '}
+                <strong className="font-semibold text-gray-800">Xác nhận</strong> ở cuối cửa sổ này.
+              </p>
             )}
           </div>
         )}
+      </Modal>
+
+      <Modal
+        open={declineConfirmOpen}
+        onClose={() => {
+          if (!busy) setDeclineConfirmOpen(false)
+        }}
+        title="Xác nhận từ chối nhận lớp thay"
+        size="md"
+        backdropClassName="z-[100]"
+        containerClassName="z-[100]"
+        footer={
+          <div className="flex w-full flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => setDeclineConfirmOpen(false)}
+              className="w-full sm:w-auto"
+            >
+              Hủy
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => selected && void executeDecline(selected.id)}
+              className="w-full border-red-200 text-red-800 hover:bg-red-50 sm:w-auto"
+            >
+              {submittingKind === 'decline' ? 'Đang từ chối...' : 'Từ chối nhận lớp'}
+            </Button>
+          </div>
+        }
+      >
+        <p className="text-sm leading-relaxed text-gray-700">
+          Bạn từ chối nhận lớp thay? Yêu cầu sẽ trở lại trạng thái chưa có GV thay để TC/Leader phân người khác.
+        </p>
       </Modal>
     </div>
   )

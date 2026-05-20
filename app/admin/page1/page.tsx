@@ -9,7 +9,6 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import { toast } from '@/lib/app-toast'
-import { lockBodyScroll, unlockBodyScroll } from '@/lib/body-scroll-lock'
 import {
     Briefcase,
     Calendar,
@@ -28,7 +27,7 @@ import {
     UserCheck,
     Users,
 } from 'lucide-react'
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
 
 interface TeacherAvailability {
@@ -97,9 +96,69 @@ interface Teacher {
 }
 
 interface TrainingLesson {
+  id?: number
   name: string
   score: number
   link?: string
+  lesson_number?: number
+  completion_status?: string
+}
+
+const isTrainingLessonCompleted = (lesson: TrainingLesson) =>
+  lesson.completion_status === 'completed' ||
+  (!lesson.completion_status && Number(lesson.score || 0) > 0)
+
+type AdminTrainingLessonStatus = {
+  label: string
+  badgeClass: string
+  cardClass: string
+  scoreClass: string
+}
+
+const getAdminTrainingLessonStatus = (
+  lesson: TrainingLesson,
+): AdminTrainingLessonStatus => {
+  const score = Number(lesson.score || 0)
+  const inProgress = lesson.completion_status === 'in_progress'
+
+  if (score >= 10) {
+    return {
+      label: 'Xuất sắc',
+      badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      cardClass: 'bg-emerald-50/90 border-emerald-200',
+      scoreClass: 'text-emerald-700',
+    }
+  }
+  if (score >= 7 || isTrainingLessonCompleted(lesson)) {
+    return {
+      label: 'Đạt yêu cầu',
+      badgeClass: 'bg-green-100 text-green-800 border-green-200',
+      cardClass: 'bg-green-50/90 border-green-200',
+      scoreClass: 'text-green-700',
+    }
+  }
+  if (score > 0) {
+    return {
+      label: 'Chưa đạt',
+      badgeClass: 'bg-amber-100 text-amber-800 border-amber-200',
+      cardClass: 'bg-amber-50/90 border-amber-200',
+      scoreClass: 'text-amber-700',
+    }
+  }
+  if (inProgress) {
+    return {
+      label: 'Đang học',
+      badgeClass: 'bg-sky-100 text-sky-800 border-sky-200',
+      cardClass: 'bg-sky-50/90 border-sky-200',
+      scoreClass: 'text-sky-600',
+    }
+  }
+  return {
+    label: 'Chưa học',
+    badgeClass: 'bg-gray-100 text-gray-600 border-gray-200',
+    cardClass: 'bg-gray-50 border-gray-200',
+    scoreClass: 'text-gray-400',
+  }
 }
 
 interface TrainingData {
@@ -124,9 +183,17 @@ type FetchError = Error & {
   status?: number
 }
 
+type TeacherLookupCandidate = {
+  code: string
+  fullName: string
+  center: string
+}
+
 interface ProfileBundleResponse {
   success?: boolean
   exists?: boolean
+  chooseTeacher?: boolean
+  matches?: TeacherLookupCandidate[]
   teacher?: unknown
   certificates?: {
     data?: unknown[]
@@ -161,6 +228,7 @@ const AVAILABILITY_PERIOD_OPTIONS = [
   { value: 'month', label: 'Tháng' },
   { value: 'year', label: 'Năm' },
 ] as const
+const SCORE_CYCLE_MONTHS = 12
 
 // Memoized InfoItem component
 const InfoItem = memo(
@@ -182,7 +250,7 @@ const InfoItem = memo(
         <div className="text-gray-500 mt-0.5">{icon}</div>
         <div className="flex-1 min-w-0">
           <div className="text-xs text-gray-500">{label}</div>
-          <div className="text-sm font-semibold text-gray-900 truncate">
+          <div className="text-sm font-semibold text-gray-900 break-words leading-snug">
             {sensitive && !revealed ? '••••••' : value}
           </div>
         </div>
@@ -400,15 +468,37 @@ const createSecureFetcher = <TResponse,>(): ((url: string) => Promise<TResponse>
 
 const profileFetcher = createSecureFetcher<ProfileBundleResponse>()
 const scoresFetcher = createSecureFetcher<ScoresBundleResponse>()
+const trainingFetcher = createSecureFetcher<TrainingData>()
 const availabilityFetcher = createSecureFetcher<AvailabilityDataResponse>()
+
+function getCalendarMonthYear() {
+  const now = new Date()
+  return {
+    month: String(now.getMonth() + 1),
+    year: String(now.getFullYear()),
+  }
+}
 
 export default function Page1() {
   const [searchCode, setSearchCode] = useState('')
   const [submitCode, setSubmitCode] = useState('')
   const [error, setError] = useState('')
-  const [selectedMonth, setSelectedMonth] = useState('12')
-  const [selectedYear, setSelectedYear] = useState('2025')
-  const [selectedTableYear, setSelectedTableYear] = useState('2025')
+  const [selectedMonth, setSelectedMonth] = useState(
+    () => getCalendarMonthYear().month,
+  )
+  const [selectedYear, setSelectedYear] = useState(
+    () => getCalendarMonthYear().year,
+  )
+  const [selectedTableYear, setSelectedTableYear] = useState(
+    () => getCalendarMonthYear().year,
+  )
+
+  const reportYearOptions = useMemo(() => {
+    const y = new Date().getFullYear()
+    return [y, y - 1, y - 2]
+  }, [])
+
+  const lastScorePeriodTeacherCodeRef = useRef<string | null>(null)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMonth, setModalMonth] = useState<string | null>(null)
@@ -417,19 +507,13 @@ export default function Page1() {
   )
   const [modalRecords, setModalRecords] = useState<TestRecord[]>([])
 
-  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false)
-  const [feedbackRating, setFeedbackRating] = useState(0)
-  const [feedbackComment, setFeedbackComment] = useState('')
-  const [feedbackFeature, setFeedbackFeature] = useState('')
-  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
-  const [feedbackSuccessModalOpen, setFeedbackSuccessModalOpen] =
-    useState(false)
-  const [hasFeedback, setHasFeedback] = useState(false)
-  const [isFirstTimeFeedback, setIsFirstTimeFeedback] = useState(false)
   const [availabilityPeriod, setAvailabilityPeriod] = useState<AvailabilityPeriod>('month')
   const [notFoundModalOpen, setNotFoundModalOpen] = useState(false)
   const [registrationCheckModalOpen, setRegistrationCheckModalOpen] =
     useState(false)
+  const [teacherChoices, setTeacherChoices] = useState<
+    TeacherLookupCandidate[] | null
+  >(null)
 
   // Load last searched code from localStorage
   useEffect(() => {
@@ -438,11 +522,6 @@ export default function Page1() {
       setSearchCode(lastCode)
     }
 
-    // Check if user has already given feedback
-    const feedbackGiven = localStorage.getItem('userHasFeedback')
-    if (feedbackGiven === 'true') {
-      setHasFeedback(true)
-    }
   }, [])
 
   // Bundle nhanh: teacher + chứng chỉ + training (không chờ CSV/query điểm chuyên sâu–trải nghiệm)
@@ -490,6 +569,28 @@ export default function Page1() {
     revalidateIfStale: false,
   })
 
+  // Cùng origin như trang Thông tin GV — tránh gọi training-db qua PROFILE_API_ORIGIN (DB khác → 0 điểm)
+  const advancedTrainingUrl =
+    !isLoadingProfile &&
+    teacherLmsCode &&
+    profileBundle &&
+    profileBundle.success !== false &&
+    profileBundle.exists
+      ? `/api/training-db?code=${encodeURIComponent(teacherLmsCode)}`
+      : null
+
+  const {
+    data: advancedTrainingData,
+    isLoading: isLoadingAdvancedTraining,
+    error: advancedTrainingError,
+  } = useSWR<TrainingData, FetchError>(advancedTrainingUrl, trainingFetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: false,
+    dedupingInterval: 300000,
+    shouldRetryOnError: false,
+    revalidateIfStale: false,
+  })
+
   const mergedProfileBundle = useMemo<ProfileBundleResponse | undefined>(() => {
     if (!profileBundle) return undefined
     if (!scoresBundle?.success) return profileBundle
@@ -528,6 +629,20 @@ export default function Page1() {
     }
   }, [dbRow])
 
+  // Mỗi lần tìm GV mới → mặc định tháng/năm hiện tại (tránh giữ 12/2025 từ lần trước)
+  useEffect(() => {
+    if (!teacher?.code) {
+      lastScorePeriodTeacherCodeRef.current = null
+      return
+    }
+    if (lastScorePeriodTeacherCodeRef.current === teacher.code) return
+    lastScorePeriodTeacherCodeRef.current = teacher.code
+    const { month, year } = getCalendarMonthYear()
+    setSelectedMonth(month)
+    setSelectedYear(year)
+    setSelectedTableYear(year)
+  }, [teacher?.code])
+
   const {
     trainingData,
     expertiseData,
@@ -536,8 +651,7 @@ export default function Page1() {
     isLoadingTraining,
   } = useMemo(() => {
     const bundle = mergedProfileBundle
-    const trainingStat = bundle?.training?.data?.[0] ?? null
-    const trainingData = trainingStat as TrainingData | null
+    const trainingData = advancedTrainingData ?? null
     const expertiseData = bundle?.expertise?.monthlyData ?? []
     const experienceData = bundle?.experience?.monthlyData ?? []
     const scoresReady =
@@ -545,7 +659,9 @@ export default function Page1() {
       bundle !== undefined &&
       bundle !== null &&
       (!teacherLmsCode || !isLoadingScores)
-    const isLoadingTraining = isLoadingProfile
+    const isLoadingTraining =
+      isLoadingProfile ||
+      Boolean(advancedTrainingUrl && isLoadingAdvancedTraining)
     return {
       trainingData,
       expertiseData,
@@ -553,30 +669,34 @@ export default function Page1() {
       scoresLoaded: scoresReady,
       isLoadingTraining,
     }
-  }, [mergedProfileBundle, isLoadingProfile, isLoadingScores, teacherLmsCode])
+  }, [
+    advancedTrainingData,
+    advancedTrainingUrl,
+    isLoadingAdvancedTraining,
+    isLoadingProfile,
+    isLoadingScores,
+    mergedProfileBundle,
+    teacherLmsCode,
+  ])
 
-  // Show feedback modal 30 seconds after successful teacher search
   useEffect(() => {
-    if (submitCode && profileBundle && !hasFeedback && !feedbackModalOpen) {
-      const timer = setTimeout(() => {
-        setFeedbackModalOpen(true)
-        setIsFirstTimeFeedback(true) // Mark as mandatory first-time feedback
-      }, 30000)
-
-      return () => clearTimeout(timer)
+    if (profileBundle?.chooseTeacher && profileBundle.matches?.length) {
+      setTeacherChoices(profileBundle.matches)
+    } else {
+      setTeacherChoices(null)
     }
-  }, [submitCode, profileBundle, hasFeedback, feedbackModalOpen])
+  }, [profileBundle])
 
-  // Prevent body scroll when feedback modal is open
-  useEffect(() => {
-    if (!feedbackModalOpen) return
-
-    lockBodyScroll()
-
-    return () => {
-      unlockBodyScroll()
-    }
-  }, [feedbackModalOpen])
+  const trainingLessons = trainingData?.lessons ?? []
+  const trainingLessonTotalCount = trainingLessons.length
+  const completedTrainingLessonCount = trainingLessons.filter(
+    isTrainingLessonCompleted,
+  ).length
+  const trainingLessonTotalLabel = trainingLessonTotalCount || 10
+  const trainingCompletionPercent =
+    trainingLessonTotalCount > 0
+      ? (completedTrainingLessonCount / trainingLessonTotalCount) * 100
+      : 0
 
   // Fetch availability data - dynamic date range based on period
   const { fromDate: availabilityFromDate, toDate: availabilityToDate } =
@@ -678,11 +798,15 @@ export default function Page1() {
       } else if (teacher) {
         setError('')
         setNotFoundModalOpen(false)
+      } else if (teacherChoices && teacherChoices.length > 0) {
+        setError('')
+        setNotFoundModalOpen(false)
       } else if (
         submitCode.trim() &&
         !isLoadingProfile &&
         profileBundle &&
-        !profileBundle.exists
+        !profileBundle.exists &&
+        !profileBundle.chooseTeacher
       ) {
         setNotFoundModalOpen(true)
       }
@@ -690,6 +814,7 @@ export default function Page1() {
   }, [
     profileError,
     teacher,
+    teacherChoices,
     submitCode,
     isLoadingProfile,
     profileBundle,
@@ -706,14 +831,35 @@ export default function Page1() {
     localStorage.removeItem('lastSearchCode')
   }, [])
 
+  const applyCurrentMonthYear = useCallback(() => {
+    const { month, year } = getCalendarMonthYear()
+    setSelectedMonth(month)
+    setSelectedYear(year)
+    setSelectedTableYear(year)
+  }, [])
+
+  const handlePickTeacher = useCallback((candidate: TeacherLookupCandidate) => {
+    setTeacherChoices(null)
+    setError('')
+    const code = candidate.code.trim()
+    setSearchCode(code)
+    setSubmitCode(code)
+    localStorage.setItem('lastSearchCode', code)
+    lastScorePeriodTeacherCodeRef.current = null
+    applyCurrentMonthYear()
+  }, [applyCurrentMonthYear])
+
   const handleSearch = useCallback(() => {
     if (!searchCode.trim()) {
-      setError('Vui lòng nhập mã giáo viên')
+      setError('Vui lòng nhập mã hoặc tên giáo viên')
       return
     }
     setError('')
+    setTeacherChoices(null)
     const trimmedCode = searchCode.trim()
     setSubmitCode(trimmedCode)
+    lastScorePeriodTeacherCodeRef.current = null
+    applyCurrentMonthYear()
     // Save to localStorage for quick access
     localStorage.setItem('lastSearchCode', trimmedCode)
 
@@ -726,7 +872,7 @@ export default function Page1() {
         searchCode: trimmedCode,
       }),
     }).catch((err) => console.error('Analytics tracking failed:', err))
-  }, [searchCode])
+  }, [applyCurrentMonthYear, searchCode])
 
   const getScoreForMonth = useCallback(
     (data: MonthlyAverage[], month: string): string => {
@@ -751,62 +897,8 @@ export default function Page1() {
     [expertiseData, experienceData],
   )
 
-  const handleFeedbackSubmit = async () => {
-    if (feedbackRating === 0) {
-      toast.error('Vui lòng chọn số sao đánh giá')
-      return
-    }
-
-    const requestEmail = (teacher?.emailMindx || '').trim().toLowerCase()
-    if (!requestEmail) {
-      toast.error('Không tìm thấy email giáo viên để gửi phản hồi')
-      return
-    }
-
-    setFeedbackSubmitting(true)
-    try {
-      const token = localStorage.getItem('token')
-      const content = `Đánh giá ${feedbackRating}/5 sao${feedbackComment.trim() ? `. ${feedbackComment.trim()}` : ''}`
-      const response = await fetch('/api/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          requestEmail,
-          userName: teacher?.name || undefined,
-          userCode: submitCode || 'anonymous',
-          screenPath: '/admin/page1',
-          content,
-          suggestion: feedbackFeature.trim(),
-        }),
-      })
-
-      if (response.ok) {
-        setFeedbackRating(0)
-        setFeedbackComment('')
-        setFeedbackFeature('')
-        setFeedbackModalOpen(false)
-        setFeedbackSuccessModalOpen(true)
-        setIsFirstTimeFeedback(false) // Reset first-time flag after successful submission
-
-        // Save to localStorage so modal doesn't show again
-        localStorage.setItem('userHasFeedback', 'true')
-        setHasFeedback(true)
-      } else {
-        const data = await response.json().catch(() => null)
-        toast.error(data?.error || 'Gửi feedback thất bại. Vui lòng thử lại.')
-      }
-    } catch {
-      toast.error('Lỗi kết nối. Vui lòng thử lại.')
-    } finally {
-      setFeedbackSubmitting(false)
-    }
-  }
-
-  // Tính điểm theo chu kỳ 6 tháng:
-  // - Khi có điểm tháng X → áp dụng cho tháng X, X+1, X+2, X+3, X+4, X+5
+  // Tính điểm theo chu kỳ 1 năm:
+  // - Khi có điểm tháng X → áp dụng cho tháng X đến X+11
   // - Nếu trong chu kỳ có điểm MỚI CAO HƠN → reset chu kỳ từ tháng đó
   // - Sau khi hết chu kỳ mà không có điểm mới → trả về "N/A"
   const computeCycleScore = useCallback(
@@ -820,6 +912,7 @@ export default function Page1() {
           const [mStr, yStr] = d.month.split('/')
           return { idx: parseInt(yStr) * 12 + parseInt(mStr), score: d.average }
         })
+        .filter((entry) => entry.idx <= currentIdx)
         .sort((a, b) => a.idx - b.idx)
 
       if (scoredMonths.length === 0) return 'N/A'
@@ -832,21 +925,21 @@ export default function Page1() {
         if (!hasCycle) {
           hasCycle = true
           cycleScore = entry.score
-          cycleEnd = entry.idx + 5
+          cycleEnd = entry.idx + SCORE_CYCLE_MONTHS - 1
         } else if (entry.idx <= cycleEnd) {
           // Trong chu kỳ: chỉ reset nếu điểm CAO HƠN
           if (entry.score > cycleScore) {
             cycleScore = entry.score
-            cycleEnd = entry.idx + 5
+            cycleEnd = entry.idx + SCORE_CYCLE_MONTHS - 1
           }
         } else {
           // Đã qua chu kỳ: bắt đầu chu kỳ mới
           cycleScore = entry.score
-          cycleEnd = entry.idx + 5
+          cycleEnd = entry.idx + SCORE_CYCLE_MONTHS - 1
         }
       }
 
-      const cycleStart = cycleEnd - 5
+      const cycleStart = cycleEnd - SCORE_CYCLE_MONTHS + 1
       if (hasCycle && currentIdx >= cycleStart && currentIdx <= cycleEnd) {
         return cycleScore.toFixed(1)
       }
@@ -877,7 +970,7 @@ export default function Page1() {
     const currentYear = parseInt(selectedYear)
     const months: string[] = []
 
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < SCORE_CYCLE_MONTHS; i++) {
       let month = currentMonth - i
       let year = currentYear
 
@@ -1146,6 +1239,33 @@ export default function Page1() {
           </div>
         )}
 
+        {/* Chọn giáo viên khi trùng tên */}
+        {!isLoadingProfile &&
+          teacherChoices &&
+          teacherChoices.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-800">
+                Tìm thấy {teacherChoices.length} giáo viên — chọn đúng người:
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {teacherChoices.map((c) => (
+                  <button
+                    key={c.code}
+                    type="button"
+                    onClick={() => handlePickTeacher(c)}
+                    className="text-left rounded-xl border border-gray-200 bg-white p-3 shadow-sm transition-all hover:border-[#a1001f] hover:shadow-md focus:outline-none focus:ring-2 focus:ring-[#a1001f]/30"
+                  >
+                    <p className="font-semibold text-gray-900">{c.fullName}</p>
+                    <p className="text-xs text-gray-600 mt-0.5">Mã: {c.code}</p>
+                    {c.center ? (
+                      <p className="text-xs text-gray-500 mt-1">{c.center}</p>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
         {/* Empty State */}
         {!submitCode && !error && (
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 sm:p-12 text-center">
@@ -1212,7 +1332,7 @@ export default function Page1() {
                   {teacher.name.split(' ').pop()?.charAt(0)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-base sm:text-lg font-bold truncate">
+                  <h2 className="text-base sm:text-lg font-bold break-words text-pretty leading-snug">
                     {teacher.name}
                   </h2>
                   <p className="text-xs opacity-90">{teacher.code}</p>
@@ -1299,7 +1419,7 @@ export default function Page1() {
                   >
                     {Array.from({ length: 12 }, (_, i) => i + 1).map(
                       (month) => (
-                        <option key={month} value={month}>
+                        <option key={month} value={String(month)}>
                           {month}
                         </option>
                       ),
@@ -1316,9 +1436,11 @@ export default function Page1() {
                     onChange={(e) => setSelectedYear(e.target.value)}
                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg bg-[#f3f3f3] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/30 focus:border-[#a1001f]"
                   >
-                    <option value="2024">2024</option>
-                    <option value="2025">2025</option>
-                    <option value="2026">2026</option>
+                    {reportYearOptions.map((year) => (
+                      <option key={year} value={String(year)}>
+                        {year}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -1358,9 +1480,11 @@ export default function Page1() {
                   onChange={(e) => setSelectedTableYear(e.target.value)}
                   className="px-2 py-1 text-xs bg-white text-gray-900 border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-white flex-1 sm:flex-initial"
                 >
-                  <option value="2024">2024</option>
-                  <option value="2025">2025</option>
-                  <option value="2026">2026</option>
+                  {reportYearOptions.map((year) => (
+                    <option key={year} value={String(year)}>
+                      {year}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -1400,15 +1524,20 @@ export default function Page1() {
                 </div>
               ) : (
                 /* Actual Table */
-                <>
-                  {(() => {
+                <div className="flex flex-col gap-6">
+                  {[0, 1].map((offset) => {
+                    const yearDisplay = parseInt(selectedTableYear) - offset
                     const months = Array.from(
                       { length: 12 },
-                      (_, i) => `${i + 1}/${selectedTableYear}`,
+                      (_, i) => `${i + 1}/${yearDisplay}`,
                     )
 
                     return (
-                      <Table className="w-full text-[10px] sm:text-xs min-w-[600px]">
+                      <div key={yearDisplay} className="space-y-2">
+                        <h4 className="font-bold text-gray-800 text-sm px-1">
+                          Năm {yearDisplay}
+                        </h4>
+                        <Table className="w-full text-[10px] sm:text-xs min-w-[600px]">
                         <TableHeader>
                           <TableRow className="border-b border-gray-900">
                             <TableHead className="text-left font-bold text-gray-900 min-w-[100px] sticky left-0 bg-white z-10">
@@ -1575,8 +1704,9 @@ export default function Page1() {
                           </TableRow>
                         </TableBody>
                       </Table>
+                      </div>
                     )
-                  })()}
+                  })}
                   {scoresLoaded && (
                     <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row gap-1.5 sm:gap-4 text-[10px] sm:text-xs text-gray-600">
                       <div className="flex items-center gap-1">
@@ -1589,7 +1719,7 @@ export default function Page1() {
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="inline-block w-3 h-3 sm:w-4 sm:h-4 bg-orange-50 border border-dashed border-orange-300 rounded flex-shrink-0"></span>
-                        <span>Điểm kế thừa chu kỳ (6 tháng)</span>
+                        <span>Điểm kế thừa chu kỳ (1 năm)</span>
                       </div>
                       <div className="flex items-center gap-1">
                         <span className="inline-block w-3 h-3 sm:w-4 sm:h-4 bg-gray-200 border border-gray-300 rounded flex-shrink-0"></span>
@@ -1597,7 +1727,7 @@ export default function Page1() {
                       </div>
                     </div>
                   )}
-                </>
+                </div>
               )}
             </div>
           </div>
@@ -1618,7 +1748,7 @@ export default function Page1() {
                     Đào tạo nâng cao
                   </h3>
                   <p className="text-xs sm:text-sm opacity-90 mt-0.5">
-                    Điểm học trực tuyến - 10 bài học
+                    Điểm học trực tuyến - {trainingLessonTotalLabel} bài học
                   </p>
                 </div>
               </div>
@@ -1637,6 +1767,16 @@ export default function Page1() {
                       ))}
                     </div>
                   </div>
+                </div>
+              ) : advancedTrainingError ? (
+                <div className="text-center py-8 text-amber-800">
+                  <p className="text-sm font-medium">
+                    Không tải được điểm đào tạo nâng cao
+                  </p>
+                  <p className="text-xs mt-1 text-amber-700/90">
+                    {(advancedTrainingError.info as { error?: string })?.error ||
+                      'Vui lòng thử tìm lại hoặc liên hệ quản trị.'}
+                  </p>
                 </div>
               ) : !trainingData ? (
                 /* No Data Message */
@@ -1659,16 +1799,14 @@ export default function Page1() {
                       <div className="text-right text-xs text-gray-600">
                         <div>
                           Hoàn thành:{' '}
-                          {trainingData.lessons?.filter((lesson) => lesson.score > 0)
-                            .length || 0}
-                          /10
+                          {completedTrainingLessonCount}/{trainingLessonTotalLabel}
                         </div>
                         <div className="mt-1">
                           <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-[#a1001f] rounded-full transition-all"
                               style={{
-                                width: `${((trainingData.lessons?.filter((lesson) => lesson.score > 0).length || 0) / 10) * 100}%`,
+                                width: `${trainingCompletionPercent}%`,
                               }}
                             />
                           </div>
@@ -1679,79 +1817,39 @@ export default function Page1() {
 
                   {/* Lessons Grid */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {(trainingData.lessons || []).map((lesson, idx) => {
-                      const score = lesson.score || 0
+                    {trainingLessons.map((lesson, idx) => {
+                      const score = Number(lesson.score || 0)
                       const hasScore = score > 0
-                      const isPerfect = score >= 10
-                      const notStarted = !hasScore
-
-                      const scoreColor = hasScore
-                        ? 'text-[#a1001f]'
-                        : 'text-gray-400'
-                      const bgColor = hasScore
-                        ? 'bg-[#f3f3f3] border-gray-300'
-                        : 'bg-gray-50 border-gray-200'
+                      const status = getAdminTrainingLessonStatus(lesson)
 
                       return (
                         <div
-                          key={idx}
-                          className={`border rounded-lg p-3 transition-all hover:shadow-md ${bgColor}`}
+                          key={lesson.id ?? idx}
+                          className={`border rounded-lg p-3 ${status.cardClass}`}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
                               <div className="text-xs font-bold text-[#a1001f] mb-1">
-                                Lesson {idx + 1}
+                                Lesson {lesson.lesson_number ?? idx + 1}
                               </div>
                               <div className="text-xs text-gray-700 line-clamp-2 mb-2">
                                 {lesson.name.replace(/^Lesson \d+:\s*/, '')}
                               </div>
 
-                              {/* Buttons - Show only for lessons not perfect (< 10 points) */}
-                              {!isPerfect &&
-                                (lesson.link ? (
-                                  <a
-                                    href={lesson.link}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className={`inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded transition-colors ${
-                                      notStarted
-                                        ? 'bg-[#a1001f] hover:bg-[#870019] text-white cursor-pointer'
-                                        : 'bg-orange-500 hover:bg-orange-600 text-white cursor-pointer'
-                                    }`}
-                                  >
-                                    <svg
-                                      className="w-3 h-3"
-                                      fill="none"
-                                      stroke="currentColor"
-                                      viewBox="0 0 24 24"
-                                    >
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                                      />
-                                      <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                                      />
-                                    </svg>
-                                    {notStarted ? 'Xem đào tạo' : 'Cải thiện điểm'}
-                                  </a>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 px-2 py-1 text-[10px] rounded bg-gray-300 text-gray-500 cursor-not-allowed">
-                                    Chưa có link
-                                  </span>
-                                ))}
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 text-[10px] font-medium rounded border ${status.badgeClass}`}
+                              >
+                                {status.label}
+                              </span>
                             </div>
                             <div className="text-right flex-shrink-0">
-                              <div className={`text-xl font-bold ${scoreColor}`}>
-                                {hasScore ? score?.toFixed(1) || '—' : '—'}
+                              <div
+                                className={`text-xl font-bold ${status.scoreClass}`}
+                              >
+                                {hasScore ? score.toFixed(1) : '—'}
                               </div>
                               <div className="text-[10px] text-gray-500">
-                                {hasScore ? '/10' : 'Chưa học'}
+                                {hasScore ? '/10' : status.label}
                               </div>
                             </div>
                           </div>
@@ -1762,13 +1860,25 @@ export default function Page1() {
 
                   {/* Legend */}
                   <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="flex flex-wrap gap-4 text-xs text-gray-600">
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-gray-600">
                       <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 bg-[#f3f3f3] border border-gray-300 rounded"></div>
-                        <span>Đã hoàn thành</span>
+                        <span className="w-4 h-4 rounded border bg-emerald-100 border-emerald-200" />
+                        <span>Xuất sắc (10)</span>
                       </div>
                       <div className="flex items-center gap-1">
-                        <div className="w-4 h-4 bg-gray-100 border border-gray-200 rounded"></div>
+                        <span className="w-4 h-4 rounded border bg-green-100 border-green-200" />
+                        <span>Đạt yêu cầu (≥7)</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="w-4 h-4 rounded border bg-amber-100 border-amber-200" />
+                        <span>Chưa đạt</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="w-4 h-4 rounded border bg-sky-100 border-sky-200" />
+                        <span>Đang học</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="w-4 h-4 rounded border bg-gray-100 border-gray-200" />
                         <span>Chưa học</span>
                       </div>
                     </div>
@@ -2301,7 +2411,7 @@ export default function Page1() {
                 className={`${modalType === 'expertise' ? 'bg-gradient-to-r from-blue-600 to-blue-800' : 'bg-gradient-to-r from-purple-600 to-purple-800'} text-white px-3 sm:px-6 py-3 sm:py-5 flex items-center justify-between gap-2`}
               >
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-xl font-bold truncate">
+                  <h3 className="text-base sm:text-xl font-bold break-words text-pretty leading-snug">
                     Test T{modalMonth}
                   </h3>
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 mt-1 sm:mt-2">
@@ -2424,7 +2534,7 @@ export default function Page1() {
                         </TableCell>
                         <TableCell>
                           {record.emailExplanation ? (
-                            <span className="inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-orange-50 text-orange-700 rounded-md text-[10px] sm:text-xs font-medium truncate max-w-[150px] sm:max-w-full">
+                            <span className="inline-flex min-w-0 max-w-[150px] items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 bg-orange-50 text-orange-700 rounded-md text-[10px] sm:text-xs font-medium break-words leading-snug sm:max-w-full">
                               <svg
                                 className="w-3 h-3 flex-shrink-0"
                                 fill="currentColor"
@@ -2433,7 +2543,7 @@ export default function Page1() {
                                 <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                                 <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                               </svg>
-                              <span className="truncate">
+                              <span className="min-w-0 break-words">
                                 {record.emailExplanation}
                               </span>
                             </span>
@@ -2651,213 +2761,6 @@ export default function Page1() {
           </div>
         )}
 
-        {/* Floating Feedback Button */}
-        <button
-          onClick={() => {
-            setFeedbackModalOpen(true)
-            setIsFirstTimeFeedback(false) // Manual click is not mandatory
-          }}
-          disabled={feedbackModalOpen}
-          className="fixed bottom-6 right-6 w-14 h-14 bg-gray-900 hover:bg-gray-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center z-40 group disabled:opacity-50 disabled:cursor-not-allowed"
-          title="Gửi phản hồi"
-        >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
-            />
-          </svg>
-        </button>
-
-        {/* Feedback Modal */}
-        {feedbackModalOpen && (
-          <div
-            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                setFeedbackModalOpen(false)
-                setFeedbackRating(0)
-                setFeedbackComment('')
-                setFeedbackFeature('')
-              }
-            }}
-          >
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
-              <div className="bg-[#a1001f] text-white px-4 py-3 rounded-t-lg flex items-center justify-between">
-                <h3 className="font-semibold">
-                  {isFirstTimeFeedback
-                    ? 'Góp ý để cải thiện hệ thống'
-                    : 'Gửi phản hồi'}
-                </h3>
-                <button
-                  onClick={() => {
-                    setFeedbackModalOpen(false)
-                    setFeedbackRating(0)
-                    setFeedbackComment('')
-                    setFeedbackFeature('')
-                  }}
-                  className="hover:bg-white/20 rounded p-1"
-                  title="Đánh giá sau"
-                  aria-label="Đóng"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-
-              <div className="p-5 space-y-5">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-3">
-                    Đánh giá hệ thống <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex items-center gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setFeedbackRating(star)}
-                        className="transition-all hover:scale-110"
-                      >
-                        <svg
-                          className={`w-10 h-10 ${
-                            star <= feedbackRating
-                              ? 'text-yellow-400 fill-yellow-400'
-                              : 'text-gray-300'
-                          }`}
-                          fill={
-                            star <= feedbackRating ? 'currentColor' : 'none'
-                          }
-                          stroke="currentColor"
-                          strokeWidth={1.5}
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
-                          />
-                        </svg>
-                      </button>
-                    ))}
-                    {feedbackRating > 0 && (
-                      <span className="ml-2 text-sm font-medium text-gray-700">
-                        ({feedbackRating} {feedbackRating === 1 ? 'sao' : 'sao'}
-                        )
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Nhận xét về hệ thống
-                  </label>
-                  <textarea
-                    value={feedbackComment}
-                    onChange={(e) => setFeedbackComment(e.target.value)}
-                    placeholder="Chia sẻ trải nghiệm của bạn khi sử dụng hệ thống..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none text-sm"
-                    rows={3}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2">
-                    Đề xuất tính năng mới
-                  </label>
-                  <textarea
-                    value={feedbackFeature}
-                    onChange={(e) => setFeedbackFeature(e.target.value)}
-                    placeholder="Bạn muốn hệ thống có thêm tính năng gì?"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900 resize-none text-sm"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-2">
-                  {!isFirstTimeFeedback && (
-                    <button
-                      onClick={() => {
-                        setFeedbackModalOpen(false)
-                        setFeedbackRating(0)
-                        setFeedbackComment('')
-                        setFeedbackFeature('')
-                      }}
-                      className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 font-medium"
-                    >
-                      Hủy
-                    </button>
-                  )}
-                  <button
-                    onClick={handleFeedbackSubmit}
-                    disabled={feedbackSubmitting || feedbackRating === 0}
-                    className={`px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium ${
-                      isFirstTimeFeedback ? 'w-full' : 'flex-1'
-                    }`}
-                  >
-                    {feedbackSubmitting ? 'Đang gửi...' : 'Gửi phản hồi'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Feedback Success Modal */}
-        {feedbackSuccessModalOpen && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-md w-full animate-fadeIn">
-              <div className="p-6 text-center">
-                <div className="flex items-center justify-center w-20 h-20 mx-auto bg-green-100 rounded-full mb-4">
-                  <svg
-                    className="w-10 h-10 text-green-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                  Cảm ơn bạn!
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Phản hồi của bạn đã được ghi nhận. Chúng tôi sẽ sử dụng ý kiến
-                  này để cải thiện hệ thống.
-                </p>
-                <button
-                  onClick={() => setFeedbackSuccessModalOpen(false)}
-                  className="w-full px-6 py-3 bg-green-600 text-white rounded-lg text-base font-medium hover:bg-green-700 transition-colors"
-                >
-                  Đóng
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )

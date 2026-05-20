@@ -1571,6 +1571,40 @@ const migrations: Migration[] = [
     `,
   },
   {
+    name: 'V43_add_watched_status_to_training',
+    version: 43,
+    sql: `
+      -- 1. Cập nhật ràng buộc CHECK để hỗ trợ trạng thái 'watched'
+      ALTER TABLE training_teacher_video_scores 
+      DROP CONSTRAINT IF EXISTS training_teacher_video_scores_completion_status_check;
+      
+      ALTER TABLE training_teacher_video_scores 
+      ADD CONSTRAINT training_teacher_video_scores_completion_status_check 
+      CHECK (completion_status IN ('not_started', 'in_progress', 'watched', 'completed'));
+
+      -- 2. Chuyển các bản ghi đang là 'completed' nhưng chưa có điểm (score = 0) sang 'watched'
+      -- Điều này giúp sửa dữ liệu cũ bị sai lệch
+      UPDATE training_teacher_video_scores
+      SET completion_status = 'watched'
+      WHERE completion_status = 'completed' AND (score IS NULL OR score < 7);
+    `,
+  },
+  {
+    name: 'V70_leave_requests_center_snapshot',
+    version: 70,
+    sql: `
+      DO $$
+      BEGIN
+        IF to_regclass('public.leave_requests') IS NOT NULL THEN
+          ALTER TABLE leave_requests
+            ADD COLUMN IF NOT EXISTS center_id INTEGER REFERENCES centers(id);
+          ALTER TABLE leave_requests
+            ADD COLUMN IF NOT EXISTS campus_bu_email VARCHAR(255);
+        END IF;
+      END $$;
+    `,
+  },
+  {
     name: 'V70_centers_address_map_link',
     version: 70,
     sql: `
@@ -1917,6 +1951,51 @@ const migrations: Migration[] = [
         END IF;
       END
       $$;
+    `,
+  },
+  {
+    name: 'V77_system_events_tracking',
+    version: 77,
+    sql: `
+      -- V77: Core tracking table used by metrics endpoints and client-side event batching
+      CREATE TABLE IF NOT EXISTS system_events (
+        id BIGSERIAL PRIMARY KEY,
+        event_name VARCHAR(100) NOT NULL,
+        user_id VARCHAR(255),
+        session_id VARCHAR(100),
+        properties JSONB NOT NULL DEFAULT '{}'::jsonb,
+        user_agent VARCHAR(500) DEFAULT '',
+        ip_address VARCHAR(45),
+        created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_system_events_event_name_created_at
+        ON system_events(event_name, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_system_events_created_at
+        ON system_events(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_system_events_user_id_created_at
+        ON system_events(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_system_events_session_id_created_at
+        ON system_events(session_id, created_at DESC);
+    `,
+  },
+  {
+    name: 'V78_teacher_avatars',
+    version: 78,
+    sql: `
+      CREATE TABLE IF NOT EXISTS teacher_avatars (
+        teacher_email VARCHAR(255) PRIMARY KEY,
+        avatar_url TEXT NOT NULL,
+        avatar_storage_key TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      DROP TRIGGER IF EXISTS trg_teacher_avatars_updated_at ON teacher_avatars;
+      CREATE TRIGGER trg_teacher_avatars_updated_at
+        BEFORE UPDATE ON teacher_avatars
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
     `,
   },
 ]

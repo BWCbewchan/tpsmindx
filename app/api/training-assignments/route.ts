@@ -1,4 +1,8 @@
 import pool from '@/lib/db';
+import {
+  effectiveCompletionForGroupedLesson,
+  type TrainingVideoScoreRow,
+} from '@/lib/training-effective-video-completion';
 import { deleteObject, parsePublicUrl } from '@/lib/supabase-s3';
 import { NextResponse } from 'next/server';
 
@@ -20,11 +24,27 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const video_id = searchParams.get('video_id');
-    const teacher_code = searchParams.get('teacher_code');
+    // Normalize teacher_code: lowercase + trim để tránh case mismatch
+    const teacher_code = (searchParams.get('teacher_code') || '').toLowerCase().trim() || null;
     // status column đã bị xóa (migration V42) — không dùng nữa
 
+    const quizEvidenceByVideoQuery = `
+      SELECT DISTINCT tva.video_id
+      FROM training_assignment_submissions tas
+      INNER JOIN training_video_assignments tva ON tva.id = tas.assignment_id
+      WHERE tas.teacher_code = $1
+        AND tva.video_id IS NOT NULL
+        AND (
+          tas.status = 'graded'
+          OR (tas.submitted_at IS NOT NULL AND tas.status IN ('submitted', 'graded'))
+        )
+    `;
+
     let query = `
-      SELECT a.*, v.title as video_title, v.lesson_number
+      SELECT 
+        a.*, 
+        v.title as video_title, 
+        v.lesson_number
       FROM training_video_assignments a
       LEFT JOIN training_videos v ON a.video_id = v.id
     `;
@@ -46,7 +66,16 @@ export async function GET(request: Request) {
 
     query += ' ORDER BY v.lesson_number ASC NULLS LAST, a.created_at DESC';
 
-    const result = await pool.query(query, params);
+    const [result, quizEvidenceResult] = await Promise.all([
+      pool.query(query, params),
+      teacher_code
+        ? pool.query(quizEvidenceByVideoQuery, [teacher_code])
+        : Promise.resolve({ rows: [] as { video_id: number }[] }),
+    ]);
+
+    const quizEvidenceVideoIds = new Set<number>(
+      (quizEvidenceResult.rows as { video_id: number }[]).map((r) => r.video_id),
+    );
 
     // Lấy số lượng câu hỏi cho mỗi assignment
     if (result.rows.length > 0) {
@@ -72,7 +101,8 @@ export async function GET(request: Request) {
           `SELECT DISTINCT ON (assignment_id) *
            FROM training_assignment_submissions
            WHERE teacher_code = $1 AND assignment_id = ANY($2)
-           ORDER BY assignment_id, submitted_at DESC`,
+             AND status IN ('submitted', 'graded')
+           ORDER BY assignment_id, submitted_at DESC NULLS LAST`,
           [teacher_code, assignmentIds]
         );
         submissionsResult.rows.forEach(sub => {
@@ -80,10 +110,124 @@ export async function GET(request: Request) {
         });
       }
 
-      result.rows.forEach(row => {
-        row.question_count = questionCounts[row.id] || 0;
+      type VideoMetaRow = {
+        id: number
+        video_group_id: string | null
+        chunk_index: number | null
+        duration_minutes: number | null
+        duration_seconds: number | null
+      };
+
+      let expandedVideoRows: VideoMetaRow[] = [];
+      const scoresMapAll = new Map<number, TrainingVideoScoreRow>();
+
+      if (teacher_code) {
+        const assignmentVideoIds = [
+          ...new Set(
+            result.rows
+              .map((r: { video_id?: number | null }) => r.video_id)
+              .filter((id): id is number => typeof id === 'number' && id > 0),
+          ),
+        ];
+
+        if (assignmentVideoIds.length > 0) {
+          const expandedRes = await pool.query<VideoMetaRow>(
+            `SELECT id, video_group_id, chunk_index, duration_minutes, duration_seconds
+             FROM training_videos
+             WHERE id = ANY($1::int[])
+                OR video_group_id IN (
+                  SELECT DISTINCT video_group_id FROM training_videos
+                  WHERE id = ANY($1::int[]) AND video_group_id IS NOT NULL
+                )
+             ORDER BY video_group_id NULLS LAST, chunk_index NULLS LAST, id`,
+            [assignmentVideoIds],
+          );
+          expandedVideoRows = expandedRes.rows;
+
+          const allScoreVideoIds = [
+            ...new Set(expandedVideoRows.map((r) => r.id)),
+          ];
+          if (allScoreVideoIds.length > 0) {
+            const scoresRes = await pool.query(
+              `SELECT video_id, score, completion_status, completed_at, time_spent_seconds,
+                      COALESCE(server_time_seconds, 0) AS server_time_seconds,
+                      last_heartbeat_at
+               FROM training_teacher_video_scores
+               WHERE teacher_code = $1 AND video_id = ANY($2::int[])`,
+              [teacher_code, allScoreVideoIds],
+            );
+            scoresRes.rows.forEach(
+              (srow: {
+                video_id: number
+                score: unknown
+                completion_status: string
+                completed_at: unknown
+                time_spent_seconds: number | null
+                server_time_seconds: number | null
+                last_heartbeat_at: string | Date | null
+              }) => {
+                scoresMapAll.set(srow.video_id, {
+                  score: parseFloat(String(srow.score)) || 0,
+                  completion_status: srow.completion_status,
+                  completed_at: srow.completed_at as string | Date | null,
+                  time_spent_seconds: srow.time_spent_seconds || 0,
+                  server_time_seconds: Number(srow.server_time_seconds) || 0,
+                  last_heartbeat_at: srow.last_heartbeat_at ?? null,
+                });
+              },
+            );
+          }
+        }
+      }
+
+      const metaById = new Map<number, VideoMetaRow>(
+        expandedVideoRows.map((r) => [r.id, r]),
+      );
+
+      result.rows.forEach((row: Record<string, unknown>) => {
+        row.question_count = questionCounts[row.id as number] || 0;
         if (teacher_code) {
-          row.recent_submission = submissionsMap[row.id] || null;
+          row.recent_submission = submissionsMap[row.id as number] || null;
+
+          const vid = row.video_id as number | null | undefined;
+          if (vid == null || vid <= 0) {
+            row.video_completion_status = null;
+            return;
+          }
+
+          const anchor = metaById.get(vid);
+          if (!anchor) {
+            row.video_completion_status = 'not_started';
+            return;
+          }
+
+          const sameGroup = expandedVideoRows.filter((r) =>
+            anchor.video_group_id
+              ? r.video_group_id === anchor.video_group_id
+              : r.id === anchor.id,
+          );
+          const sorted = [...sameGroup].sort((a, b) => {
+            const left = a.chunk_index ?? 0;
+            const right = b.chunk_index ?? 0;
+            if (left !== right) return left - right;
+            return a.id - b.id;
+          });
+          const sourceVideoIds = sorted.map((r) => r.id);
+          const chunkMetasSorted = sorted.map((r) => ({
+            id: r.id,
+            duration_seconds: r.duration_seconds,
+            duration_minutes: r.duration_minutes,
+          }));
+
+          const effective = effectiveCompletionForGroupedLesson({
+            sourceVideoIds,
+            chunkMetasSorted,
+            scoresMap: scoresMapAll,
+            quizEvidenceVideoIds,
+          });
+          row.video_completion_status = effective.completion_status;
+        } else {
+          row.video_completion_status = null;
         }
       });
     }

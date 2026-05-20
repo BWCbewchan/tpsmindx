@@ -36,6 +36,21 @@ export async function POST(
 
             const postId = post.id;
 
+            let finalUserName = userName;
+            if (!finalUserName) {
+                try {
+                    const rawSession = request.cookies.get('tps_session')?.value;
+                    if (rawSession) {
+                        const session = await verifySessionCookieValue(rawSession);
+                        if (session?.email) {
+                            finalUserName = session.email.split('@')[0];
+                        }
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            }
+
             await client.query('BEGIN');
 
             // Check if user already liked the post
@@ -64,9 +79,10 @@ export async function POST(
                     savedReaction = null;
                     action = 'unliked';
                 } else {
+                    // Update reaction, ensure we also update user_name if we have it now but it was null before
                     await client.query(
-                        'UPDATE communication_likes SET reaction = $1 WHERE post_id = $2 AND user_id = $3',
-                        [reaction, postId, userId]
+                        'UPDATE communication_likes SET reaction = $1, user_name = COALESCE(user_name, $4) WHERE post_id = $2 AND user_id = $3',
+                        [reaction, postId, userId, finalUserName || 'Ẩn danh']
                     );
                     isLiked = true;
                     savedReaction = reaction;
@@ -75,7 +91,7 @@ export async function POST(
             } else {
                 await client.query(
                     'INSERT INTO communication_likes (post_id, user_id, reaction, user_name) VALUES ($1, $2, $3, $4)',
-                    [postId, userId, reaction || 'like', userName || null]
+                    [postId, userId, reaction || 'like', finalUserName || 'Ẩn danh']
                 );
                 await client.query(
                     'UPDATE communications SET like_count = like_count + 1 WHERE id = $1',

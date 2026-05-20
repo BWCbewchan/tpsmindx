@@ -4,6 +4,10 @@ import {
     requireBearerSession,
 } from '@/lib/datasource-api-auth';
 import pool from '@/lib/db';
+import {
+  effectiveCompletionForGroupedLesson,
+  type TrainingVideoScoreRow,
+} from '@/lib/training-effective-video-completion';
 import { NextRequest, NextResponse } from 'next/server';
 
 // GET: Fetch teacher submissions with filters
@@ -13,7 +17,8 @@ async function handleTrainingSubmissionsGet(request: NextRequest) {
     if (!auth.ok) return auth.response;
 
     const { searchParams } = new URL(request.url);
-    const teacherCode = searchParams.get('teacher_code');
+    // Normalize teacher_code: lowercase + trim để tránh case mismatch
+    const teacherCode = (searchParams.get('teacher_code') || '').toLowerCase().trim() || null;
     const assignmentId = searchParams.get('assignment_id');
     const status = searchParams.get('status');
     const latest = searchParams.get('latest'); // Get only the latest submission
@@ -51,7 +56,7 @@ async function handleTrainingSubmissionsGet(request: NextRequest) {
     let paramIndex = 1;
 
     if (teacherCode) {
-      query += ` AND tas.teacher_code = $${paramIndex}`;
+      query += ` AND LOWER(TRIM(tas.teacher_code)) = LOWER(TRIM($${paramIndex}))`;
       values.push(teacherCode);
       paramIndex++;
     }
@@ -101,10 +106,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
-      teacher_code,
       assignment_id,
       attempt_number = 1
     } = body;
+    // Normalize teacher_code: lowercase + trim để tránh case mismatch
+    const teacher_code: string = (body.teacher_code || '').toString().toLowerCase().trim();
     const { teacher_info } = body;
 
     if (!teacher_code || !assignment_id) {
@@ -122,6 +128,137 @@ export async function POST(request: NextRequest) {
         String(teacher_code),
       );
       if (denied) return denied;
+    }
+
+    // Hoàn thành video hiệu dụng (gộp chunk + heartbeat), khớp /api/training-db và /api/training-assignments
+    const assignmentMeta = await pool.query<{
+      video_id: number | null
+      title: string | null
+    }>(
+      `SELECT tva.video_id, tv.title
+       FROM training_video_assignments tva
+       LEFT JOIN training_videos tv ON tva.video_id = tv.id
+       WHERE tva.id = $1`,
+      [assignment_id],
+    );
+
+    if (assignmentMeta.rows.length > 0) {
+      const metaRow = assignmentMeta.rows[0];
+      const anchorVid = metaRow.video_id;
+      if (anchorVid != null && anchorVid > 0) {
+        const quizEvidenceByVideoQuery = `
+          SELECT DISTINCT tva.video_id
+          FROM training_assignment_submissions tas
+          INNER JOIN training_video_assignments tva ON tva.id = tas.assignment_id
+          WHERE tas.teacher_code = $1
+            AND tva.video_id IS NOT NULL
+            AND (
+              tas.status = 'graded'
+              OR (tas.submitted_at IS NOT NULL AND tas.status IN ('submitted', 'graded'))
+            )
+        `;
+        const [expandedRes, quizEvidenceResult] = await Promise.all([
+          pool.query<{
+            id: number
+            video_group_id: string | null
+            chunk_index: number | null
+            duration_minutes: number | null
+            duration_seconds: number | null
+          }>(
+            `SELECT id, video_group_id, chunk_index, duration_minutes, duration_seconds
+             FROM training_videos
+             WHERE id = ANY($1::int[])
+                OR video_group_id IN (
+                  SELECT DISTINCT video_group_id FROM training_videos
+                  WHERE id = ANY($1::int[]) AND video_group_id IS NOT NULL
+                )
+             ORDER BY video_group_id NULLS LAST, chunk_index NULLS LAST, id`,
+            [[anchorVid]],
+          ),
+          pool.query(quizEvidenceByVideoQuery, [teacher_code]),
+        ]);
+
+        const quizEvidenceVideoIds = new Set<number>(
+          (quizEvidenceResult.rows as { video_id: number }[]).map(
+            (r) => r.video_id,
+          ),
+        );
+
+        const expandedVideoRows = expandedRes.rows;
+        const metaById = new Map(expandedVideoRows.map((r) => [r.id, r]));
+        const anchor = metaById.get(anchorVid);
+
+        if (anchor) {
+          const sameGroup = expandedVideoRows.filter((r) =>
+            anchor.video_group_id
+              ? r.video_group_id === anchor.video_group_id
+              : r.id === anchor.id,
+          );
+          const sorted = [...sameGroup].sort((a, b) => {
+            const left = a.chunk_index ?? 0;
+            const right = b.chunk_index ?? 0;
+            if (left !== right) return left - right;
+            return a.id - b.id;
+          });
+          const sourceVideoIds = sorted.map((r) => r.id);
+          const chunkMetasSorted = sorted.map((r) => ({
+            id: r.id,
+            duration_seconds: r.duration_seconds,
+            duration_minutes: r.duration_minutes,
+          }));
+
+          const allScoreVideoIds = [...new Set(sourceVideoIds)];
+          const scoresMapAll = new Map<number, TrainingVideoScoreRow>();
+          if (allScoreVideoIds.length > 0) {
+            const scoresRes = await pool.query(
+              `SELECT video_id, score, completion_status, completed_at, time_spent_seconds,
+                      COALESCE(server_time_seconds, 0) AS server_time_seconds,
+                      last_heartbeat_at
+               FROM training_teacher_video_scores
+               WHERE teacher_code = $1 AND video_id = ANY($2::int[])`,
+              [teacher_code, allScoreVideoIds],
+            );
+            scoresRes.rows.forEach(
+              (srow: {
+                video_id: number
+                score: unknown
+                completion_status: string
+                completed_at: unknown
+                time_spent_seconds: number | null
+                server_time_seconds: number | null
+                last_heartbeat_at: string | Date | null
+              }) => {
+                scoresMapAll.set(srow.video_id, {
+                  score: parseFloat(String(srow.score)) || 0,
+                  completion_status: srow.completion_status,
+                  completed_at: srow.completed_at as string | Date | null,
+                  time_spent_seconds: srow.time_spent_seconds || 0,
+                  server_time_seconds: Number(srow.server_time_seconds) || 0,
+                  last_heartbeat_at: srow.last_heartbeat_at ?? null,
+                });
+              },
+            );
+          }
+
+          const effective = effectiveCompletionForGroupedLesson({
+            sourceVideoIds,
+            chunkMetasSorted,
+            scoresMap: scoresMapAll,
+            quizEvidenceVideoIds,
+          });
+
+          // Cho phép làm bài nếu đã xem video (watched) hoặc đã hoàn thành (completed)
+          if (!['watched', 'completed'].includes(effective.completion_status)) {
+            const videoTitle = metaRow.title || 'bài học';
+            return NextResponse.json(
+              {
+                error: `Bạn cần hoàn thành xem video "${videoTitle}" trước khi làm bài tập này.`,
+              },
+              { status: 403 },
+            );
+          }
+        }
+      }
     }
 
     // Sync teacher info if provided
@@ -350,29 +487,17 @@ export async function PUT(request: NextRequest) {
         );
       }
 
-      // Tính điểm dựa trên số câu đúng / tổng câu hỏi, thang 10
-      const qResult = await pool.query(`
-        SELECT (SELECT COUNT(*) FROM training_assignment_questions q WHERE q.assignment_id = ta.id) as total_questions 
-        FROM training_video_assignments ta 
-        WHERE ta.id = (SELECT assignment_id FROM training_assignment_submissions WHERE id = $1)
-      `, [id]);
-      
-      const totalQuestions = parseInt(qResult.rows[0]?.total_questions) || 1;
+      // Frontend đã tính điểm theo thang 10 (tổng points của câu đúng).
+      // Clamp về [0, 10] và làm tròn 2 chữ số thập phân.
       const passingScore = 7.00; // Ngưỡng đạt cố định 7/10
-
-      // Assume parsedScore comes from frontend as the raw correct answers count (e.g. 16 for 16/25)
-      let normalizedScore = (parsedScore / totalQuestions) * 10;
-      normalizedScore = Math.round(normalizedScore * 100) / 100;
-      const pointsPerQuestion = 10 / totalQuestions;
+      const normalizedScore = Math.round(Math.min(Math.max(parsedScore, 0), 10) * 100) / 100;
       const isPassedStatus = normalizedScore >= passingScore;
 
-      console.log('[Submission] Grading logic updated:', { 
+      console.log('[Submission] Grading:', { 
          id, 
          raw_score: parsedScore, 
-         total_questions: totalQuestions, 
          normalized_score: normalizedScore,
          is_passed: isPassedStatus,
-         points_per_q: pointsPerQuestion
       });
 
       query = `
@@ -418,8 +543,7 @@ export async function PUT(request: NextRequest) {
         `;
         await pool.query(ensureTeacherQuery, [submission.teacher_code]);
 
-        const status = isPassedStatus ? 'completed' : 'in_progress';
-
+        // Chỉ chuyển sang 'completed' khi đạt điểm, không đạt thì giữ nguyên trạng thái hiện tại
         const updateVideoScoreQuery = `
           INSERT INTO training_teacher_video_scores (
             teacher_code,
@@ -427,18 +551,18 @@ export async function PUT(request: NextRequest) {
             score,
             completion_status,
             completed_at
-          ) VALUES ($1, $2, $3, $4, CASE WHEN $5::boolean THEN NOW() ELSE NULL END)
+          ) VALUES ($1, $2, $3, 'watched', NULL)
           ON CONFLICT (teacher_code, video_id)
           DO UPDATE SET
             score = GREATEST(training_teacher_video_scores.score, $3),
             completion_status = CASE 
               WHEN training_teacher_video_scores.completion_status = 'completed' THEN 'completed'
-              WHEN $5::boolean THEN 'completed'
-              ELSE 'in_progress'
+              WHEN $4::boolean THEN 'completed'
+              ELSE training_teacher_video_scores.completion_status
             END,
             completed_at = CASE 
               WHEN training_teacher_video_scores.completion_status = 'completed' THEN training_teacher_video_scores.completed_at
-              WHEN $5::boolean THEN NOW()
+              WHEN $4::boolean THEN NOW()
               ELSE training_teacher_video_scores.completed_at
             END,
             updated_at = NOW()
@@ -448,7 +572,6 @@ export async function PUT(request: NextRequest) {
           submission.teacher_code,
           submission.video_id,
           normalizedScore,
-          status,
           isPassedStatus
         ]);
         
@@ -462,7 +585,8 @@ export async function PUT(request: NextRequest) {
                 FROM jsonb_to_recordset($3::jsonb) AS x(
                   question_id INT,
                   answer_text TEXT,
-                  is_correct BOOLEAN
+                  is_correct BOOLEAN,
+                  points_earned NUMERIC
                 )
               )
               INSERT INTO training_teacher_answers (
@@ -479,7 +603,7 @@ export async function PUT(request: NextRequest) {
                 incoming.question_id,
                 incoming.answer_text,
                 COALESCE(incoming.is_correct, false),
-                CASE WHEN incoming.is_correct THEN $4::numeric ELSE 0 END
+                COALESCE(incoming.points_earned, 0)
               FROM incoming
               INNER JOIN training_video_questions tvq
                 ON tvq.id = incoming.question_id
@@ -490,7 +614,6 @@ export async function PUT(request: NextRequest) {
               submission.teacher_code,
               submission.video_id,
               JSON.stringify(updates.answers),
-              pointsPerQuestion
             ]);
           } catch (err: any) {
             console.warn('[Submission] Skipped syncing answers to teacher_answers:', err.message);
@@ -508,7 +631,8 @@ export async function PUT(request: NextRequest) {
               FROM jsonb_to_recordset($2::jsonb) AS x(
                 question_id INT,
                 answer_text TEXT,
-                is_correct BOOLEAN
+                is_correct BOOLEAN,
+                points_earned NUMERIC
               )
               WHERE question_id IS NOT NULL
             )
@@ -524,7 +648,7 @@ export async function PUT(request: NextRequest) {
               incoming.question_id,
               incoming.answer_text,
               COALESCE(incoming.is_correct, false),
-              CASE WHEN incoming.is_correct THEN $3::numeric ELSE 0 END
+              COALESCE(incoming.points_earned, 0)
             FROM incoming
             ON CONFLICT (submission_id, question_id) DO UPDATE SET
               answer_text = EXCLUDED.answer_text,
@@ -533,7 +657,7 @@ export async function PUT(request: NextRequest) {
               answered_at = NOW()
           `;
 
-          await pool.query(saveAnswersQuery, [id, JSON.stringify(updates.answers), pointsPerQuestion]);
+          await pool.query(saveAnswersQuery, [id, JSON.stringify(updates.answers)]);
         } catch (err) {
             console.error('[Submission] Error saving answers:', err);
         }

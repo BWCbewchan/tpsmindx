@@ -57,7 +57,8 @@ function LichCuaToiContent() {
       if (subData.success) {
         setPendingSub(
           (subData.data || []).filter(
-            (r: any) => r.status === 'approved_assigned',
+            (r: { status?: string }) =>
+              String(r.status || '').toLowerCase().trim() === 'approved_assigned',
           ).length,
         )
       }
@@ -84,7 +85,7 @@ function LichCuaToiContent() {
       { id: 'lich', label: 'Lịch hoạt động' },
       {
         id: 'xin-nghi',
-        label: 'Xin nghỉ dạy',
+        label: 'Xin nghỉ 1 buổi',
         count: pendingLeave || undefined,
       },
       {
@@ -97,7 +98,7 @@ function LichCuaToiContent() {
   )
 
   const visibleTabs = useMemo(
-    () => tabs.filter((tab) => tab.id !== 'xin-nghi'),
+    () => tabs,
     [tabs],
   )
 
@@ -119,6 +120,25 @@ function LichCuaToiContent() {
           <Tabs tabs={visibleTabs} activeTab={activeTab} onChange={setActiveTab} />
         </div>
       </div>
+
+      {pendingSub > 0 && (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-950 sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2">
+            <span>
+              Bạn có <strong className="font-semibold">{pendingSub}</strong> lớp dạy thay đang chờ xác nhận hoặc từ chối.
+            </span>
+            {activeTab !== 'nhan-lop' && (
+              <button
+                type="button"
+                className="shrink-0 font-semibold text-[#a1001f] underline decoration-[#a1001f]/60 underline-offset-2 hover:opacity-90"
+                onClick={() => setActiveTab('nhan-lop')}
+              >
+                Mở tab Nhận lớp thay
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Tab content */}
       <div className="mx-auto max-w-7xl">

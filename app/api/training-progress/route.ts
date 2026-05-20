@@ -132,7 +132,7 @@ export const POST = withApiProtection(async (request: NextRequest) => {
 
       // ── 6. Upsert progress ───────────────────────────────────────────────
       const statusParam = validatedIsCompleted
-        ? 'completed'
+        ? 'watched'
         : (clampedServerTime > 0 ? 'in_progress' : 'not_started');
 
       const result = await client.query(
@@ -155,6 +155,7 @@ export const POST = withApiProtection(async (request: NextRequest) => {
            view_count          = GREATEST(training_teacher_video_scores.view_count, 1),
            completion_status   = CASE
              WHEN training_teacher_video_scores.completion_status = 'completed' THEN 'completed'
+             WHEN training_teacher_video_scores.completion_status = 'watched' THEN 'watched'
              ELSE $4::text
            END,
            completed_at = CASE

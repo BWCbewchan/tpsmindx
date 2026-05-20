@@ -1820,8 +1820,11 @@ export default function MonthlyActivitiesPage() {
         //   }
         // }
 
-        // Require explicit chosen slot per option — do not auto-select
-        const examEventId = selectedExamEventByOption[option] || ''
+        const explicitExamEventId = selectedExamEventByOption[option] || ''
+        const examEventId =
+          explicitExamEventId ||
+          (examEvents.length === 1 ? examEvents[0]?.id || '' : '')
+
         if (!examEventId) {
           failedOptions.push(option)
           failedDetails.push(`${option}: chưa chọn lịch thi`)

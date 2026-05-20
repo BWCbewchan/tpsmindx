@@ -104,6 +104,7 @@ export default function TabLichHoatDong({ onRefreshBadge, onOpenLeaveRequest }:P
   const [selectedWeekDateKeys,setSelectedWeekDateKeys]=useState<string[]>([])
   const [leaveByDate,setLeaveByDate]=useState<LeaveByDate>({})
   const [centers,setCenters]=useState<CenterOption[]>([])
+  const [centersLoading,setCentersLoading]=useState(true)
   const [userRegion,setUserRegion]=useState<string|null>(null)
   const [maGv,setMaGv]=useState('')
   const [saving,setSaving]=useState(false)
@@ -123,7 +124,7 @@ export default function TabLichHoatDong({ onRefreshBadge, onOpenLeaveRequest }:P
   const [formError,setFormError]=useState('')
 
   useEffect(()=>{if(!user?.email)return;(async()=>{try{const r=await fetch(`/api/teachers/info?email=${encodeURIComponent(user.email)}`);const d=await r.json();if(d?.teacher?.code)setMaGv(d.teacher.code);else setMaGv(user.email.split('@')[0]||'')}catch{setMaGv(user.email.split('@')[0]||'')}})()},[user?.email])
-  useEffect(()=>{if(!user?.email)return;(async()=>{try{const r=await fetch(`/api/centers-by-user?email=${encodeURIComponent(user.email)}`);const d=await r.json();if(r.ok&&d.success){setCenters(d.centers||[]);setUserRegion(d.region||null)}}catch{}})()},[user?.email])
+  useEffect(()=>{if(!user?.email)return;(async()=>{setCentersLoading(true);try{const r=await fetch(`/api/centers-by-user?email=${encodeURIComponent(user.email)}`);const d=await r.json();if(r.ok&&d.success){setCenters(d.centers||[]);setUserRegion(d.region||null)}else{setCenters([])} }catch{setCenters([])}finally{setCentersLoading(false)}})()},[user?.email])
 
   const fetchLeaveRequests=useCallback(async()=>{
     if(!user?.email)return
@@ -916,7 +917,11 @@ export default function TabLichHoatDong({ onRefreshBadge, onOpenLeaveRequest }:P
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-2">Cơ sở ưu tiên</label>
                 <p className="text-[11px] text-gray-400 mb-3">Ưu tiên chọn cơ sở thuận tiện để đảm bảo di chuyển kịp thời giữa các ca dạy liền kề.</p>
-                {centers.length===0?<p className="text-xs text-gray-400">Đang tải danh sách cơ sở...</p>:(()=>{
+                {centersLoading ? (
+                  <p className="text-xs text-gray-400">Đang tải danh sách cơ sở...</p>
+                ) : centers.length === 0 ? (
+                  <p className="text-xs text-gray-400">Không có cơ sở khả dụng.</p>
+                ) : (()=>{
                   const regions=Array.from(new Set(centers.map(c=>c.region)))
                   const leftRegion=userRegion&&regions.includes(userRegion)?userRegion:regions[0]
                   const rightRegions=regions.filter(r=>r!==leftRegion)

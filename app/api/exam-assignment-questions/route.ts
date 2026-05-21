@@ -178,6 +178,7 @@ export async function GET(request: NextRequest) {
          END                                               AS options,
          cq.dap_an_dung                                    AS correct_answer,
          cq.giai_thich                                     AS explanation,
+         cq.image_url                                      AS image_url,
          cq.diem                                           AS points,
          cq.do_kho                                         AS difficulty,
          bc.thu_tu_hien_thi                                AS order_number

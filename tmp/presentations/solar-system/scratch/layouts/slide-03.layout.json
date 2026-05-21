@@ -1,0 +1,1867 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/443vtg",
+    "id": "443vtg",
+    "slide": 3,
+    "layoutId": "94d123c3-a156-4f53-b238-c8e292d74501",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "94d123c3-a156-4f53-b238-c8e292d74501",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/itgfmlkj",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "#0A0B16"
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pkzupwb2",
+      "id": "2",
+      "name": "slide-title",
+      "bbox": [
+        92,
+        70,
+        1240,
+        76
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0.0"
+      },
+      "geometry": "rect",
+      "text": "The inner worlds are rocky and close",
+      "textPreview": "The inner worlds are rocky and close",
+      "resolvedFontSize": 62,
+      "resolvedTextStyle": {
+        "fontSize": 62,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "The inner worlds are rocky and close"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "The inner worlds are rocky and close",
+          "runs": [
+            {
+              "index": 1,
+              "text": "The inner worlds are rocky and close",
+              "fontSize": 62,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0z61032l",
+      "id": "3",
+      "name": "slide-subtitle",
+      "bbox": [
+        92,
+        162,
+        1084,
+        32
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0.1"
+      },
+      "geometry": "rect",
+      "text": "Mercury, Venus, Earth, and Mars formed in the warmer inner disk, where rock and metal could survive.",
+      "textPreview": "Mercury, Venus, Earth, and Mars formed in the warmer inner disk, where rock and metal could survive.",
+      "resolvedFontSize": 26,
+      "resolvedTextStyle": {
+        "fontSize": 26,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Mercury, Venus, Earth, and Mars formed in the warmer inner disk, where rock and metal could"
+          },
+          {
+            "index": 2,
+            "text": "survive."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Mercury, Venus, Earth, and Mars formed in the warmer inner disk, where rock and metal could survive.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Mercury, Venus, Earth, and Mars formed in the warmer inner disk, where rock and metal could survive.",
+              "fontSize": 26,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/72x4nap4",
+      "id": "4",
+      "bbox": [
+        186,
+        300,
+        1.5,
+        550
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.13333)"
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ih4byhgn",
+      "id": "5",
+      "bbox": [
+        246,
+        380,
+        40,
+        40
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#AFA79A",
+      "lineColor": "rgba(255, 255, 255, 0.33333)",
+      "lineWidth": 1
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/p8nqxs72",
+      "id": "6",
+      "name": "inner-Mercury",
+      "bbox": [
+        186,
+        520,
+        260,
+        42
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Mercury",
+      "textPreview": "Mercury",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "fontSize": 34,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Mercury"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Mercury",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Mercury",
+              "fontSize": 34,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0nuxc3yl",
+      "id": "7",
+      "name": "inner-au-Mercury",
+      "bbox": [
+        186,
+        570,
+        180,
+        28
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "0.39 AU",
+      "textPreview": "0.39 AU",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "0.39 AU"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "0.39 AU",
+          "runs": [
+            {
+              "index": 1,
+              "text": "0.39 AU",
+              "fontSize": 22,
+              "color": "#F6B24A",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7y1kre1w",
+      "id": "8",
+      "name": "inner-desc-Mercury",
+      "bbox": [
+        186,
+        640,
+        300,
+        56
+      ],
+      "composeSource": {
+        "run": 4,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Smallest planet; extreme temperature swings",
+      "textPreview": "Smallest planet; extreme temperature swings",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Smallest planet; extreme"
+          },
+          {
+            "index": 2,
+            "text": "temperature swings"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Smallest planet; extreme temperature swings",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Smallest planet; extreme temperature swings",
+              "fontSize": 23,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ed8v6psf",
+      "id": "9",
+      "bbox": [
+        606,
+        300,
+        1.5,
+        550
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.13333)"
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8v6psfil",
+      "id": "10",
+      "bbox": [
+        656,
+        370,
+        60,
+        60
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#DDB066",
+      "lineColor": "rgba(255, 255, 255, 0.33333)",
+      "lineWidth": 1
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xczed8v6",
+      "id": "11",
+      "name": "inner-Venus",
+      "bbox": [
+        606,
+        520,
+        260,
+        42
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Venus",
+      "textPreview": "Venus",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "fontSize": 34,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Venus"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Venus",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Venus",
+              "fontSize": 34,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qpg3ex0n",
+      "id": "12",
+      "name": "inner-au-Venus",
+      "bbox": [
+        606,
+        570,
+        180,
+        28
+      ],
+      "composeSource": {
+        "run": 6,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "0.72 AU",
+      "textPreview": "0.72 AU",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "0.72 AU"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "0.72 AU",
+          "runs": [
+            {
+              "index": 1,
+              "text": "0.72 AU",
+              "fontSize": 22,
+              "color": "#F6B24A",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fa9w3m94",
+      "id": "13",
+      "name": "inner-desc-Venus",
+      "bbox": [
+        606,
+        640,
+        300,
+        56
+      ],
+      "composeSource": {
+        "run": 7,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Thick CO2 atmosphere; hottest surface",
+      "textPreview": "Thick CO2 atmosphere; hottest surface",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Thick CO2 atmosphere; hottest"
+          },
+          {
+            "index": 2,
+            "text": "surface"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Thick CO2 atmosphere; hottest surface",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Thick CO2 atmosphere; hottest surface",
+              "fontSize": 23,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8jqh0fep",
+      "id": "14",
+      "bbox": [
+        1026,
+        300,
+        1.5,
+        550
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.13333)"
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/x4nap4r6",
+      "id": "15",
+      "bbox": [
+        1074,
+        368,
+        64,
+        64
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#56B9FF",
+      "lineColor": "rgba(255, 255, 255, 0.33333)",
+      "lineWidth": 1
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qd4vmtwr",
+      "id": "16",
+      "name": "inner-Earth",
+      "bbox": [
+        1026,
+        520,
+        260,
+        42
+      ],
+      "composeSource": {
+        "run": 8,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Earth",
+      "textPreview": "Earth",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "fontSize": 34,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Earth"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Earth",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Earth",
+              "fontSize": 34,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fyxobm58",
+      "id": "17",
+      "name": "inner-au-Earth",
+      "bbox": [
+        1026,
+        570,
+        180,
+        28
+      ],
+      "composeSource": {
+        "run": 9,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "1.00 AU",
+      "textPreview": "1.00 AU",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1.00 AU"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "1.00 AU",
+          "runs": [
+            {
+              "index": 1,
+              "text": "1.00 AU",
+              "fontSize": 22,
+              "color": "#F6B24A",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/87ed8bat",
+      "id": "18",
+      "name": "inner-desc-Earth",
+      "bbox": [
+        1026,
+        640,
+        300,
+        56
+      ],
+      "composeSource": {
+        "run": 10,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Liquid water and a protective magnetosphere",
+      "textPreview": "Liquid water and a protective magnetosphere",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Liquid water and a protective"
+          },
+          {
+            "index": 2,
+            "text": "magnetosphere"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Liquid water and a protective magnetosphere",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Liquid water and a protective magnetosphere",
+              "fontSize": 23,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xs72x4na",
+      "id": "19",
+      "bbox": [
+        1446,
+        300,
+        1.5,
+        550
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.13333)"
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lwval87e",
+      "id": "20",
+      "bbox": [
+        1502,
+        376,
+        48,
+        48
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#D66B45",
+      "lineColor": "rgba(255, 255, 255, 0.33333)",
+      "lineWidth": 1
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wb2hwfyx",
+      "id": "21",
+      "name": "inner-Mars",
+      "bbox": [
+        1446,
+        520,
+        260,
+        42
+      ],
+      "composeSource": {
+        "run": 11,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Mars",
+      "textPreview": "Mars",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "fontSize": 34,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Mars"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Mars",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Mars",
+              "fontSize": 34,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3q5o7qpg",
+      "id": "22",
+      "name": "inner-au-Mars",
+      "bbox": [
+        1446,
+        570,
+        180,
+        28
+      ],
+      "composeSource": {
+        "run": 12,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "1.52 AU",
+      "textPreview": "1.52 AU",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1.52 AU"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "1.52 AU",
+          "runs": [
+            {
+              "index": 1,
+              "text": "1.52 AU",
+              "fontSize": 22,
+              "color": "#F6B24A",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 23,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/e9cvixcz",
+      "id": "23",
+      "name": "inner-desc-Mars",
+      "bbox": [
+        1446,
+        640,
+        300,
+        56
+      ],
+      "composeSource": {
+        "run": 13,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Cold desert world with ancient river clues",
+      "textPreview": "Cold desert world with ancient river clues",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Cold desert world with ancient"
+          },
+          {
+            "index": 2,
+            "text": "river clues"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Cold desert world with ancient river clues",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Cold desert world with ancient river clues",
+              "fontSize": 23,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 24,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/loj2t83i",
+      "id": "24",
+      "name": "au-note",
+      "bbox": [
+        1460,
+        914,
+        360,
+        22
+      ],
+      "composeSource": {
+        "run": 14,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "AU = average Earth-Sun distance",
+      "textPreview": "AU = average Earth-Sun distance",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "AU = average Earth-Sun distance"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "AU = average Earth-Sun distance",
+          "runs": [
+            {
+              "index": 1,
+              "text": "AU = average Earth-Sun distance",
+              "fontSize": 18,
+              "color": "#65708C"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 25,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/w3m94fu1",
+      "id": "25",
+      "name": "source",
+      "bbox": [
+        92,
+        1028,
+        980,
+        18
+      ],
+      "composeSource": {
+        "run": 15,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Solar system overview",
+      "textPreview": "Solar system overview",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Solar system overview"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Solar system overview",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Solar system overview",
+              "fontSize": 14,
+              "color": "#65708C"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": [
+    {
+      "index": 1,
+      "frame": {
+        "left": 92,
+        "top": 70,
+        "width": 1240,
+        "height": 160
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "column",
+        "name": "title-stack",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 1084.72,
+          "height": 123.6
+        },
+        "frame": {
+          "left": 92,
+          "top": 70,
+          "width": 1240,
+          "height": 123.6
+        },
+        "children": [
+          {
+            "path": "0.0",
+            "kind": "text",
+            "name": "slide-title",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 0,
+              "height": 74.4
+            },
+            "frame": {
+              "left": 92,
+              "top": 70,
+              "width": 1240,
+              "height": 74.4
+            },
+            "snappedFrame": {
+              "left": 92,
+              "top": 70,
+              "width": 1240,
+              "height": 76
+            },
+            "children": [],
+            "text": "The inner worlds are rocky and close",
+            "transform": "none",
+            "element": {
+              "aid": "sh/pkzupwb2",
+              "id": "2",
+              "kind": "shape"
+            }
+          },
+          {
+            "path": "0.1",
+            "kind": "text",
+            "name": "slide-subtitle",
+            "requestedSize": {
+              "width": {
+                "mode": "wrap",
+                "max": 1120
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 1084.72,
+              "height": 31.2
+            },
+            "frame": {
+              "left": 92,
+              "top": 162.4,
+              "width": 1084.72,
+              "height": 31.2
+            },
+            "snappedFrame": {
+              "left": 92,
+              "top": 162,
+              "width": 1084,
+              "height": 32
+            },
+            "children": [],
+            "text": "Mercury, Venus, Earth, and Mars formed in the warmer inner disk, where rock and metal could survive.",
+            "transform": "none",
+            "element": {
+              "aid": "sh/0z61032l",
+              "id": "3",
+              "kind": "shape"
+            }
+          }
+        ],
+        "padding": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "gap": 18,
+        "effectiveGap": 18,
+        "justifyOffset": 0,
+        "align": "start",
+        "justify": "start",
+        "contentFrame": {
+          "left": 92,
+          "top": 70,
+          "width": 1240,
+          "height": 123.6
+        },
+        "items": [
+          {
+            "path": "0.0",
+            "frame": {
+              "left": 92,
+              "top": 70,
+              "width": 1240,
+              "height": 74.4
+            }
+          },
+          {
+            "path": "0.1",
+            "frame": {
+              "left": 92,
+              "top": 162.4,
+              "width": 1084.72,
+              "height": 31.2
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 2,
+      "frame": {
+        "left": 186,
+        "top": 520,
+        "width": 260,
+        "height": 42
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "inner-Mercury",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 40.8
+        },
+        "frame": {
+          "left": 186,
+          "top": 520,
+          "width": 260,
+          "height": 40.8
+        },
+        "snappedFrame": {
+          "left": 186,
+          "top": 520,
+          "width": 260,
+          "height": 42
+        },
+        "children": [],
+        "text": "Mercury",
+        "transform": "none",
+        "element": {
+          "aid": "sh/p8nqxs72",
+          "id": "6",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "frame": {
+        "left": 186,
+        "top": 570,
+        "width": 180,
+        "height": 30
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "inner-au-Mercury",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 26.4
+        },
+        "frame": {
+          "left": 186,
+          "top": 570,
+          "width": 180,
+          "height": 26.4
+        },
+        "snappedFrame": {
+          "left": 186,
+          "top": 570,
+          "width": 180,
+          "height": 28
+        },
+        "children": [],
+        "text": "0.39 AU",
+        "transform": "none",
+        "element": {
+          "aid": "sh/0nuxc3yl",
+          "id": "7",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 4,
+      "frame": {
+        "left": 186,
+        "top": 640,
+        "width": 300,
+        "height": 92
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "inner-desc-Mercury",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 27.6
+        },
+        "frame": {
+          "left": 186,
+          "top": 640,
+          "width": 300,
+          "height": 55.2
+        },
+        "snappedFrame": {
+          "left": 186,
+          "top": 640,
+          "width": 300,
+          "height": 56
+        },
+        "children": [],
+        "text": "Smallest planet; extreme temperature swings",
+        "transform": "none",
+        "element": {
+          "aid": "sh/7y1kre1w",
+          "id": "8",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 5,
+      "frame": {
+        "left": 606,
+        "top": 520,
+        "width": 260,
+        "height": 42
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "inner-Venus",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 40.8
+        },
+        "frame": {
+          "left": 606,
+          "top": 520,
+          "width": 260,
+          "height": 40.8
+        },
+        "snappedFrame": {
+          "left": 606,
+          "top": 520,
+          "width": 260,
+          "height": 42
+        },
+        "children": [],
+        "text": "Venus",
+        "transform": "none",
+        "element": {
+          "aid": "sh/xczed8v6",
+          "id": "11",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 6,
+      "frame": {
+        "left": 606,
+        "top": 570,
+        "width": 180,
+        "height": 30
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "inner-au-Venus",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 26.4
+        },
+        "frame": {
+          "left": 606,
+          "top": 570,
+          "width": 180,
+          "height": 26.4
+        },
+        "snappedFrame": {
+          "left": 606,
+          "top": 570,
+          "width": 180,
+          "height": 28
+        },
+        "children": [],
+        "text": "0.72 AU",
+        "transform": "none",
+        "element": {
+          "aid": "sh/qpg3ex0n",
+          "id": "12",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 7,
+      "frame": {
+        "left": 606,
+        "top": 640,
+        "width": 300,
+        "height": 92
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "inner-desc-Venus",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 27.6
+        },
+        "frame": {
+          "left": 606,
+          "top": 640,
+          "width": 300,
+          "height": 55.2
+        },
+        "snappedFrame": {
+          "left": 606,
+          "top": 640,
+          "width": 300,
+          "height": 56
+        },
+        "children": [],
+        "text": "Thick CO2 atmosphere; hottest surface",
+        "transform": "none",
+        "element": {
+          "aid": "sh/fa9w3m94",
+          "id": "13",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 8,
+      "frame": {
+        "left": 1026,
+        "top": 520,
+        "width": 260,
+        "height": 42
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "inner-Earth",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 40.8
+        },
+        "frame": {
+          "left": 1026,
+          "top": 520,
+          "width": 260,
+          "height": 40.8
+        },
+        "snappedFrame": {
+          "left": 1026,
+          "top": 520,
+          "width": 260,
+          "height": 42
+        },
+        "children": [],
+        "text": "Earth",
+        "transform": "none",
+        "element": {
+          "aid": "sh/qd4vmtwr",
+          "id": "16",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 9,
+      "frame": {
+        "left": 1026,
+        "top": 570,
+        "width": 180,
+        "height": 30
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "inner-au-Earth",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 26.4
+        },
+        "frame": {
+          "left": 1026,
+          "top": 570,
+          "width": 180,
+          "height": 26.4
+        },
+        "snappedFrame": {
+          "left": 1026,
+          "top": 570,
+          "width": 180,
+          "height": 28
+        },
+        "children": [],
+        "text": "1.00 AU",
+        "transform": "none",
+        "element": {
+          "aid": "sh/fyxobm58",
+          "id": "17",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 10,
+      "frame": {
+        "left": 1026,
+        "top": 640,
+        "width": 300,
+        "height": 92
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "inner-desc-Earth",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 27.6
+        },
+        "frame": {
+          "left": 1026,
+          "top": 640,
+          "width": 300,
+          "height": 55.2
+        },
+        "snappedFrame": {
+          "left": 1026,
+          "top": 640,
+          "width": 300,
+          "height": 56
+        },
+        "children": [],
+        "text": "Liquid water and a protective magnetosphere",
+        "transform": "none",
+        "element": {
+          "aid": "sh/87ed8bat",
+          "id": "18",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 11,
+      "frame": {
+        "left": 1446,
+        "top": 520,
+        "width": 260,
+        "height": 42
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "inner-Mars",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 40.8
+        },
+        "frame": {
+          "left": 1446,
+          "top": 520,
+          "width": 260,
+          "height": 40.8
+        },
+        "snappedFrame": {
+          "left": 1446,
+          "top": 520,
+          "width": 260,
+          "height": 42
+        },
+        "children": [],
+        "text": "Mars",
+        "transform": "none",
+        "element": {
+          "aid": "sh/wb2hwfyx",
+          "id": "21",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 12,
+      "frame": {
+        "left": 1446,
+        "top": 570,
+        "width": 180,
+        "height": 30
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "inner-au-Mars",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 26.4
+        },
+        "frame": {
+          "left": 1446,
+          "top": 570,
+          "width": 180,
+          "height": 26.4
+        },
+        "snappedFrame": {
+          "left": 1446,
+          "top": 570,
+          "width": 180,
+          "height": 28
+        },
+        "children": [],
+        "text": "1.52 AU",
+        "transform": "none",
+        "element": {
+          "aid": "sh/3q5o7qpg",
+          "id": "22",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 13,
+      "frame": {
+        "left": 1446,
+        "top": 640,
+        "width": 300,
+        "height": 92
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "inner-desc-Mars",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 27.6
+        },
+        "frame": {
+          "left": 1446,
+          "top": 640,
+          "width": 300,
+          "height": 55.2
+        },
+        "snappedFrame": {
+          "left": 1446,
+          "top": 640,
+          "width": 300,
+          "height": 56
+        },
+        "children": [],
+        "text": "Cold desert world with ancient river clues",
+        "transform": "none",
+        "element": {
+          "aid": "sh/e9cvixcz",
+          "id": "23",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 14,
+      "frame": {
+        "left": 1460,
+        "top": 914,
+        "width": 360,
+        "height": 32
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "au-note",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 21.6
+        },
+        "frame": {
+          "left": 1460,
+          "top": 914,
+          "width": 360,
+          "height": 21.6
+        },
+        "snappedFrame": {
+          "left": 1460,
+          "top": 914,
+          "width": 360,
+          "height": 22
+        },
+        "children": [],
+        "text": "AU = average Earth-Sun distance",
+        "transform": "none",
+        "element": {
+          "aid": "sh/loj2t83i",
+          "id": "24",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 15,
+      "frame": {
+        "left": 92,
+        "top": 1028,
+        "width": 980,
+        "height": 28
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "source",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 16.8
+        },
+        "frame": {
+          "left": 92,
+          "top": 1028,
+          "width": 980,
+          "height": 16.8
+        },
+        "snappedFrame": {
+          "left": 92,
+          "top": 1028,
+          "width": 980,
+          "height": 18
+        },
+        "children": [],
+        "text": "Solar system overview",
+        "transform": "none",
+        "element": {
+          "aid": "sh/w3m94fu1",
+          "id": "25",
+          "kind": "shape"
+        }
+      }
+    }
+  ]
+}

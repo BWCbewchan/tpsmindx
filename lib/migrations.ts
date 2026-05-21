@@ -1998,6 +1998,14 @@ const migrations: Migration[] = [
         EXECUTE FUNCTION update_updated_at_column();
     `,
   },
+  {
+    name: 'V79_chuyen_sau_cauhoi_image_url',
+    version: 79,
+    sql: `
+      ALTER TABLE chuyen_sau_cauhoi
+        ADD COLUMN IF NOT EXISTS image_url VARCHAR(1000);
+    `,
+  },
 ]
 
 // ========== HÀM CHẠY MIGRATIONS ==========

@@ -1,0 +1,3732 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/vv4eza",
+    "id": "vv4eza",
+    "slide": 4,
+    "layoutId": "94d123c3-a156-4f53-b238-c8e292d74501",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "94d123c3-a156-4f53-b238-c8e292d74501",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/47y1kre1",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "#070915"
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bm58z25k",
+      "id": "2",
+      "bbox": [
+        380.94,
+        480.83,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/m1cfa9w3",
+      "id": "3",
+      "bbox": [
+        759.37,
+        949.59,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tgfmlkjm",
+      "id": "4",
+      "bbox": [
+        623.93,
+        128.11,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4vmtwra5",
+      "id": "5",
+      "bbox": [
+        1539.09,
+        326.97,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bat47y1k",
+      "id": "6",
+      "bbox": [
+        1256.23,
+        288.44,
+        3.5,
+        3.5
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0.1"
+      },
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/mp0bi9s3",
+      "id": "7",
+      "bbox": [
+        912.38,
+        813.31,
+        2,
+        2
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0.0"
+      },
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/t83itgfm",
+      "id": "8",
+      "bbox": [
+        1093.3,
+        778.48,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4nap4r65",
+      "id": "9",
+      "bbox": [
+        1310.93,
+        302.1,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u9knih4b",
+      "id": "10",
+      "bbox": [
+        645.24,
+        3.27,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/judg7ads",
+      "id": "11",
+      "bbox": [
+        1620.45,
+        693.09,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cfa9w3m9",
+      "id": "12",
+      "bbox": [
+        665.57,
+        543.94,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1032lszq",
+      "id": "13",
+      "bbox": [
+        829.42,
+        13.86,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u18jqh0f",
+      "id": "14",
+      "bbox": [
+        339.92,
+        232.97,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jm1cfa9w",
+      "id": "15",
+      "bbox": [
+        1317.85,
+        268.72,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/c7u54zid",
+      "id": "16",
+      "bbox": [
+        874.87,
+        36.89,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1orytsvu",
+      "id": "17",
+      "bbox": [
+        266.02,
+        775.23,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/upwb2hwf",
+      "id": "18",
+      "bbox": [
+        1046.59,
+        666.55,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nap4r65w",
+      "id": "19",
+      "bbox": [
+        1823.25,
+        748.21,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/f6dcbulw",
+      "id": "20",
+      "bbox": [
+        69.7,
+        874.83,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/mlkjm1cf",
+      "id": "21",
+      "bbox": [
+        116.6,
+        331.17,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xc3ylc7u",
+      "id": "22",
+      "bbox": [
+        105.94,
+        681.89,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 23,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4r65wjud",
+      "id": "23",
+      "bbox": [
+        299.69,
+        75.34,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 24,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fepkzupw",
+      "id": "24",
+      "bbox": [
+        732.95,
+        887.9,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 25,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/mtwra5gb",
+      "id": "25",
+      "bbox": [
+        841.38,
+        1026.13,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 26,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xkf6dcbu",
+      "id": "26",
+      "bbox": [
+        733.03,
+        1033.25,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 27,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4zidonyd",
+      "id": "27",
+      "bbox": [
+        414.57,
+        17.12,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 28,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fil0rqd4",
+      "id": "28",
+      "bbox": [
+        1441.87,
+        126.34,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 29,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qxs72x4n",
+      "id": "29",
+      "bbox": [
+        584.95,
+        691.56,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 30,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0z61032l",
+      "id": "30",
+      "bbox": [
+        137.31,
+        138.75,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 31,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pkzupwb2",
+      "id": "31",
+      "bbox": [
+        459.69,
+        291.32,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 32,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/itgfmlkj",
+      "id": "32",
+      "bbox": [
+        348.1,
+        388.01,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 33,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7ed8bat4",
+      "id": "33",
+      "bbox": [
+        576.28,
+        813.4,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 34,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0nuxc3yl",
+      "id": "34",
+      "bbox": [
+        682.61,
+        87.86,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 35,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/p8nqxs72",
+      "id": "35",
+      "bbox": [
+        671.21,
+        253.92,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 36,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ih4byhgn",
+      "id": "36",
+      "bbox": [
+        577.63,
+        425.9,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 37,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/72x4nap4",
+      "id": "37",
+      "bbox": [
+        928.74,
+        659.58,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 38,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wjudg7ad",
+      "id": "38",
+      "bbox": [
+        1847.1,
+        768.93,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 39,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/p4r65wju",
+      "id": "39",
+      "bbox": [
+        949.67,
+        586.67,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 40,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1cfa9w3m",
+      "id": "40",
+      "bbox": [
+        270.86,
+        875.6,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 41,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/crmhk3q5",
+      "id": "41",
+      "bbox": [
+        280.04,
+        47.53,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 42,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/j6tovaho",
+      "id": "42",
+      "bbox": [
+        1783.37,
+        476.7,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 43,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ulwval87",
+      "id": "43",
+      "bbox": [
+        499.97,
+        664.56,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 44,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1kre1w7m",
+      "id": "44",
+      "bbox": [
+        1822.53,
+        542.83,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 45,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/c3ylc7u5",
+      "id": "45",
+      "bbox": [
+        1192.29,
+        1031.66,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 46,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ji5snelo",
+      "id": "46",
+      "bbox": [
+        798.35,
+        839.73,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 47,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/uxc3ylc7",
+      "id": "47",
+      "bbox": [
+        1311.4,
+        243.29,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 48,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1w7mp0bi",
+      "id": "48",
+      "bbox": [
+        1.78,
+        250.92,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 49,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8bat47y1",
+      "id": "49",
+      "bbox": [
+        191.95,
+        950.88,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 50,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/m58z25kb",
+      "id": "50",
+      "bbox": [
+        993.37,
+        947.99,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 51,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bq1oryts",
+      "id": "51",
+      "bbox": [
+        117.63,
+        66.85,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 52,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4byhgn29",
+      "id": "52",
+      "bbox": [
+        792.11,
+        208.32,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 53,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/twra5gbq",
+      "id": "53",
+      "bbox": [
+        849.88,
+        596.09,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 54,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/mhk3q5o7",
+      "id": "54",
+      "bbox": [
+        144.11,
+        120.3,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 55,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/b2hwfyxo",
+      "id": "55",
+      "bbox": [
+        1476.69,
+        314.94,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 56,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4nap4r65",
+      "id": "56",
+      "bbox": [
+        1831.4,
+        616.09,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 57,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/t83itgfm",
+      "id": "57",
+      "bbox": [
+        1901.31,
+        497.68,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 58,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/mp0bi9s3",
+      "id": "58",
+      "name": "slide-title",
+      "bbox": [
+        92,
+        70,
+        1240,
+        76
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0.0"
+      },
+      "geometry": "rect",
+      "text": "The asteroid belt is not a wall",
+      "textPreview": "The asteroid belt is not a wall",
+      "resolvedFontSize": 62,
+      "resolvedTextStyle": {
+        "fontSize": 62,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "The asteroid belt is not a wall"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "The asteroid belt is not a wall",
+          "runs": [
+            {
+              "index": 1,
+              "text": "The asteroid belt is not a wall",
+              "fontSize": 62,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 59,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bat47y1k",
+      "id": "59",
+      "name": "slide-subtitle",
+      "bbox": [
+        92,
+        162,
+        1030,
+        64
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0.1"
+      },
+      "geometry": "rect",
+      "text": "Between Mars and Jupiter is a wide region of leftover building blocks, with plenty of empty space.",
+      "textPreview": "Between Mars and Jupiter is a wide region of leftover building blocks, with plenty of empty space.",
+      "resolvedFontSize": 26,
+      "resolvedTextStyle": {
+        "fontSize": 26,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Between Mars and Jupiter is a wide region of leftover building blocks, with plenty of empty space."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Between Mars and Jupiter is a wide region of leftover building blocks, with plenty of empty space.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Between Mars and Jupiter is a wide region of leftover building blocks, with plenty of empty space.",
+              "fontSize": 26,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 60,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3ex0nuxc",
+      "id": "60",
+      "bbox": [
+        174,
+        504,
+        80,
+        80
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#F6B24A",
+      "lineColor": "#FFD27A",
+      "lineWidth": 2
+    },
+    {
+      "order": 61,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/at47y1kr",
+      "id": "61",
+      "name": "belt-sun-label",
+      "bbox": [
+        160,
+        604,
+        120,
+        24
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Sun",
+      "textPreview": "Sun",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Sun"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Sun",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Sun",
+              "fontSize": 20,
+              "color": "#F6B24A",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 62,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lkjm1cfa",
+      "id": "62",
+      "bbox": [
+        280,
+        546,
+        1300,
+        2
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.18824)"
+    },
+    {
+      "order": 63,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/szqtcj6t",
+      "id": "63",
+      "bbox": [
+        630,
+        527,
+        40,
+        40
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#D66B45",
+      "lineColor": "rgba(255, 255, 255, 0.26667)",
+      "lineWidth": 1
+    },
+    {
+      "order": 64,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/32lszqtc",
+      "id": "64",
+      "name": "label-Mars",
+      "bbox": [
+        580,
+        460,
+        180,
+        24
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Mars",
+      "textPreview": "Mars",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Mars"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Mars",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Mars",
+              "fontSize": 20,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 65,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ahoza1gv",
+      "id": "65",
+      "name": "sublabel-Mars",
+      "bbox": [
+        580,
+        488,
+        210,
+        18
+      ],
+      "composeSource": {
+        "run": 4,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "1.5 AU",
+      "textPreview": "1.5 AU",
+      "resolvedFontSize": 15,
+      "resolvedTextStyle": {
+        "fontSize": 15,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "1.5 AU"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "1.5 AU",
+          "runs": [
+            {
+              "index": 1,
+              "text": "1.5 AU",
+              "fontSize": 15,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 66,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/l87ed8ba",
+      "id": "66",
+      "bbox": [
+        1406,
+        493,
+        108,
+        108
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#D9A86C",
+      "lineColor": "rgba(255, 255, 255, 0.26667)",
+      "lineWidth": 1
+    },
+    {
+      "order": 67,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sneloj2t",
+      "id": "67",
+      "name": "label-Jupiter",
+      "bbox": [
+        1390,
+        426,
+        180,
+        24
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Jupiter",
+      "textPreview": "Jupiter",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Jupiter"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Jupiter",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Jupiter",
+              "fontSize": 20,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 68,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3q5o7qpg",
+      "id": "68",
+      "name": "sublabel-Jupiter",
+      "bbox": [
+        1390,
+        454,
+        210,
+        18
+      ],
+      "composeSource": {
+        "run": 6,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "5.2 AU",
+      "textPreview": "5.2 AU",
+      "resolvedFontSize": 15,
+      "resolvedTextStyle": {
+        "fontSize": 15,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "5.2 AU"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "5.2 AU",
+          "runs": [
+            {
+              "index": 1,
+              "text": "5.2 AU",
+              "fontSize": 15,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 69,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/e9cvixcz",
+      "id": "69",
+      "bbox": [
+        1076.16,
+        518.09,
+        4.31,
+        4.31
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 70,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/o7qpg3ex",
+      "id": "70",
+      "bbox": [
+        1087.83,
+        533.55,
+        4.83,
+        4.83
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 71,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dsji5sne",
+      "id": "71",
+      "bbox": [
+        1079.21,
+        467.1,
+        8.98,
+        8.98
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 72,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/61032lsz",
+      "id": "72",
+      "bbox": [
+        893.07,
+        623.21,
+        3,
+        3
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 73,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vmtwra5g",
+      "id": "73",
+      "bbox": [
+        935.68,
+        615.22,
+        4.39,
+        4.39
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 74,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/oj2t83it",
+      "id": "74",
+      "bbox": [
+        1136.64,
+        549.34,
+        8.58,
+        8.58
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 75,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d4vmtwra",
+      "id": "75",
+      "bbox": [
+        1031.7,
+        550.23,
+        6.55,
+        6.55
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 76,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6dcbulwv",
+      "id": "76",
+      "bbox": [
+        858.87,
+        467.73,
+        6.31,
+        6.31
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 77,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vy90je9c",
+      "id": "77",
+      "bbox": [
+        1203.43,
+        483.32,
+        3.71,
+        3.71
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 78,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/onyd0z61",
+      "id": "78",
+      "bbox": [
+        1057.92,
+        601.49,
+        6.15,
+        6.15
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 79,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8v6psfi",
+      "id": "79",
+      "bbox": [
+        882.61,
+        500.7,
+        5.42,
+        5.42
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 80,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/90je9cvi",
+      "id": "80",
+      "bbox": [
+        1201.62,
+        495.47,
+        5.25,
+        5.25
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 81,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gfmlkjm1",
+      "id": "81",
+      "bbox": [
+        1069.58,
+        575.66,
+        9.88,
+        9.88
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 82,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rytsvu9k",
+      "id": "82",
+      "bbox": [
+        1002.89,
+        635.95,
+        4.73,
+        4.73
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 83,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/yd0z6103",
+      "id": "83",
+      "bbox": [
+        1052.61,
+        611.04,
+        4.4,
+        4.4
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 84,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9s36hcrm",
+      "id": "84",
+      "bbox": [
+        955.69,
+        591.47,
+        5.82,
+        5.82
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 85,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/g7adsji5",
+      "id": "85",
+      "bbox": [
+        1039.35,
+        466.83,
+        4.61,
+        4.61
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 86,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rmhk3q5o",
+      "id": "86",
+      "bbox": [
+        1184.66,
+        493.38,
+        8.32,
+        8.32
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 87,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/y1kre1w7",
+      "id": "87",
+      "bbox": [
+        1084.36,
+        613.59,
+        3.67,
+        3.67
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 88,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5o7qpg3e",
+      "id": "88",
+      "bbox": [
+        859.34,
+        533.14,
+        6.81,
+        6.81
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 89,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/g3ex0nux",
+      "id": "89",
+      "bbox": [
+        1104.87,
+        620.24,
+        9.83,
+        9.83
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 90,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/adsji5sn",
+      "id": "90",
+      "bbox": [
+        1065.85,
+        641.88,
+        6.84,
+        6.84
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 91,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3ylc7u54",
+      "id": "91",
+      "bbox": [
+        1025.59,
+        647.35,
+        5.43,
+        5.43
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 92,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sji5snel",
+      "id": "92",
+      "bbox": [
+        1182.62,
+        522.05,
+        7.16,
+        7.16
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 93,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/h4byhgn2",
+      "id": "93",
+      "bbox": [
+        947.92,
+        620.88,
+        8.13,
+        8.13
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 94,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a5gbq1or",
+      "id": "94",
+      "bbox": [
+        1071.5,
+        514.77,
+        4.11,
+        4.11
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 95,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3m94fu18",
+      "id": "95",
+      "bbox": [
+        999.93,
+        640.64,
+        6.84,
+        6.84
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 96,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/s72x4nap",
+      "id": "96",
+      "bbox": [
+        975.79,
+        641.8,
+        8.97,
+        8.97
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 97,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lszqtcj6",
+      "id": "97",
+      "bbox": [
+        844.9,
+        502.63,
+        3.42,
+        3.42
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 98,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a1gvy90j",
+      "id": "98",
+      "bbox": [
+        1015.81,
+        490.99,
+        9.61,
+        9.61
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 99,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zidonyd0",
+      "id": "99",
+      "bbox": [
+        1202.86,
+        609.78,
+        9.96,
+        9.96
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 100,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/orytsvu9",
+      "id": "100",
+      "bbox": [
+        1151.38,
+        642.57,
+        7.67,
+        7.67
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 101,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hcrmhk3q",
+      "id": "101",
+      "bbox": [
+        848.95,
+        600.22,
+        6.71,
+        6.71
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 102,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/al87ed8b",
+      "id": "102",
+      "bbox": [
+        1103.02,
+        526.23,
+        5.15,
+        5.15
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 103,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/z61032ls",
+      "id": "103",
+      "bbox": [
+        998.27,
+        616.05,
+        5.27,
+        5.27
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 104,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sfil0rqd",
+      "id": "104",
+      "bbox": [
+        1009.4,
+        631.64,
+        7.83,
+        7.83
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 105,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/h0fepkzu",
+      "id": "105",
+      "bbox": [
+        1200.93,
+        498.78,
+        5.33,
+        5.33
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 106,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a9w3m94f",
+      "id": "106",
+      "bbox": [
+        1060.11,
+        547.3,
+        4.24,
+        4.24
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 107,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zupwb2hw",
+      "id": "107",
+      "bbox": [
+        1051.5,
+        583.49,
+        8.3,
+        8.3
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 108,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/obm58z25",
+      "id": "108",
+      "bbox": [
+        1217.78,
+        516.44,
+        5.86,
+        5.86
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 109,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hwfyxobm",
+      "id": "109",
+      "bbox": [
+        1050.17,
+        585.73,
+        5.44,
+        5.44
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 110,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7u54zido",
+      "id": "110",
+      "bbox": [
+        1084.63,
+        588.7,
+        7.22,
+        7.22
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 111,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ed8bat47",
+      "id": "111",
+      "bbox": [
+        1083.93,
+        484.1,
+        5.62,
+        5.62
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 112,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/l0rqd4vm",
+      "id": "112",
+      "bbox": [
+        1102.43,
+        614.25,
+        9.01,
+        9.01
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 113,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wfyxobm5",
+      "id": "113",
+      "bbox": [
+        1075.66,
+        557.56,
+        4.13,
+        4.13
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 114,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/36hcrmhk",
+      "id": "114",
+      "bbox": [
+        903.18,
+        477.8,
+        3.24,
+        3.24
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 115,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/eloj2t83",
+      "id": "115",
+      "bbox": [
+        1173.17,
+        461.11,
+        6.19,
+        6.19
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 116,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lc7u54zi",
+      "id": "116",
+      "bbox": [
+        891.1,
+        630.82,
+        5.05,
+        5.05
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 117,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wra5gbq1",
+      "id": "117",
+      "bbox": [
+        911.49,
+        458.7,
+        8.22,
+        8.22
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 118,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7adsji5s",
+      "id": "118",
+      "bbox": [
+        1118.48,
+        555.77,
+        8.84,
+        8.84
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 119,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/epkzupwb",
+      "id": "119",
+      "bbox": [
+        829.71,
+        642.72,
+        6.85,
+        6.85
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 120,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/m1cfa9w3",
+      "id": "120",
+      "bbox": [
+        927.3,
+        522.69,
+        6.94,
+        6.94
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 121,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bm58z25k",
+      "id": "121",
+      "bbox": [
+        820.16,
+        550.34,
+        8.74,
+        8.74
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 122,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/47y1kre1",
+      "id": "122",
+      "bbox": [
+        1069.03,
+        481.65,
+        9.97,
+        9.97
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 123,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tsvu9kni",
+      "id": "123",
+      "bbox": [
+        1139.06,
+        638.93,
+        3.95,
+        3.95
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 124,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/mp0bi9s3",
+      "id": "124",
+      "bbox": [
+        1121.04,
+        516.04,
+        8.44,
+        8.44
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0.0"
+      },
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 125,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bat47y1k",
+      "id": "125",
+      "bbox": [
+        994.37,
+        555,
+        7.41,
+        7.41
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0.1"
+      },
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 126,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4vmtwra5",
+      "id": "126",
+      "bbox": [
+        1009.92,
+        475.49,
+        7.83,
+        7.83
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 127,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tgfmlkjm",
+      "id": "127",
+      "bbox": [
+        912.78,
+        545.32,
+        8.64,
+        8.64
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 128,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/mhk3q5o7",
+      "id": "128",
+      "bbox": [
+        985.89,
+        578.44,
+        9.98,
+        9.98
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 129,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/b2hwfyxo",
+      "id": "129",
+      "bbox": [
+        1135.23,
+        529.9,
+        7.38,
+        7.38
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 130,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/18jqh0fe",
+      "id": "130",
+      "bbox": [
+        898.81,
+        597,
+        5.39,
+        5.39
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 131,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8nqxs72x",
+      "id": "131",
+      "bbox": [
+        956.41,
+        559,
+        8.92,
+        8.92
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 132,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/j2t83itg",
+      "id": "132",
+      "bbox": [
+        1007.02,
+        510.35,
+        3.13,
+        3.13
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 133,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/qh0fepkz",
+      "id": "133",
+      "bbox": [
+        983.26,
+        649.24,
+        8.94,
+        8.94
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 134,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1w7mp0bi",
+      "id": "134",
+      "bbox": [
+        926.35,
+        648.26,
+        5.46,
+        5.46
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 135,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8bat47y1",
+      "id": "135",
+      "bbox": [
+        973.55,
+        543.19,
+        7.21,
+        7.21
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 136,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jqh0fepk",
+      "id": "136",
+      "bbox": [
+        1019.37,
+        528.04,
+        8.98,
+        8.98
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 137,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/q5o7qpg3",
+      "id": "137",
+      "bbox": [
+        1049.33,
+        623.73,
+        5.7,
+        5.7
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 138,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1kre1w7m",
+      "id": "138",
+      "bbox": [
+        1172.23,
+        518,
+        4.61,
+        4.61
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 139,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/c3ylc7u5",
+      "id": "139",
+      "bbox": [
+        900.03,
+        504.58,
+        8.02,
+        8.02
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 140,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/czed8v6p",
+      "id": "140",
+      "bbox": [
+        855.2,
+        555.82,
+        7.6,
+        7.6
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 141,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5kb6xkf6",
+      "id": "141",
+      "bbox": [
+        1190.32,
+        630.66,
+        4.71,
+        4.71
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 142,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ytsvu9kn",
+      "id": "142",
+      "bbox": [
+        1044.82,
+        577.52,
+        5.21,
+        5.21
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 143,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/neloj2t8",
+      "id": "143",
+      "bbox": [
+        955.47,
+        574.33,
+        6.91,
+        6.91
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 144,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cbulwval",
+      "id": "144",
+      "bbox": [
+        1063.03,
+        613.73,
+        5.03,
+        5.03
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 145,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5sneloj2",
+      "id": "145",
+      "bbox": [
+        1227.67,
+        632.34,
+        7.31,
+        7.31
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 146,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u54zidon",
+      "id": "146",
+      "bbox": [
+        1221.76,
+        481.32,
+        5.99,
+        5.99
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(199, 201, 213, 0.66667)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 147,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/q1orytsv",
+      "id": "147",
+      "bbox": [
+        1028,
+        390,
+        110,
+        110
+      ],
+      "geometry": "ellipse",
+      "alt": "NASA image of Ceres",
+      "contentType": "image/jpeg",
+      "asset": {
+        "assetId": "80ff14ef-7f6b-4c22-bb64-2f8bf2e9e7f8",
+        "contentType": "image/jpeg",
+        "byteLength": 3811
+      }
+    },
+    {
+      "order": 148,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gbq1oryt",
+      "id": "148",
+      "bbox": [
+        118,
+        800,
+        5,
+        82
+      ],
+      "geometry": "rect",
+      "fillColor": "#78E2D7"
+    },
+    {
+      "order": 149,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5wjudg7a",
+      "id": "149",
+      "name": "callout-title-Ceres is the largest object",
+      "bbox": [
+        142,
+        792,
+        730,
+        32
+      ],
+      "composeSource": {
+        "run": 7,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Ceres is the largest object",
+      "textPreview": "Ceres is the largest object",
+      "resolvedFontSize": 26,
+      "resolvedTextStyle": {
+        "fontSize": 26,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Ceres is the largest object"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Ceres is the largest object",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Ceres is the largest object",
+              "fontSize": 26,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 150,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/v6psfil0",
+      "id": "150",
+      "name": "callout-body-Ceres is the largest object",
+      "bbox": [
+        142,
+        832,
+        730,
+        26
+      ],
+      "composeSource": {
+        "run": 8,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "It is massive enough to be rounded by gravity, so it is classified as a dwarf planet.",
+      "textPreview": "It is massive enough to be rounded by gravity, so it is classified as a dwarf planet.",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "fontSize": 21,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "It is massive enough to be rounded by gravity, so it is classified as a dwarf planet."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "It is massive enough to be rounded by gravity, so it is classified as a dwarf planet.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "It is massive enough to be rounded by gravity, so it is classified as a dwarf planet.",
+              "fontSize": 21,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 151,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2lszqtcj",
+      "id": "151",
+      "bbox": [
+        1010,
+        800,
+        5,
+        82
+      ],
+      "geometry": "rect",
+      "fillColor": "#F6B24A"
+    },
+    {
+      "order": 152,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8bat47y",
+      "id": "152",
+      "name": "callout-title-Jupiter acts like a sculptor",
+      "bbox": [
+        1034,
+        792,
+        690,
+        32
+      ],
+      "composeSource": {
+        "run": 9,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Jupiter acts like a sculptor",
+      "textPreview": "Jupiter acts like a sculptor",
+      "resolvedFontSize": 26,
+      "resolvedTextStyle": {
+        "fontSize": 26,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Jupiter acts like a sculptor"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Jupiter acts like a sculptor",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Jupiter acts like a sculptor",
+              "fontSize": 26,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 153,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/knih4byh",
+      "id": "153",
+      "name": "callout-body-Jupiter acts like a sculptor",
+      "bbox": [
+        1034,
+        832,
+        690,
+        26
+      ],
+      "composeSource": {
+        "run": 10,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Its gravity stirred the region and helped prevent a full planet from forming there.",
+      "textPreview": "Its gravity stirred the region and helped prevent a full planet from forming there.",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "fontSize": 21,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Its gravity stirred the region and helped prevent a full planet from forming there."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Its gravity stirred the region and helped prevent a full planet from forming there.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Its gravity stirred the region and helped prevent a full planet from forming there.",
+              "fontSize": 21,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 154,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vu9knih4",
+      "id": "154",
+      "name": "source",
+      "bbox": [
+        92,
+        1028,
+        980,
+        18
+      ],
+      "composeSource": {
+        "run": 11,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Solar system overview",
+      "textPreview": "Solar system overview",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Solar system overview"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Solar system overview",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Solar system overview",
+              "fontSize": 14,
+              "color": "#65708C"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": [
+    {
+      "index": 1,
+      "frame": {
+        "left": 92,
+        "top": 70,
+        "width": 1240,
+        "height": 160
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "column",
+        "name": "title-stack",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 1029.93,
+          "height": 123.6
+        },
+        "frame": {
+          "left": 92,
+          "top": 70,
+          "width": 1240,
+          "height": 154.8
+        },
+        "children": [
+          {
+            "path": "0.0",
+            "kind": "text",
+            "name": "slide-title",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 0,
+              "height": 74.4
+            },
+            "frame": {
+              "left": 92,
+              "top": 70,
+              "width": 1240,
+              "height": 74.4
+            },
+            "snappedFrame": {
+              "left": 92,
+              "top": 70,
+              "width": 1240,
+              "height": 76
+            },
+            "children": [],
+            "text": "The asteroid belt is not a wall",
+            "transform": "none",
+            "element": {
+              "aid": "sh/mp0bi9s3",
+              "id": "58",
+              "kind": "shape"
+            }
+          },
+          {
+            "path": "0.1",
+            "kind": "text",
+            "name": "slide-subtitle",
+            "requestedSize": {
+              "width": {
+                "mode": "wrap",
+                "max": 1120
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 1029.93,
+              "height": 31.2
+            },
+            "frame": {
+              "left": 92,
+              "top": 162.4,
+              "width": 1029.93,
+              "height": 62.4
+            },
+            "snappedFrame": {
+              "left": 92,
+              "top": 162,
+              "width": 1030,
+              "height": 64
+            },
+            "children": [],
+            "text": "Between Mars and Jupiter is a wide region of leftover building blocks, with plenty of empty space.",
+            "transform": "none",
+            "element": {
+              "aid": "sh/bat47y1k",
+              "id": "59",
+              "kind": "shape"
+            }
+          }
+        ],
+        "padding": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "gap": 18,
+        "effectiveGap": 18,
+        "justifyOffset": 0,
+        "align": "start",
+        "justify": "start",
+        "contentFrame": {
+          "left": 92,
+          "top": 70,
+          "width": 1240,
+          "height": 154.8
+        },
+        "items": [
+          {
+            "path": "0.0",
+            "frame": {
+              "left": 92,
+              "top": 70,
+              "width": 1240,
+              "height": 74.4
+            }
+          },
+          {
+            "path": "0.1",
+            "frame": {
+              "left": 92,
+              "top": 162.4,
+              "width": 1029.93,
+              "height": 62.4
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 2,
+      "frame": {
+        "left": 160,
+        "top": 604,
+        "width": 120,
+        "height": 30
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "belt-sun-label",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 24
+        },
+        "frame": {
+          "left": 160,
+          "top": 604,
+          "width": 120,
+          "height": 24
+        },
+        "snappedFrame": {
+          "left": 160,
+          "top": 604,
+          "width": 120,
+          "height": 24
+        },
+        "children": [],
+        "text": "Sun",
+        "transform": "none",
+        "element": {
+          "aid": "sh/at47y1kr",
+          "id": "61",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "frame": {
+        "left": 580,
+        "top": 459,
+        "width": 180,
+        "height": 28
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "label-Mars",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 24
+        },
+        "frame": {
+          "left": 580,
+          "top": 459,
+          "width": 180,
+          "height": 24
+        },
+        "snappedFrame": {
+          "left": 580,
+          "top": 460,
+          "width": 180,
+          "height": 24
+        },
+        "children": [],
+        "text": "Mars",
+        "transform": "none",
+        "element": {
+          "aid": "sh/32lszqtc",
+          "id": "64",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 4,
+      "frame": {
+        "left": 580,
+        "top": 487,
+        "width": 210,
+        "height": 30
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "sublabel-Mars",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 18
+        },
+        "frame": {
+          "left": 580,
+          "top": 487,
+          "width": 210,
+          "height": 18
+        },
+        "snappedFrame": {
+          "left": 580,
+          "top": 488,
+          "width": 210,
+          "height": 18
+        },
+        "children": [],
+        "text": "1.5 AU",
+        "transform": "none",
+        "element": {
+          "aid": "sh/ahoza1gv",
+          "id": "65",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 5,
+      "frame": {
+        "left": 1390,
+        "top": 425,
+        "width": 180,
+        "height": 28
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "label-Jupiter",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 24
+        },
+        "frame": {
+          "left": 1390,
+          "top": 425,
+          "width": 180,
+          "height": 24
+        },
+        "snappedFrame": {
+          "left": 1390,
+          "top": 426,
+          "width": 180,
+          "height": 24
+        },
+        "children": [],
+        "text": "Jupiter",
+        "transform": "none",
+        "element": {
+          "aid": "sh/sneloj2t",
+          "id": "67",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 6,
+      "frame": {
+        "left": 1390,
+        "top": 453,
+        "width": 210,
+        "height": 30
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "sublabel-Jupiter",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 18
+        },
+        "frame": {
+          "left": 1390,
+          "top": 453,
+          "width": 210,
+          "height": 18
+        },
+        "snappedFrame": {
+          "left": 1390,
+          "top": 454,
+          "width": 210,
+          "height": 18
+        },
+        "children": [],
+        "text": "5.2 AU",
+        "transform": "none",
+        "element": {
+          "aid": "sh/3q5o7qpg",
+          "id": "68",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 7,
+      "frame": {
+        "left": 142,
+        "top": 792,
+        "width": 730,
+        "height": 32
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "callout-title-Ceres is the largest object",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 31.2
+        },
+        "frame": {
+          "left": 142,
+          "top": 792,
+          "width": 730,
+          "height": 31.2
+        },
+        "snappedFrame": {
+          "left": 142,
+          "top": 792,
+          "width": 730,
+          "height": 32
+        },
+        "children": [],
+        "text": "Ceres is the largest object",
+        "transform": "none",
+        "element": {
+          "aid": "sh/5wjudg7a",
+          "id": "149",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 8,
+      "frame": {
+        "left": 142,
+        "top": 832,
+        "width": 730,
+        "height": 84
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "callout-body-Ceres is the largest object",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 25.2
+        },
+        "frame": {
+          "left": 142,
+          "top": 832,
+          "width": 730,
+          "height": 25.2
+        },
+        "snappedFrame": {
+          "left": 142,
+          "top": 832,
+          "width": 730,
+          "height": 26
+        },
+        "children": [],
+        "text": "It is massive enough to be rounded by gravity, so it is classified as a dwarf planet.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/v6psfil0",
+          "id": "150",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 9,
+      "frame": {
+        "left": 1034,
+        "top": 792,
+        "width": 690,
+        "height": 32
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "callout-title-Jupiter acts like a sculptor",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 31.2
+        },
+        "frame": {
+          "left": 1034,
+          "top": 792,
+          "width": 690,
+          "height": 31.2
+        },
+        "snappedFrame": {
+          "left": 1034,
+          "top": 792,
+          "width": 690,
+          "height": 32
+        },
+        "children": [],
+        "text": "Jupiter acts like a sculptor",
+        "transform": "none",
+        "element": {
+          "aid": "sh/d8bat47y",
+          "id": "152",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 10,
+      "frame": {
+        "left": 1034,
+        "top": 832,
+        "width": 690,
+        "height": 84
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "callout-body-Jupiter acts like a sculptor",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 25.2
+        },
+        "frame": {
+          "left": 1034,
+          "top": 832,
+          "width": 690,
+          "height": 25.2
+        },
+        "snappedFrame": {
+          "left": 1034,
+          "top": 832,
+          "width": 690,
+          "height": 26
+        },
+        "children": [],
+        "text": "Its gravity stirred the region and helped prevent a full planet from forming there.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/knih4byh",
+          "id": "153",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 11,
+      "frame": {
+        "left": 92,
+        "top": 1028,
+        "width": 980,
+        "height": 28
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "source",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 16.8
+        },
+        "frame": {
+          "left": 92,
+          "top": 1028,
+          "width": 980,
+          "height": 16.8
+        },
+        "snappedFrame": {
+          "left": 92,
+          "top": 1028,
+          "width": 980,
+          "height": 18
+        },
+        "children": [],
+        "text": "Solar system overview",
+        "transform": "none",
+        "element": {
+          "aid": "sh/vu9knih4",
+          "id": "154",
+          "kind": "shape"
+        }
+      }
+    }
+  ]
+}

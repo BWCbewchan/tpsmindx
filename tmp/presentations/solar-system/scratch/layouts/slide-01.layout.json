@@ -1,0 +1,481 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/rnfggk",
+    "id": "rnfggk",
+    "slide": 1,
+    "layoutId": "94d123c3-a156-4f53-b238-c8e292d74501",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "94d123c3-a156-4f53-b238-c8e292d74501",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/90je9cvi",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "#03040B"
+    },
+    {
+      "order": 2,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/3ex0nuxc",
+      "id": "2",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "alt": "NASA artist concept montage of the solar system",
+      "contentType": "image/jpeg",
+      "asset": {
+        "assetId": "e9925b90-b795-48c0-b9ce-ba4eb06fefac",
+        "contentType": "image/jpeg",
+        "byteLength": 207273
+      }
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rytsvu9k",
+      "id": "3",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(3, 4, 11, 0.8)"
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/g7adsji5",
+      "id": "4",
+      "bbox": [
+        0,
+        0,
+        760,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(3, 4, 11, 0.9098)"
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9s36hcrm",
+      "id": "5",
+      "bbox": [
+        92,
+        156,
+        7,
+        670
+      ],
+      "geometry": "rect",
+      "fillColor": "#F6B24A"
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/y1kre1w7",
+      "id": "6",
+      "name": "cover-title",
+      "bbox": [
+        124,
+        142,
+        660,
+        404
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "THE\nSOLAR\nSYSTEM",
+      "textPreview": "THE | SOLAR | SYSTEM",
+      "resolvedFontSize": 112,
+      "resolvedTextStyle": {
+        "fontSize": 112,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "THE"
+          },
+          {
+            "index": 2,
+            "text": "SOLAR"
+          },
+          {
+            "index": 3,
+            "text": "SYSTEM"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "THE",
+          "runs": [
+            {
+              "index": 1,
+              "text": "THE",
+              "fontSize": 112,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        },
+        {
+          "index": 2,
+          "text": "SOLAR",
+          "runs": [
+            {
+              "index": 1,
+              "text": "SOLAR",
+              "fontSize": 112,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        },
+        {
+          "index": 3,
+          "text": "SYSTEM",
+          "runs": [
+            {
+              "index": 1,
+              "text": "SYSTEM",
+              "fontSize": 112,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rmhk3q5o",
+      "id": "7",
+      "name": "cover-subtitle",
+      "bbox": [
+        128,
+        610,
+        620,
+        76
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "A guided tour from the star that holds it together to the icy worlds at its edge.",
+      "textPreview": "A guided tour from the star that holds it together to the icy worlds at its edge.",
+      "resolvedFontSize": 31,
+      "resolvedTextStyle": {
+        "fontSize": 31,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "A guided tour from the star that holds it together"
+          },
+          {
+            "index": 2,
+            "text": "to the icy worlds at its edge."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "A guided tour from the star that holds it together to the icy worlds at its edge.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "A guided tour from the star that holds it together to the icy worlds at its edge.",
+              "fontSize": 31,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/g3ex0nux",
+      "id": "8",
+      "name": "cover-kicker",
+      "bbox": [
+        128,
+        810,
+        620,
+        28
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "8 planets. 1 star. Billions of small worlds.",
+      "textPreview": "8 planets. 1 star. Billions of small worlds.",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "8 planets. 1 star. Billions of small worlds."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "8 planets. 1 star. Billions of small worlds.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "8 planets. 1 star. Billions of small worlds.",
+              "fontSize": 22,
+              "color": "#F6B24A",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": [
+    {
+      "index": 1,
+      "frame": {
+        "left": 124,
+        "top": 142,
+        "width": 660,
+        "height": 430
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "cover-title",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 403.2
+        },
+        "frame": {
+          "left": 124,
+          "top": 142,
+          "width": 660,
+          "height": 403.2
+        },
+        "snappedFrame": {
+          "left": 124,
+          "top": 142,
+          "width": 660,
+          "height": 404
+        },
+        "children": [],
+        "text": "THE\nSOLAR\nSYSTEM",
+        "transform": "none",
+        "element": {
+          "aid": "sh/y1kre1w7",
+          "id": "6",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 2,
+      "frame": {
+        "left": 128,
+        "top": 610,
+        "width": 620,
+        "height": 108
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "cover-subtitle",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 37.2
+        },
+        "frame": {
+          "left": 128,
+          "top": 610,
+          "width": 620,
+          "height": 74.4
+        },
+        "snappedFrame": {
+          "left": 128,
+          "top": 610,
+          "width": 620,
+          "height": 76
+        },
+        "children": [],
+        "text": "A guided tour from the star that holds it together to the icy worlds at its edge.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/rmhk3q5o",
+          "id": "7",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "frame": {
+        "left": 128,
+        "top": 810,
+        "width": 620,
+        "height": 36
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "cover-kicker",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 26.4
+        },
+        "frame": {
+          "left": 128,
+          "top": 810,
+          "width": 620,
+          "height": 26.4
+        },
+        "snappedFrame": {
+          "left": 128,
+          "top": 810,
+          "width": 620,
+          "height": 28
+        },
+        "children": [],
+        "text": "8 planets. 1 star. Billions of small worlds.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/g3ex0nux",
+          "id": "8",
+          "kind": "shape"
+        }
+      }
+    }
+  ]
+}

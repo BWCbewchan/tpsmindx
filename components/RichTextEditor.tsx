@@ -51,7 +51,7 @@ import {
   Rows,
   TableProperties,
 } from 'lucide-react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { memo, startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from '@/lib/app-toast'
 import { Button } from './ui/button'
 
@@ -357,7 +357,12 @@ const ResizableImage = Image.extend({
       },
     }
   },
-  addNodeView() { return ReactNodeViewRenderer(ResizableImageNodeView) },
+  addNodeView() {
+    return ReactNodeViewRenderer(ResizableImageNodeView, {
+      as: 'span',
+      update: ({ oldNode, newNode }) => oldNode.eq(newNode),
+    })
+  },
   renderHTML({ HTMLAttributes }) {
     // Render wrapper span + img để user view hiển thị đúng như trong editor
     const float = HTMLAttributes['data-float'] || ''
@@ -478,14 +483,23 @@ function ImageGalleryNodeView(props: NodeViewProps) {
   const addImages = async (files: FileList | null) => {
     if (!files?.length) return
     const newImgs: GalleryImage[] = []
-    for (const file of Array.from(files)) {
-      if (!file.type.startsWith('image/')) continue
-      const src = await new Promise<string>((res, rej) => {
-        const r = new FileReader(); r.onload = () => res(r.result as string); r.onerror = rej; r.readAsDataURL(file)
-      })
-      newImgs.push({ src, alt: file.name })
+    const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'))
+    if (imageFiles.length === 0) return
+
+    try {
+      toast.loading('Dang tai anh len...', { id: 'gallery-upload' })
+      for (const file of imageFiles) {
+        const src = await uploadQuestionImageFile(file)
+        newImgs.push({ src, alt: file.name })
+      }
+      updateAttributes({ images: [...images, ...newImgs] })
+      toast.success('Da them anh vao gallery', { id: 'gallery-upload' })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Khong the tai anh len', { id: 'gallery-upload' })
+      return
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
-    updateAttributes({ images: [...images, ...newImgs] })
   }
 
   // Drag-drop reorder trong gallery
@@ -596,13 +610,13 @@ function ImageGalleryNodeView(props: NodeViewProps) {
             onDragEnd={onDragEnd}
           >
             { }
-            <img src={img.src} alt={img.alt} className="gallery-img" draggable={false} />
+            <img src={normalizeStorageUrl(img.src)} alt={img.alt} className="gallery-img" draggable={false} />
             <div className="gallery-item-overlay">
               <GripVertical className="h-4 w-4 text-white opacity-70" />
               <button className="gallery-remove-btn" onClick={() => removeImage(idx)} title="Xóa ảnh">
                 <X className="h-3 w-3" />
               </button>
-            </div>``
+            </div>
           </div>
         ))}
         {/* Drop zone thêm ảnh */}
@@ -642,7 +656,7 @@ const ImageGalleryExtension = Node.create({
     const images: GalleryImage[] = HTMLAttributes.images || []
     const children: [string, Record<string, string>][] = images.map(img => [
       'img',
-      { src: img.src, alt: img.alt || '', style: 'width:100%;height:160px;object-fit:cover;border-radius:4px;' },
+      { src: normalizeStorageUrl(img.src), alt: img.alt || '', style: 'width:100%;height:160px;object-fit:cover;border-radius:4px;' },
     ])
     return [
       'div',
@@ -652,7 +666,9 @@ const ImageGalleryExtension = Node.create({
   },
 
   addNodeView() {
-    return ReactNodeViewRenderer(ImageGalleryNodeView)
+    return ReactNodeViewRenderer(ImageGalleryNodeView, {
+      update: ({ oldNode, newNode }) => oldNode.eq(newNode),
+    })
   },
 })
 
@@ -735,9 +751,63 @@ function sanitizePastedHTML(html: string): string {
   return body.innerHTML
 }
 
+// Stable extension list — must not be recreated per render (useEditor deps: [])
+const EDITOR_EXTENSIONS = [
+  StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
+  ResizableImage.configure({ inline: true, allowBase64: true, HTMLAttributes: { class: 'tiptap-image' } }),
+  InlineIcon.configure({ inline: true, allowBase64: false }),
+  ImageGalleryExtension,
+  Table.configure({ resizable: true, HTMLAttributes: { class: 'tiptap-table' } }),
+  TableRow,
+  TableHeader.configure({ HTMLAttributes: { class: 'tiptap-th' } }),
+  TableCell.configure({ HTMLAttributes: { class: 'tiptap-td' } }),
+  Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-blue-500 underline hover:text-blue-700' } }),
+  Underline,
+  TextAlign.configure({ types: ['heading', 'paragraph'] }),
+  TextStyle,
+  FontSize,
+  Color,
+]
+
+function normalizeEditorHtml(html: string): string {
+  const trimmed = (html || '').trim()
+  if (
+    trimmed === '' ||
+    trimmed === '<p></p>' ||
+    trimmed === '<p><br></p>' ||
+    trimmed === '<p><br class="ProseMirror-trailingBreak"></p>'
+  ) {
+    return ''
+  }
+  return trimmed
+}
+
+function editorHtmlMatches(a: string, b: string): boolean {
+  if (a === b) return true
+  return normalizeEditorHtml(a) === normalizeEditorHtml(b)
+}
+
+async function uploadQuestionImageFile(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) throw new Error('Chi ho tro dinh dang anh')
+  if (file.size > 10 * 1024 * 1024) throw new Error('Kich thuoc anh toi da 10MB')
+
+  const formData = new FormData()
+  formData.append('image', file)
+
+  const response = await fetch('/api/upload-question-image', {
+    method: 'POST',
+    body: formData,
+  })
+  const data = await response.json()
+  if (!response.ok || !data.success) {
+    throw new Error(data.error || 'Upload anh that bai')
+  }
+  return data.url as string
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export default function RichTextEditor({
+function RichTextEditor({
   content,
   onChange,
   error,
@@ -749,72 +819,129 @@ export default function RichTextEditor({
   const [selectedImageAlign, setSelectedImageAlign] = useState<string>('text-bottom')
   const [selectedImageFloat, setSelectedImageFloat] = useState<string>('none')
   const [showImageControls, setShowImageControls] = useState(false)
-  // Track HTML vừa emit từ editor để tránh setContent lại gây loop
   const lastEmittedHtmlRef = useRef<string>('')
+  const isComposingRef = useRef(false)
+  const onChangeRef = useRef(onChange)
+  const editorRef = useRef<TiptapEditor | null>(null)
+  const initialContentRef = useRef(content || '')
+  const hasHydratedInitialContentRef = useRef(false)
+
+  useEffect(() => {
+    onChangeRef.current = onChange
+  }, [onChange])
 
   const uploadImageFile = useCallback(async (file: File): Promise<string> => {
     if (!file.type.startsWith('image/')) throw new Error('Chỉ hỗ trợ định dạng ảnh')
     if (file.size > 10 * 1024 * 1024) throw new Error('Kích thước ảnh tối đa 10MB')
 
-    // Upload ảnh gốc không xử lý để giữ nguyên chất lượng
-    return new Promise<string>((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(file)
+    const formData = new FormData()
+    formData.append('image', file)
+
+    const response = await fetch('/api/upload-question-image', {
+      method: 'POST',
+      body: formData,
     })
+    const data = await response.json()
+    if (!response.ok || !data.success) {
+      throw new Error(data.error || 'Upload ảnh thất bại')
+    }
+    return data.url as string
   }, [])
 
-  const editor = useEditor({
-    immediatelyRender: false,
-    extensions: [
-      StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
-      ResizableImage.configure({ inline: true, allowBase64: true, HTMLAttributes: { class: 'tiptap-image' } }),
-      InlineIcon.configure({ inline: true, allowBase64: false }),
-      ImageGalleryExtension,
-      Table.configure({ resizable: true, HTMLAttributes: { class: 'tiptap-table' } }),
-      TableRow,
-      TableHeader.configure({ HTMLAttributes: { class: 'tiptap-th' } }),
-      TableCell.configure({ HTMLAttributes: { class: 'tiptap-td' } }),
-      Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-blue-500 underline hover:text-blue-700' } }),
-      Underline,
-      TextAlign.configure({ types: ['heading', 'paragraph'] }),
-      TextStyle,
-      FontSize,
-      Color,
-    ],
-    content: content || '',
-    editorProps: {
-      attributes: {
-        class: `prose prose-xs sm:prose-sm max-w-none focus:outline-none ${minHeight} px-4 py-3 ${error ? 'border-red-500' : ''}`,
-      },
-      handlePaste: (_view, event) => {
-        const typeList = event.clipboardData?.types ? Array.from(event.clipboardData.types) : []
-        const items = event.clipboardData?.items
+  const editor = useEditor(
+    {
+      immediatelyRender: false,
+      shouldRerenderOnTransaction: false,
+      extensions: EDITOR_EXTENSIONS,
+      content: '',
+      editorProps: {
+        attributes: {
+          class: `prose prose-xs sm:prose-sm max-w-none focus:outline-none ${minHeight} px-4 py-3 ${error ? 'border-red-500' : ''}`,
+          spellcheck: 'false',
+          autocorrect: 'off',
+          autocapitalize: 'off',
+          autocomplete: 'off',
+        },
+        handleDOMEvents: {
+          compositionstart: () => {
+            isComposingRef.current = true
+            return false
+          },
+          compositionend: () => {
+            isComposingRef.current = false
+            return false
+          },
+          compositionupdate: () => {
+            isComposingRef.current = true
+            return false
+          },
+        },
+        handlePaste: (_view, event) => {
+          const activeEditor = editorRef.current
+          if (!activeEditor) return false
 
-        // Ưu tiên xử lý ảnh trước — kể cả khi clipboard có cả text/html lẫn image
-        // (copy ảnh từ web thường có cả 2 loại)
-        if (items?.length) {
-          for (const item of Array.from(items)) {
-            if (!item.type.startsWith('image/')) continue
-            const file = item.getAsFile()
-            if (!file) continue
+          const typeList = event.clipboardData?.types ? Array.from(event.clipboardData.types) : []
+          const items = event.clipboardData?.items
+
+          if (items?.length) {
+            for (const item of Array.from(items)) {
+              if (!item.type.startsWith('image/')) continue
+              const file = item.getAsFile()
+              if (!file) continue
+              event.preventDefault()
+              ;(async () => {
+                try {
+                  toast.loading('Đang xử lý ảnh...', { id: 'img-upload' })
+                  const url = await uploadImageFile(file)
+                  const { tr } = activeEditor.state
+                  const node = activeEditor.state.schema.nodes.image.create({ src: url, alt: file.name || 'image' })
+                  const insertPos = activeEditor.state.selection.from
+                  tr.replaceSelectionWith(node)
+                  tr.setSelection(NodeSelection.create(tr.doc, insertPos))
+                  activeEditor.view.dispatch(tr)
+                  activeEditor.view.focus()
+                  toast.success('Đã chèn ảnh', { id: 'img-upload' })
+                } catch (err) {
+                  toast.error(err instanceof Error ? err.message : 'Không thể xử lý ảnh', { id: 'img-upload' })
+                }
+              })()
+              return true
+            }
+          }
+
+          if (typeList.includes('text/html')) {
+            const html = event.clipboardData?.getData('text/html') || ''
+            const sanitized = sanitizePastedHTML(html)
+            if (sanitized) {
+              event.preventDefault()
+              activeEditor.commands.insertContent(sanitized, { parseOptions: { preserveWhitespace: 'full' } })
+              return true
+            }
+            return false
+          }
+
+          return false
+        },
+        handleDrop: (view, event, _slice, moved) => {
+          if (moved) return false
+          const activeEditor = editorRef.current
+          if (!activeEditor) return false
+
+          const files = Array.from(event.dataTransfer?.files || [])
+          const imageFile = files.find(f => f.type.startsWith('image/'))
+          if (imageFile) {
             event.preventDefault()
+            const insertPos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? activeEditor.state.selection.from
             ;(async () => {
               try {
                 toast.loading('Đang xử lý ảnh...', { id: 'img-upload' })
-                const url = await uploadImageFile(file)
-                
-                // Chèn ảnh và chọn nó ngay lập tức
-                const { tr } = editor!.state
-                const node = editor!.state.schema.nodes.image.create({ src: url, alt: file.name || 'image' })
-                const insertPos = editor!.state.selection.from
-                tr.replaceSelectionWith(node)
-                // Đặt selection lên node vừa chèn
+                const url = await uploadImageFile(imageFile)
+                const { tr } = activeEditor.state
+                const node = activeEditor.state.schema.nodes.image.create({ src: url, alt: imageFile.name || 'image' })
+                tr.insert(insertPos, node)
                 tr.setSelection(NodeSelection.create(tr.doc, insertPos))
-                editor!.view.dispatch(tr)
-                editor!.view.focus()
-                
+                activeEditor.view.dispatch(tr)
+                activeEditor.view.focus()
                 toast.success('Đã chèn ảnh', { id: 'img-upload' })
               } catch (err) {
                 toast.error(err instanceof Error ? err.message : 'Không thể xử lý ảnh', { id: 'img-upload' })
@@ -822,120 +949,151 @@ export default function RichTextEditor({
             })()
             return true
           }
-        }
 
-        // Xử lý HTML (text, bảng, định dạng...)
-        if (typeList.includes('text/html')) {
-          const html = event.clipboardData?.getData('text/html') || ''
-          const sanitized = sanitizePastedHTML(html)
-          if (sanitized) {
-            event.preventDefault()
-            editor?.commands.insertContent(sanitized, { parseOptions: { preserveWhitespace: 'full' } })
-            return true
-          }
           return false
-        }
-
-        return false
-      },
-      handleDrop: (view, event, _slice, moved) => {
-        // Nếu Tiptap đã xử lý move nội bộ thì bỏ qua
-        if (moved) return false
-
-        // Drop file ảnh từ máy tính (từ file manager)
-        const files = Array.from(event.dataTransfer?.files || [])
-        const imageFile = files.find(f => f.type.startsWith('image/'))
-        if (imageFile) {
-          event.preventDefault()
-          const insertPos = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? editor!.state.selection.from
-          ;(async () => {
-            try {
-              toast.loading('Đang xử lý ảnh...', { id: 'img-upload' })
-              const url = await uploadImageFile(imageFile)
-              
-              const { tr } = editor!.state
-              const node = editor!.state.schema.nodes.image.create({ src: url, alt: imageFile.name || 'image' })
-              tr.insert(insertPos, node)
-              tr.setSelection(NodeSelection.create(tr.doc, insertPos))
-              editor!.view.dispatch(tr)
-              editor!.view.focus()
-              
-              toast.success('Đã chèn ảnh', { id: 'img-upload' })
-            } catch (err) {
-              toast.error(err instanceof Error ? err.message : 'Không thể xử lý ảnh', { id: 'img-upload' })
-            }
-          })()
-          return true
-        }
-
-        // Drag ảnh nội bộ được xử lý bởi pointer events trong NodeView
-        // Trả về false để Tiptap không xử lý thêm
-        return false
+        },
       },
     },
-    // Chuyển onUpdate và onSelectionUpdate vào useEffect để tránh lỗi render cycle trong React 18/19
-  })
+    [],
+  )
 
-  // Đăng ký các event editor trong useEffect sau khi editor đã được khởi tạo
+  useEffect(() => {
+    editorRef.current = editor
+  }, [editor])
+
+  useEffect(() => {
+    if (!editor) return
+    editor.setOptions({
+      editorProps: {
+        ...editor.options.editorProps,
+        attributes: {
+          class: `prose prose-xs sm:prose-sm max-w-none focus:outline-none ${minHeight} px-4 py-3 ${error ? 'border-red-500' : ''}`,
+          spellcheck: 'false',
+          autocorrect: 'off',
+          autocapitalize: 'off',
+          autocomplete: 'off',
+        },
+      },
+    })
+  }, [editor, minHeight, error])
+
+  // Hydrate initial HTML once (prop is not bound into useEditor to avoid remount loops)
+  useEffect(() => {
+    if (!editor || hasHydratedInitialContentRef.current) return
+    const initial = initialContentRef.current
+    hasHydratedInitialContentRef.current = true
+    lastEmittedHtmlRef.current = initial
+    if (!initial) return
+
+    queueMicrotask(() => {
+      if (editor.isDestroyed) return
+      startTransition(() => {
+        if (!editor.isDestroyed && !editorHtmlMatches(editor.getHTML(), initial)) {
+          editor.commands.setContent(initial, { emitUpdate: false })
+        }
+      })
+    })
+  }, [editor])
+
   useEffect(() => {
     if (!editor) return
 
-    const handleUpdate = () => {
+    const emitHtmlToParent = () => {
       if (editor.isDestroyed) return
       const html = editor.getHTML()
       lastEmittedHtmlRef.current = html
-      // Sử dụng setTimeout(0) thay vì queueMicrotask để đẩy việc callback ra khỏi render cycle hiện tại
-      setTimeout(() => {
+      queueMicrotask(() => {
         if (!editor.isDestroyed) {
-          onChange(html)
+          onChangeRef.current(html)
         }
-      }, 0)
+      })
+    }
+
+    const handleUpdate = () => {
+      if (editor.isDestroyed) return
+      if (isComposingRef.current || editor.view.composing) return
+      emitHtmlToParent()
+    }
+
+    const handleCompositionEnd = () => {
+      isComposingRef.current = false
+      if (editor.view.composing) return
+      emitHtmlToParent()
     }
 
     const handleSelectionUpdate = () => {
       if (editor.isDestroyed) return
       const sel = editor.state.selection
-      setTimeout(() => {
-        if (editor.isDestroyed) return
-        if (sel instanceof NodeSelection && sel.node.type.name === 'image') {
-          setShowImageControls(prev => { if (!prev) return true; return prev })
-          const w = sel.node.attrs.width
-          setSelectedImageWidth(typeof w === 'number' && Number.isFinite(w) ? `${Math.round(w)}px` : 'auto')
-          const align = sel.node.attrs.verticalAlign
-          setSelectedImageAlign(typeof align === 'string' && align ? align : 'top')
-          const f = sel.node.attrs.float
-          setSelectedImageFloat(typeof f === 'string' && f ? f : 'none')
-        } else {
-          setShowImageControls(prev => { if (prev) return false; return prev })
-        }
-      }, 0)
+      const isImage = sel instanceof NodeSelection && sel.node.type.name === 'image'
+
+      if (isImage) {
+        const w = sel.node.attrs.width
+        const width = typeof w === 'number' && Number.isFinite(w) ? `${Math.round(w)}px` : 'auto'
+        const align = sel.node.attrs.verticalAlign
+        const alignVal = typeof align === 'string' && align ? align : 'top'
+        const f = sel.node.attrs.float
+        const floatVal = typeof f === 'string' && f ? f : 'none'
+
+        setShowImageControls(true)
+        setSelectedImageWidth(width)
+        setSelectedImageAlign(alignVal)
+        setSelectedImageFloat(floatVal)
+      } else {
+        setShowImageControls(false)
+      }
     }
 
     editor.on('update', handleUpdate)
     editor.on('selectionUpdate', handleSelectionUpdate)
 
+    const editorDom = editor.view.dom
+    editorDom.addEventListener('compositionend', handleCompositionEnd)
+
     return () => {
       editor.off('update', handleUpdate)
       editor.off('selectionUpdate', handleSelectionUpdate)
+      editorDom.removeEventListener('compositionend', handleCompositionEnd)
     }
-  }, [editor, onChange])
+  }, [editor])
 
-  // Chỉ setContent khi content đến từ bên ngoài (không phải từ chính editor emit ra)
+  // External content only — skip echoes from onChange and never overwrite while focused / composing
   useEffect(() => {
     if (!editor || content === undefined || content === null) return
-    // Nếu content này chính là thứ editor vừa emit → bỏ qua, tránh loop
-    if (content === lastEmittedHtmlRef.current) return
-    
-    const timeoutId = setTimeout(() => {
-      if (!editor.isDestroyed && editor.getHTML() !== content) {
-        editor.commands.setContent(content)
+    if (editorHtmlMatches(content, lastEmittedHtmlRef.current)) return
+    if (isComposingRef.current || editor.view.composing) return
+    if (editor.isFocused) return
+
+    const rafId = requestAnimationFrame(() => {
+      if (
+        editor.isDestroyed ||
+        isComposingRef.current ||
+        editor.view.composing ||
+        editor.isFocused ||
+        editorHtmlMatches(editor.getHTML(), content)
+      ) {
+        return
       }
-    }, 0)
-    
-    return () => clearTimeout(timeoutId)
+
+      startTransition(() => {
+        if (
+          !editor.isDestroyed &&
+          !isComposingRef.current &&
+          !editor.view.composing &&
+          !editor.isFocused &&
+          !editorHtmlMatches(editor.getHTML(), content)
+        ) {
+          editor.commands.setContent(content, { emitUpdate: false })
+          lastEmittedHtmlRef.current = content
+        }
+      })
+    })
+
+    return () => cancelAnimationFrame(rafId)
   }, [content, editor])
 
-  useEffect(() => { setShowImageControls(false) }, [editor])
+  useEffect(() => {
+    setShowImageControls(false)
+  }, [editor])
 
   // Smart image layout: CSS-only approach, không touch DOM trực tiếp
   // Layout được xử lý hoàn toàn qua CSS class trên paragraph
@@ -1370,3 +1528,11 @@ export default function RichTextEditor({
     </div>
   )
 }
+
+export default memo(RichTextEditor, (prev, next) =>
+  prev.content === next.content &&
+  prev.showToolbar === next.showToolbar &&
+  prev.minHeight === next.minHeight &&
+  prev.error === next.error &&
+  prev.textColor === next.textColor,
+)

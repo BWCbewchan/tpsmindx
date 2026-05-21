@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
 import { authHeaders } from '@/lib/auth-headers';
 import { sanitizeHtml } from '@/lib/sanitize-html';
+import { normalizeStorageUrl } from '@/lib/storage-url';
 import { useTeacher } from '@/lib/teacher-context';
 import { AlertCircle, ArrowLeft, Award, BookOpen, CheckCircle, Clock, FileText, Send } from 'lucide-react';
 import Link from 'next/link';
@@ -19,6 +20,7 @@ interface ExamQuestion {
   question_type: 'multiple_choice' | 'true_false' | 'short_answer' | 'essay';
   options: string[] | null;
   correct_answer: string | null;
+  image_url: string | null;
   points: number;
   order_number: number;
 }
@@ -144,6 +146,7 @@ export default function ExamAssignmentTakingPage() {
       question_type: (raw?.question_type || 'short_answer') as ExamQuestion['question_type'],
       options: normalizeQuestionOptions(raw?.options),
       correct_answer: raw?.correct_answer == null ? null : String(raw.correct_answer),
+      image_url: raw?.image_url == null ? null : normalizeStorageUrl(String(raw.image_url)),
       points: Number(raw?.points || 0),
       order_number: Number(raw?.order_number || 0),
     };
@@ -542,6 +545,13 @@ export default function ExamAssignmentTakingPage() {
                               {question.points} điểm
                             </span>
                           </div>
+                          {question.image_url && (
+                            <img
+                              src={question.image_url}
+                              alt="Question"
+                              className="mt-3 max-h-80 max-w-full rounded-lg border border-gray-200 bg-gray-50 object-contain"
+                            />
+                          )}
                         </div>
                       </div>
 

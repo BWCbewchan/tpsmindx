@@ -56,6 +56,7 @@ Table chuyen_sau_cauhoi {
   giai_thich text
   diem decimal
   do_kho varchar [note: 'de, trung_binh, kho']
+  image_url varchar [note: 'Link ảnh minh họa câu hỏi']
   tao_luc timestamp
 }
 

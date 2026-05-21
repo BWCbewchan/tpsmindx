@@ -1,0 +1,2591 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/dx5wob",
+    "id": "dx5wob",
+    "slide": 2,
+    "layoutId": "94d123c3-a156-4f53-b238-c8e292d74501",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "94d123c3-a156-4f53-b238-c8e292d74501",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/p0bi9s36",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "#070915"
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/i9s36hcr",
+      "id": "2",
+      "bbox": [
+        674.54,
+        81.05,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bulwval8",
+      "id": "3",
+      "bbox": [
+        163.46,
+        775.14,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/032lszqt",
+      "id": "4",
+      "bbox": [
+        1512.4,
+        292.14,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tovahoza",
+      "id": "5",
+      "bbox": [
+        995.22,
+        693.14,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ixczed8v",
+      "id": "6",
+      "bbox": [
+        1283.41,
+        431.21,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/bi9s36hc",
+      "id": "7",
+      "bbox": [
+        1483.91,
+        38.85,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0rqd4vmt",
+      "id": "8",
+      "bbox": [
+        1106.22,
+        54.07,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tcj6tova",
+      "id": "9",
+      "bbox": [
+        1548.94,
+        786.78,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hwfyxobm",
+      "id": "10",
+      "bbox": [
+        695.66,
+        837.58,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/obm58z25",
+      "id": "11",
+      "bbox": [
+        1650.27,
+        190.71,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zqtcj6to",
+      "id": "12",
+      "bbox": [
+        1441.54,
+        1013,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/65wjudg7",
+      "id": "13",
+      "bbox": [
+        887.22,
+        640.83,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hk3q5o7q",
+      "id": "14",
+      "bbox": [
+        487.38,
+        666.85,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/oza1gvy9",
+      "id": "15",
+      "bbox": [
+        1457.2,
+        148.34,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zed8v6ps",
+      "id": "16",
+      "bbox": [
+        769.14,
+        629.26,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6xkf6dcb",
+      "id": "17",
+      "bbox": [
+        274.43,
+        177.54,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hcrmhk3q",
+      "id": "18",
+      "bbox": [
+        534.01,
+        349.86,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/orytsvu9",
+      "id": "19",
+      "bbox": [
+        388.75,
+        585.46,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ovahoza1",
+      "id": "20",
+      "bbox": [
+        739.14,
+        161.11,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dg7adsji",
+      "id": "21",
+      "bbox": [
+        1884.31,
+        28.95,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 22,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6tovahoz",
+      "id": "22",
+      "bbox": [
+        1530.4,
+        369.16,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 23,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vahoza1g",
+      "id": "23",
+      "bbox": [
+        1058.36,
+        759.31,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 24,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/onyd0z61",
+      "id": "24",
+      "bbox": [
+        1241.09,
+        412.23,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 25,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8v6psfi",
+      "id": "25",
+      "bbox": [
+        1719.97,
+        524.39,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 26,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6hcrmhk3",
+      "id": "26",
+      "bbox": [
+        1750.75,
+        246.46,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 27,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/z25kb6xk",
+      "id": "27",
+      "bbox": [
+        208.82,
+        738.19,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 28,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/oj2t83it",
+      "id": "28",
+      "bbox": [
+        1003.87,
+        719.25,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 29,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d4vmtwra",
+      "id": "29",
+      "bbox": [
+        1733.91,
+        678.01,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 30,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/32lszqtc",
+      "id": "30",
+      "bbox": [
+        1488.66,
+        770.16,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 31,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ahoza1gv",
+      "id": "31",
+      "bbox": [
+        832.32,
+        388.98,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 32,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/l87ed8ba",
+      "id": "32",
+      "bbox": [
+        115.76,
+        99.21,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 33,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sneloj2t",
+      "id": "33",
+      "bbox": [
+        827.99,
+        416.26,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 34,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3ex0nuxc",
+      "id": "34",
+      "bbox": [
+        1737.07,
+        822.82,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 35,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/at47y1kr",
+      "id": "35",
+      "bbox": [
+        1250.41,
+        524.59,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 36,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lkjm1cfa",
+      "id": "36",
+      "bbox": [
+        624.4,
+        557.09,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 37,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/szqtcj6t",
+      "id": "37",
+      "bbox": [
+        1213.44,
+        645.41,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 38,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3itgfmlk",
+      "id": "38",
+      "bbox": [
+        948.32,
+        688.72,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 39,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ex0nuxc3",
+      "id": "39",
+      "bbox": [
+        1474.01,
+        811.49,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 40,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a5gbq1or",
+      "id": "40",
+      "bbox": [
+        1376.82,
+        673.3,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 41,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3m94fu18",
+      "id": "41",
+      "bbox": [
+        1330.89,
+        79.01,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 42,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/s72x4nap",
+      "id": "42",
+      "bbox": [
+        1394.12,
+        1041.27,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 43,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/lszqtcj6",
+      "id": "43",
+      "bbox": [
+        1883.43,
+        917.2,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 44,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/adsji5sn",
+      "id": "44",
+      "bbox": [
+        539.4,
+        1071.17,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 45,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3ylc7u54",
+      "id": "45",
+      "bbox": [
+        290.32,
+        705.43,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 46,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sji5snel",
+      "id": "46",
+      "bbox": [
+        165.56,
+        850.6,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 47,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/h4byhgn2",
+      "id": "47",
+      "bbox": [
+        1908.35,
+        577.82,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 48,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ap4r65wj",
+      "id": "48",
+      "bbox": [
+        37.93,
+        164.48,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 49,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/za1gvy90",
+      "id": "49",
+      "bbox": [
+        391.11,
+        295.34,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 50,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9s36hcrm",
+      "id": "50",
+      "bbox": [
+        1293.09,
+        690.99,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 51,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/g7adsji5",
+      "id": "51",
+      "bbox": [
+        627.81,
+        745.46,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 52,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rmhk3q5o",
+      "id": "52",
+      "bbox": [
+        397.55,
+        704.9,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 53,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/y1kre1w7",
+      "id": "53",
+      "bbox": [
+        41.98,
+        29.21,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 54,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/90je9cvi",
+      "id": "54",
+      "bbox": [
+        986.55,
+        648.43,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 55,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gfmlkjm1",
+      "id": "55",
+      "bbox": [
+        1210.25,
+        415.83,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 56,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rytsvu9k",
+      "id": "56",
+      "bbox": [
+        1342.78,
+        129.58,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 57,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/yd0z6103",
+      "id": "57",
+      "bbox": [
+        121.06,
+        244.83,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 58,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9cvixcze",
+      "id": "58",
+      "bbox": [
+        1675.14,
+        388.06,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 59,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gr2p8nqx",
+      "id": "59",
+      "bbox": [
+        1913.47,
+        1015.67,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 60,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/c7u54zid",
+      "id": "60",
+      "bbox": [
+        477.51,
+        348.57,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 61,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1orytsvu",
+      "id": "61",
+      "bbox": [
+        735.84,
+        504.78,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 62,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u18jqh0f",
+      "id": "62",
+      "bbox": [
+        1087.46,
+        301.72,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 63,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jm1cfa9w",
+      "id": "63",
+      "bbox": [
+        524.64,
+        1070.27,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 64,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cfa9w3m9",
+      "id": "64",
+      "bbox": [
+        1565.02,
+        252.35,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 65,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1032lszq",
+      "id": "65",
+      "bbox": [
+        1823.17,
+        743.95,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 66,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u9knih4b",
+      "id": "66",
+      "bbox": [
+        531.45,
+        495.42,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 67,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/judg7ads",
+      "id": "67",
+      "bbox": [
+        720.32,
+        591,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 68,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cj6tovah",
+      "id": "68",
+      "bbox": [
+        1687.96,
+        99.34,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 69,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/54zidony",
+      "id": "69",
+      "bbox": [
+        1829.31,
+        257.03,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 70,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ra5gbq1o",
+      "id": "70",
+      "bbox": [
+        1654.46,
+        856.85,
+        3.5,
+        3.5
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.4549)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 71,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2p8nqxs7",
+      "id": "71",
+      "bbox": [
+        1146.44,
+        62.76,
+        2,
+        2
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(255, 255, 255, 0.81569)",
+      "lineColor": "rgba(255, 255, 255, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 72,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/q1orytsv",
+      "id": "72",
+      "bbox": [
+        -230,
+        42,
+        840,
+        840
+      ],
+      "geometry": "ellipse",
+      "alt": "NASA Solar Dynamics Observatory image of the Sun",
+      "contentType": "image/jpeg",
+      "asset": {
+        "assetId": "4d6124f7-feca-4beb-9cce-86e40806764e",
+        "contentType": "image/jpeg",
+        "byteLength": 176120
+      }
+    },
+    {
+      "order": 73,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gvy90je9",
+      "id": "73",
+      "bbox": [
+        -250,
+        22,
+        880,
+        880
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(255, 210, 122, 0.4)",
+      "lineWidth": 4
+    },
+    {
+      "order": 74,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/r2p8nqxs",
+      "id": "74",
+      "name": "slide-title",
+      "bbox": [
+        92,
+        70,
+        1240,
+        76
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0.0"
+      },
+      "geometry": "rect",
+      "text": "The Sun is the system",
+      "textPreview": "The Sun is the system",
+      "resolvedFontSize": 62,
+      "resolvedTextStyle": {
+        "fontSize": 62,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "The Sun is the system"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "The Sun is the system",
+          "runs": [
+            {
+              "index": 1,
+              "text": "The Sun is the system",
+              "fontSize": 62,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 75,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2hwfyxob",
+      "id": "75",
+      "name": "slide-subtitle",
+      "bbox": [
+        92,
+        162,
+        672,
+        64
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0.1"
+      },
+      "geometry": "rect",
+      "text": "Its gravity, light, and solar wind set the rules for everything else.",
+      "textPreview": "Its gravity, light, and solar wind set the rules for everything else.",
+      "resolvedFontSize": 26,
+      "resolvedTextStyle": {
+        "fontSize": 26,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Its gravity, light, and solar wind set the rules for everything else."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Its gravity, light, and solar wind set the rules for everything else.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Its gravity, light, and solar wind set the rules for everything else.",
+              "fontSize": 26,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 76,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/94fu18jq",
+      "id": "76",
+      "bbox": [
+        790,
+        334,
+        5,
+        82
+      ],
+      "geometry": "rect",
+      "fillColor": "#F6B24A"
+    },
+    {
+      "order": 77,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kjm1cfa9",
+      "id": "77",
+      "name": "callout-title-Mass anchor",
+      "bbox": [
+        814,
+        326,
+        440,
+        32
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Mass anchor",
+      "textPreview": "Mass anchor",
+      "resolvedFontSize": 26,
+      "resolvedTextStyle": {
+        "fontSize": 26,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Mass anchor"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Mass anchor",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Mass anchor",
+              "fontSize": 26,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 78,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/rqd4vmtw",
+      "id": "78",
+      "name": "callout-body-Mass anchor",
+      "bbox": [
+        814,
+        366,
+        440,
+        52
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "The Sun holds about 99.8% of the solar system's mass.",
+      "textPreview": "The Sun holds about 99.8% of the solar system's mass.",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "fontSize": 21,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "The Sun holds about 99.8% of the solar system's"
+          },
+          {
+            "index": 2,
+            "text": "mass."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "The Sun holds about 99.8% of the solar system's mass.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "The Sun holds about 99.8% of the solar system's mass.",
+              "fontSize": 21,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 79,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/25kb6xkf",
+      "id": "79",
+      "bbox": [
+        1180,
+        508,
+        5,
+        82
+      ],
+      "geometry": "rect",
+      "fillColor": "#56B9FF"
+    },
+    {
+      "order": 80,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/itgfmlkj",
+      "id": "80",
+      "name": "callout-title-Energy source",
+      "bbox": [
+        1204,
+        500,
+        500,
+        32
+      ],
+      "composeSource": {
+        "run": 4,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Energy source",
+      "textPreview": "Energy source",
+      "resolvedFontSize": 26,
+      "resolvedTextStyle": {
+        "fontSize": 26,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Energy source"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Energy source",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Energy source",
+              "fontSize": 26,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 81,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7ed8bat4",
+      "id": "81",
+      "name": "callout-body-Energy source",
+      "bbox": [
+        1204,
+        540,
+        500,
+        52
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Sunlight drives climates, seasons, and photosynthesis on Earth.",
+      "textPreview": "Sunlight drives climates, seasons, and photosynthesis on Earth.",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "fontSize": 21,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Sunlight drives climates, seasons, and photosynthesis on"
+          },
+          {
+            "index": 2,
+            "text": "Earth."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Sunlight drives climates, seasons, and photosynthesis on Earth.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Sunlight drives climates, seasons, and photosynthesis on Earth.",
+              "fontSize": 21,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 82,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0z61032l",
+      "id": "82",
+      "bbox": [
+        860,
+        698,
+        5,
+        82
+      ],
+      "geometry": "rect",
+      "fillColor": "#D66B45"
+    },
+    {
+      "order": 83,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pkzupwb2",
+      "id": "83",
+      "name": "callout-title-Space weather",
+      "bbox": [
+        884,
+        690,
+        560,
+        32
+      ],
+      "composeSource": {
+        "run": 6,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Space weather",
+      "textPreview": "Space weather",
+      "resolvedFontSize": 26,
+      "resolvedTextStyle": {
+        "fontSize": 26,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Space weather"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Space weather",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Space weather",
+              "fontSize": 26,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 84,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ih4byhgn",
+      "id": "84",
+      "name": "callout-body-Space weather",
+      "bbox": [
+        884,
+        730,
+        560,
+        52
+      ],
+      "composeSource": {
+        "run": 7,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Solar wind shapes magnetic fields, auroras, and radiation environments.",
+      "textPreview": "Solar wind shapes magnetic fields, auroras, and radiation environments.",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "fontSize": 21,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Solar wind shapes magnetic fields, auroras, and radiation"
+          },
+          {
+            "index": 2,
+            "text": "environments."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Solar wind shapes magnetic fields, auroras, and radiation environments.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Solar wind shapes magnetic fields, auroras, and radiation environments.",
+              "fontSize": 21,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 85,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/72x4nap4",
+      "id": "85",
+      "bbox": [
+        900,
+        230,
+        260,
+        260
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(60, 70, 105, 0.33333)",
+      "lineWidth": 1.2
+    },
+    {
+      "order": 86,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0nuxc3yl",
+      "id": "86",
+      "bbox": [
+        860,
+        190,
+        340,
+        340
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(60, 70, 105, 0.33333)",
+      "lineWidth": 1.2
+    },
+    {
+      "order": 87,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/p8nqxs72",
+      "id": "87",
+      "bbox": [
+        820,
+        150,
+        420,
+        420
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(60, 70, 105, 0.33333)",
+      "lineWidth": 1.2
+    },
+    {
+      "order": 88,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ed8v6psf",
+      "id": "88",
+      "bbox": [
+        780,
+        110,
+        500,
+        500
+      ],
+      "geometry": "ellipse",
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(60, 70, 105, 0.33333)",
+      "lineWidth": 1.2
+    },
+    {
+      "order": 89,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7y1kre1w",
+      "id": "89",
+      "bbox": [
+        1020,
+        90,
+        20,
+        20
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#56B9FF",
+      "lineColor": "rgba(255, 255, 255, 0.26667)",
+      "lineWidth": 1
+    },
+    {
+      "order": 90,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/x0nuxc3y",
+      "id": "90",
+      "name": "label-Earth",
+      "bbox": [
+        960,
+        124,
+        180,
+        24
+      ],
+      "composeSource": {
+        "run": 8,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Earth",
+      "textPreview": "Earth",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Earth"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Earth",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Earth",
+              "fontSize": 20,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 91,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/4fu18jqh",
+      "id": "91",
+      "name": "sublabel-Earth",
+      "bbox": [
+        960,
+        152,
+        210,
+        18
+      ],
+      "composeSource": {
+        "run": 9,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "one orbit per year",
+      "textPreview": "one orbit per year",
+      "resolvedFontSize": 15,
+      "resolvedTextStyle": {
+        "fontSize": 15,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "one orbit per year"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "one orbit per year",
+          "runs": [
+            {
+              "index": 1,
+              "text": "one orbit per year",
+              "fontSize": 15,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 92,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fu18jqh0",
+      "id": "92",
+      "name": "source",
+      "bbox": [
+        92,
+        1028,
+        980,
+        18
+      ],
+      "composeSource": {
+        "run": 10,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Rounded solar-system facts.",
+      "textPreview": "Rounded solar-system facts.",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Rounded solar-system facts."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Rounded solar-system facts.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Rounded solar-system facts.",
+              "fontSize": 14,
+              "color": "#65708C"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": [
+    {
+      "index": 1,
+      "frame": {
+        "left": 92,
+        "top": 70,
+        "width": 1240,
+        "height": 160
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "column",
+        "name": "title-stack",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 671.65,
+          "height": 123.6
+        },
+        "frame": {
+          "left": 92,
+          "top": 70,
+          "width": 1240,
+          "height": 154.8
+        },
+        "children": [
+          {
+            "path": "0.0",
+            "kind": "text",
+            "name": "slide-title",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 0,
+              "height": 74.4
+            },
+            "frame": {
+              "left": 92,
+              "top": 70,
+              "width": 1240,
+              "height": 74.4
+            },
+            "snappedFrame": {
+              "left": 92,
+              "top": 70,
+              "width": 1240,
+              "height": 76
+            },
+            "children": [],
+            "text": "The Sun is the system",
+            "transform": "none",
+            "element": {
+              "aid": "sh/r2p8nqxs",
+              "id": "74",
+              "kind": "shape"
+            }
+          },
+          {
+            "path": "0.1",
+            "kind": "text",
+            "name": "slide-subtitle",
+            "requestedSize": {
+              "width": {
+                "mode": "wrap",
+                "max": 1120
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 671.65,
+              "height": 31.2
+            },
+            "frame": {
+              "left": 92,
+              "top": 162.4,
+              "width": 671.65,
+              "height": 62.4
+            },
+            "snappedFrame": {
+              "left": 92,
+              "top": 162,
+              "width": 672,
+              "height": 64
+            },
+            "children": [],
+            "text": "Its gravity, light, and solar wind set the rules for everything else.",
+            "transform": "none",
+            "element": {
+              "aid": "sh/2hwfyxob",
+              "id": "75",
+              "kind": "shape"
+            }
+          }
+        ],
+        "padding": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "gap": 18,
+        "effectiveGap": 18,
+        "justifyOffset": 0,
+        "align": "start",
+        "justify": "start",
+        "contentFrame": {
+          "left": 92,
+          "top": 70,
+          "width": 1240,
+          "height": 154.8
+        },
+        "items": [
+          {
+            "path": "0.0",
+            "frame": {
+              "left": 92,
+              "top": 70,
+              "width": 1240,
+              "height": 74.4
+            }
+          },
+          {
+            "path": "0.1",
+            "frame": {
+              "left": 92,
+              "top": 162.4,
+              "width": 671.65,
+              "height": 62.4
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 2,
+      "frame": {
+        "left": 814,
+        "top": 326,
+        "width": 440,
+        "height": 32
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "callout-title-Mass anchor",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 31.2
+        },
+        "frame": {
+          "left": 814,
+          "top": 326,
+          "width": 440,
+          "height": 31.2
+        },
+        "snappedFrame": {
+          "left": 814,
+          "top": 326,
+          "width": 440,
+          "height": 32
+        },
+        "children": [],
+        "text": "Mass anchor",
+        "transform": "none",
+        "element": {
+          "aid": "sh/kjm1cfa9",
+          "id": "77",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "frame": {
+        "left": 814,
+        "top": 366,
+        "width": 440,
+        "height": 84
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "callout-body-Mass anchor",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 25.2
+        },
+        "frame": {
+          "left": 814,
+          "top": 366,
+          "width": 440,
+          "height": 50.4
+        },
+        "snappedFrame": {
+          "left": 814,
+          "top": 366,
+          "width": 440,
+          "height": 52
+        },
+        "children": [],
+        "text": "The Sun holds about 99.8% of the solar system's mass.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/rqd4vmtw",
+          "id": "78",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 4,
+      "frame": {
+        "left": 1204,
+        "top": 500,
+        "width": 500,
+        "height": 32
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "callout-title-Energy source",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 31.2
+        },
+        "frame": {
+          "left": 1204,
+          "top": 500,
+          "width": 500,
+          "height": 31.2
+        },
+        "snappedFrame": {
+          "left": 1204,
+          "top": 500,
+          "width": 500,
+          "height": 32
+        },
+        "children": [],
+        "text": "Energy source",
+        "transform": "none",
+        "element": {
+          "aid": "sh/itgfmlkj",
+          "id": "80",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 5,
+      "frame": {
+        "left": 1204,
+        "top": 540,
+        "width": 500,
+        "height": 84
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "callout-body-Energy source",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 25.2
+        },
+        "frame": {
+          "left": 1204,
+          "top": 540,
+          "width": 500,
+          "height": 50.4
+        },
+        "snappedFrame": {
+          "left": 1204,
+          "top": 540,
+          "width": 500,
+          "height": 52
+        },
+        "children": [],
+        "text": "Sunlight drives climates, seasons, and photosynthesis on Earth.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/7ed8bat4",
+          "id": "81",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 6,
+      "frame": {
+        "left": 884,
+        "top": 690,
+        "width": 560,
+        "height": 32
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "callout-title-Space weather",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 31.2
+        },
+        "frame": {
+          "left": 884,
+          "top": 690,
+          "width": 560,
+          "height": 31.2
+        },
+        "snappedFrame": {
+          "left": 884,
+          "top": 690,
+          "width": 560,
+          "height": 32
+        },
+        "children": [],
+        "text": "Space weather",
+        "transform": "none",
+        "element": {
+          "aid": "sh/pkzupwb2",
+          "id": "83",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 7,
+      "frame": {
+        "left": 884,
+        "top": 730,
+        "width": 560,
+        "height": 84
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "callout-body-Space weather",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 25.2
+        },
+        "frame": {
+          "left": 884,
+          "top": 730,
+          "width": 560,
+          "height": 50.4
+        },
+        "snappedFrame": {
+          "left": 884,
+          "top": 730,
+          "width": 560,
+          "height": 52
+        },
+        "children": [],
+        "text": "Solar wind shapes magnetic fields, auroras, and radiation environments.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/ih4byhgn",
+          "id": "84",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 8,
+      "frame": {
+        "left": 960,
+        "top": 124,
+        "width": 180,
+        "height": 28
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "label-Earth",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 24
+        },
+        "frame": {
+          "left": 960,
+          "top": 124,
+          "width": 180,
+          "height": 24
+        },
+        "snappedFrame": {
+          "left": 960,
+          "top": 124,
+          "width": 180,
+          "height": 24
+        },
+        "children": [],
+        "text": "Earth",
+        "transform": "none",
+        "element": {
+          "aid": "sh/x0nuxc3y",
+          "id": "90",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 9,
+      "frame": {
+        "left": 960,
+        "top": 152,
+        "width": 210,
+        "height": 30
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "sublabel-Earth",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 18
+        },
+        "frame": {
+          "left": 960,
+          "top": 152,
+          "width": 210,
+          "height": 18
+        },
+        "snappedFrame": {
+          "left": 960,
+          "top": 152,
+          "width": 210,
+          "height": 18
+        },
+        "children": [],
+        "text": "one orbit per year",
+        "transform": "none",
+        "element": {
+          "aid": "sh/4fu18jqh",
+          "id": "91",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 10,
+      "frame": {
+        "left": 92,
+        "top": 1028,
+        "width": 980,
+        "height": 28
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "source",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 16.8
+        },
+        "frame": {
+          "left": 92,
+          "top": 1028,
+          "width": 980,
+          "height": 16.8
+        },
+        "snappedFrame": {
+          "left": 92,
+          "top": 1028,
+          "width": 980,
+          "height": 18
+        },
+        "children": [],
+        "text": "Rounded solar-system facts.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/fu18jqh0",
+          "id": "92",
+          "kind": "shape"
+        }
+      }
+    }
+  ]
+}

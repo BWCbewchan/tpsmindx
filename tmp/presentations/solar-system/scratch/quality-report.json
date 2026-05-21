@@ -1,0 +1,14 @@
+{
+  "workspace": "D:\\mindXLeader\\version TMS\\V1\\tmsmindx\\tmp\\presentations\\solar-system",
+  "pptx": "D:\\mindXLeader\\version TMS\\V1\\tmsmindx\\tmp\\presentations\\solar-system\\output\\output.pptx",
+  "checks": {
+    "output_hygiene": {
+      "output_dir": "D:\\mindXLeader\\version TMS\\V1\\tmsmindx\\tmp\\presentations\\solar-system\\output",
+      "unexpected_files": []
+    }
+  },
+  "failures": [
+    "PPTX package inspection failed: unzip -Z1 D:\\mindXLeader\\version TMS\\V1\\tmsmindx\\tmp\\presentations\\solar-system\\output\\output.pptx failed"
+  ],
+  "warnings": []
+}

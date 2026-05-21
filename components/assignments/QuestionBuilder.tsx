@@ -5,8 +5,9 @@ import { DIFFICULTY_LEVELS, POINTS_PRESETS, QUESTION_TEMPLATES } from '@/lib/ass
 import { Question, QuestionFormData } from '@/types/assignment';
 import { Eye, EyeOff, Image as ImageIcon, Plus, Trash2, X } from 'lucide-react';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/lib/app-toast';
+import { normalizeStorageUrl } from '@/lib/storage-url';
 
 interface QuestionBuilderProps {
   onSave: (question: Partial<Question>) => Promise<void> | void;
@@ -18,14 +19,17 @@ interface QuestionBuilderProps {
 const normalizeDifficulty = (difficulty?: string): QuestionFormData['difficulty'] => {
   switch (difficulty) {
     case 'easy':
+    case 'de':
     case 'remember':
     case 'understand':
       return 'easy';
     case 'hard':
+    case 'kho':
     case 'evaluate':
     case 'create':
       return 'hard';
     case 'medium':
+    case 'trung_binh':
     case 'apply':
     case 'analyze':
     default:
@@ -85,6 +89,14 @@ export function QuestionBuilder({ onSave, onCancel, initialData, assignmentId }:
   const [uploadingImage, setUploadingImage] = useState(false);
   const [savingQuestion, setSavingQuestion] = useState(false);
   const [showToolbar, setShowToolbar] = useState(true);
+
+  const handleQuestionTextChange = useCallback((html: string) => {
+    setQuestionText(html);
+  }, []);
+
+  const handleExplanationChange = useCallback((html: string) => {
+    setExplanation(html);
+  }, []);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -176,19 +188,23 @@ export function QuestionBuilder({ onSave, onCancel, initialData, assignmentId }:
     }
   };
 
-  const updateOption = (index: number, value: string) => {
-    const oldVal = options[index];
-    const newOptions = [...options];
-    newOptions[index] = value;
-    setOptions(newOptions);
-    if (correctAnswer === oldVal) {
-      setCorrectAnswer(value);
-    }
-    // Cập nhật correctAnswers nếu option thay đổi
-    if (correctAnswers.includes(oldVal)) {
-      setCorrectAnswers(prev => prev.map(a => a === oldVal ? value : a));
-    }
-  };
+  const updateOption = useCallback((index: number, value: string) => {
+    setOptions((prev) => {
+      const oldVal = prev[index];
+      const newOptions = [...prev];
+      newOptions[index] = value;
+
+      setCorrectAnswer((ca: string) => (ca === oldVal ? value : ca));
+      setCorrectAnswers((cas: string[]) =>
+        cas.includes(oldVal) ? cas.map((a) => (a === oldVal ? value : a)) : cas,
+      );
+
+      return newOptions;
+    });
+  }, []);
+
+  const updateOptionRef = useRef(updateOption);
+  updateOptionRef.current = updateOption;
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -200,9 +216,9 @@ export function QuestionBuilder({ onSave, onCancel, initialData, assignmentId }:
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Kích thước file không được vượt quá 5MB');
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('Kích thước ảnh tối đa 10MB');
       return;
     }
 
@@ -231,9 +247,9 @@ export function QuestionBuilder({ onSave, onCancel, initialData, assignmentId }:
         const file = item.getAsFile();
         if (!file) continue;
 
-        // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          toast.error('Kích thước ảnh không được vượt quá 5MB');
+        // Validate file size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error('Kích thước ảnh tối đa 10MB');
           return;
         }
 
@@ -280,10 +296,7 @@ export function QuestionBuilder({ onSave, onCancel, initialData, assignmentId }:
       return temp.innerHTML.trim();
     };
 
-    // Strip HTML tags for validation
-    const plainText = questionText.replace(/<[^>]*>/g, '').trim();
-    
-    if (!plainText) {
+    if (!hasMeaningfulRichContent(questionText)) {
       toast.error('Vui lòng nhập câu hỏi');
       return;
     }
@@ -456,7 +469,7 @@ export function QuestionBuilder({ onSave, onCancel, initialData, assignmentId }:
             <div className="border-2 border-gray-300 rounded-lg overflow-hidden hover:border-blue-400 transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
               <RichTextEditor
                 content={questionText}
-                onChange={setQuestionText}
+                onChange={handleQuestionTextChange}
                 showToolbar={showToolbar}
               />
             </div>
@@ -473,7 +486,7 @@ export function QuestionBuilder({ onSave, onCancel, initialData, assignmentId }:
             {imagePreview ? (
               <div className="relative inline-block">
                 <Image
-                  src={imagePreview}
+                  src={normalizeStorageUrl(imagePreview)}
                   alt="Preview"
                   width={300}
                   height={200}
@@ -512,7 +525,7 @@ export function QuestionBuilder({ onSave, onCancel, initialData, assignmentId }:
                     <>
                       <ImageIcon className="w-10 h-10 mx-auto text-gray-400 mb-2" />
                       <span className="text-sm text-gray-600">Click để tải ảnh lên</span>
-                      <span className="text-xs text-gray-500 block mt-1">Tối đa 5MB</span>
+                      <span className="text-xs text-gray-500 block mt-1">Tối đa 10MB</span>
                     </>
                   )}
                 </div>
@@ -539,14 +552,14 @@ export function QuestionBuilder({ onSave, onCancel, initialData, assignmentId }:
                     <input
                       type="radio"
                       name="correct"
-                      checked={correctAnswer === option}
+                      checked={Boolean(correctAnswer) && correctAnswer === option}
                       onChange={() => setCorrectAnswer(option)}
                       className="w-5 h-5 text-blue-600"
                     />
                     <div className="flex-1 min-w-0 border border-gray-300 rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent">
                       <RichTextEditor
                         content={option}
-                        onChange={(html) => updateOption(index, html)}
+                        onChange={(html) => updateOptionRef.current(index, html)}
                         minHeight="min-h-[100px]"
                         showToolbar={true}
                       />
@@ -595,7 +608,7 @@ export function QuestionBuilder({ onSave, onCancel, initialData, assignmentId }:
                     }`}>
                       <RichTextEditor
                         content={option}
-                        onChange={(html) => updateOption(index, html)}
+                        onChange={(html) => updateOptionRef.current(index, html)}
                         minHeight="min-h-[100px]"
                         showToolbar={true}
                       />
@@ -684,7 +697,7 @@ export function QuestionBuilder({ onSave, onCancel, initialData, assignmentId }:
             <div className="border-2 border-gray-300 rounded-lg overflow-hidden hover:border-blue-400 transition-colors focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200">
               <RichTextEditor
                 content={explanation}
-                onChange={setExplanation}
+                onChange={handleExplanationChange}
                 showToolbar={showToolbar}
               />
             </div>

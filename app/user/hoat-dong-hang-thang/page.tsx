@@ -3131,6 +3131,8 @@ export default function MonthlyActivitiesPage() {
         title={`Form đăng ký kiểm tra - ${selectedDate?.toLocaleDateString('vi-VN') || ''}`}
         subtitle="Chọn lịch thi trước, sau đó tick môn và gửi đăng ký."
         maxWidth="2xl"
+        backdropClassName="overflow-hidden"
+        containerClassName="h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] sm:h-auto sm:max-h-[95dvh]"
         footer={
           <div className="flex items-center justify-end gap-2">
             <button

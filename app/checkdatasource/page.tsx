@@ -450,11 +450,12 @@ function CheckDataSourceContent() {
               type="button"
               onClick={continueToApp}
               disabled={!canEnterSystem}
-              className={`w-full touch-manipulation rounded-lg px-4 py-2.5 text-sm font-semibold text-white sm:w-auto sm:py-2 sm:text-xs transition-colors ${
+              className={cn(
+                "w-full touch-manipulation rounded-lg px-4 py-2.5 text-sm font-semibold text-white sm:w-auto sm:py-2 sm:text-xs transition-colors",
                 canEnterSystem
-                  ? "bg-[#a1001f] hover:bg-[#870019]"
-                  : "bg-gray-300 cursor-not-allowed"
-              }`}
+                  ? "animate-cta-glow bg-[#a1001f] hover:bg-[#870019]"
+                  : "bg-gray-300 cursor-not-allowed",
+              )}
             >
               Vào hệ thống
             </button>

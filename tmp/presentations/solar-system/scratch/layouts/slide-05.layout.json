@@ -1,0 +1,1514 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/k4op31",
+    "id": "k4op31",
+    "slide": 5,
+    "layoutId": "94d123c3-a156-4f53-b238-c8e292d74501",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "94d123c3-a156-4f53-b238-c8e292d74501",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "15edba3a-b5dc-4945-92d3-5d4d6ee9e0f9",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6hcrmhk3",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        1920,
+        1080
+      ],
+      "geometry": "rect",
+      "fillColor": "#090A13"
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8v6psfi",
+      "id": "2",
+      "name": "slide-title",
+      "bbox": [
+        92,
+        70,
+        1240,
+        76
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0.0"
+      },
+      "geometry": "rect",
+      "text": "The giant planets are mini systems",
+      "textPreview": "The giant planets are mini systems",
+      "resolvedFontSize": 62,
+      "resolvedTextStyle": {
+        "fontSize": 62,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "The giant planets are mini systems"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "The giant planets are mini systems",
+          "runs": [
+            {
+              "index": 1,
+              "text": "The giant planets are mini systems",
+              "fontSize": 62,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/onyd0z61",
+      "id": "3",
+      "name": "slide-subtitle",
+      "bbox": [
+        92,
+        162,
+        1044,
+        64
+      ],
+      "composeSource": {
+        "run": 1,
+        "path": "0.1"
+      },
+      "geometry": "rect",
+      "text": "Jupiter, Saturn, Uranus, and Neptune are planet-scale environments with moons, rings, storms, and magnetic fields.",
+      "textPreview": "Jupiter, Saturn, Uranus, and Neptune are planet-scale environments with moons, rings, storms, and magnetic fields.",
+      "resolvedFontSize": 26,
+      "resolvedTextStyle": {
+        "fontSize": 26,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Jupiter, Saturn, Uranus, and Neptune are planet-scale environments with moons, rings, storms,"
+          },
+          {
+            "index": 2,
+            "text": "and magnetic fields."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Jupiter, Saturn, Uranus, and Neptune are planet-scale environments with moons, rings, storms, and magnetic fields.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Jupiter, Saturn, Uranus, and Neptune are planet-scale environments with moons, rings, storms, and magnetic fields.",
+              "fontSize": 26,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 4,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/a1gvy90j",
+      "id": "4",
+      "bbox": [
+        124,
+        300,
+        470,
+        470
+      ],
+      "geometry": "ellipse",
+      "alt": "NASA Juno image of Jupiter",
+      "contentType": "image/jpeg",
+      "asset": {
+        "assetId": "d1a01376-f13f-44e9-843a-7a2bd4c2405f",
+        "contentType": "image/jpeg",
+        "byteLength": 72399
+      }
+    },
+    {
+      "order": 5,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/zidonyd0",
+      "id": "5",
+      "bbox": [
+        694,
+        322,
+        520,
+        330
+      ],
+      "geometry": "roundRect",
+      "alt": "NASA Cassini image of Saturn",
+      "contentType": "image/jpeg",
+      "asset": {
+        "assetId": "0b8537e3-4af4-4a2f-86f4-7c571d6965e3",
+        "contentType": "image/jpeg",
+        "byteLength": 17769
+      }
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/dg7adsji",
+      "id": "6",
+      "bbox": [
+        1306,
+        394,
+        144,
+        144
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#78D7D3",
+      "lineColor": "rgba(255, 255, 255, 0.26667)",
+      "lineWidth": 1
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ovahoza1",
+      "id": "7",
+      "name": "label-Uranus",
+      "bbox": [
+        1308,
+        552,
+        180,
+        24
+      ],
+      "composeSource": {
+        "run": 2,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Uranus",
+      "textPreview": "Uranus",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Uranus"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Uranus",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Uranus",
+              "fontSize": 20,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vmtwra5g",
+      "id": "8",
+      "name": "sublabel-Uranus",
+      "bbox": [
+        1308,
+        580,
+        210,
+        18
+      ],
+      "composeSource": {
+        "run": 3,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "ice giant",
+      "textPreview": "ice giant",
+      "resolvedFontSize": 15,
+      "resolvedTextStyle": {
+        "fontSize": 15,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "ice giant"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "ice giant",
+          "runs": [
+            {
+              "index": 1,
+              "text": "ice giant",
+              "fontSize": 15,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/61032lsz",
+      "id": "9",
+      "bbox": [
+        1568,
+        412,
+        136,
+        136
+      ],
+      "geometry": "ellipse",
+      "fillColor": "#4D7CFF",
+      "lineColor": "rgba(255, 255, 255, 0.26667)",
+      "lineWidth": 1
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wval87ed",
+      "id": "10",
+      "name": "label-Neptune",
+      "bbox": [
+        1566,
+        562,
+        180,
+        24
+      ],
+      "composeSource": {
+        "run": 4,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Neptune",
+      "textPreview": "Neptune",
+      "resolvedFontSize": 20,
+      "resolvedTextStyle": {
+        "fontSize": 20,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Neptune"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Neptune",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Neptune",
+              "fontSize": 20,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pg3ex0nu",
+      "id": "11",
+      "name": "sublabel-Neptune",
+      "bbox": [
+        1566,
+        590,
+        210,
+        18
+      ],
+      "composeSource": {
+        "run": 5,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "fast winds",
+      "textPreview": "fast winds",
+      "resolvedFontSize": 15,
+      "resolvedTextStyle": {
+        "fontSize": 15,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "fast winds"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "fast winds",
+          "runs": [
+            {
+              "index": 1,
+              "text": "fast winds",
+              "fontSize": 15,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/epkzupwb",
+      "id": "12",
+      "name": "jupiter-label",
+      "bbox": [
+        246,
+        792,
+        250,
+        44
+      ],
+      "composeSource": {
+        "run": 6,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Jupiter",
+      "textPreview": "Jupiter",
+      "resolvedFontSize": 36,
+      "resolvedTextStyle": {
+        "fontSize": 36,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Jupiter"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Jupiter",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Jupiter",
+              "fontSize": 36,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7adsji5s",
+      "id": "13",
+      "name": "jupiter-caption",
+      "bbox": [
+        194,
+        846,
+        390,
+        26
+      ],
+      "composeSource": {
+        "run": 7,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "largest planet; strong bands and storms",
+      "textPreview": "largest planet; strong bands and storms",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "fontSize": 21,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "largest planet; strong bands and storms"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "largest planet; strong bands and storms",
+          "runs": [
+            {
+              "index": 1,
+              "text": "largest planet; strong bands and storms",
+              "fontSize": 21,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/w7mp0bi9",
+      "id": "14",
+      "name": "saturn-label",
+      "bbox": [
+        884,
+        692,
+        240,
+        44
+      ],
+      "composeSource": {
+        "run": 8,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Saturn",
+      "textPreview": "Saturn",
+      "resolvedFontSize": 36,
+      "resolvedTextStyle": {
+        "fontSize": 36,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Saturn"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Saturn",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Saturn",
+              "fontSize": 36,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/psfil0rq",
+      "id": "15",
+      "name": "saturn-caption",
+      "bbox": [
+        760,
+        746,
+        520,
+        26
+      ],
+      "composeSource": {
+        "run": 9,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "rings make the system visible from across space",
+      "textPreview": "rings make the system visible from across space",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "fontSize": 21,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "rings make the system visible from across space"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "rings make the system visible from across space",
+          "runs": [
+            {
+              "index": 1,
+              "text": "rings make the system visible from across space",
+              "fontSize": 21,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/e1w7mp0b",
+      "id": "16",
+      "bbox": [
+        124,
+        938,
+        5,
+        82
+      ],
+      "geometry": "rect",
+      "fillColor": "#56B9FF"
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7mp0bi9s",
+      "id": "17",
+      "name": "callout-title-Two families",
+      "bbox": [
+        148,
+        930,
+        1120,
+        32
+      ],
+      "composeSource": {
+        "run": 10,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Two families",
+      "textPreview": "Two families",
+      "resolvedFontSize": 26,
+      "resolvedTextStyle": {
+        "fontSize": 26,
+        "typeface": "+mn-lt",
+        "bold": true,
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Two families"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Two families",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Two families",
+              "fontSize": 26,
+              "color": "#F7F2E8",
+              "bold": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wfyxobm5",
+      "id": "18",
+      "name": "callout-body-Two families",
+      "bbox": [
+        148,
+        970,
+        1120,
+        26
+      ],
+      "composeSource": {
+        "run": 11,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Jupiter and Saturn are gas giants; Uranus and Neptune are ice giants with more water, methane, and ammonia.",
+      "textPreview": "Jupiter and Saturn are gas giants; Uranus and Neptune are ice giants with more water, methane, and ammonia.",
+      "resolvedFontSize": 21,
+      "resolvedTextStyle": {
+        "fontSize": 21,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Jupiter and Saturn are gas giants; Uranus and Neptune are ice giants with more water, methane, and ammonia."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Jupiter and Saturn are gas giants; Uranus and Neptune are ice giants with more water, methane, and ammonia.",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Jupiter and Saturn are gas giants; Uranus and Neptune are ice giants with more water, methane, and ammonia.",
+              "fontSize": 21,
+              "color": "#B8C1D9"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/l0rqd4vm",
+      "id": "19",
+      "name": "source",
+      "bbox": [
+        92,
+        1028,
+        980,
+        18
+      ],
+      "composeSource": {
+        "run": 12,
+        "path": "0"
+      },
+      "geometry": "rect",
+      "text": "Solar system overview",
+      "textPreview": "Solar system overview",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "alignment": "left"
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Solar system overview"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Solar system overview",
+          "runs": [
+            {
+              "index": 1,
+              "text": "Solar system overview",
+              "fontSize": 14,
+              "color": "#65708C"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "composeRuns": [
+    {
+      "index": 1,
+      "frame": {
+        "left": 92,
+        "top": 70,
+        "width": 1240,
+        "height": 160
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "column",
+        "name": "title-stack",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 1044.31,
+          "height": 154.8
+        },
+        "frame": {
+          "left": 92,
+          "top": 70,
+          "width": 1240,
+          "height": 154.8
+        },
+        "children": [
+          {
+            "path": "0.0",
+            "kind": "text",
+            "name": "slide-title",
+            "requestedSize": {
+              "width": {
+                "mode": "fill",
+                "value": 1
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 0,
+              "height": 74.4
+            },
+            "frame": {
+              "left": 92,
+              "top": 70,
+              "width": 1240,
+              "height": 74.4
+            },
+            "snappedFrame": {
+              "left": 92,
+              "top": 70,
+              "width": 1240,
+              "height": 76
+            },
+            "children": [],
+            "text": "The giant planets are mini systems",
+            "transform": "none",
+            "element": {
+              "aid": "sh/d8v6psfi",
+              "id": "2",
+              "kind": "shape"
+            }
+          },
+          {
+            "path": "0.1",
+            "kind": "text",
+            "name": "slide-subtitle",
+            "requestedSize": {
+              "width": {
+                "mode": "wrap",
+                "max": 1120
+              },
+              "height": {
+                "mode": "hug"
+              }
+            },
+            "intrinsicSize": {
+              "width": 1044.31,
+              "height": 62.4
+            },
+            "frame": {
+              "left": 92,
+              "top": 162.4,
+              "width": 1044.31,
+              "height": 62.4
+            },
+            "snappedFrame": {
+              "left": 92,
+              "top": 162,
+              "width": 1044,
+              "height": 64
+            },
+            "children": [],
+            "text": "Jupiter, Saturn, Uranus, and Neptune are planet-scale environments with moons, rings, storms, and magnetic fields.",
+            "transform": "none",
+            "element": {
+              "aid": "sh/onyd0z61",
+              "id": "3",
+              "kind": "shape"
+            }
+          }
+        ],
+        "padding": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        },
+        "gap": 18,
+        "effectiveGap": 18,
+        "justifyOffset": 0,
+        "align": "start",
+        "justify": "start",
+        "contentFrame": {
+          "left": 92,
+          "top": 70,
+          "width": 1240,
+          "height": 154.8
+        },
+        "items": [
+          {
+            "path": "0.0",
+            "frame": {
+              "left": 92,
+              "top": 70,
+              "width": 1240,
+              "height": 74.4
+            }
+          },
+          {
+            "path": "0.1",
+            "frame": {
+              "left": 92,
+              "top": 162.4,
+              "width": 1044.31,
+              "height": 62.4
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 2,
+      "frame": {
+        "left": 1308,
+        "top": 552,
+        "width": 180,
+        "height": 28
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "label-Uranus",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 24
+        },
+        "frame": {
+          "left": 1308,
+          "top": 552,
+          "width": 180,
+          "height": 24
+        },
+        "snappedFrame": {
+          "left": 1308,
+          "top": 552,
+          "width": 180,
+          "height": 24
+        },
+        "children": [],
+        "text": "Uranus",
+        "transform": "none",
+        "element": {
+          "aid": "sh/ovahoza1",
+          "id": "7",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "frame": {
+        "left": 1308,
+        "top": 580,
+        "width": 210,
+        "height": 30
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "sublabel-Uranus",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 18
+        },
+        "frame": {
+          "left": 1308,
+          "top": 580,
+          "width": 210,
+          "height": 18
+        },
+        "snappedFrame": {
+          "left": 1308,
+          "top": 580,
+          "width": 210,
+          "height": 18
+        },
+        "children": [],
+        "text": "ice giant",
+        "transform": "none",
+        "element": {
+          "aid": "sh/vmtwra5g",
+          "id": "8",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 4,
+      "frame": {
+        "left": 1566,
+        "top": 562,
+        "width": 180,
+        "height": 28
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "label-Neptune",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 24
+        },
+        "frame": {
+          "left": 1566,
+          "top": 562,
+          "width": 180,
+          "height": 24
+        },
+        "snappedFrame": {
+          "left": 1566,
+          "top": 562,
+          "width": 180,
+          "height": 24
+        },
+        "children": [],
+        "text": "Neptune",
+        "transform": "none",
+        "element": {
+          "aid": "sh/wval87ed",
+          "id": "10",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 5,
+      "frame": {
+        "left": 1566,
+        "top": 590,
+        "width": 210,
+        "height": 30
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "sublabel-Neptune",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 18
+        },
+        "frame": {
+          "left": 1566,
+          "top": 590,
+          "width": 210,
+          "height": 18
+        },
+        "snappedFrame": {
+          "left": 1566,
+          "top": 590,
+          "width": 210,
+          "height": 18
+        },
+        "children": [],
+        "text": "fast winds",
+        "transform": "none",
+        "element": {
+          "aid": "sh/pg3ex0nu",
+          "id": "11",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 6,
+      "frame": {
+        "left": 246,
+        "top": 792,
+        "width": 250,
+        "height": 42
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "jupiter-label",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 43.2
+        },
+        "frame": {
+          "left": 246,
+          "top": 792,
+          "width": 250,
+          "height": 43.2
+        },
+        "snappedFrame": {
+          "left": 246,
+          "top": 792,
+          "width": 250,
+          "height": 44
+        },
+        "children": [],
+        "text": "Jupiter",
+        "transform": "none",
+        "element": {
+          "aid": "sh/epkzupwb",
+          "id": "12",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 7,
+      "frame": {
+        "left": 194,
+        "top": 846,
+        "width": 390,
+        "height": 34
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "jupiter-caption",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 25.2
+        },
+        "frame": {
+          "left": 194,
+          "top": 846,
+          "width": 390,
+          "height": 25.2
+        },
+        "snappedFrame": {
+          "left": 194,
+          "top": 846,
+          "width": 390,
+          "height": 26
+        },
+        "children": [],
+        "text": "largest planet; strong bands and storms",
+        "transform": "none",
+        "element": {
+          "aid": "sh/7adsji5s",
+          "id": "13",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 8,
+      "frame": {
+        "left": 884,
+        "top": 692,
+        "width": 240,
+        "height": 42
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "saturn-label",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 43.2
+        },
+        "frame": {
+          "left": 884,
+          "top": 692,
+          "width": 240,
+          "height": 43.2
+        },
+        "snappedFrame": {
+          "left": 884,
+          "top": 692,
+          "width": 240,
+          "height": 44
+        },
+        "children": [],
+        "text": "Saturn",
+        "transform": "none",
+        "element": {
+          "aid": "sh/w7mp0bi9",
+          "id": "14",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 9,
+      "frame": {
+        "left": 760,
+        "top": 746,
+        "width": 520,
+        "height": 34
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "saturn-caption",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 25.2
+        },
+        "frame": {
+          "left": 760,
+          "top": 746,
+          "width": 520,
+          "height": 25.2
+        },
+        "snappedFrame": {
+          "left": 760,
+          "top": 746,
+          "width": 520,
+          "height": 26
+        },
+        "children": [],
+        "text": "rings make the system visible from across space",
+        "transform": "none",
+        "element": {
+          "aid": "sh/psfil0rq",
+          "id": "15",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 10,
+      "frame": {
+        "left": 148,
+        "top": 930,
+        "width": 1120,
+        "height": 32
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "callout-title-Two families",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 31.2
+        },
+        "frame": {
+          "left": 148,
+          "top": 930,
+          "width": 1120,
+          "height": 31.2
+        },
+        "snappedFrame": {
+          "left": 148,
+          "top": 930,
+          "width": 1120,
+          "height": 32
+        },
+        "children": [],
+        "text": "Two families",
+        "transform": "none",
+        "element": {
+          "aid": "sh/7mp0bi9s",
+          "id": "17",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 11,
+      "frame": {
+        "left": 148,
+        "top": 970,
+        "width": 1120,
+        "height": 84
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "callout-body-Two families",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 25.2
+        },
+        "frame": {
+          "left": 148,
+          "top": 970,
+          "width": 1120,
+          "height": 25.2
+        },
+        "snappedFrame": {
+          "left": 148,
+          "top": 970,
+          "width": 1120,
+          "height": 26
+        },
+        "children": [],
+        "text": "Jupiter and Saturn are gas giants; Uranus and Neptune are ice giants with more water, methane, and ammonia.",
+        "transform": "none",
+        "element": {
+          "aid": "sh/wfyxobm5",
+          "id": "18",
+          "kind": "shape"
+        }
+      }
+    },
+    {
+      "index": 12,
+      "frame": {
+        "left": 92,
+        "top": 1028,
+        "width": 980,
+        "height": 28
+      },
+      "baseUnit": 8,
+      "root": {
+        "path": "0",
+        "kind": "text",
+        "name": "source",
+        "requestedSize": {
+          "width": {
+            "mode": "fill",
+            "value": 1
+          },
+          "height": {
+            "mode": "hug"
+          }
+        },
+        "intrinsicSize": {
+          "width": 0,
+          "height": 16.8
+        },
+        "frame": {
+          "left": 92,
+          "top": 1028,
+          "width": 980,
+          "height": 16.8
+        },
+        "snappedFrame": {
+          "left": 92,
+          "top": 1028,
+          "width": 980,
+          "height": 18
+        },
+        "children": [],
+        "text": "Solar system overview",
+        "transform": "none",
+        "element": {
+          "aid": "sh/l0rqd4vm",
+          "id": "19",
+          "kind": "shape"
+        }
+      }
+    }
+  ]
+}

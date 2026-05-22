@@ -80,6 +80,7 @@ interface CalendarExamAssignment {
   can_take: boolean
   is_open: boolean
   is_set_active_now: boolean
+  registration_type?: string
 }
 
 const WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
@@ -524,6 +525,7 @@ export default function MonthlyActivitiesPage() {
   const [teacherResults, setTeacherResults] = useState<TeacherLookupItem[]>([])
   const [selectedTeacherCode, setSelectedTeacherCode] = useState('')
   const [registeringLectureReview, setRegisteringLectureReview] = useState(false)
+  // Lưu trữ theo định dạng "template:subject_code" để phân biệt đợt
   const [userRegisteredSubjects, setUserRegisteredSubjects] = useState<
     Set<string>
   >(new Set())
@@ -788,11 +790,13 @@ export default function MonthlyActivitiesPage() {
           }) => {
             if (row.schedule_id) scheduleIds.add(row.schedule_id)
             Object.entries(REGISTER_OPTION_MAP).forEach(([option, mapped]) => {
-              if (
-                mapped.block_code === row.block_code &&
-                mapped.subject_code === row.subject_code
-              ) {
-                registeredSet.add(option)
+                if (
+                  mapped.block_code === row.block_code &&
+                  mapped.subject_code === row.subject_code
+                ) {
+                  // Sử dụng registration_type từ API để phân loại (official/additional)
+                  const regType = (row as any).registration_type || 'official';
+                  registeredSet.add(`${regType}:${option}`);
                 if (!scheduleTimesByOption[option]) {
                   scheduleTimesByOption[option] = []
                 }
@@ -1008,6 +1012,9 @@ export default function MonthlyActivitiesPage() {
     return Object.entries(REGISTER_OPTION_MAP).reduce(
       (acc, [option, mapped]) => {
         const selectedAssignment = examAssignments.find((assignment) => {
+          // Chỉ lấy bài thi thuộc đợt bổ sung (additional)
+          if (assignment.registration_type !== 'additional') return false
+
           const normalizedAssignmentSubject = normalizeSubjectCode(
             assignment.subject_code || '',
           )
@@ -1510,14 +1517,23 @@ export default function MonthlyActivitiesPage() {
   }
 
   const openSupplementModalForEvent = (registrationEvent: EvaluationEvent) => {
-    if (isPastEvent(registrationEvent)) {
+    const now = new Date()
+    const startAt = parseLocalDateTime(registrationEvent.startAt)
+    const endAt = parseLocalDateTime(registrationEvent.endAt)
+
+    if (now < startAt) {
+      toast.error('Chưa đến giờ mở đăng ký')
+      return
+    }
+
+    if (now > endAt) {
       toast.error('Sự kiện đăng ký đã hết hạn')
       return
     }
 
     setShowDayEventsModal(false)
     setSelectedSupplementEvent(registrationEvent)
-    setSelectedDate(parseLocalDateTime(registrationEvent.startAt))
+    setSelectedDate(startAt)
     setShowSupplementModal(true)
   }
 
@@ -1622,7 +1638,16 @@ export default function MonthlyActivitiesPage() {
       return
     }
 
-    if (isPastEvent(registrationEvent)) {
+    const now = new Date()
+    const startAt = parseLocalDateTime(registrationEvent.startAt)
+    const endAt = parseLocalDateTime(registrationEvent.endAt)
+
+    if (now < startAt) {
+      toast.error('Chưa đến giờ mở đăng ký')
+      return
+    }
+
+    if (now > endAt) {
       toast.error('Sự kiện đăng ký đã hết hạn')
       return
     }
@@ -3202,7 +3227,9 @@ export default function MonthlyActivitiesPage() {
               const selectControlledId =
                 resolveSelectedExamEventIdForOption(option)
 
-              const hasAnyRegistration = userRegisteredSubjects.has(option)
+              const template = selectedRegistrationEvent?.registrationTemplate || 'official';
+              const registrationKey = `${template === 'supplement' ? 'additional' : 'official'}:${option}`;
+              const hasAnyRegistration = userRegisteredSubjects.has(registrationKey);
               const isAlreadyRegisteredForSelectedEvent =
                 !!selectControlledId &&
                 registeredEventIdSet.has(selectControlledId)

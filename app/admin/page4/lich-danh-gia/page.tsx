@@ -390,7 +390,9 @@ export default function ProfessionalEvaluationSchedulePage() {
       eventType: "exam" as EventCategory,
       registrationTemplate: "official" as RegistrationTemplate,
       registrationStartDate: defaultDate,
+      registrationStartTime: "08:00",
       registrationEndDate: defaultDate,
+      registrationEndTime: "17:00",
       holidayStartDate: defaultDate,
       holidayEndDate: defaultDate,
       examDate: defaultDate,
@@ -642,7 +644,9 @@ export default function ProfessionalEvaluationSchedulePage() {
       eventType: "exam",
       registrationTemplate: "official",
       registrationStartDate: formatDateOnly(start),
+      registrationStartTime: "08:00",
       registrationEndDate: formatDateOnly(start),
+      registrationEndTime: "17:00",
       holidayStartDate: formatDateOnly(start),
       holidayEndDate: formatDateOnly(start),
       examDate: formatDateOnly(start),
@@ -707,7 +711,9 @@ export default function ProfessionalEvaluationSchedulePage() {
         eventType: "registration",
         registrationTemplate: event.registrationTemplate || "official",
         registrationStartDate: formatDateOnly(new Date(event.startAt)),
+        registrationStartTime: formatTimeOnly(event.startAt),
         registrationEndDate: formatDateOnly(new Date(event.endAt)),
+        registrationEndTime: formatTimeOnly(event.endAt),
         note: event.note || "",
       }));
     } else if (event.eventType === "exam") {
@@ -935,8 +941,8 @@ export default function ProfessionalEvaluationSchedulePage() {
         return;
       }
 
-      const startAt = combineDateAndTime(formData.registrationStartDate, '00:00');
-      const endAt = combineDateAndTime(formData.registrationEndDate, '23:59');
+      const startAt = combineDateAndTime(formData.registrationStartDate, formData.registrationStartTime);
+      const endAt = combineDateAndTime(formData.registrationEndDate, formData.registrationEndTime);
       nextEvents = [{
         id: crypto.randomUUID(),
         eventType: "registration",
@@ -1628,6 +1634,39 @@ export default function ProfessionalEvaluationSchedulePage() {
                         className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white"
                       />
                     </div>
+
+                    {formData.registrationTemplate === "supplement" && (
+                      <div className="grid grid-cols-2 gap-3 mt-2 p-3 rounded-lg border border-blue-100 bg-blue-50/50">
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-blue-700">Giờ bắt đầu mở *</label>
+                          <input
+                            type="time"
+                            value={formData.registrationStartTime}
+                            onChange={(event) =>
+                              setFormData((previous) => ({
+                                ...previous,
+                                registrationStartTime: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold text-blue-700">Giờ kết thúc *</label>
+                          <input
+                            type="time"
+                            value={formData.registrationEndTime}
+                            onChange={(event) =>
+                              setFormData((previous) => ({
+                                ...previous,
+                                registrationEndTime: event.target.value,
+                              }))
+                            }
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : formData.eventType === "exam" ? (
                   <>

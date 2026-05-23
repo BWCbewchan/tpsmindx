@@ -22,7 +22,10 @@ export async function POST(request: NextRequest) {
     }
 
     const text = await file.text();
-    const lines = text.split('\n').filter((line) => line.trim());
+    // Split by any newline sequence (\n, \r\n, \r) and filter out empty lines
+    const lines = text.split(/\r?\n/).filter((line) => line.trim());
+
+    console.log(`[Import] Total lines found: ${lines.length}`);
 
     if (lines.length < 2) {
       return NextResponse.json(
@@ -31,7 +34,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const headers = parseCSVLine(lines[0]);
+    // Detect delimiter from the first line (tab or comma)
+    const firstLine = lines[0];
+    const delimiter = firstLine.includes('\t') ? '\t' : ',';
+    console.log(`[Import] Detected delimiter: ${delimiter === '\t' ? 'Tab' : 'Comma'}`);
+
+    const headers = parseCSVLine(lines[0], delimiter).map(h => h.trim());
+    console.log(`[Import] Parsed headers:`, headers);
     const expectedHeaders = [
       'question_text',
       'question_type',
@@ -45,6 +54,8 @@ export async function POST(request: NextRequest) {
 
     const hasAllHeaders = expectedHeaders.every((h) => headers.includes(h));
     if (!hasAllHeaders) {
+      const missing = expectedHeaders.filter(h => !headers.includes(h));
+      console.error(`[Import] Missing headers: ${missing.join(', ')}`);
       return NextResponse.json(
         {
           success: false,
@@ -57,7 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     const maxOrderResult = await pool.query(
-      'SELECT COALESCE(MAX(display_order), 0) as max_order FROM chuyen_sau_bode_cauhoi WHERE set_id = $1',
+      'SELECT COALESCE(MAX(thu_tu_hien_thi), 0) as max_order FROM chuyen_sau_bode_cauhoi WHERE id_de = $1',
       [setId]
     );
     let currentOrder = Number(maxOrderResult.rows[0]?.max_order || 0);
@@ -67,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     for (let i = 1; i < lines.length; i++) {
       try {
-        const values = parseCSVLine(lines[i]);
+        const values = parseCSVLine(lines[i], delimiter);
         if (values.length === 0 || values.every((v) => !v.trim())) {
           continue;
         }
@@ -80,13 +91,17 @@ export async function POST(request: NextRequest) {
         const normalizedQuestionText = row.question_text?.trim() || '[Tam] Chua dan noi dung tu doc';
 
         if (!row.question_type?.trim()) {
-          errors.push(`Dòng ${i + 1}: Thiếu loại câu hỏi`);
+          const msg = `Dòng ${i + 1}: Thiếu loại câu hỏi`;
+          console.warn(`[Import] ${msg}`);
+          errors.push(msg);
           continue;
         }
 
         const validTypes = ['multiple_choice', 'true_false', 'short_answer', 'essay'];
         if (!validTypes.includes(row.question_type)) {
-          errors.push(`Dòng ${i + 1}: Loại câu hỏi không hợp lệ (${row.question_type})`);
+          const msg = `Dòng ${i + 1}: Loại câu hỏi không hợp lệ (${row.question_type})`;
+          console.warn(`[Import] ${msg}`);
+          errors.push(msg);
           continue;
         }
 
@@ -104,11 +119,15 @@ export async function POST(request: NextRequest) {
             continue;
           }
           if (!row.correct_answer?.trim()) {
-            errors.push(`Dòng ${i + 1}: Thiếu đáp án đúng`);
+            const msg = `Dòng ${i + 1}: Thiếu đáp án đúng (cột correct_answer trống)`;
+            console.warn(`[Import] ${msg}`);
+            errors.push(msg);
             continue;
           }
           if (!optionsArray.includes(row.correct_answer.trim())) {
-            errors.push(`Dòng ${i + 1}: Đáp án đúng không có trong danh sách đáp án`);
+            const msg = `Dòng ${i + 1}: Đáp án đúng "${row.correct_answer.trim()}" không có trong danh sách đáp án [${optionsArray.join(', ')}]`;
+            console.warn(`[Import] ${msg}`);
+            errors.push(msg);
             continue;
           }
         }
@@ -122,17 +141,18 @@ export async function POST(request: NextRequest) {
         currentOrder++;
         const insertQuestion = await pool.query(
           `INSERT INTO chuyen_sau_cauhoi
-          (question_text, question_type, option_a, option_b, option_c, option_d, correct_answer, explanation, points, difficulty, created_at)
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+          (loai_cau_hoi, noi_dung_cau_hoi, lua_chon_a, lua_chon_b, lua_chon_c, lua_chon_d, dap_an_dung, image_url, giai_thich, diem, do_kho, tao_luc)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
           RETURNING id`,
           [
+            row.question_type === 'essay' ? 'tu_luan' : row.question_type,
             normalizedQuestionText,
-            row.question_type === 'essay' ? 'short_answer' : row.question_type,
             optionsArray?.[0] || null,
             optionsArray?.[1] || null,
             optionsArray?.[2] || null,
             optionsArray?.[3] || null,
             row.correct_answer?.trim() || '',
+            row.image_url?.trim() || null,
             row.explanation?.trim() || null,
             points,
             ['easy', 'medium', 'hard'].includes((row.difficulty || '').trim()) ? row.difficulty.trim() : 'medium',
@@ -140,7 +160,7 @@ export async function POST(request: NextRequest) {
         );
 
         await pool.query(
-          `INSERT INTO chuyen_sau_bode_cauhoi (set_id, question_id, display_order, created_at)
+          `INSERT INTO chuyen_sau_bode_cauhoi (id_de, id_cau, thu_tu_hien_thi, tao_luc)
            VALUES ($1, $2, $3, NOW())`,
           [setId, insertQuestion.rows[0].id, currentOrder]
         );
@@ -172,7 +192,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function parseCSVLine(line: string): string[] {
+function parseCSVLine(line: string, delimiter: string = ','): string[] {
   const result: string[] = [];
   let current = '';
   let inQuotes = false;
@@ -188,7 +208,7 @@ function parseCSVLine(line: string): string[] {
       } else {
         inQuotes = !inQuotes;
       }
-    } else if (char === ',' && !inQuotes) {
+    } else if (char === delimiter && !inQuotes) {
       result.push(current.trim());
       current = '';
     } else {

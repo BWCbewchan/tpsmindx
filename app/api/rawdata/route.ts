@@ -117,7 +117,7 @@ export const GET = withApiProtection(async (request: NextRequest) => {
       };
     });
 
-    // Nhóm theo tháng/năm và tính trung bình
+    // Nhóm theo tháng/năm và tính trung bình theo công thức: (Chính thức + Bổ sung) / 2 cho mỗi môn
     const monthlyMap = new Map<string, TestRecord[]>();
     records.forEach((record) => {
       if (!monthlyMap.has(record.date)) {
@@ -128,11 +128,53 @@ export const GET = withApiProtection(async (request: NextRequest) => {
 
     const monthlyData: MonthlyAverage[] = [];
     monthlyMap.forEach((monthRecords, month) => {
-      const countedRecords = monthRecords.filter((r) => r.isCountedInAverage);
-      if (countedRecords.length > 0) {
-        const sum = countedRecords.reduce((acc, r) => acc + parseFloat(r.score), 0);
-        const average = sum / countedRecords.length;
-        monthlyData.push({ month, average, count: countedRecords.length, records: monthRecords });
+      // Nhóm theo môn học trong tháng
+      const subjectMap = new Map<string, TestRecord[]>();
+      monthRecords.forEach(r => {
+        if (!subjectMap.has(r.subject)) {
+          subjectMap.set(r.subject, []);
+        }
+        subjectMap.get(r.subject)!.push(r);
+      });
+
+      let totalCombinedScore = 0;
+      let subjectCount = 0;
+
+      subjectMap.forEach((subjectRecords) => {
+        // Chỉ tính những môn có ít nhất một bài thi được tính vào trung bình (isCountedInAverage)
+        if (subjectRecords.some(r => r.isCountedInAverage)) {
+          let officialScore = 0;
+          let supplementScore = 0;
+          let hasOfficial = false;
+          let hasSupplement = false;
+
+          subjectRecords.forEach(r => {
+            if (!r.isCountedInAverage) return;
+            
+            const type = r.type.toLowerCase();
+            const isSupplement = type.includes('bổ sung') || type.includes('bo') || type === 'additional';
+            const score = parseFloat(r.score);
+
+            if (isSupplement) {
+              supplementScore = score;
+              hasSupplement = true;
+            } else {
+              officialScore = score;
+              hasOfficial = true;
+            }
+          });
+
+          // Công thức: (Điểm Chính thức + Điểm Bổ sung) / 2
+          // Nếu không thi chính thức, mặc định là 0
+          const combinedScore = (officialScore + supplementScore) / 2;
+          totalCombinedScore += combinedScore;
+          subjectCount++;
+        }
+      });
+
+      if (subjectCount > 0) {
+        const average = totalCombinedScore / subjectCount;
+        monthlyData.push({ month, average, count: subjectCount, records: monthRecords });
       } else {
         monthlyData.push({ month, average: 0, count: 0, records: monthRecords });
       }

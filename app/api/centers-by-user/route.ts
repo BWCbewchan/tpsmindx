@@ -1,6 +1,16 @@
+import { getAccessibleCenters } from '@/lib/center-access'
 import { requireBearerSession } from '@/lib/datasource-api-auth'
 import pool from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
+
+function parseCenterTokens(rawValue: unknown): string[] {
+  const value = String(rawValue ?? '').trim()
+  if (!value) return []
+  return value
+    .split(/[,;|\n]+/g)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
 
 // Mapping: region → group (các region cùng nhóm sẽ thấy nhau)
 const REGION_GROUPS: Record<string, string> = {
@@ -73,28 +83,66 @@ export async function GET(request: NextRequest) {
 
     const mainCentre = teacherResult.rows[0].main_centre?.trim()
     if (!mainCentre) {
-      return NextResponse.json({ success: true, centers: [], region: null, group: null })
+      const accessibleCenters = await getAccessibleCenters(email)
+      return NextResponse.json({
+        success: true,
+        mainCentre: null,
+        region: null,
+        group: null,
+        centers: accessibleCenters,
+      })
     }
 
     // 2. Map main_centre → region qua bảng centers
-    const centerResult = await pool.query(
-      `SELECT region FROM centers WHERE LOWER(TRIM(full_name)) = LOWER(TRIM($1)) LIMIT 1`,
-      [mainCentre]
-    )
+    const candidates = parseCenterTokens(mainCentre)
+    const matchedRegions = new Set<string>()
 
-    if (centerResult.rows.length === 0) {
-      return NextResponse.json({ success: true, centers: [], region: null, group: null, mainCentre })
+    for (const candidate of candidates) {
+      const regionResult = await pool.query(
+        `SELECT region FROM centers
+         WHERE LOWER(TRIM(full_name)) = LOWER(TRIM($1))
+            OR LOWER(TRIM(short_code)) = LOWER(TRIM($1))
+            OR LOWER(TRIM(region)) = LOWER(TRIM($1))
+            OR LOWER(TRIM(full_name)) ILIKE '%' || LOWER(TRIM($1)) || '%'
+            OR LOWER(TRIM(short_code)) ILIKE '%' || LOWER(TRIM($1)) || '%'
+            OR LOWER(TRIM(region)) ILIKE '%' || LOWER(TRIM($1)) || '%'
+         LIMIT 1`,
+        [candidate],
+      )
+      const regionValue = regionResult.rows[0]?.region?.trim()
+      if (regionValue) {
+        matchedRegions.add(regionValue)
+      }
     }
 
-    const region = centerResult.rows[0].region?.trim()
-    const group = REGION_GROUPS[region] || region
+    if (matchedRegions.size === 0) {
+      const accessibleCenters = await getAccessibleCenters(email)
+      return NextResponse.json({
+        success: true,
+        mainCentre,
+        region: null,
+        group: null,
+        centers: accessibleCenters,
+      })
+    }
 
-    // 3. Lấy tất cả regions trong cùng group
-    const groupRegions = Object.entries(REGION_GROUPS)
-      .filter(([, g]) => g === group)
-      .map(([r]) => r)
+    const regions = Array.from(matchedRegions)
+    const groupRegions = Array.from(
+      new Set(
+        regions.flatMap((region) => {
+          const group = REGION_GROUPS[region]
+          if (!group) return [region]
+          return Object.entries(REGION_GROUPS)
+            .filter(([, g]) => g === group)
+            .map(([r]) => r)
+        }),
+      ),
+    )
+    const groupKeys = new Set(regions.map((region) => REGION_GROUPS[region] || region))
+    const group = groupKeys.size === 1 ? Array.from(groupKeys)[0] : 'MULTIPLE'
+    const region = regions.length === 1 ? regions[0] : null
 
-    // 4. Lấy tất cả cơ sở thuộc các region đó
+    // 3. Lấy tất cả cơ sở thuộc các region đó
     const centersResult = await pool.query(
       `SELECT id, region, short_code, full_name, email
        FROM centers

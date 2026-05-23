@@ -1,0 +1,435 @@
+/**
+ * /api/user/lich-lop-hoc
+ * Lấy lịch lớp học của giáo viên từ LMS API.
+ *
+ * Luồng xác thực:
+ * 1. Xác thực user qua session cookie TPS (tps_session)
+ * 2. Lấy Firebase idToken từ cookie lms_firebase_token (httpOnly)
+ * 3. Nếu token hết hạn → tự refresh qua lms_firebase_refresh cookie
+ * 4. Dùng Firebase idToken gọi LMS API (lms-api.mindx.edu.vn chấp nhận Firebase token)
+ * 5. Lọc slot theo teacher code của user
+ */
+import pool from '@/lib/db';
+import { findTeacherRowByEmailOrCode } from '@/lib/teacher-profile-bundle';
+import { TPS_SESSION_COOKIE, verifySessionCookieValue } from '@/lib/session-cookie';
+import { NextRequest, NextResponse } from 'next/server';
+
+const LMS_API_URL = 'https://lms-api.mindx.edu.vn/graphql';
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '';
+const FIREBASE_REFRESH_URL = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`;
+
+// ─── GraphQL: Lấy LMS teacher ID từ email/code ───────────────────────────────
+
+const GET_TEACHER_ID_QUERY = /* graphql */ `
+  query GetTeacherByCode($code: String) {
+    users(payload: {
+      filter_textSearch: $code,
+      pageIndex: 0,
+      itemsPerPage: 10
+    }) {
+      data {
+        id
+        username
+        code
+        email
+        fullName
+      }
+    }
+  }
+`;
+
+// ─── GraphQL: Lấy lớp theo teacher ID (MongoDB ObjectId) ─────────────────────
+
+const GET_TEACHER_CLASSES_QUERY = /* graphql */ `
+  query GetTeacherClasses($teacherId: String, $haveSlotFrom: Date, $haveSlotTo: Date) {
+    classes(payload: {
+      teacher_equals: $teacherId,
+      haveSlot_from: $haveSlotFrom,
+      haveSlot_to: $haveSlotTo,
+      status_in: ["RUNNING", "PREPARING"],
+      pageIndex: 0,
+      itemsPerPage: 200,
+      orderBy: "startDate_asc"
+    }) {
+      data {
+        id
+        name
+        status
+        course { id name shortName courseLine { id name } }
+        centre { id name shortName }
+        slots {
+          _id
+          date
+          startTime
+          endTime
+          sessionHour
+          teachers {
+            isActive
+            teacher { id code email fullName }
+            role { shortName }
+          }
+        }
+      }
+      pagination { total }
+    }
+  }
+`;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Gọi LMS GraphQL với Firebase idToken */
+async function callLmsWithFirebaseToken(
+  idToken: string,
+  query: string,
+  variables: Record<string, unknown>,
+): Promise<{ data: any; errors?: any[] }> {
+  const res = await fetch(LMS_API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      authorization: idToken,
+      'content-language': 'en',
+      Referer: 'https://lms.mindx.edu.vn/',
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`LMS API error: ${res.status} ${res.statusText}`);
+  }
+
+  return res.json();
+}
+
+/** Refresh Firebase idToken từ refreshToken, trả về idToken mới */
+async function refreshFirebaseToken(refreshToken: string): Promise<string | null> {
+  if (!FIREBASE_API_KEY) return null;
+  try {
+    const res = await fetch(FIREBASE_REFRESH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.id_token as string) || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Kiểm tra Firebase idToken còn hạn không (parse JWT payload) */
+function isFirebaseTokenExpired(idToken: string): boolean {
+  try {
+    const parts = idToken.split('.');
+    if (parts.length < 2) return true;
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+    const exp = typeof payload.exp === 'number' ? payload.exp : 0;
+    // Coi là hết hạn nếu còn dưới 5 phút
+    return Date.now() >= (exp - 300) * 1000;
+  } catch {
+    return true;
+  }
+}
+
+// ─── GET handler ──────────────────────────────────────────────────────────────
+
+export async function GET(request: NextRequest) {
+  // 1. Xác thực session TPS
+  const sessionCookie = request.cookies.get(TPS_SESSION_COOKIE)?.value;
+  if (!sessionCookie) {
+    return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
+  }
+
+  const session = await verifySessionCookieValue(sessionCookie);
+  if (!session?.email) {
+    return NextResponse.json({ error: 'Phiên đăng nhập không hợp lệ' }, { status: 401 });
+  }
+
+  // 2. Lấy Firebase token từ cookie
+  let firebaseToken = request.cookies.get('lms_firebase_token')?.value || '';
+  const refreshToken = request.cookies.get('lms_firebase_refresh')?.value || '';
+
+  // Nếu không có Firebase token → user đăng nhập qua app-auth, không có LMS token
+  if (!firebaseToken && !refreshToken) {
+    return NextResponse.json({
+      success: false,
+      noLmsToken: true,
+      slots: [],
+      message: 'Tài khoản này không có kết nối LMS. Vui lòng đăng nhập bằng tài khoản LMS để xem lịch lớp.',
+    });
+  }
+
+  // 3. Refresh token nếu hết hạn
+  const needsRefresh = !firebaseToken || isFirebaseTokenExpired(firebaseToken);
+  let newTokenForCookie: string | null = null;
+  let newRefreshTokenForCookie: string | null = null;
+
+  if (needsRefresh && refreshToken) {
+    try {
+      const refreshRes = await fetch(FIREBASE_REFRESH_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+        }),
+      });
+      if (refreshRes.ok) {
+        const refreshData = await refreshRes.json();
+        firebaseToken = refreshData.id_token || '';
+        newTokenForCookie = firebaseToken;
+        newRefreshTokenForCookie = refreshData.refresh_token || refreshToken;
+      }
+    } catch {
+      // Nếu refresh thất bại, tiếp tục với token cũ (có thể vẫn còn hạn)
+    }
+  }
+
+  if (!firebaseToken) {
+    return NextResponse.json({
+      success: false,
+      noLmsToken: true,
+      slots: [],
+      message: 'Phiên LMS đã hết hạn. Vui lòng đăng nhập lại để xem lịch lớp.',
+    });
+  }
+
+  // 4. Tra DB lấy teacher code từ email
+  const teacherRow = await findTeacherRowByEmailOrCode(pool, { email: session.email });
+  if (!teacherRow) {
+    return NextResponse.json({
+      success: false,
+      slots: [],
+      message: 'Không tìm thấy thông tin giáo viên trong hệ thống.',
+    });
+  }
+
+  const teacherCode = String(teacherRow.code ?? '').trim();
+  const teacherEmail = String(teacherRow.work_email ?? teacherRow['Work email'] ?? session.email).trim();
+
+  if (!teacherCode) {
+    return NextResponse.json({
+      success: false,
+      slots: [],
+      message: 'Giáo viên chưa có mã định danh.',
+    });
+  }
+
+  // 5. Tính khoảng thời gian — hỗ trợ cả range tùy chỉnh (from/to) và month
+  const { searchParams } = new URL(request.url);
+  const monthParam = searchParams.get('month');   // YYYY-MM
+  const fromParam  = searchParams.get('from');    // YYYY-MM-DD (tuần span 2 tháng)
+  const toParam    = searchParams.get('to');      // YYYY-MM-DD
+
+  const LMS_TZ_OFFSET_MS = 7 * 60 * 60 * 1000;
+  let haveSlotFrom: string;
+  let haveSlotTo: string;
+
+  if (fromParam && toParam && /^\d{4}-\d{2}-\d{2}$/.test(fromParam) && /^\d{4}-\d{2}-\d{2}$/.test(toParam)) {
+    // Range tùy chỉnh — dùng khi tuần span 2 tháng
+    const [fy, fm, fd] = fromParam.split('-').map(Number);
+    const [ty, tm, td] = toParam.split('-').map(Number);
+    haveSlotFrom = new Date(new Date(fy, fm - 1, fd, 0, 0, 0).getTime() - LMS_TZ_OFFSET_MS).toISOString();
+    haveSlotTo   = new Date(new Date(ty, tm - 1, td, 23, 59, 59, 999).getTime() - LMS_TZ_OFFSET_MS).toISOString();
+  } else {
+    // Mặc định: tháng hiện tại hoặc theo monthParam
+    const now = new Date();
+    let year  = now.getFullYear();
+    let month = now.getMonth(); // 0-indexed
+    if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+      const [y, m] = monthParam.split('-').map(Number);
+      year  = y;
+      month = m - 1;
+    }
+    haveSlotFrom = new Date(new Date(year, month, 1, 0, 0, 0).getTime() - LMS_TZ_OFFSET_MS).toISOString();
+    haveSlotTo   = new Date(new Date(year, month + 1, 0, 23, 59, 59, 999).getTime() - LMS_TZ_OFFSET_MS).toISOString();
+  }
+
+  // 6. Lấy LMS teacher ID (MongoDB ObjectId) từ teacher code/email
+  //    LMS dùng ObjectId cho teacher_equals, không phải code string
+  let lmsTeacherId: string = teacherCode; // fallback nếu lookup thất bại
+  try {
+    // Thử tìm theo email trước (chính xác hơn), sau đó theo code
+    const lookupTerms = [teacherEmail, teacherCode].filter(Boolean);
+    for (const term of lookupTerms) {
+      const lookupResult = await callLmsWithFirebaseToken(
+        firebaseToken,
+        GET_TEACHER_ID_QUERY,
+        { code: term },
+      );
+      const users: any[] = lookupResult.data?.users?.data || [];
+      // Khớp chính xác theo email hoặc code
+      const matched = users.find(
+        (u: any) =>
+          u.email?.toLowerCase() === teacherEmail.toLowerCase() ||
+          u.code === teacherCode,
+      );
+      if (matched?.id) {
+        lmsTeacherId = matched.id;
+        break;
+      }
+    }
+  } catch (lookupErr: any) {
+    console.warn('[lich-lop-hoc] Teacher ID lookup failed, using code as fallback:', lookupErr?.message);
+  }
+
+  // 7. Gọi LMS API với Firebase token
+  try {
+    const lmsResult = await callLmsWithFirebaseToken(
+      firebaseToken,
+      GET_TEACHER_CLASSES_QUERY,
+      {
+        teacherId: lmsTeacherId,
+        haveSlotFrom,
+        haveSlotTo,
+      },
+    );
+
+    if (lmsResult.errors?.length) {
+      // Nếu lỗi auth → thử refresh một lần nữa
+      const isAuthError = lmsResult.errors.some((e: any) =>
+        String(e.message || '').toLowerCase().includes('auth') ||
+        String(e.message || '').toLowerCase().includes('token') ||
+        String(e.message || '').toLowerCase().includes('unauthorized'),
+      );
+
+      if (isAuthError && refreshToken) {
+        const freshToken = await refreshFirebaseToken(refreshToken);
+        if (freshToken) {
+          const retryResult = await callLmsWithFirebaseToken(
+            freshToken,
+            GET_TEACHER_CLASSES_QUERY,
+            { teacherId: lmsTeacherId, haveSlotFrom, haveSlotTo },
+          );
+          newTokenForCookie = freshToken;
+          return buildResponse(retryResult, teacherCode, teacherEmail, newTokenForCookie, newRefreshTokenForCookie);
+        }
+      }
+
+      console.error('[lich-lop-hoc] LMS GraphQL errors:', lmsResult.errors);
+      return NextResponse.json({
+        success: false,
+        slots: [],
+        message: 'Lỗi khi lấy dữ liệu từ LMS.',
+      });
+    }
+
+    const response = buildResponse(lmsResult, teacherCode, teacherEmail, newTokenForCookie, newRefreshTokenForCookie);
+    return response;
+  } catch (error: any) {
+    console.error('[lich-lop-hoc] Error calling LMS:', error?.message);
+    return NextResponse.json(
+      { success: false, slots: [], message: 'Không thể kết nối đến LMS API.' },
+      { status: 500 },
+    );
+  }
+}
+
+// ─── Build response + cập nhật cookie nếu token được refresh ─────────────────
+
+function buildResponse(
+  lmsResult: { data: any },
+  teacherCode: string,
+  teacherEmail: string,
+  newToken: string | null,
+  newRefreshToken: string | null,
+): NextResponse {
+  const classes: any[] = lmsResult.data?.classes?.data || [];
+
+  const slots: Array<{
+    id: string;
+    classId: string;
+    className: string;
+    courseName: string;
+    courseLineName: string;
+    centreName: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    status: string;
+    sessionHour: number | null;
+  }> = [];
+
+  for (const cls of classes) {
+    const courseLineName = cls.course?.courseLine?.name || '';
+    const courseName = cls.course?.name || cls.course?.shortName || '';
+
+    for (const slot of (cls.slots || [])) {
+      // Kiểm tra slot này có giáo viên này không
+      const hasTeacher = (slot.teachers || []).some(
+        (t: any) =>
+          t.teacher?.code === teacherCode ||
+          t.teacher?.email?.toLowerCase() === teacherEmail.toLowerCase(),
+      );
+      if (!hasTeacher) continue;
+
+      // LMS trả startTime/endTime dạng "HH:MM" hoặc ISO — cần normalize về ISO đầy đủ
+      // slot.date là "YYYY-MM-DD" (local VN), startTime/endTime là "HH:MM" hoặc ISO
+      const dateStr = slot.date || '';
+      const normalizeTime = (t: string, d: string): string => {
+        if (!t) return '';
+        if (t.includes('T')) return t; // đã là ISO
+        // Dạng "HH:MM" hoặc "HH:MM:SS" — ghép với date và offset +07:00
+        const timePart = t.length === 5 ? `${t}:00` : t;
+        return d ? `${d}T${timePart}+07:00` : t;
+      };
+
+      const startTime = normalizeTime(slot.startTime, dateStr);
+      const endTime   = normalizeTime(slot.endTime,   dateStr);
+
+      slots.push({
+        id: slot._id,
+        classId: cls.id,
+        className: cls.name || '',
+        courseName,
+        courseLineName,
+        centreName: cls.centre?.name || cls.centre?.shortName || '',
+        date: dateStr,
+        startTime,
+        endTime,
+        status: cls.status || 'RUNNING',
+        sessionHour: slot.sessionHour ?? null,
+      });
+    }
+  }
+
+  // Sắp xếp theo startTime tăng dần
+  slots.sort((a, b) => {
+    const ta = new Date(a.startTime || a.date).getTime();
+    const tb = new Date(b.startTime || b.date).getTime();
+    return ta - tb;
+  });
+
+  const response = NextResponse.json({
+    success: true,
+    teacherCode,
+    slots,
+    total: slots.length,
+  });
+
+  // Cập nhật cookie nếu token được refresh
+  if (newToken) {
+    response.cookies.set('lms_firebase_token', newToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60,
+    });
+  }
+  if (newRefreshToken) {
+    response.cookies.set('lms_firebase_refresh', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30,
+    });
+  }
+
+  return response;
+}

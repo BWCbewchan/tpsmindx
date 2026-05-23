@@ -80,6 +80,7 @@ interface CalendarExamAssignment {
   can_take: boolean
   is_open: boolean
   is_set_active_now: boolean
+  registration_type?: string
 }
 
 const WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
@@ -249,6 +250,9 @@ type RegisterPayload = {
   optionLabel: string
   specialtyAliases: string[]
   subjectCodeCandidates: string[]
+  default_set_id?: number | null
+  default_set_code?: string | null
+  default_set_name?: string | null
 }
 
 function startOfDay(date: Date) {
@@ -415,6 +419,32 @@ function resolveExamActionStatus(assignment: CalendarExamAssignment | null) {
   return 'Chưa thể làm bài'
 }
 
+function formatExamAssignmentStatus(rawStatus: string | null | undefined) {
+  if (!rawStatus) {
+    return 'Chưa có trạng thái'
+  }
+
+  const status = rawStatus.toLowerCase()
+  switch (status) {
+    case 'assigned':
+      return 'Đã làm bài'
+    case 'in_progress':
+      return 'Đang làm'
+    case 'submitted':
+      return 'Đã nộp'
+    case 'graded':
+      return 'Đã chấm'
+    case 'expired':
+      return 'Đã đóng'
+    case 'approved':
+      return 'Đã duyệt'
+    case 'rejected':
+      return 'Đã từ chối'
+    default:
+      return rawStatus
+  }
+}
+
 function buildCalendarCells(focusDate: Date, view: CalendarView) {
   if (view === 'day') {
     return [{ date: new Date(focusDate), inCurrentMonth: true }]
@@ -456,12 +486,17 @@ export default function MonthlyActivitiesPage() {
     subject_code: string
     subject_name: string
     default_set_id?: number | null
+    default_set_code?: string | null
+    default_set_name?: string | null
   }>>([])
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [selectedRegistrationEvent, setSelectedRegistrationEvent] =
     useState<EvaluationEvent | null>(null)
+  const [selectedSupplementEvent, setSelectedSupplementEvent] =
+    useState<EvaluationEvent | null>(null)
   const [showDayEventsModal, setShowDayEventsModal] = useState(false)
   const [showRegisterModal, setShowRegisterModal] = useState(false)
+  const [showSupplementModal, setShowSupplementModal] = useState(false)
   const [selectedOptions, setSelectedOptions] = useState<string[]>([])
   const [teacherCode, setTeacherCode] = useState('')
   const [teacherCenterCode, setTeacherCenterCode] = useState('')
@@ -471,6 +506,7 @@ export default function MonthlyActivitiesPage() {
     lms_code?: string
     campus?: string
   }>({})
+  const [registeringSupplementOption, setRegisteringSupplementOption] = useState<string | null>(null)
 
   const [submitting, setSubmitting] = useState(false)
   const [registeredParticipantsByEvent, setRegisteredParticipantsByEvent] =
@@ -489,6 +525,7 @@ export default function MonthlyActivitiesPage() {
   const [teacherResults, setTeacherResults] = useState<TeacherLookupItem[]>([])
   const [selectedTeacherCode, setSelectedTeacherCode] = useState('')
   const [registeringLectureReview, setRegisteringLectureReview] = useState(false)
+  // Lưu trữ theo định dạng "template:subject_code" để phân biệt đợt
   const [userRegisteredSubjects, setUserRegisteredSubjects] = useState<
     Set<string>
   >(new Set())
@@ -567,6 +604,9 @@ export default function MonthlyActivitiesPage() {
         block_code: subject.block_code,
         subject_code: subject.subject_code,
         optionLabel: key,
+        default_set_id: subject.default_set_id,
+        default_set_code: subject.default_set_code,
+        default_set_name: subject.default_set_name,
         // specialtyAliases: match trực tiếp với subject_code và subject_name
         // (admin lưu chuyen_nganh = subject_code khi tạo lịch)
         specialtyAliases: [subject.subject_name, subject.subject_code].filter(Boolean),
@@ -750,11 +790,13 @@ export default function MonthlyActivitiesPage() {
           }) => {
             if (row.schedule_id) scheduleIds.add(row.schedule_id)
             Object.entries(REGISTER_OPTION_MAP).forEach(([option, mapped]) => {
-              if (
-                mapped.block_code === row.block_code &&
-                mapped.subject_code === row.subject_code
-              ) {
-                registeredSet.add(option)
+                if (
+                  mapped.block_code === row.block_code &&
+                  mapped.subject_code === row.subject_code
+                ) {
+                  // Sử dụng registration_type từ API để phân loại (official/additional)
+                  const regType = (row as any).registration_type || 'official';
+                  registeredSet.add(`${regType}:${option}`);
                 if (!scheduleTimesByOption[option]) {
                   scheduleTimesByOption[option] = []
                 }
@@ -954,23 +996,50 @@ export default function MonthlyActivitiesPage() {
     return map
   }, [events, REGISTER_OPTION_MAP])
 
-  /** Lịch đang chọn để đăng ký: ưu tiên lịch chưa đăng ký (không chọn nhầm slot đã đăng ký). */
+  /** Lịch đang chọn để đăng ký: chỉ trả về id khi user đã chọn rõ ràng. */
   const resolveSelectedExamEventIdForOption = useCallback(
     (option: string) => {
-      const examEvents = upcomingExamEventsByOption[option] || []
       const regIds = new Set(registeredExamEventIdsByOption[option] || [])
       const raw = selectedExamEventByOption[option] || ''
       if (raw && !regIds.has(raw)) return raw
-      return (
-        examEvents.find((e) => !regIds.has(e.id))?.id || examEvents[0]?.id || ''
-      )
+      // Không tự động chọn ngày thay user — trả về empty nếu không có lựa chọn rõ ràng
+      return ''
     },
-    [
-      upcomingExamEventsByOption,
-      registeredExamEventIdsByOption,
-      selectedExamEventByOption,
-    ],
+    [registeredExamEventIdsByOption, selectedExamEventByOption],
   )
+
+  const supplementSubjectAssignmentByOption = useMemo(() => {
+    return Object.entries(REGISTER_OPTION_MAP).reduce(
+      (acc, [option, mapped]) => {
+        const selectedAssignment = examAssignments.find((assignment) => {
+          // Chỉ lấy bài thi thuộc đợt bổ sung (additional)
+          if (assignment.registration_type !== 'additional') return false
+
+          const normalizedAssignmentSubject = normalizeSubjectCode(
+            assignment.subject_code || '',
+          )
+          const candidates = [
+            mapped.subject_code,
+            mapped.optionLabel,
+            ...mapped.subjectCodeCandidates,
+          ]
+            .map(normalizeSubjectCode)
+            .filter(Boolean)
+
+          return candidates.some(
+            (candidate) =>
+              candidate === normalizedAssignmentSubject ||
+              normalizedAssignmentSubject.includes(candidate) ||
+              candidate.includes(normalizedAssignmentSubject),
+          )
+        })
+
+        acc[option] = selectedAssignment || null
+        return acc
+      },
+      {} as Record<string, CalendarExamAssignment | null>,
+    )
+  }, [examAssignments, REGISTER_OPTION_MAP])
 
   const periodLabel = useMemo(() => {
     if (view === 'day') {
@@ -1366,14 +1435,14 @@ export default function MonthlyActivitiesPage() {
         const regIds = registeredExamEventIdsByOption[option] || []
         const regSet = new Set(regIds)
         const prevId = prev[option]
-        const prevStillValid =
-          !!prevId && examEvents.some((e) => e.id === prevId)
+        const prevStillValid = !!prevId && examEvents.some((e) => e.id === prevId)
         const prevIsStillSelectable = !!prevId && !regSet.has(prevId)
         if (prevStillValid && prevIsStillSelectable) {
+          // keep explicit previous selection
           next[option] = prevId
         } else {
-          const firstOpen = examEvents.find((e) => !regSet.has(e.id))
-          next[option] = firstOpen?.id || examEvents[0]?.id || ''
+          // do not auto-select any slot — leave empty for user to choose
+          next[option] = ''
         }
       })
       return next
@@ -1447,6 +1516,27 @@ export default function MonthlyActivitiesPage() {
     return dateEvents.find((event) => event.eventType === 'registration')
   }
 
+  const openSupplementModalForEvent = (registrationEvent: EvaluationEvent) => {
+    const now = new Date()
+    const startAt = parseLocalDateTime(registrationEvent.startAt)
+    const endAt = parseLocalDateTime(registrationEvent.endAt)
+
+    if (now < startAt) {
+      toast.error('Chưa đến giờ mở đăng ký')
+      return
+    }
+
+    if (now > endAt) {
+      toast.error('Sự kiện đăng ký đã hết hạn')
+      return
+    }
+
+    setShowDayEventsModal(false)
+    setSelectedSupplementEvent(registrationEvent)
+    setSelectedDate(startAt)
+    setShowSupplementModal(true)
+  }
+
   const handleDayClick = (date: Date) => {
     if (isPastDate(date)) {
       return
@@ -1474,7 +1564,11 @@ export default function MonthlyActivitiesPage() {
         return
       }
       setSelectedDate(date)
-      openRegisterModalForEvent(registrationEvent)
+      if (registrationEvent.registrationTemplate === 'supplement') {
+        openSupplementModalForEvent(registrationEvent)
+      } else {
+        openRegisterModalForEvent(registrationEvent)
+      }
       return
     }
 
@@ -1496,7 +1590,11 @@ export default function MonthlyActivitiesPage() {
         )
         return
       }
-      openRegisterModalForEvent(event)
+      if (event.registrationTemplate === 'supplement') {
+        openSupplementModalForEvent(event)
+      } else {
+        openRegisterModalForEvent(event)
+      }
       return
     }
 
@@ -1526,11 +1624,30 @@ export default function MonthlyActivitiesPage() {
       return
     }
 
+    if (registrationEvent.registrationTemplate === 'supplement') {
+      openSupplementModalForEvent(registrationEvent)
+      return
+    }
+
     openRegisterModalForEvent(registrationEvent)
   }
 
   const openRegisterModalForEvent = (registrationEvent: EvaluationEvent) => {
-    if (isPastEvent(registrationEvent)) {
+    if (registrationEvent.registrationTemplate === 'supplement') {
+      openSupplementModalForEvent(registrationEvent)
+      return
+    }
+
+    const now = new Date()
+    const startAt = parseLocalDateTime(registrationEvent.startAt)
+    const endAt = parseLocalDateTime(registrationEvent.endAt)
+
+    if (now < startAt) {
+      toast.error('Chưa đến giờ mở đăng ký')
+      return
+    }
+
+    if (now > endAt) {
       toast.error('Sự kiện đăng ký đã hết hạn')
       return
     }
@@ -1728,19 +1845,25 @@ export default function MonthlyActivitiesPage() {
         //   }
         // }
 
-        const examEventId = resolveSelectedExamEventIdForOption(option)
-        const matchedExamEvent =
-          (examEventId
-            ? events.find((e) => e.id === examEventId) || null
-            : null) || (examEvents.length === 1 ? examEvents[0] : null)
+        const explicitExamEventId = selectedExamEventByOption[option] || ''
+        const examEventId =
+          explicitExamEventId ||
+          (examEvents.length === 1 ? examEvents[0]?.id || '' : '')
 
-        if (!matchedExamEvent) {
+        if (!examEventId) {
           failedOptions.push(option)
           failedDetails.push(`${option}: chưa chọn lịch thi`)
           continue
         }
 
-        const targetEventId = examEventId || matchedExamEvent.id
+        const matchedExamEvent = events.find((e) => e.id === examEventId) || null
+        if (!matchedExamEvent) {
+          failedOptions.push(option)
+          failedDetails.push(`${option}: lịch đã chọn không hợp lệ`)
+          continue
+        }
+
+        const targetEventId = examEventId
         const alreadyRegisteredSameSlot =
           !!targetEventId &&
           (registeredExamEventIdsByOption[option] || []).includes(targetEventId)
@@ -1860,6 +1983,80 @@ export default function MonthlyActivitiesPage() {
         )
       }
       console.warn('Registration failed details:', failedDetails)
+    }
+  }
+
+  const createSupplementAssignmentForOption = async (option: string) => {
+    if (!selectedDate) {
+      toast.error('Không xác định được ngày đăng ký')
+      return
+    }
+
+    const registrationEvent =
+      selectedSupplementEvent || registrationEventByDate(selectedDate)
+    if (!registrationEvent || isPastEvent(registrationEvent)) {
+      toast.error('Sự kiện đăng ký đã hết hạn')
+      return
+    }
+
+    const mapped = REGISTER_OPTION_MAP[option]
+    if (!mapped) {
+      toast.error('Không xác định được môn đăng ký')
+      return
+    }
+
+    const validTeacherCode = await resolveValidTeacherCode()
+    if (!validTeacherCode) {
+      toast.error(
+        'Không xác định được mã giáo viên hợp lệ từ hồ sơ. Vui lòng kiểm tra lại email/mã GV hoặc liên hệ admin.',
+      )
+      return
+    }
+
+    const registrationStart = parseLocalDateTime(registrationEvent.startAt)
+    const registrationMonth = registrationStart.getMonth() + 1
+    const registrationYear = registrationStart.getFullYear()
+
+    setRegisteringSupplementOption(option)
+    try {
+      const response = await fetch('/api/exam-registrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          teacher_code: validTeacherCode,
+          exam_type: mapped.exam_type,
+          registration_type: 'additional',
+          block_code: mapped.block_code,
+          subject_code: mapped.subject_code,
+          id_de_thi: mapped.default_set_id || undefined,
+          center_code: teacherCenterCode || null,
+          scheduled_at: new Date(registrationEvent.startAt).toISOString(),
+          source_form: 'additional_form',
+          open_at: new Date(registrationEvent.startAt).toISOString(),
+          close_at: new Date(registrationEvent.endAt).toISOString(),
+          scheduled_event_id: registrationEvent.id,
+          thang_dk: registrationMonth,
+          nam_dk: registrationYear,
+          teacher_info: teacherInfo,
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || 'Không thể tạo assignment cho môn này')
+      }
+
+      const createdResultId = data?.data?.id || data?.result_id || null
+      toast.success(`Đã tạo bài kiểm tra cho môn ${option}`)
+      await fetchExamAssignmentsForMonth(selectedDate || focusDate)
+      if (createdResultId) {
+        setShowSupplementModal(false)
+        setSelectedSupplementEvent(null)
+        router.push(`/user/assignments/exam/${createdResultId}`)
+      }
+    } catch (error: any) {
+      toast.error(error?.message || 'Không thể tạo assignment cho môn này')
+    } finally {
+      setRegisteringSupplementOption(null)
     }
   }
 
@@ -2667,7 +2864,11 @@ export default function MonthlyActivitiesPage() {
                       {canRegister && (
                         <div className="mt-3 border-t border-gray-200 pt-3">
                           <button
-                            onClick={() => openRegisterModalForEvent(event)}
+                            onClick={() =>
+                              event.registrationTemplate === 'supplement'
+                                ? openSupplementModalForEvent(event)
+                                : openRegisterModalForEvent(event)
+                            }
                             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                           >
                             {event.registrationTemplate === 'supplement'
@@ -2955,6 +3156,8 @@ export default function MonthlyActivitiesPage() {
         title={`Form đăng ký kiểm tra - ${selectedDate?.toLocaleDateString('vi-VN') || ''}`}
         subtitle="Chọn lịch thi trước, sau đó tick môn và gửi đăng ký."
         maxWidth="2xl"
+        backdropClassName="overflow-hidden"
+        containerClassName="h-[calc(100dvh-1rem)] max-h-[calc(100dvh-1rem)] sm:h-auto sm:max-h-[95dvh]"
         footer={
           <div className="flex items-center justify-end gap-2">
             <button
@@ -3024,7 +3227,9 @@ export default function MonthlyActivitiesPage() {
               const selectControlledId =
                 resolveSelectedExamEventIdForOption(option)
 
-              const hasAnyRegistration = userRegisteredSubjects.has(option)
+              const template = selectedRegistrationEvent?.registrationTemplate || 'official';
+              const registrationKey = `${template === 'supplement' ? 'additional' : 'official'}:${option}`;
+              const hasAnyRegistration = userRegisteredSubjects.has(registrationKey);
               const isAlreadyRegisteredForSelectedEvent =
                 !!selectControlledId &&
                 registeredEventIdSet.has(selectControlledId)
@@ -3150,6 +3355,22 @@ export default function MonthlyActivitiesPage() {
                             )
                           })}
                         </div>
+                        {/* Bỏ chọn: nút cho phép xóa lựa chọn và uncheck môn */}
+                        <div className="mt-2 flex justify-end">
+                          {(isSelected || (selectedExamEventByOption[option] || '')) && !isDisabled && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                // remove checkbox selection and clear chosen slot
+                                setSelectedOptions((prev) => prev.filter((it) => it !== option))
+                                setSelectedExamEventByOption((prev) => ({ ...prev, [option]: '' }))
+                              }}
+                              className="text-sm font-medium text-[#a1001f] hover:underline"
+                            >
+                              Bỏ chọn
+                            </button>
+                          )}
+                        </div>
                         {examEvents.some((e) => registeredEventIdSet.has(e.id)) &&
                           examEvents.some((e) => !registeredEventIdSet.has(e.id)) && (
                             <p className="text-xs text-gray-500">
@@ -3179,12 +3400,6 @@ export default function MonthlyActivitiesPage() {
                       className={`text-sm leading-6 ${isDisabled ? 'text-gray-400' : 'text-gray-900'}`}
                     >
                       Đăng ký môn này
-                      {isAlreadyRegisteredForSelectedEvent &&
-                        ' (đã đăng ký lịch này)'}
-                      {!isAlreadyRegisteredForSelectedEvent &&
-                        hasAnyRegistration &&
-                        ' (đã đăng ký lịch khác)'}
-                      {!isAvailable && ' (chưa có đề)'}
                     </span>
                   </label>
                 </div>
@@ -3192,6 +3407,138 @@ export default function MonthlyActivitiesPage() {
             })}
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        open={showSupplementModal && !!selectedSupplementEvent}
+        onClose={() => {
+          setShowSupplementModal(false)
+          setSelectedSupplementEvent(null)
+        }}
+        title="Kiểm tra bổ sung"
+        subtitle={
+          selectedSupplementEvent
+            ? `Sự kiện bổ sung: ${selectedSupplementEvent.title}`
+            : undefined
+        }
+        headerColor="bg-[#a1001f]"
+        maxWidth="5xl"
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <button
+              onClick={() => {
+                setShowSupplementModal(false)
+                setSelectedSupplementEvent(null)
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Đóng
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+            {REGISTER_OPTIONS.map((option) => {
+              const mapped = REGISTER_OPTION_MAP[option]
+              const assignment = supplementSubjectAssignmentByOption[option]
+              const canTake = assignment?.can_take === true
+              const statusLabel = assignment
+                ? formatExamAssignmentStatus(assignment.assignment_status)
+                : 'Chưa tạo bài kiểm tra'
+
+              return (
+                <div
+                  key={option}
+                  className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{option}</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {mapped.subject_code}
+                      </p>
+                    </div>
+                    <span
+                      className={`rounded-full px-2 py-1 text-[11px] font-semibold ${
+                        canTake
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : assignment
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}
+                    >
+                      {statusLabel}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 text-sm text-gray-600">
+                    <p>
+                      Bài kiểm tra sẽ được tạo độc lập theo sự kiện bổ sung hiện tại.
+                    </p>
+                    <p className="mt-2 text-sm text-gray-700">
+                      Môn: {mapped.optionLabel}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-700">
+                      Mã môn: {mapped.subject_code}
+                    </p>
+                    {mapped.default_set_code ? (
+                      <p className="mt-1 text-sm text-gray-700">
+                        Bộ đề mặc định: {mapped.default_set_code}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-sm text-gray-500">
+                        Bộ đề mặc định: chưa có (bài kiểm tra sẽ dùng cấu hình mặc định)
+                      </p>
+                    )}
+                    {selectedSupplementEvent ? (
+                      <p className="mt-2 text-sm text-gray-500">
+                        Thời điểm đăng ký: {formatDateTime(selectedSupplementEvent.startAt)} — {formatDateTime(selectedSupplementEvent.endAt)}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="mt-4 flex flex-col gap-2">
+                    {canTake ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!assignment?.id) return
+                          setShowSupplementModal(false)
+                          setSelectedSupplementEvent(null)
+                          router.push(`/user/assignments/exam/${assignment.id}`)
+                        }}
+                        className="rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                      >
+                        Làm bài
+                      </button>
+                    ) : assignment ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="rounded-md bg-gray-300 px-3 py-2 text-sm font-semibold text-gray-600"
+                      >
+                        Đã hoàn thành
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={registeringSupplementOption === option}
+                        onClick={() => createSupplementAssignmentForOption(option)}
+                        className={`rounded-md px-3 py-2 text-sm font-semibold text-white ${
+                          registeringSupplementOption === option
+                            ? 'bg-[#a1001f] cursor-wait'
+                            : 'bg-[#a1001f] hover:bg-[#7f0017]'
+                        }`}
+                      >
+                        {registeringSupplementOption === option
+                          ? 'Đang tạo bài kiểm tra...'
+                          : 'Tạo bài kiểm tra'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
       </Modal>
     </PageContainer>
   )

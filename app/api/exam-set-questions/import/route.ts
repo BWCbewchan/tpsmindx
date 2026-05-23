@@ -22,7 +22,10 @@ export async function POST(request: NextRequest) {
     }
 
     const text = await file.text();
-    const lines = text.split('\n').filter((line) => line.trim());
+    // Split by any newline sequence (\n, \r\n, \r) and filter out empty lines
+    const lines = text.split(/\r?\n/).filter((line) => line.trim());
+
+    console.log(`[Import] Total lines found: ${lines.length}`);
 
     if (lines.length < 2) {
       return NextResponse.json(
@@ -31,7 +34,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const headers = parseCSVLine(lines[0]);
+    // Detect delimiter from the first line (tab or comma)
+    const firstLine = lines[0];
+    const delimiter = firstLine.includes('\t') ? '\t' : ',';
+    console.log(`[Import] Detected delimiter: ${delimiter === '\t' ? 'Tab' : 'Comma'}`);
+
+    const headers = parseCSVLine(lines[0], delimiter).map(h => h.trim());
+    console.log(`[Import] Parsed headers:`, headers);
     const expectedHeaders = [
       'question_text',
       'question_type',
@@ -45,6 +54,8 @@ export async function POST(request: NextRequest) {
 
     const hasAllHeaders = expectedHeaders.every((h) => headers.includes(h));
     if (!hasAllHeaders) {
+      const missing = expectedHeaders.filter(h => !headers.includes(h));
+      console.error(`[Import] Missing headers: ${missing.join(', ')}`);
       return NextResponse.json(
         {
           success: false,
@@ -67,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     for (let i = 1; i < lines.length; i++) {
       try {
-        const values = parseCSVLine(lines[i]);
+        const values = parseCSVLine(lines[i], delimiter);
         if (values.length === 0 || values.every((v) => !v.trim())) {
           continue;
         }
@@ -80,13 +91,17 @@ export async function POST(request: NextRequest) {
         const normalizedQuestionText = row.question_text?.trim() || '[Tam] Chua dan noi dung tu doc';
 
         if (!row.question_type?.trim()) {
-          errors.push(`Dòng ${i + 1}: Thiếu loại câu hỏi`);
+          const msg = `Dòng ${i + 1}: Thiếu loại câu hỏi`;
+          console.warn(`[Import] ${msg}`);
+          errors.push(msg);
           continue;
         }
 
         const validTypes = ['multiple_choice', 'true_false', 'short_answer', 'essay'];
         if (!validTypes.includes(row.question_type)) {
-          errors.push(`Dòng ${i + 1}: Loại câu hỏi không hợp lệ (${row.question_type})`);
+          const msg = `Dòng ${i + 1}: Loại câu hỏi không hợp lệ (${row.question_type})`;
+          console.warn(`[Import] ${msg}`);
+          errors.push(msg);
           continue;
         }
 
@@ -104,11 +119,15 @@ export async function POST(request: NextRequest) {
             continue;
           }
           if (!row.correct_answer?.trim()) {
-            errors.push(`Dòng ${i + 1}: Thiếu đáp án đúng`);
+            const msg = `Dòng ${i + 1}: Thiếu đáp án đúng (cột correct_answer trống)`;
+            console.warn(`[Import] ${msg}`);
+            errors.push(msg);
             continue;
           }
           if (!optionsArray.includes(row.correct_answer.trim())) {
-            errors.push(`Dòng ${i + 1}: Đáp án đúng không có trong danh sách đáp án`);
+            const msg = `Dòng ${i + 1}: Đáp án đúng "${row.correct_answer.trim()}" không có trong danh sách đáp án [${optionsArray.join(', ')}]`;
+            console.warn(`[Import] ${msg}`);
+            errors.push(msg);
             continue;
           }
         }
@@ -173,7 +192,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function parseCSVLine(line: string): string[] {
+function parseCSVLine(line: string, delimiter: string = ','): string[] {
   const result: string[] = [];
   let current = '';
   let inQuotes = false;
@@ -189,7 +208,7 @@ function parseCSVLine(line: string): string[] {
       } else {
         inQuotes = !inQuotes;
       }
-    } else if (char === ',' && !inQuotes) {
+    } else if (char === delimiter && !inQuotes) {
       result.push(current.trim());
       current = '';
     } else {

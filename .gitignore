@@ -29,6 +29,9 @@ temp_*.csv
 *_secrets.txt
 *_pii.txt
 
+# reference projects (not part of main codebase)
+/mindx-kpi-control
+
 # debug
 npm-debug.log*
 yarn-debug.log*

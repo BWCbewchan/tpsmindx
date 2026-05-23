@@ -16,6 +16,12 @@ export interface HrCandidateRow {
   updated_by_email: string | null;
   created_at: string;
   updated_at: string;
+  birth_year: string | null;
+  facebook_url: string | null;
+  teaching_experience: string | null;
+  gender: string | null;
+  current_address: string | null;
+  region_name: string | null;
 }
 
 export interface HrSummary {

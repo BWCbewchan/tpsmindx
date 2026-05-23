@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from '@/lib/app-toast';
+import { resolveSafeAuthRedirect } from '@/lib/auth-redirect';
 import { useAuth } from "@/lib/auth-context";
 import { logger } from '@/lib/logger';
 import { Eye, EyeOff } from 'lucide-react';
@@ -11,7 +12,13 @@ import { Icon } from '@/components/ui/primitives/icon';
 
 const SAVED_LOGIN_KEY = 'tps_saved_login_account';
 type LandingRole = 'teacher' | 'manager';
+type LoginRole = LandingRole | 'candidate';
 type AppRole = LandingRole | 'super_admin' | 'admin' | 'hr';
+type SavedLoginAccount = {
+  email?: string;
+  candidateCode?: string;
+  role?: LoginRole;
+};
 
 const ADMIN_LANDING_ROLES = new Set<AppRole>(['super_admin', 'admin', 'hr']);
 
@@ -41,28 +48,45 @@ function resolvePostLoginPath(options: {
 export default function LoginPage() {
   const router = useRouter();
   const { user, isLoading, updateUser } = useAuth();
-  const [role, setRole] = useState<LandingRole>('teacher');
+  const [role, setRole] = useState<LoginRole>('teacher');
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [candidateCode, setCandidateCode] = useState("");
+  const [candidatePassword, setCandidatePassword] = useState("MindX@2024");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberAccount, setRememberAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [loginPreferenceReady, setLoginPreferenceReady] = useState(false);
+  const [nextPath, setNextPath] = useState<string | null>(null);
   const hasCheckedAuth = useRef(false);
 
   useEffect(() => {
     try {
+      const params = new URLSearchParams(window.location.search);
       const saved = localStorage.getItem(SAVED_LOGIN_KEY);
-      if (!saved) return;
 
-      const parsed = JSON.parse(saved) as { email?: string; role?: 'teacher' | 'manager' };
-      if (parsed.email) {
-        setEmail(parsed.email);
-        setRememberAccount(true);
+      if (saved) {
+        const parsed = JSON.parse(saved) as SavedLoginAccount;
+        if (parsed.role === 'candidate') {
+          if (parsed.candidateCode) {
+            setCandidateCode(parsed.candidateCode);
+            setRememberAccount(true);
+          }
+          setRole('candidate');
+        } else {
+          if (parsed.email) {
+          setEmail(parsed.email);
+          setRememberAccount(true);
+          }
+          if (parsed.role === 'teacher' || parsed.role === 'manager') {
+            setRole(parsed.role);
+          }
+        }
       }
-      if (parsed.role === 'teacher' || parsed.role === 'manager') {
-        setRole(parsed.role);
+
+      if (params.get('role') === 'candidate') {
+        setRole('candidate');
       }
     } catch (e) {
       logger.warn('Unable to load saved login account', { error: (e as Error).message });
@@ -71,15 +95,25 @@ export default function LoginPage() {
     }
   }, []);
 
-  const persistRememberedAccount = useCallback((accountEmail: string, accountRole: LandingRole) => {
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setNextPath(resolveSafeAuthRedirect(params.get('next'), window.location.origin));
+  }, []);
+
+  const persistRememberedAccount = useCallback((accountIdentifier: string, accountRole: LoginRole) => {
     try {
       if (!rememberAccount) {
         localStorage.removeItem(SAVED_LOGIN_KEY);
         return;
       }
+      const trimmedIdentifier = accountIdentifier.trim();
       localStorage.setItem(
         SAVED_LOGIN_KEY,
-        JSON.stringify({ email: accountEmail.trim(), role: accountRole })
+        JSON.stringify(
+          accountRole === 'candidate'
+            ? { candidateCode: trimmedIdentifier, role: accountRole }
+            : { email: trimmedIdentifier, role: accountRole }
+        )
       );
     } catch (e) {
       logger.warn('Unable to persist saved login account', { error: (e as Error).message });
@@ -90,19 +124,23 @@ export default function LoginPage() {
     if (!isLoading && loginPreferenceReady && !hasCheckedAuth.current) {
       hasCheckedAuth.current = true;
       if (user) {
+        const selectedLandingRole: LandingRole =
+          role === 'candidate' ? 'teacher' : role;
         const { redirectPath } = resolvePostLoginPath({
           accountRole: user.role as AppRole | undefined,
-          selectedRole: role,
+          selectedRole: selectedLandingRole,
           isAdmin: Boolean(user.isAdmin),
         });
-        logger.info('User already logged in, redirecting', { email: user.email, role: user.role, path: redirectPath });
-        router.replace(redirectPath);
+        const targetPath = nextPath ?? redirectPath;
+        logger.info('User already logged in, redirecting', { email: user.email, role: user.role, path: targetPath });
+        router.replace(targetPath);
       }
     }
-  }, [user, isLoading, loginPreferenceReady, role, router]);
+  }, [user, isLoading, loginPreferenceReady, nextPath, role, router]);
 
-  const handleRoleChange = useCallback((newRole: 'teacher' | 'manager') => {
+  const handleRoleChange = useCallback((newRole: LoginRole) => {
     setRole(newRole);
+    setError('');
   }, []);
 
   const handleTogglePassword = useCallback(() => {
@@ -124,6 +162,43 @@ export default function LoginPage() {
     e.preventDefault();
     setIsSubmitting(true);
     setError("");
+
+    if (role === 'candidate') {
+      const trimmedCandidateCode = candidateCode.trim();
+      if (!trimmedCandidateCode || !candidatePassword.trim()) {
+        setError('Vui lòng nhập đầy đủ Candidate Code và mật khẩu.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/hr/onboarding/candidate-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: trimmedCandidateCode,
+            password: candidatePassword,
+          }),
+        });
+        const data = await response.json();
+
+        if (!data.success) {
+          throw new Error(data.error || 'Đăng nhập ứng viên thất bại.');
+        }
+
+        window.localStorage.setItem('candidatePortalProfile', JSON.stringify(data.data));
+        persistRememberedAccount(trimmedCandidateCode, 'candidate');
+        toast.success(`Chào mừng ${data.data?.full_name || 'ứng viên'}!`);
+        router.replace('/candidate-portal');
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Không thể kết nối hệ thống. Vui lòng thử lại.';
+        setError(errorMessage);
+        toast.error(errorMessage);
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
 
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
@@ -202,8 +277,9 @@ export default function LoginPage() {
         }
 
         persistRememberedAccount(appAuthData.email || trimmedEmail, role);
-        logger.info('Redirecting app user', { path: landing.redirectPath, role: userData.role });
-        setTimeout(() => { router.replace(landing.redirectPath); }, 500);
+        const finalRedirectPath = nextPath ?? landing.redirectPath;
+        logger.info('Redirecting app user', { path: finalRedirectPath, role: userData.role });
+        setTimeout(() => { router.replace(finalRedirectPath); }, 500);
         return;
       }
 
@@ -262,11 +338,11 @@ export default function LoginPage() {
         teacherSync: data?.teacherSync,
       });
 
-      let finalRedirectPath = landing.redirectPath;
+      let finalRedirectPath = nextPath ?? landing.redirectPath;
 
       if (landing.isAdminLanding) {
         toast.success(`Chào mừng Admin ${userData.displayName}!`);
-      } else if (serverRole === 'teacher') {
+      } else if (serverRole === 'teacher' && !nextPath) {
         finalRedirectPath = resolveTeacherRedirect(data?.teacherSync, userData.email);
 
         if (!data?.teacherSync?.foundInDatabase) {
@@ -301,7 +377,11 @@ export default function LoginPage() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [email, password, role, updateUser, router, persistRememberedAccount]);
+  }, [candidateCode, candidatePassword, email, password, nextPath, role, updateUser, router, persistRememberedAccount]);
+
+  const isCandidateRole = role === 'candidate';
+  const passwordValue = isCandidateRole ? candidatePassword : password;
+  const setPasswordValue = isCandidateRole ? setCandidatePassword : setPassword;
 
   return (
     <div className="box-border h-dvh w-full overflow-hidden bg-white p-0 sm:min-h-screen sm:p-4 flex items-stretch sm:items-center sm:justify-center animate-fade-in">
@@ -356,21 +436,38 @@ export default function LoginPage() {
             >
               Quản lý
             </Button>
+            <Button
+              variant={role === 'candidate' ? 'default' : 'outline'}
+              onClick={() => handleRoleChange('candidate')}
+              type="button"
+              disabled={isSubmitting}
+              className={role === 'candidate' ? 'bg-[#800000] hover:bg-[#a1001f] border-[#a1001f]' : 'text-[#800000] border-[#a1001f] hover:border-[#c1122f]'}
+            >
+              Ứng viên
+            </Button>
             
           </div>
-            <div className="text-sm text-gray-500 text-center mb-3 animate-fade-in animation-delay-400">Đăng nhập bằng tài khoản <a href="https://lms.mindx.edu.vn/" target="_blank" rel="noreferrer" className="text-[#a1001f] font-medium hover:underline transition-colors">https://lms.mindx.edu.vn/</a></div>
+            <div className="text-sm text-gray-500 text-center mb-3 animate-fade-in animation-delay-400">
+              {isCandidateRole ? (
+                'Đăng nhập bằng mã ứng viên được cấp trong quá trình đào tạo'
+              ) : (
+                <>Đăng nhập bằng tài khoản <a href="https://lms.mindx.edu.vn/" target="_blank" rel="noreferrer" className="text-[#a1001f] font-medium hover:underline transition-colors">https://lms.mindx.edu.vn/</a></>
+              )}
+            </div>
 </div>
           <form className="flex flex-col gap-3 animate-fade-in animation-delay-300" onSubmit={handleSubmit} noValidate>
             <div className="relative group">
-              <label className="block text-xs font-semibold mb-1 text-gray-700 transition-colors group-focus-within:text-[#800000]">Email / Mã đăng nhập</label>
+              <label className="block text-xs font-semibold mb-1 text-gray-700 transition-colors group-focus-within:text-[#800000]">
+                {isCandidateRole ? 'Candidate Code' : 'Email / Mã đăng nhập'}
+              </label>
               <input
                 type="text"
                 name="username"
                 autoComplete="username"
-                placeholder="Email hoặc Mã đăng nhập..."
+                placeholder={isCandidateRole ? 'VD: 1131301' : 'Email hoặc Mã đăng nhập...'}
                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-[#a1001f] focus:ring-2 focus:ring-[#a1001f]/20 transition-all duration-300 hover:border-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
+                value={isCandidateRole ? candidateCode : email}
+                onChange={e => isCandidateRole ? setCandidateCode(e.target.value) : setEmail(e.target.value)}
                 required
                 disabled={isSubmitting}
               />
@@ -382,8 +479,8 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   placeholder="**********"
                   className="w-full border border-gray-300 rounded px-3 py-2 pr-10 text-sm focus:outline-none focus:border-[#a1001f] focus:ring-2 focus:ring-[#a1001f]/20 transition-all duration-300 hover:border-gray-400 disabled:bg-gray-50 disabled:cursor-not-allowed"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  value={passwordValue}
+                  onChange={e => setPasswordValue(e.target.value)}
                   required
                   disabled={isSubmitting}
                 />
@@ -417,7 +514,9 @@ export default function LoginPage() {
               disabled={isSubmitting}
               loading={isSubmitting}
             >
-              {isSubmitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
+              {isSubmitting
+                ? 'Đang đăng nhập...'
+                : 'Đăng nhập'}
             </Button>
           </form>
         </div>

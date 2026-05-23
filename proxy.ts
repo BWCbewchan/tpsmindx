@@ -6,6 +6,7 @@ import {
   TPS_SESSION_COOKIE,
   verifySessionCookieValue,
 } from '@/lib/session-cookie';
+import { buildLoginRedirectPath } from '@/lib/auth-redirect';
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -32,8 +33,13 @@ export async function proxy(request: NextRequest) {
         );
       }
       const url = request.nextUrl.clone();
+      const requestedPath = `${pathname}${request.nextUrl.search}`;
+      const loginPath = buildLoginRedirectPath(
+        requestedPath,
+        request.nextUrl.origin,
+      );
       url.pathname = '/login';
-      url.searchParams.set('next', pathname);
+      url.search = loginPath.includes('?') ? loginPath.slice(loginPath.indexOf('?')) : '';
       return NextResponse.redirect(url);
     }
     const session = await verifySessionCookieValue(raw);
@@ -45,8 +51,13 @@ export async function proxy(request: NextRequest) {
         );
       }
       const url = request.nextUrl.clone();
+      const requestedPath = `${pathname}${request.nextUrl.search}`;
+      const loginPath = buildLoginRedirectPath(
+        requestedPath,
+        request.nextUrl.origin,
+      );
       url.pathname = '/login';
-      url.searchParams.set('next', pathname);
+      url.search = loginPath.includes('?') ? loginPath.slice(loginPath.indexOf('?')) : '';
       return NextResponse.redirect(url);
     }
 

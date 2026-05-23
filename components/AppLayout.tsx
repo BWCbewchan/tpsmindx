@@ -3,9 +3,10 @@
 import { useAuth } from '@/lib/auth-context'
 import { authHeaders } from '@/lib/auth-headers'
 import { isUnauthorizedStatus, parseJsonSafe } from '@/lib/auth-error-handling'
+import { buildLoginRedirectPath } from '@/lib/auth-redirect'
 import { ArrowLeft, Mail, MessageCircle, ShieldAlert } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -44,6 +45,16 @@ export default function AppLayout({
   const [noPermission, setNoPermission] = useState(false)
   /** DB tạm không trả lời — cho qua cổng (không kẹt skeleton), không coi là đã xác nhận trong teachers. */
   const [teacherGateAllowUnknown, setTeacherGateAllowUnknown] = useState(false)
+  const getAuthRedirectPath = useCallback(() => {
+    if (redirectPath !== '/login' || typeof window === 'undefined') {
+      return redirectPath
+    }
+
+    return buildLoginRedirectPath(
+      `${window.location.pathname}${window.location.search}${window.location.hash}`,
+      window.location.origin,
+    )
+  }, [redirectPath])
 
   useEffect(() => {
     if (!user) setTeacherGateAllowUnknown(false)
@@ -169,7 +180,7 @@ export default function AppLayout({
             hasRedirected.current = true
             if (isUnauthorizedStatus(res.status)) {
               logout()
-              router.replace(redirectPath)
+              router.replace(getAuthRedirectPath())
             } else {
               router.replace('/user/thong-tin-giao-vien')
             }
@@ -285,7 +296,7 @@ export default function AppLayout({
     // Redirect to login if authentication required but not authenticated
     if (requireAuth && !user && !hasRedirected.current) {
       hasRedirected.current = true
-      router.replace(redirectPath)
+      router.replace(getAuthRedirectPath())
       return
     }
 
@@ -379,6 +390,7 @@ export default function AppLayout({
     redirectPath,
     pathname,
     adminAccessState,
+    getAuthRedirectPath,
   ])
 
   // GV: mỗi lần đổi route trong /user/* xác minh lại còn trong bảng teachers; throttle chỉ khi cùng pathname (tránh gọi trùng khi re-render).

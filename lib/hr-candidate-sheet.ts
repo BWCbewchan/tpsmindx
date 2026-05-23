@@ -55,6 +55,12 @@ export interface HrSheetCandidate {
   desiredProgram: string;
   sheetGen: string;
   raw: Record<string, string>;
+  birthYear: string;
+  facebookUrl: string;
+  teachingExperience: string;
+  gender: string;
+  currentAddress: string;
+  regionName: string;
 }
 
 export interface HrCandidateSheetData {
@@ -238,33 +244,19 @@ export function buildCandidateKey(fingerprint: string) {
   return createHash('sha256').update(fingerprint).digest('hex');
 }
 
-async function fetchAndParseSheet(): Promise<HrCandidateSheetData> {
-  const source = extractSheetInfoFromUrl(process.env.HR_CANDIDATE_SHEET_CSV_URL);
-  const response = await fetch(source.csvUrl, { cache: 'no-store' });
+const TAB_DEFAULTS: Record<string, { regionCode: string; regionName: string }> = {
+  '951906874': { regionCode: '', regionName: '' },
+  '794802633': { regionCode: '1', regionName: 'Miền Nam' },
+  '1891942894': { regionCode: '2', regionName: 'Miền Bắc' },
+};
 
-  if (!response.ok) {
-    throw new Error(`Không thể đọc sheet HR (HTTP ${response.status})`);
-  }
-
-  const csvText = await response.text();
-
-  if (
-    /ServiceLogin/i.test(csvText) ||
-    /accounts\.google\.com/i.test(csvText) ||
-    /<html/i.test(csvText)
-  ) {
-    throw new Error('Sheet HR chưa public CSV hoặc chưa cấp quyền cho service account. Vui lòng chia sẻ quyền đọc để hệ thống có thể đồng bộ.');
-  }
-
+function parseTabCsv(csvText: string, gid: string): { headers: string[]; availableGens: string[]; candidates: HrSheetCandidate[] } {
   const rows = parseCsv(csvText).filter((cells) => cells.some((cell) => cell.trim()));
+  const candidates: HrSheetCandidate[] = [];
+  const genSet = new Set<string>();
+
   if (rows.length === 0) {
-    return {
-      source,
-      headers: [],
-      fetchedAt: new Date().toISOString(),
-      availableGens: [],
-      candidates: [],
-    };
+    return { headers: [], availableGens: [], candidates: [] };
   }
 
   const headerRowIndex = findHeaderRow(rows);
@@ -275,41 +267,46 @@ async function fetchAndParseSheet(): Promise<HrCandidateSheetData> {
 
   const normalizedHeaders = headerRow.map((header) => normalizeText(header));
 
+  const officialCodeIndex = rows[headerRowIndex].findIndex((h, idx) => cleanCell(h) === '' && idx === 0);
   const nameIndex = pickColumnIndex(normalizedHeaders, ['ho va ten', 'ho ten', 'ten ung vien', 'ten uv', 'ten', 'full name', 'candidate name', 'name']);
-  const emailIndex = pickColumnIndex(normalizedHeaders, ['email', 'mail']);
+  const emailIndex = pickColumnIndex(normalizedHeaders, ['email address', 'e mail', 'mail ca nhan', 'email', 'mail']);
   const phoneIndex = pickColumnIndex(normalizedHeaders, ['so dien thoai', 'dien thoai', 'sdt', 'phone', 'mobile']);
   const statusIndex = pickColumnIndex(normalizedHeaders, ['trang thai', 'status', 'stage']);
   const genIndex = pickColumnIndex(normalizedHeaders, ['gen', 'nhom gen']);
-  const regionCodeIndex = pickColumnIndex(normalizedHeaders, ['ma khu vuc', 'region code', 'khu vuc']);
-  const candidateCodeIndex = pickColumnIndex(normalizedHeaders, ['ma ung vien', 'ma uv', 'candidate code', 'candidate id', 'application id']);
+  const regionCodeIndex = pickColumnIndex(normalizedHeaders, ['ma khu vuc', 'region code']);
+  const regionNameIndex = pickColumnIndex(normalizedHeaders, ['khu vuc']);
+  const candidateCodeIndex = pickColumnIndex(normalizedHeaders, ['ma uv', 'ma ung vien', 'candidate code', 'candidate id', 'application id']);
   const desiredCampusIndex = pickColumnIndex(normalizedHeaders, ['co so mong muon', 'co so lam viec', 'desired campus', 'desired branch', 'campus mong muon']);
-  const workBlockIndex = pickColumnIndex(normalizedHeaders, ['khoi lam viec', 'work block', 'teaching block', 'khoi giang day']);
+  const workBlockIndex = pickColumnIndex(normalizedHeaders, ['khoi lam viec', 'work block', 'teaching block', 'khoi giang day', 'khoi ban chon']);
   const subjectCodeIndex = pickColumnIndex(normalizedHeaders, ['ma mon', 'subject code', 'ma bo mon', 'ma mon hoc']);
   const desiredProgramIndex = pickColumnIndex(normalizedHeaders, ['chuong trinh', 'program', 'bo mon', 'specialization']);
 
-  import('fs').then(fs => {
-    fs.writeFileSync('/tmp/hr-candidate-parser-debug.txt', JSON.stringify({
-      normalizedHeaders,
-      nameIndex,
-      phoneIndex,
-      regionCodeIndex,
-      candidateCodeIndex,
-    }, null, 2));
-  });
+  const birthYearIndex = pickColumnIndex(normalizedHeaders, ['nam sinh', 'yob', 'birth year']);
+  const facebookUrlIndex = pickColumnIndex(normalizedHeaders, ['facebook', 'fb', 'link facebook']);
+  const teachingExpIndex = pickColumnIndex(normalizedHeaders, ['kinh nghiem giang day', 'co kinh nghiem', 'da co kinh nghiem', 'tu truoc']);
+  const genderIndex = pickColumnIndex(normalizedHeaders, ['gioi tinh', 'gender']);
+  const currentAddressIndex = pickColumnIndex(normalizedHeaders, ['dia chi', 'address', 'noi o hien tai']);
 
-  const candidates: HrSheetCandidate[] = [];
-  const genSet = new Set<string>();
+  const tabDefault = TAB_DEFAULTS[gid] || { regionCode: '', regionName: '' };
 
   for (let i = headerRowIndex + 1; i < rows.length; i++) {
     const row = rows[i];
     const nonEmptyCells = row.filter((cell) => cell.trim()).length;
     if (nonEmptyCells === 0) continue;
 
+    let candidateCode = '';
+    if (officialCodeIndex >= 0 && row[officialCodeIndex]) {
+      candidateCode = cleanCell(row[officialCodeIndex]);
+    }
+    if (!candidateCode && candidateCodeIndex >= 0 && row[candidateCodeIndex]) {
+      candidateCode = cleanCell(row[candidateCodeIndex]);
+    }
+
     const candidate: HrSheetCandidate = {
       rowNumber: i + 1,
       candidateKey: '',
       candidateFingerprint: '',
-      candidateCode: candidateCodeIndex >= 0 ? cleanCell(row[candidateCodeIndex]) : '',
+      candidateCode,
       regionCode: regionCodeIndex >= 0 ? normalizeRegionCode(row[regionCodeIndex]) : '',
       name: nameIndex >= 0 ? cleanCell(row[nameIndex]) : '',
       email: emailIndex >= 0 ? cleanCell(row[emailIndex]).toLowerCase() : '',
@@ -321,7 +318,25 @@ async function fetchAndParseSheet(): Promise<HrCandidateSheetData> {
       desiredProgram: desiredProgramIndex >= 0 ? cleanCell(row[desiredProgramIndex]) : '',
       sheetGen: genIndex >= 0 ? cleanCell(row[genIndex]) : '',
       raw: {},
+      birthYear: birthYearIndex >= 0 ? cleanCell(row[birthYearIndex]) : '',
+      facebookUrl: facebookUrlIndex >= 0 ? cleanCell(row[facebookUrlIndex]) : '',
+      teachingExperience: teachingExpIndex >= 0 ? cleanCell(row[teachingExpIndex]) : '',
+      gender: genderIndex >= 0 ? cleanCell(row[genderIndex]) : '',
+      currentAddress: currentAddressIndex >= 0 ? cleanCell(row[currentAddressIndex]) : '',
+      regionName: regionNameIndex >= 0 ? cleanCell(row[regionNameIndex]) : '',
     };
+
+    if (!candidate.regionCode) {
+      candidate.regionCode = tabDefault.regionCode as any;
+    }
+    if (!candidate.regionName) {
+      candidate.regionName = tabDefault.regionName;
+    }
+
+    if (!candidate.regionCode && candidate.regionName) {
+      if (candidate.regionName.includes('Nam')) candidate.regionCode = '1';
+      else if (candidate.regionName.includes('Bac')) candidate.regionCode = '2';
+    }
 
     for (let col = 0; col < headerRow.length; col++) {
       candidate.raw[headerRow[col]] = cleanCell(row[col]);
@@ -347,11 +362,83 @@ async function fetchAndParseSheet(): Promise<HrCandidateSheetData> {
   }
 
   return {
-    source,
     headers: headerRow,
+    availableGens: Array.from(genSet),
+    candidates,
+  };
+}
+
+async function fetchAndParseSheet(): Promise<HrCandidateSheetData> {
+  const source = extractSheetInfoFromUrl(process.env.HR_CANDIDATE_SHEET_CSV_URL);
+  const targetSheetId = source.sheetId || '10cKm22qwE224nAB3GxECb6SApl1wURHEgspgpWuFhvQ';
+  const gids = ['951906874', '794802633', '1891942894'];
+  
+  const allCandidates: HrSheetCandidate[] = [];
+  const genSet = new Set<string>();
+  let headers: string[] = [];
+
+  for (const gid of gids) {
+    const csvUrl = `https://docs.google.com/spreadsheets/d/${targetSheetId}/export?format=csv&gid=${gid}`;
+    try {
+      const response = await fetch(csvUrl, { cache: 'no-store' });
+      if (!response.ok) {
+        console.warn(`Could not fetch GID ${gid}, status: ${response.status}`);
+        continue;
+      }
+      const csvText = await response.text();
+      if (/ServiceLogin/i.test(csvText) || /accounts\.google\.com/i.test(csvText) || /<html/i.test(csvText)) {
+        console.warn(`GID ${gid} is not public or requires login.`);
+        continue;
+      }
+      
+      const tabData = parseTabCsv(csvText, gid);
+      if (headers.length === 0) {
+        headers = tabData.headers;
+      }
+      
+      for (const newCand of tabData.candidates) {
+        const existingIdx = allCandidates.findIndex(
+          c => c.email.toLowerCase() === newCand.email.toLowerCase() &&
+               c.sheetGen.toLowerCase() === newCand.sheetGen.toLowerCase()
+        );
+        
+        if (existingIdx >= 0) {
+          const existing = allCandidates[existingIdx];
+          allCandidates[existingIdx] = {
+            ...existing,
+            candidateCode: existing.candidateCode || newCand.candidateCode,
+            name: existing.name || newCand.name,
+            phone: existing.phone || newCand.phone,
+            regionCode: existing.regionCode || newCand.regionCode,
+            desiredCampus: existing.desiredCampus || newCand.desiredCampus,
+            workBlock: existing.workBlock || newCand.workBlock,
+            subjectCode: existing.subjectCode || newCand.subjectCode,
+            birthYear: existing.birthYear || newCand.birthYear,
+            facebookUrl: existing.facebookUrl || newCand.facebookUrl,
+            teachingExperience: existing.teachingExperience || newCand.teachingExperience,
+            gender: existing.gender || newCand.gender,
+            currentAddress: existing.currentAddress || newCand.currentAddress,
+            regionName: existing.regionName || newCand.regionName,
+          };
+        } else {
+          allCandidates.push(newCand);
+        }
+      }
+      
+      for (const g of tabData.availableGens) {
+        genSet.add(g);
+      }
+    } catch (err) {
+      console.error(`Error processing GID ${gid}:`, err);
+    }
+  }
+
+  return {
+    source,
+    headers,
     fetchedAt: new Date().toISOString(),
     availableGens: Array.from(genSet).sort((a, b) => a.localeCompare(b, 'vi')),
-    candidates,
+    candidates: allCandidates,
   };
 }
 

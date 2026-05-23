@@ -6,7 +6,7 @@ import { PageLayout, PageLayoutContent } from '@/components/ui/page-layout'
 interface PageContainerProps {
   children: React.ReactNode
   title?: string
-  description?: string
+  description?: React.ReactNode
   headerActions?: React.ReactNode
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full'
   className?: string

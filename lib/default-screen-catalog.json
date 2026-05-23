@@ -48,130 +48,26 @@
     "is_active": true
   },
   {
-    "route_path": "/admin/hr-candidates/gen-planner/planner",
-    "label": "Tab: GEN Planner",
+    "route_path": "/admin/hr-onboarding/videos",
+    "label": "Video đào tạo đầu vào",
     "group_name": "Đào tạo đầu vào",
     "sort_order": 7,
     "description": "",
     "is_active": true
   },
   {
-    "route_path": "/admin/hr-candidates/gen-planner/tracking",
-    "label": "Tab: Theo dõi đào tạo",
-    "group_name": "Đào tạo đầu vào",
-    "sort_order": 8,
-    "description": "",
-    "is_active": true
-  },
-  {
-    "route_path": "/admin/hr-candidates/gen-planner/scheduling",
-    "label": "Tab: Xếp lịch training",
-    "group_name": "Đào tạo đầu vào",
-    "sort_order": 9,
-    "description": "",
-    "is_active": true
-  },
-  {
-    "route_path": "/admin/hr-candidates/gen-planner/overview",
-    "label": "Tab: Theo dõi lịch training",
-    "group_name": "Đào tạo đầu vào",
-    "sort_order": 10,
-    "description": "",
-    "is_active": true
-  },
-  {
     "route_path": "/admin/page4/quan-ly-lich-lam-viec",
     "label": "Quản lý lịch làm việc",
-    "group_name": "Sự kiện",
-    "sort_order": 11,
+    "group_name": "Quản lý",
+    "sort_order": 8,
     "description": "",
     "is_active": true
   },
   {
     "route_path": "/admin/page4/lich-danh-gia",
     "label": "Lịch sự kiện",
-    "group_name": "Sự kiện",
-    "sort_order": 12,
-    "description": "",
-    "is_active": true
-  },
-  {
-    "route_path": "/admin/page4/danh-sach-dang-ky",
-    "label": "Danh sách đăng ký",
-    "group_name": "Đánh giá năng lực GV",
-    "sort_order": 13,
-    "description": "",
-    "is_active": true
-  },
-  {
-    "route_path": "/admin/thu-vien-de",
-    "label": "Library đề chuyên môn",
-    "group_name": "Đánh giá năng lực GV",
-    "sort_order": 14,
-    "description": "",
-    "is_active": true
-  },
-  {
-    "route_path": "/admin/page5",
-    "label": "QL đào tạo nâng cao",
-    "group_name": "Đào tạo",
-    "sort_order": 15,
-    "description": "",
-    "is_active": true
-  },
-  {
-    "route_path": "/admin/training-dashboard",
-    "label": "Thống kê đào tạo",
-    "group_name": "Đào tạo",
-    "sort_order": 16,
-    "description": "",
-    "is_active": true
-  },
-  {
-    "route_path": "/admin/assignments",
-    "label": "QL Assignments",
-    "group_name": "Đào tạo",
-    "sort_order": 17,
-    "description": "",
-    "is_active": true
-  },
-  {
-    "route_path": "/admin/assignment-questions",
-    "label": "Câu hỏi Assignment",
-    "group_name": "Đào tạo",
-    "sort_order": 18,
-    "description": "",
-    "is_active": true
-  },
-  {
-    "route_path": "/admin/video-setup",
-    "label": "Cài đặt Video",
-    "group_name": "Đào tạo",
-    "sort_order": 19,
-    "description": "",
-    "is_active": true
-  },
-  {
-    "route_path": "/admin/video-detail",
-    "label": "Chi tiết Video",
-    "group_name": "Đào tạo",
-    "sort_order": 20,
-    "description": "",
-    "is_active": true
-  },
-  {
-    "route_path": "/admin/training-studio",
-    "label": "Training Studio",
-    "group_name": "Đào tạo",
-    "sort_order": 21,
-    "description": "",
-    "is_active": true
-  },
-  {
-    "route_path": "/admin/giaitrinh",
-    "label": "QL Giải trình",
-    "group_name": "Nội dung",
-    "sort_order": 22,
+    "group_name": "Quản lý",
+    "sort_order": 9,
     "description": "",
     "is_active": true
   },
@@ -179,14 +75,118 @@
     "route_path": "/admin/xin-nghi-mot-buoi",
     "label": "Tiếp nhận xin nghỉ 1 buổi",
     "group_name": "Quản lý",
+    "sort_order": 10,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/deal-luong",
+    "label": "Quản lý Nâng/Hạ Lương",
+    "group_name": "Quản lý",
+    "sort_order": 11,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page5",
+    "label": "Thư viện video nâng cao",
+    "group_name": "Đào tạo nâng cao",
+    "sort_order": 12,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/assignments",
+    "label": "Thư viện đề nâng cao",
+    "group_name": "Đào tạo nâng cao",
+    "sort_order": 13,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/training-dashboard",
+    "label": "Thống kê đào tạo",
+    "group_name": "Đào tạo nâng cao",
+    "sort_order": 14,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page4/danh-sach-dang-ky",
+    "label": "Danh sách GV đăng ký kiểm tra",
+    "group_name": "Kiểm tra chuyên môn",
+    "sort_order": 15,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/giaitrinh",
+    "label": "Quản lý giải trình",
+    "group_name": "Kiểm tra chuyên môn",
+    "sort_order": 16,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/thu-vien-de",
+    "label": "Thư viện đề chuyên môn",
+    "group_name": "Kiểm tra chuyên môn",
+    "sort_order": 17,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page2",
+    "label": "Xem tài liệu quy trình",
+    "group_name": "Tài liệu nội bộ",
+    "sort_order": 18,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page2/manage",
+    "label": "Quản lý tài liệu quy trình",
+    "group_name": "Tài liệu nội bộ",
+    "sort_order": 19,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/giao-trinh-trai-nghiem",
+    "label": "Giáo trình trải nghiệm",
+    "group_name": "Tài liệu nội bộ",
+    "sort_order": 20,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/giao-trinh-chuyen-mon",
+    "label": "Giáo trình chuyên môn",
+    "group_name": "Tài liệu nội bộ",
+    "sort_order": 21,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/quan-ly-tai-lieu-giang-day",
+    "label": "Quản lý tài liệu giảng dạy",
+    "group_name": "Tài liệu nội bộ",
+    "sort_order": 22,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/user-management",
+    "label": "Quản lý tài khoản",
+    "group_name": "Cấu hình hệ thống",
     "sort_order": 23,
     "description": "",
     "is_active": true
   },
   {
-    "route_path": "/admin/truyenthong",
-    "label": "QL truyền thông",
-    "group_name": "Nội dung",
+    "route_path": "/admin/feedback",
+    "label": "Feedback Manager",
+    "group_name": "Cấu hình hệ thống",
     "sort_order": 24,
     "description": "",
     "is_active": true
@@ -194,7 +194,7 @@
   {
     "route_path": "/admin/database",
     "label": "Database Manager",
-    "group_name": "Hệ thống",
+    "group_name": "Cấu hình hệ thống",
     "sort_order": 25,
     "description": "",
     "is_active": true
@@ -202,16 +202,24 @@
   {
     "route_path": "/admin/cloudinary",
     "label": "Cloudinary Manager",
-    "group_name": "Hệ thống",
+    "group_name": "Cấu hình hệ thống",
     "sort_order": 26,
     "description": "",
     "is_active": true
   },
   {
-    "route_path": "/admin/user-management",
-    "label": "QL tài khoản",
-    "group_name": "Hệ thống",
+    "route_path": "/admin/s3-supabase-manager",
+    "label": "S3 Supabase Manager",
+    "group_name": "Cấu hình hệ thống",
     "sort_order": 27,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/system-metrics",
+    "label": "Quản lý chỉ số hệ thống",
+    "group_name": "Cấu hình hệ thống",
+    "sort_order": 28,
     "description": "",
     "is_active": true
   }

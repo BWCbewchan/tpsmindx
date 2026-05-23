@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/birthdays-prewarm",
+      "schedule": "0 20 * * 0"
+    }
+  ]
+}

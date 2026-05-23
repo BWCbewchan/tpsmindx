@@ -1,0 +1,11 @@
+question_text,question_type,correct_answer,options,points,difficulty,explanation,image_url,order_number
+"Python là ngôn ngữ lập trình gì?",multiple_choice,"Ngôn ngữ thông dịch","[""Ngôn ngữ thông dịch"",""Ngôn ngữ biên dịch"",""Ngôn ngữ máy"",""Ngôn ngữ assembly""]",1,easy,"Python là ngôn ngữ lập trình bậc cao, thông dịch và hướng đối tượng",,1
+"JavaScript chỉ chạy được trên trình duyệt web",true_false,"Sai","[""Đúng"",""Sai""]",1,medium,"JavaScript có thể chạy trên cả server-side (Node.js) và client-side (trình duyệt)",,2
+"Kể tên 3 nguyên tắc cơ bản của OOP",short_answer,"Encapsulation, Inheritance, Polymorphism",,2,medium,"Ba nguyên tắc cơ bản: Đóng gói (Encapsulation), Kế thừa (Inheritance), Đa hình (Polymorphism)",,3
+"Giải thích khái niệm async/await trong JavaScript",essay,,,5,hard,"Async/await là cú pháp giúp làm việc với Promise dễ dàng hơn, cho phép viết code bất đồng bộ theo kiểu đồng bộ",,4
+"Câu lệnh nào dùng để khai báo biến trong JavaScript ES6?",multiple_choice,"let","[""var"",""let"",""define"",""dim""]",1,easy,"ES6 giới thiệu let và const để khai báo biến, thay thế var",,5
+"HTML là ngôn ngữ lập trình",true_false,"Sai","[""Đúng"",""Sai""]",1,easy,"HTML là ngôn ngữ đánh dấu (markup language), không phải ngôn ngữ lập trình",,6
+"CSS là viết tắt của gì?",short_answer,"Cascading Style Sheets",,1,easy,"CSS (Cascading Style Sheets) là ngôn ngữ định dạng giao diện cho trang web",,7
+"So sánh SQL và NoSQL",essay,,,3,medium,"SQL: cơ sở dữ liệu quan hệ, có cấu trúc cứng. NoSQL: linh hoạt hơn, phù hợp với dữ liệu phi cấu trúc",,8
+"Framework nào sau đây là của JavaScript?",multiple_choice,"React","[""Django"",""React"",""Laravel"",""Flask""]",1,medium,"React là thư viện/framework JavaScript do Facebook phát triển",,9
+"Git và GitHub là một",true_false,"Sai","[""Đúng"",""Sai""]",1,medium,"Git là hệ thống quản lý phiên bản, GitHub là nền tảng lưu trữ repository online",,10

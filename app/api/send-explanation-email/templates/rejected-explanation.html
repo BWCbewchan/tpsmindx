@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Giải trình không được chấp nhận</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    .container {
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h2 {
+      color: #ffffff;
+      background-color: #a1001f;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .warning-badge {
+      background: linear-gradient(135deg, #e53935 0%, #ef5350 100%);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 8px;
+      text-align: center;
+      font-weight: bold;
+      margin: 20px 0;
+      box-shadow: 0 2px 8px rgba(229, 57, 53, 0.3);
+    }
+    .info-section {
+      background-color: #ffebee;
+      padding: 15px;
+      border-left: 4px solid #e53935;
+      margin: 20px 0;
+      border-radius: 4px;
+    }
+    .info-row {
+      margin: 10px 0;
+    }
+    .admin-note {
+      background-color: #fff3e0;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+      border-left: 4px solid #ff9800;
+    }
+    .contact-info {
+      background-color: #e3f2fd;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+    }
+    .footer {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: #a1001f;
+      color: #ffffff;
+      border-radius: 4px;
+      font-size: 0.9em;
+      font-style: italic;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #ddd;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>GIẢI TRÌNH KHÔNG THAM GIA KIỂM TRA</h2>
+    
+    <div class="warning-badge">
+      ❌ KHÔNG ĐƯỢC PHÊ DUYỆT
+    </div>
+    
+    <p>Kính gửi: <strong>{{teacher_name}}</strong></p>
+    <p>Giải trình của bạn về việc không tham gia kiểm tra không được chấp nhận.</p>
+    
+    <div class="info-section">
+      <div class="info-row">
+        <strong>Bộ môn:</strong> {{subject}}
+      </div>
+      <div class="info-row">
+        <strong>Ngày kiểm tra:</strong> {{test_date}}
+      </div>
+      <hr style="margin: 15px 0;">
+      <div class="info-row">
+        <strong>Người duyệt:</strong> {{admin_name}}
+      </div>
+      <div class="info-row">
+        <strong>Email người duyệt:</strong> {{admin_email}}
+      </div>
+    </div>
+    
+    {{#if admin_note}}
+    <div class="admin-note">
+      <strong>Lý do từ chối:</strong>
+      <p>{{admin_note}}</p>
+    </div>
+    {{/if}}
+    
+    <div class="contact-info">
+      <strong>📧 Liên hệ hỗ trợ:</strong>
+      <p>Vui lòng liên hệ bộ phận học vụ để được hướng dẫn thêm.</p>
+      <p>Email: <a href="mailto:baotc@mindx.com.vn">baotc@mindx.com.vn</a></p>
+    </div>
+    
+    <div class="footer">
+      <p>Thời gian duyệt: {{updated_at}}</p>
+    </div>
+  </div>
+</body>
+</html>

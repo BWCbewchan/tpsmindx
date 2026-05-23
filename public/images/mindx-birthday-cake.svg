@@ -1,0 +1,53 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">MindX Birthday Cake</title>
+  <desc id="desc">Red and white birthday cake with MindX text.</desc>
+  <defs>
+    <linearGradient id="cakeRed" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#b30d22"/>
+      <stop offset="100%" stop-color="#e61f3d"/>
+    </linearGradient>
+    <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f7f7f8"/>
+      <stop offset="100%" stop-color="#dfdfe3"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffe167"/>
+      <stop offset="100%" stop-color="#ff8c00"/>
+    </linearGradient>
+  </defs>
+
+  <ellipse cx="256" cy="430" rx="188" ry="46" fill="#8c091d"/>
+  <rect x="88" y="322" width="336" height="106" rx="28" fill="url(#cakeRed)"/>
+  <ellipse cx="256" cy="322" rx="168" ry="40" fill="#ef2a46"/>
+
+  <rect x="112" y="218" width="288" height="124" rx="24" fill="url(#cream)"/>
+  <ellipse cx="256" cy="218" rx="144" ry="30" fill="#f2f2f5"/>
+
+  <rect x="102" y="150" width="308" height="88" rx="26" fill="url(#cakeRed)"/>
+  <path d="M116 232c16 0 16-24 32-24s16 24 32 24 16-24 32-24 16 24 32 24 16-24 32-24 16 24 32 24 16-24 32-24 16 24 32 24" fill="none" stroke="#d10f2c" stroke-width="20" stroke-linecap="round"/>
+
+  <rect x="132" y="238" width="248" height="84" rx="16" fill="url(#cream)"/>
+  <rect x="140" y="266" width="40" height="16" rx="8" fill="#e11a35"/>
+  <rect x="332" y="266" width="40" height="16" rx="8" fill="#e11a35"/>
+  <text x="256" y="286" text-anchor="middle" font-family="Exo, Arial, sans-serif" font-size="50" font-weight="700" fill="#2f2f37">mind</text>
+  <text x="315" y="286" text-anchor="middle" font-family="Exo, Arial, sans-serif" font-size="50" font-weight="700" fill="#e11a35">X</text>
+
+  <g>
+    <rect x="198" y="96" width="16" height="58" rx="7" fill="#e11a35"/>
+    <rect x="248" y="88" width="16" height="66" rx="7" fill="#f1f1f3"/>
+    <rect x="298" y="96" width="16" height="58" rx="7" fill="#e11a35"/>
+
+    <ellipse cx="206" cy="82" rx="12" ry="18" fill="url(#flame)"/>
+    <ellipse cx="256" cy="74" rx="12" ry="18" fill="url(#flame)"/>
+    <ellipse cx="306" cy="82" rx="12" ry="18" fill="url(#flame)"/>
+  </g>
+
+  <g fill="#ffffff">
+    <circle cx="130" cy="352" r="10"/>
+    <circle cx="180" cy="352" r="10"/>
+    <circle cx="230" cy="352" r="10"/>
+    <circle cx="280" cy="352" r="10"/>
+    <circle cx="330" cy="352" r="10"/>
+    <circle cx="380" cy="352" r="10"/>
+  </g>
+</svg>

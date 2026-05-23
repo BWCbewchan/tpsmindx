@@ -1,0 +1,78 @@
+/* Z-Index Scale - Use these values consistently across the app */
+
+/* Base layers */
+.z-base {
+  z-index: 0;
+}
+.z-below {
+  z-index: -1;
+}
+
+/* Content layers - 1-19 */
+.z-content {
+  z-index: 1;
+}
+.z-content-raised {
+  z-index: 10;
+}
+
+/* Sticky/Fixed elements - 20-39 */
+.z-sticky {
+  z-index: 20;
+}
+.z-header {
+  z-index: 25;
+}
+.z-sidebar-overlay {
+  z-index: 30;
+}
+
+/* Navigation - 40-59 */
+.z-sidebar {
+  z-index: 40;
+}
+.z-nav {
+  z-index: 45;
+}
+.z-dropdown {
+  z-index: 50;
+}
+
+/* Modals/Overlays - 60-89 */
+.z-modal-backdrop {
+  z-index: 60;
+}
+.z-modal {
+  z-index: 70;
+}
+.z-popover {
+  z-index: 75;
+}
+
+/* Critical UI - 90-99 */
+.z-toast {
+  z-index: 90;
+}
+.z-tooltip {
+  z-index: 95;
+}
+.z-critical {
+  z-index: 99;
+}
+
+/* Tailwind utilities for consistent usage */
+.z-sidebar-overlay-custom {
+  z-index: 30;
+}
+.z-sidebar-custom {
+  z-index: 40;
+}
+.z-sidebar-toggle {
+  z-index: 35;
+}
+.z-modal-custom {
+  z-index: 70;
+}
+.z-modal-backdrop-custom {
+  z-index: 60;
+}

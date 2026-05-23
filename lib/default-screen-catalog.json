@@ -1,0 +1,218 @@
+[
+  {
+    "route_path": "/admin/dashboard",
+    "label": "Dashboard",
+    "group_name": "Tổng quan",
+    "sort_order": 1,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page1",
+    "label": "Thông tin GV",
+    "group_name": "Quản lý",
+    "sort_order": 2,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page2",
+    "label": "Quy trình quy định K12 Teaching",
+    "group_name": "Quản lý",
+    "sort_order": 3,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page3",
+    "label": "Màn hình 3",
+    "group_name": "Quản lý",
+    "sort_order": 4,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/hr-candidates",
+    "label": "Đào tạo đầu vào (module)",
+    "group_name": "Đào tạo đầu vào",
+    "sort_order": 5,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/hr-candidates/gen-planner",
+    "label": "GEN Planner (trang)",
+    "group_name": "Đào tạo đầu vào",
+    "sort_order": 6,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/hr-candidates/gen-planner/planner",
+    "label": "Tab: GEN Planner",
+    "group_name": "Đào tạo đầu vào",
+    "sort_order": 7,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/hr-candidates/gen-planner/tracking",
+    "label": "Tab: Theo dõi đào tạo",
+    "group_name": "Đào tạo đầu vào",
+    "sort_order": 8,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/hr-candidates/gen-planner/scheduling",
+    "label": "Tab: Xếp lịch training",
+    "group_name": "Đào tạo đầu vào",
+    "sort_order": 9,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/hr-candidates/gen-planner/overview",
+    "label": "Tab: Theo dõi lịch training",
+    "group_name": "Đào tạo đầu vào",
+    "sort_order": 10,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page4/quan-ly-lich-lam-viec",
+    "label": "Quản lý lịch làm việc",
+    "group_name": "Sự kiện",
+    "sort_order": 11,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page4/lich-danh-gia",
+    "label": "Lịch sự kiện",
+    "group_name": "Sự kiện",
+    "sort_order": 12,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page4/danh-sach-dang-ky",
+    "label": "Danh sách đăng ký",
+    "group_name": "Đánh giá năng lực GV",
+    "sort_order": 13,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/thu-vien-de",
+    "label": "Library đề chuyên môn",
+    "group_name": "Đánh giá năng lực GV",
+    "sort_order": 14,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page5",
+    "label": "QL đào tạo nâng cao",
+    "group_name": "Đào tạo",
+    "sort_order": 15,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/training-dashboard",
+    "label": "Thống kê đào tạo",
+    "group_name": "Đào tạo",
+    "sort_order": 16,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/assignments",
+    "label": "QL Assignments",
+    "group_name": "Đào tạo",
+    "sort_order": 17,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/assignment-questions",
+    "label": "Câu hỏi Assignment",
+    "group_name": "Đào tạo",
+    "sort_order": 18,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/video-setup",
+    "label": "Cài đặt Video",
+    "group_name": "Đào tạo",
+    "sort_order": 19,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/video-detail",
+    "label": "Chi tiết Video",
+    "group_name": "Đào tạo",
+    "sort_order": 20,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/training-studio",
+    "label": "Training Studio",
+    "group_name": "Đào tạo",
+    "sort_order": 21,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/giaitrinh",
+    "label": "QL Giải trình",
+    "group_name": "Nội dung",
+    "sort_order": 22,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/xin-nghi-mot-buoi",
+    "label": "Tiếp nhận xin nghỉ 1 buổi",
+    "group_name": "Quản lý",
+    "sort_order": 23,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/truyenthong",
+    "label": "QL truyền thông",
+    "group_name": "Nội dung",
+    "sort_order": 24,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/database",
+    "label": "Database Manager",
+    "group_name": "Hệ thống",
+    "sort_order": 25,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/cloudinary",
+    "label": "Cloudinary Manager",
+    "group_name": "Hệ thống",
+    "sort_order": 26,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/user-management",
+    "label": "QL tài khoản",
+    "group_name": "Hệ thống",
+    "sort_order": 27,
+    "description": "",
+    "is_active": true
+  }
+]

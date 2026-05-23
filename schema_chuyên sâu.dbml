@@ -1,0 +1,156 @@
+// ================================================================
+// CHUYEN SAU DATABASE SCHEMA (DBML)
+// Created: 2026-04-06
+// Purpose: Quan ly he thong kiem tra chuyen sau cho giao vien
+// ================================================================
+
+Table event_schedules {
+  id uuid [primary key]
+  ten varchar
+  chuyen_nganh varchar
+  loai_su_kien varchar [note: 'dang_ky, thi']
+  mau_dang_ky varchar
+  bat_dau_luc timestamp
+  ket_thuc_luc timestamp
+  ghi_chu text
+  tao_luc timestamp
+}
+
+Table chuyen_sau_monhoc {
+  id integer [primary key, increment]
+  loai_ky_thi varchar [default: 'expertise']
+  ma_khoi varchar
+  ma_mon varchar [unique]
+  ten_mon varchar
+  khoa_mon varchar
+  thoi_gian_thi_phut integer
+  gio_bat_dau_thi time
+  gio_ket_thuc_thi time
+  che_do_chon_de varchar [note: 'mac_dinh, ngau_nhien']
+  dang_hoat_dong boolean [default: true]
+  tao_luc timestamp
+}
+
+Table chuyen_sau_bode {
+  id integer [primary key, increment]
+  id_mon integer [not null]
+  ma_de varchar [unique]
+  ten_de varchar
+  trang_thai varchar [note: 'hoat_dong, khong_hoat_dong, luu_tru']
+  diem_dat decimal
+  tong_diem decimal
+  che_do_tinh_diem varchar
+  trong_so_ngau_nhien integer
+  tao_luc timestamp
+}
+
+Table chuyen_sau_cauhoi {
+  id integer [primary key, increment]
+  loai_cau_hoi varchar [default: 'trac_nghiem']
+  noi_dung_cau_hoi text
+  lua_chon_a text
+  lua_chon_b text
+  lua_chon_c text
+  lua_chon_d text
+  dap_an_dung text
+  image_url text
+  giai_thich text
+  diem decimal
+  do_kho varchar [note: 'de, trung_binh, kho']
+  image_url varchar [note: 'Link ảnh minh họa câu hỏi']
+  tao_luc timestamp
+}
+
+Table chuyen_sau_bode_cauhoi {
+  id integer [primary key, increment]
+  id_de integer [not null]
+  id_cau integer [not null]
+  thu_tu_hien_thi integer
+  tao_luc timestamp
+}
+
+Table chuyen_sau_results {
+  id integer [primary key, increment]
+  khu_vuc varchar
+  ho_ten varchar [not null]
+  dia_chi_email varchar
+  co_so_lam_viec varchar
+  ma_giao_vien varchar [not null]
+  hinh_thuc varchar [note: 'Chính Thức, Bổ sung']
+  khoi_giang_day varchar
+  thang_dk integer
+  nam_dk integer
+  dot varchar
+  thoi_gian_kiem_tra varchar
+  cau_dung integer [default: 0]
+  diem decimal
+  email_giai_trinh varchar
+  xu_ly_diem varchar
+  id_su_kien uuid
+  id_mon integer
+  id_de_thi integer
+  da_giai_thich boolean [default: false]
+  so_lan_giai_thich integer [default: 0]
+  tong_diem_bi_tru decimal
+  dang_ky_luc timestamp
+  tao_luc timestamp
+}
+
+Table chuyen_sau_bainop {
+  id integer [primary key, increment]
+  id_ket_qua integer [not null]
+  id_de_thi integer [not null]
+  trang_thai_nop varchar [note: 'nhap, da_nop, da_cham']
+  nop_luc timestamp
+  bat_dau_luc timestamp
+  thoi_gian_su_dung_giay integer
+  diem_tho decimal
+  diem_chuan_hoa decimal
+  diem_tho_toi_da decimal
+  phan_tram decimal
+  trang_thai varchar
+  ghi_chu_cham text
+  han_cham_luc timestamp
+  cham_luc timestamp
+  tao_luc timestamp
+}
+
+Table chuyen_sau_bainop_traloi {
+  id integer [primary key, increment]
+  id_bai_nop integer [not null]
+  id_cau integer [not null]
+  dap_an_chon varchar
+  noi_dung_tra_loi text
+  dung boolean [default: false]
+  diem_duoc_trao decimal
+  diem_dat_duoc decimal
+  tra_loi_luc timestamp
+  tao_luc timestamp
+}
+
+Table chuyen_sau_giaitrinh {
+  id integer [primary key, increment]
+  id_ket_qua integer [not null]
+  loai_giai_thich varchar [note: 'tong_quat, chi_tiet, vi_du, tham_khao']
+  noi_dung_giai_thich text
+  html_giai_thich text
+  tru_diem decimal
+  tao_luc timestamp
+}
+
+// ================================================================
+// RELATIONSHIPS
+// ================================================================
+
+Ref: chuyen_sau_bode.id_mon > chuyen_sau_monhoc.id
+Ref: chuyen_sau_bode_cauhoi.id_de > chuyen_sau_bode.id
+Ref: chuyen_sau_bode_cauhoi.id_cau > chuyen_sau_cauhoi.id
+Ref: chuyen_sau_results.id_su_kien > event_schedules.id
+Ref: chuyen_sau_results.id_mon > chuyen_sau_monhoc.id
+Ref: chuyen_sau_results.id_de_thi > chuyen_sau_bode.id
+Ref: chuyen_sau_bainop.id_ket_qua > chuyen_sau_results.id
+Ref: chuyen_sau_bainop.id_de_thi > chuyen_sau_bode.id
+Ref: chuyen_sau_bainop_traloi.id_bai_nop > chuyen_sau_bainop.id
+Ref: chuyen_sau_bainop_traloi.id_cau > chuyen_sau_cauhoi.id
+Ref: chuyen_sau_giaitrinh.id_ket_qua > chuyen_sau_results.id
+

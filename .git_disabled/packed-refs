@@ -1,0 +1,22 @@
+# pack-refs with: peeled fully-peeled sorted 
+08aea183df591e8ed0dd0d199ac4fcb8f23ab600 refs/remotes/origin/chibao
+fbf6e8c1ddab93a6df34b1d33b571c3f3ecf09e8 refs/remotes/origin/dependabot/npm_and_yarn/aws-sdk/client-s3-3.1048.0
+08fa692ca02bec5b1f93d881c3bd3ce0fcc34105 refs/remotes/origin/dependabot/npm_and_yarn/aws-sdk/s3-request-presigner-3.1048.0
+c7cd82798bcab49b62eaa47a70d8b0e29df3aee7 refs/remotes/origin/dependabot/npm_and_yarn/eslint-config-next-16.2.6
+0240962918a5b152530ab9f9d81a46fb3a2478f7 refs/remotes/origin/dependabot/npm_and_yarn/isomorphic-dompurify-3.13.0
+f815841d7be42f7366988895031ca0f84a66d74c refs/remotes/origin/dependabot/npm_and_yarn/react-icons-5.6.0
+49d4c50f4cafd229a93c47b1bd6d4177f98780de refs/remotes/origin/dependabot/npm_and_yarn/react-intersection-observer-10.0.3
+e6d1ab665725d29c178a1544c34fef1c54f92ea6 refs/remotes/origin/dependabot/npm_and_yarn/swr-2.4.1
+f88074aa343d3a952cb7efbf88d56d66893b6ba7 refs/remotes/origin/dependabot/npm_and_yarn/typescript-6.0.3
+f5ee68b4b202b881e3b253120609e90f290ffe89 refs/remotes/origin/feat/s3-feedback-improvements
+80e79a6a72a95b11e1ad9dc304f5d4f464ff17c3 refs/remotes/origin/feature/leave-one-session-email-mobile
+2212fe14425f2d5f6f88c9edf2dece8a3dd4a27b refs/remotes/origin/fix-system-errors-1460318409976317066
+a032288e11b4a88fd4865fdc032cd11d8dc785e7 refs/remotes/origin/fixmergequocthanhpreview
+a3406b2b658e13839ef92cab3310af5e447a54d0 refs/remotes/origin/haibang
+3e6616341bf892ebc9cd1772ad3eb76d504dc88f refs/remotes/origin/hoangtuan
+98af0c06f1400a10a4a3fda1b516f9625282d20d refs/remotes/origin/jules-6394615417782062531-105897d3
+98fac503da711193cba60fcadea3d19abbb004ab refs/remotes/origin/main
+5ee3f218e8f2119775556a4cc17f9ee874c6c8bc refs/remotes/origin/mergepreviewquocthanh
+72f9f134361d63004994bd4681207f61c474b508 refs/remotes/origin/preview
+2cc0d590e7421dedbf947bbda94aa6f7c2c7b3ad refs/remotes/origin/quocthanh
+dd872a09aec54afb052a57046aeaee082c002da4 refs/remotes/origin/ui-truyenthong-performance-fix-10176447009247286558

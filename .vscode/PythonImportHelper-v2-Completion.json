@@ -1,0 +1,983 @@
+[
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Query",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Path",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Depends",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "status",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Query",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Path",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Depends",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "status",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Query",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Path",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Depends",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "status",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "FastAPI",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "HTTPException",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Query",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Path",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "Depends",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "status",
+        "importPath": "fastapi",
+        "description": "fastapi",
+        "isExtraImport": true,
+        "detail": "fastapi",
+        "documentation": {}
+    },
+    {
+        "label": "CORSMiddleware",
+        "importPath": "fastapi.middleware.cors",
+        "description": "fastapi.middleware.cors",
+        "isExtraImport": true,
+        "detail": "fastapi.middleware.cors",
+        "documentation": {}
+    },
+    {
+        "label": "CORSMiddleware",
+        "importPath": "fastapi.middleware.cors",
+        "description": "fastapi.middleware.cors",
+        "isExtraImport": true,
+        "detail": "fastapi.middleware.cors",
+        "documentation": {}
+    },
+    {
+        "label": "CORSMiddleware",
+        "importPath": "fastapi.middleware.cors",
+        "description": "fastapi.middleware.cors",
+        "isExtraImport": true,
+        "detail": "fastapi.middleware.cors",
+        "documentation": {}
+    },
+    {
+        "label": "CORSMiddleware",
+        "importPath": "fastapi.middleware.cors",
+        "description": "fastapi.middleware.cors",
+        "isExtraImport": true,
+        "detail": "fastapi.middleware.cors",
+        "documentation": {}
+    },
+    {
+        "label": "TrustedHostMiddleware",
+        "importPath": "fastapi.middleware.trustedhost",
+        "description": "fastapi.middleware.trustedhost",
+        "isExtraImport": true,
+        "detail": "fastapi.middleware.trustedhost",
+        "documentation": {}
+    },
+    {
+        "label": "TrustedHostMiddleware",
+        "importPath": "fastapi.middleware.trustedhost",
+        "description": "fastapi.middleware.trustedhost",
+        "isExtraImport": true,
+        "detail": "fastapi.middleware.trustedhost",
+        "documentation": {}
+    },
+    {
+        "label": "TrustedHostMiddleware",
+        "importPath": "fastapi.middleware.trustedhost",
+        "description": "fastapi.middleware.trustedhost",
+        "isExtraImport": true,
+        "detail": "fastapi.middleware.trustedhost",
+        "documentation": {}
+    },
+    {
+        "label": "TrustedHostMiddleware",
+        "importPath": "fastapi.middleware.trustedhost",
+        "description": "fastapi.middleware.trustedhost",
+        "isExtraImport": true,
+        "detail": "fastapi.middleware.trustedhost",
+        "documentation": {}
+    },
+    {
+        "label": "JSONResponse",
+        "importPath": "fastapi.responses",
+        "description": "fastapi.responses",
+        "isExtraImport": true,
+        "detail": "fastapi.responses",
+        "documentation": {}
+    },
+    {
+        "label": "JSONResponse",
+        "importPath": "fastapi.responses",
+        "description": "fastapi.responses",
+        "isExtraImport": true,
+        "detail": "fastapi.responses",
+        "documentation": {}
+    },
+    {
+        "label": "JSONResponse",
+        "importPath": "fastapi.responses",
+        "description": "fastapi.responses",
+        "isExtraImport": true,
+        "detail": "fastapi.responses",
+        "documentation": {}
+    },
+    {
+        "label": "JSONResponse",
+        "importPath": "fastapi.responses",
+        "description": "fastapi.responses",
+        "isExtraImport": true,
+        "detail": "fastapi.responses",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "EmailStr",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "ConfigDict",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "EmailStr",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "ConfigDict",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "EmailStr",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "ConfigDict",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "BaseModel",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Field",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "EmailStr",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "ConfigDict",
+        "importPath": "pydantic",
+        "description": "pydantic",
+        "isExtraImport": true,
+        "detail": "pydantic",
+        "documentation": {}
+    },
+    {
+        "label": "Optional",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Optional",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Optional",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Optional",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "datetime",
+        "importPath": "datetime",
+        "description": "datetime",
+        "isExtraImport": true,
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "datetime",
+        "importPath": "datetime",
+        "description": "datetime",
+        "isExtraImport": true,
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "datetime",
+        "importPath": "datetime",
+        "description": "datetime",
+        "isExtraImport": true,
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "datetime",
+        "importPath": "datetime",
+        "description": "datetime",
+        "isExtraImport": true,
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "Enum",
+        "importPath": "enum",
+        "description": "enum",
+        "isExtraImport": true,
+        "detail": "enum",
+        "documentation": {}
+    },
+    {
+        "label": "Enum",
+        "importPath": "enum",
+        "description": "enum",
+        "isExtraImport": true,
+        "detail": "enum",
+        "documentation": {}
+    },
+    {
+        "label": "Enum",
+        "importPath": "enum",
+        "description": "enum",
+        "isExtraImport": true,
+        "detail": "enum",
+        "documentation": {}
+    },
+    {
+        "label": "Enum",
+        "importPath": "enum",
+        "description": "enum",
+        "isExtraImport": true,
+        "detail": "enum",
+        "documentation": {}
+    },
+    {
+        "label": "json",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "json",
+        "description": "json",
+        "detail": "json",
+        "documentation": {}
+    },
+    {
+        "label": "UserStatus",
+        "kind": 6,
+        "importPath": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "description": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserStatus(str, Enum):\n    ACTIVE = \"active\"\n    INACTIVE = \"inactive\"\n    SUSPENDED = \"suspended\"\nclass UserBase(BaseModel):\n    email: EmailStr\n    name: str = Field(..., min_length=1, max_length=100)\n    status: UserStatus = UserStatus.ACTIVE\nclass UserCreate(UserBase):\n    password: str = Field(..., min_length=8)",
+        "detail": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserBase",
+        "kind": 6,
+        "importPath": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "description": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserBase(BaseModel):\n    email: EmailStr\n    name: str = Field(..., min_length=1, max_length=100)\n    status: UserStatus = UserStatus.ACTIVE\nclass UserCreate(UserBase):\n    password: str = Field(..., min_length=8)\nclass UserUpdate(BaseModel):\n    email: Optional[EmailStr] = None\n    name: Optional[str] = Field(None, min_length=1, max_length=100)\n    status: Optional[UserStatus] = None",
+        "detail": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserCreate",
+        "kind": 6,
+        "importPath": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "description": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserCreate(UserBase):\n    password: str = Field(..., min_length=8)\nclass UserUpdate(BaseModel):\n    email: Optional[EmailStr] = None\n    name: Optional[str] = Field(None, min_length=1, max_length=100)\n    status: Optional[UserStatus] = None\nclass User(UserBase):\n    id: str\n    created_at: datetime\n    updated_at: datetime",
+        "detail": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserUpdate",
+        "kind": 6,
+        "importPath": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "description": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserUpdate(BaseModel):\n    email: Optional[EmailStr] = None\n    name: Optional[str] = Field(None, min_length=1, max_length=100)\n    status: Optional[UserStatus] = None\nclass User(UserBase):\n    id: str\n    created_at: datetime\n    updated_at: datetime\n    model_config = ConfigDict(from_attributes=True)\n# Pagination",
+        "detail": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "User",
+        "kind": 6,
+        "importPath": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "description": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class User(UserBase):\n    id: str\n    created_at: datetime\n    updated_at: datetime\n    model_config = ConfigDict(from_attributes=True)\n# Pagination\nclass PaginationParams(BaseModel):\n    page: int = Field(1, ge=1)\n    page_size: int = Field(20, ge=1, le=100)\nclass PaginatedResponse(BaseModel):",
+        "detail": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "PaginationParams",
+        "kind": 6,
+        "importPath": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "description": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class PaginationParams(BaseModel):\n    page: int = Field(1, ge=1)\n    page_size: int = Field(20, ge=1, le=100)\nclass PaginatedResponse(BaseModel):\n    items: List[Any]\n    total: int\n    page: int\n    page_size: int\n    pages: int\n# Error handling",
+        "detail": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "PaginatedResponse",
+        "kind": 6,
+        "importPath": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "description": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class PaginatedResponse(BaseModel):\n    items: List[Any]\n    total: int\n    page: int\n    page_size: int\n    pages: int\n# Error handling\nclass ErrorDetail(BaseModel):\n    field: Optional[str] = None\n    message: str",
+        "detail": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "ErrorDetail",
+        "kind": 6,
+        "importPath": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "description": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class ErrorDetail(BaseModel):\n    field: Optional[str] = None\n    message: str\n    code: str\nclass ErrorResponse(BaseModel):\n    error: str\n    message: str\n    details: Optional[List[ErrorDetail]] = None\n@app.exception_handler(HTTPException)\nasync def http_exception_handler(request, exc):",
+        "detail": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "ErrorResponse",
+        "kind": 6,
+        "importPath": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "description": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class ErrorResponse(BaseModel):\n    error: str\n    message: str\n    details: Optional[List[ErrorDetail]] = None\n@app.exception_handler(HTTPException)\nasync def http_exception_handler(request, exc):\n    return JSONResponse(\n        status_code=exc.status_code,\n        content=ErrorResponse(\n            error=exc.__class__.__name__,",
+        "detail": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "description": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "app = FastAPI(\n    title=\"API Template\",\n    version=\"1.0.0\",\n    docs_url=\"/api/docs\"\n)\n# Security Middleware\n# Trusted Host: Prevents HTTP Host Header attacks\napp.add_middleware(\n    TrustedHostMiddleware,\n    allowed_hosts=[\"*\"] # TODO: Configure this in production, e.g. [\"api.example.com\"]",
+        "detail": ".agents.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserStatus",
+        "kind": 6,
+        "importPath": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "description": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserStatus(str, Enum):\n    ACTIVE = \"active\"\n    INACTIVE = \"inactive\"\n    SUSPENDED = \"suspended\"\nclass UserBase(BaseModel):\n    email: EmailStr\n    name: str = Field(..., min_length=1, max_length=100)\n    status: UserStatus = UserStatus.ACTIVE\nclass UserCreate(UserBase):\n    password: str = Field(..., min_length=8)",
+        "detail": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserBase",
+        "kind": 6,
+        "importPath": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "description": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserBase(BaseModel):\n    email: EmailStr\n    name: str = Field(..., min_length=1, max_length=100)\n    status: UserStatus = UserStatus.ACTIVE\nclass UserCreate(UserBase):\n    password: str = Field(..., min_length=8)\nclass UserUpdate(BaseModel):\n    email: Optional[EmailStr] = None\n    name: Optional[str] = Field(None, min_length=1, max_length=100)\n    status: Optional[UserStatus] = None",
+        "detail": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserCreate",
+        "kind": 6,
+        "importPath": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "description": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserCreate(UserBase):\n    password: str = Field(..., min_length=8)\nclass UserUpdate(BaseModel):\n    email: Optional[EmailStr] = None\n    name: Optional[str] = Field(None, min_length=1, max_length=100)\n    status: Optional[UserStatus] = None\nclass User(UserBase):\n    id: str\n    created_at: datetime\n    updated_at: datetime",
+        "detail": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserUpdate",
+        "kind": 6,
+        "importPath": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "description": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserUpdate(BaseModel):\n    email: Optional[EmailStr] = None\n    name: Optional[str] = Field(None, min_length=1, max_length=100)\n    status: Optional[UserStatus] = None\nclass User(UserBase):\n    id: str\n    created_at: datetime\n    updated_at: datetime\n    model_config = ConfigDict(from_attributes=True)\n# Pagination",
+        "detail": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "User",
+        "kind": 6,
+        "importPath": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "description": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class User(UserBase):\n    id: str\n    created_at: datetime\n    updated_at: datetime\n    model_config = ConfigDict(from_attributes=True)\n# Pagination\nclass PaginationParams(BaseModel):\n    page: int = Field(1, ge=1)\n    page_size: int = Field(20, ge=1, le=100)\nclass PaginatedResponse(BaseModel):",
+        "detail": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "PaginationParams",
+        "kind": 6,
+        "importPath": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "description": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class PaginationParams(BaseModel):\n    page: int = Field(1, ge=1)\n    page_size: int = Field(20, ge=1, le=100)\nclass PaginatedResponse(BaseModel):\n    items: List[Any]\n    total: int\n    page: int\n    page_size: int\n    pages: int\n# Error handling",
+        "detail": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "PaginatedResponse",
+        "kind": 6,
+        "importPath": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "description": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class PaginatedResponse(BaseModel):\n    items: List[Any]\n    total: int\n    page: int\n    page_size: int\n    pages: int\n# Error handling\nclass ErrorDetail(BaseModel):\n    field: Optional[str] = None\n    message: str",
+        "detail": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "ErrorDetail",
+        "kind": 6,
+        "importPath": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "description": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class ErrorDetail(BaseModel):\n    field: Optional[str] = None\n    message: str\n    code: str\nclass ErrorResponse(BaseModel):\n    error: str\n    message: str\n    details: Optional[List[ErrorDetail]] = None\n@app.exception_handler(HTTPException)\nasync def http_exception_handler(request, exc):",
+        "detail": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "ErrorResponse",
+        "kind": 6,
+        "importPath": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "description": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class ErrorResponse(BaseModel):\n    error: str\n    message: str\n    details: Optional[List[ErrorDetail]] = None\n@app.exception_handler(HTTPException)\nasync def http_exception_handler(request, exc):\n    return JSONResponse(\n        status_code=exc.status_code,\n        content=ErrorResponse(\n            error=exc.__class__.__name__,",
+        "detail": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "description": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "app = FastAPI(\n    title=\"API Template\",\n    version=\"1.0.0\",\n    docs_url=\"/api/docs\"\n)\n# Security Middleware\n# Trusted Host: Prevents HTTP Host Header attacks\napp.add_middleware(\n    TrustedHostMiddleware,\n    allowed_hosts=[\"*\"] # TODO: Configure this in production, e.g. [\"api.example.com\"]",
+        "detail": ".claude.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserStatus",
+        "kind": 6,
+        "importPath": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "description": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserStatus(str, Enum):\n    ACTIVE = \"active\"\n    INACTIVE = \"inactive\"\n    SUSPENDED = \"suspended\"\nclass UserBase(BaseModel):\n    email: EmailStr\n    name: str = Field(..., min_length=1, max_length=100)\n    status: UserStatus = UserStatus.ACTIVE\nclass UserCreate(UserBase):\n    password: str = Field(..., min_length=8)",
+        "detail": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserBase",
+        "kind": 6,
+        "importPath": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "description": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserBase(BaseModel):\n    email: EmailStr\n    name: str = Field(..., min_length=1, max_length=100)\n    status: UserStatus = UserStatus.ACTIVE\nclass UserCreate(UserBase):\n    password: str = Field(..., min_length=8)\nclass UserUpdate(BaseModel):\n    email: Optional[EmailStr] = None\n    name: Optional[str] = Field(None, min_length=1, max_length=100)\n    status: Optional[UserStatus] = None",
+        "detail": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserCreate",
+        "kind": 6,
+        "importPath": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "description": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserCreate(UserBase):\n    password: str = Field(..., min_length=8)\nclass UserUpdate(BaseModel):\n    email: Optional[EmailStr] = None\n    name: Optional[str] = Field(None, min_length=1, max_length=100)\n    status: Optional[UserStatus] = None\nclass User(UserBase):\n    id: str\n    created_at: datetime\n    updated_at: datetime",
+        "detail": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserUpdate",
+        "kind": 6,
+        "importPath": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "description": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserUpdate(BaseModel):\n    email: Optional[EmailStr] = None\n    name: Optional[str] = Field(None, min_length=1, max_length=100)\n    status: Optional[UserStatus] = None\nclass User(UserBase):\n    id: str\n    created_at: datetime\n    updated_at: datetime\n    model_config = ConfigDict(from_attributes=True)\n# Pagination",
+        "detail": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "User",
+        "kind": 6,
+        "importPath": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "description": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class User(UserBase):\n    id: str\n    created_at: datetime\n    updated_at: datetime\n    model_config = ConfigDict(from_attributes=True)\n# Pagination\nclass PaginationParams(BaseModel):\n    page: int = Field(1, ge=1)\n    page_size: int = Field(20, ge=1, le=100)\nclass PaginatedResponse(BaseModel):",
+        "detail": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "PaginationParams",
+        "kind": 6,
+        "importPath": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "description": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class PaginationParams(BaseModel):\n    page: int = Field(1, ge=1)\n    page_size: int = Field(20, ge=1, le=100)\nclass PaginatedResponse(BaseModel):\n    items: List[Any]\n    total: int\n    page: int\n    page_size: int\n    pages: int\n# Error handling",
+        "detail": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "PaginatedResponse",
+        "kind": 6,
+        "importPath": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "description": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class PaginatedResponse(BaseModel):\n    items: List[Any]\n    total: int\n    page: int\n    page_size: int\n    pages: int\n# Error handling\nclass ErrorDetail(BaseModel):\n    field: Optional[str] = None\n    message: str",
+        "detail": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "ErrorDetail",
+        "kind": 6,
+        "importPath": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "description": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class ErrorDetail(BaseModel):\n    field: Optional[str] = None\n    message: str\n    code: str\nclass ErrorResponse(BaseModel):\n    error: str\n    message: str\n    details: Optional[List[ErrorDetail]] = None\n@app.exception_handler(HTTPException)\nasync def http_exception_handler(request, exc):",
+        "detail": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "ErrorResponse",
+        "kind": 6,
+        "importPath": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "description": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class ErrorResponse(BaseModel):\n    error: str\n    message: str\n    details: Optional[List[ErrorDetail]] = None\n@app.exception_handler(HTTPException)\nasync def http_exception_handler(request, exc):\n    return JSONResponse(\n        status_code=exc.status_code,\n        content=ErrorResponse(\n            error=exc.__class__.__name__,",
+        "detail": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "description": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "app = FastAPI(\n    title=\"API Template\",\n    version=\"1.0.0\",\n    docs_url=\"/api/docs\"\n)\n# Security Middleware\n# Trusted Host: Prevents HTTP Host Header attacks\napp.add_middleware(\n    TrustedHostMiddleware,\n    allowed_hosts=[\"*\"] # TODO: Configure this in production, e.g. [\"api.example.com\"]",
+        "detail": ".codex.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserStatus",
+        "kind": 6,
+        "importPath": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "description": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserStatus(str, Enum):\n    ACTIVE = \"active\"\n    INACTIVE = \"inactive\"\n    SUSPENDED = \"suspended\"\nclass UserBase(BaseModel):\n    email: EmailStr\n    name: str = Field(..., min_length=1, max_length=100)\n    status: UserStatus = UserStatus.ACTIVE\nclass UserCreate(UserBase):\n    password: str = Field(..., min_length=8)",
+        "detail": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserBase",
+        "kind": 6,
+        "importPath": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "description": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserBase(BaseModel):\n    email: EmailStr\n    name: str = Field(..., min_length=1, max_length=100)\n    status: UserStatus = UserStatus.ACTIVE\nclass UserCreate(UserBase):\n    password: str = Field(..., min_length=8)\nclass UserUpdate(BaseModel):\n    email: Optional[EmailStr] = None\n    name: Optional[str] = Field(None, min_length=1, max_length=100)\n    status: Optional[UserStatus] = None",
+        "detail": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserCreate",
+        "kind": 6,
+        "importPath": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "description": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserCreate(UserBase):\n    password: str = Field(..., min_length=8)\nclass UserUpdate(BaseModel):\n    email: Optional[EmailStr] = None\n    name: Optional[str] = Field(None, min_length=1, max_length=100)\n    status: Optional[UserStatus] = None\nclass User(UserBase):\n    id: str\n    created_at: datetime\n    updated_at: datetime",
+        "detail": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "UserUpdate",
+        "kind": 6,
+        "importPath": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "description": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class UserUpdate(BaseModel):\n    email: Optional[EmailStr] = None\n    name: Optional[str] = Field(None, min_length=1, max_length=100)\n    status: Optional[UserStatus] = None\nclass User(UserBase):\n    id: str\n    created_at: datetime\n    updated_at: datetime\n    model_config = ConfigDict(from_attributes=True)\n# Pagination",
+        "detail": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "User",
+        "kind": 6,
+        "importPath": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "description": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class User(UserBase):\n    id: str\n    created_at: datetime\n    updated_at: datetime\n    model_config = ConfigDict(from_attributes=True)\n# Pagination\nclass PaginationParams(BaseModel):\n    page: int = Field(1, ge=1)\n    page_size: int = Field(20, ge=1, le=100)\nclass PaginatedResponse(BaseModel):",
+        "detail": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "PaginationParams",
+        "kind": 6,
+        "importPath": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "description": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class PaginationParams(BaseModel):\n    page: int = Field(1, ge=1)\n    page_size: int = Field(20, ge=1, le=100)\nclass PaginatedResponse(BaseModel):\n    items: List[Any]\n    total: int\n    page: int\n    page_size: int\n    pages: int\n# Error handling",
+        "detail": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "PaginatedResponse",
+        "kind": 6,
+        "importPath": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "description": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class PaginatedResponse(BaseModel):\n    items: List[Any]\n    total: int\n    page: int\n    page_size: int\n    pages: int\n# Error handling\nclass ErrorDetail(BaseModel):\n    field: Optional[str] = None\n    message: str",
+        "detail": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "ErrorDetail",
+        "kind": 6,
+        "importPath": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "description": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class ErrorDetail(BaseModel):\n    field: Optional[str] = None\n    message: str\n    code: str\nclass ErrorResponse(BaseModel):\n    error: str\n    message: str\n    details: Optional[List[ErrorDetail]] = None\n@app.exception_handler(HTTPException)\nasync def http_exception_handler(request, exc):",
+        "detail": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "ErrorResponse",
+        "kind": 6,
+        "importPath": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "description": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "class ErrorResponse(BaseModel):\n    error: str\n    message: str\n    details: Optional[List[ErrorDetail]] = None\n@app.exception_handler(HTTPException)\nasync def http_exception_handler(request, exc):\n    return JSONResponse(\n        status_code=exc.status_code,\n        content=ErrorResponse(\n            error=exc.__class__.__name__,",
+        "detail": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "app",
+        "kind": 5,
+        "importPath": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "description": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "peekOfCode": "app = FastAPI(\n    title=\"API Template\",\n    version=\"1.0.0\",\n    docs_url=\"/api/docs\"\n)\n# Security Middleware\n# Trusted Host: Prevents HTTP Host Header attacks\napp.add_middleware(\n    TrustedHostMiddleware,\n    allowed_hosts=[\"*\"] # TODO: Configure this in production, e.g. [\"api.example.com\"]",
+        "detail": ".opencode.skills.api-design-principles.assets.rest-api-template",
+        "documentation": {}
+    },
+    {
+        "label": "_Known",
+        "kind": 6,
+        "importPath": "node_modules.flatted.python.flatted",
+        "description": "node_modules.flatted.python.flatted",
+        "peekOfCode": "class _Known:\n    def __init__(self):\n        self.key = []\n        self.value = []\nclass _String:\n    def __init__(self, value):\n        self.value = value\ndef _array_keys(value):\n    keys = []\n    i = 0",
+        "detail": "node_modules.flatted.python.flatted",
+        "documentation": {}
+    },
+    {
+        "label": "_String",
+        "kind": 6,
+        "importPath": "node_modules.flatted.python.flatted",
+        "description": "node_modules.flatted.python.flatted",
+        "peekOfCode": "class _String:\n    def __init__(self, value):\n        self.value = value\ndef _array_keys(value):\n    keys = []\n    i = 0\n    for _ in value:\n        keys.append(i)\n        i += 1\n    return keys",
+        "detail": "node_modules.flatted.python.flatted",
+        "documentation": {}
+    },
+    {
+        "label": "parse",
+        "kind": 2,
+        "importPath": "node_modules.flatted.python.flatted",
+        "description": "node_modules.flatted.python.flatted",
+        "peekOfCode": "def parse(value, *args, **kwargs):\n    json = _json.loads(value, *args, **kwargs)\n    wrapped = []\n    for value in json:\n        wrapped.append(_wrap(value))\n    input = []\n    for value in wrapped:\n        if isinstance(value, _String):\n            input.append(value.value)\n        else:",
+        "detail": "node_modules.flatted.python.flatted",
+        "documentation": {}
+    },
+    {
+        "label": "stringify",
+        "kind": 2,
+        "importPath": "node_modules.flatted.python.flatted",
+        "description": "node_modules.flatted.python.flatted",
+        "peekOfCode": "def stringify(value, *args, **kwargs):\n    known = _Known()\n    input = []\n    output = []\n    i = int(_index(known, input, value))\n    while i < len(input):\n        output.append(_transform(known, input, input[i]))\n        i += 1\n    return _json.dumps(output, *args, **kwargs)",
+        "detail": "node_modules.flatted.python.flatted",
+        "documentation": {}
+    }
+]

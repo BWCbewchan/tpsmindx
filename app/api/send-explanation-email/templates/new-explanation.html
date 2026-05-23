@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Giải trình không tham gia kiểm tra</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f4f4f4;
+    }
+    .container {
+      background-color: #ffffff;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h2 {
+      color: #ffffff;
+      background-color: #a1001f;
+      padding: 15px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .info-section {
+      background-color: #f9f9f9;
+      padding: 15px;
+      border-left: 4px solid #a1001f;
+      margin: 20px 0;
+    }
+    .info-row {
+      margin: 10px 0;
+    }
+    .info-label {
+      font-weight: bold;
+      color: #555;
+    }
+    .info-value {
+      color: #333;
+    }
+    .reason-section {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #fff8e1;
+      border-radius: 4px;
+    }
+    .footer {
+      margin-top: 30px;
+      padding: 20px;
+      background-color: #a1001f;
+      color: #ffffff;
+      border-radius: 4px;
+      font-size: 0.9em;
+      font-style: italic;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #ddd;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>GIẢI TRÌNH KHÔNG THAM GIA KIỂM TRA</h2>
+    <p>Có một giải trình mới từ giáo viên:</p>
+    
+    <div class="info-section">
+      <div class="info-row">
+        <span class="info-label">Họ và tên:</span>
+        <span class="info-value">{{teacher_name}}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Mã LMS:</span>
+        <span class="info-value">{{lms_code}}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Email:</span>
+        <span class="info-value">{{email}}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Cơ sở trực thuộc:</span>
+        <span class="info-value">{{campus}}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Bộ môn:</span>
+        <span class="info-value">{{subject}}</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Ngày kiểm tra:</span>
+        <span class="info-value">{{test_date}}</span>
+      </div>
+    </div>
+    
+    <div class="reason-section">
+      <strong>Lý do không tham gia buổi kiểm tra tập trung:</strong>
+      <p>{{reason}}</p>
+    </div>
+    
+    <div class="footer">
+      <p>Thời gian gửi: {{created_at}}</p>
+      <p>Vui lòng xem xét và phản hồi qua hệ thống quản lý.</p>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,5 @@
+question_text,question_type,correct_answer,options,points,difficulty,explanation,image_url
+"Python là ngôn ngữ lập trình gì?",multiple_choice,"Ngôn ngữ thông dịch","Ngôn ngữ thông dịch|Ngôn ngữ biên dịch|Ngôn ngữ máy|Ngôn ngữ assembly",1,easy,"Python là ngôn ngữ lập trình bậc cao, thông dịch và hướng đối tượng",
+"JavaScript chỉ chạy được trên trình duyệt web",true_false,"Sai","Đúng|Sai",1,medium,"JavaScript có thể chạy trên cả server-side (Node.js) và client-side (trình duyệt)",
+"Kể tên 3 nguyên tắc cơ bản của OOP",short_answer,"Encapsulation, Inheritance, Polymorphism",,2,medium,"Ba nguyên tắc cơ bản: Đóng gói (Encapsulation), Kế thừa (Inheritance), Đa hình (Polymorphism)",
+"Giải thích khái niệm async/await trong JavaScript",essay,,,5,hard,"Async/await là cú pháp giúp làm việc với Promise dễ dàng hơn",

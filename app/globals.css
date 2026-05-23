@@ -1,0 +1,2242 @@
+.k12-markdown p {
+  margin: 0.75rem 0;
+  line-height: 1.75;
+}
+
+.k12-markdown ul,
+.k12-markdown ol {
+  margin: 0.75rem 0;
+  padding-left: 1.25rem;
+}
+
+.k12-markdown ul {
+  list-style: disc;
+}
+
+.k12-markdown ol {
+  list-style: decimal;
+}
+
+.k12-markdown li {
+  margin: 0.35rem 0;
+}
+
+.k12-markdown .k12-inline-link {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.2rem;
+  color: #a1001f;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.k12-markdown .k12-inline-link::after {
+  content: '\2197';
+  font-size: 0.85em;
+  line-height: 1;
+}
+
+.k12-markdown .k12-inline-link:hover {
+  color: #840018;
+}
+
+.k12-markdown .k12-video-embed {
+  position: relative;
+  width: 100%;
+  margin: 1rem 0;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  background: #0b0f19;
+  box-shadow: 0 8px 24px rgba(2, 6, 23, 0.14);
+}
+
+.k12-markdown .k12-video-embed::before {
+  content: '';
+  display: block;
+  padding-top: 56.25%;
+}
+
+.k12-markdown .k12-video-embed > iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  pointer-events: auto;
+}
+
+.k12-markdown blockquote {
+  margin: 1rem 0;
+  border-left: 4px solid #e5e7eb;
+  padding-left: 0.85rem;
+  color: #4b5563;
+}
+
+.k12-markdown code {
+  border-radius: 0.25rem;
+  background: #f3f4f6;
+  padding: 0.1rem 0.3rem;
+  font-size: 0.86em;
+}
+
+.k12-markdown pre {
+  margin: 1rem 0;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  background: #111827;
+  padding: 0.85rem;
+  color: #f9fafb;
+}
+
+.k12-markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+
+@import 'tailwindcss';
+@import './z-index.css';
+
+@theme {
+  /* Brand / Primary */
+  --color-primary: #a1001f;
+  --color-primary-foreground: #ffffff;
+
+  /* MindX brand (Tailwind v4: tailwind.config.js colors are not applied unless mirrored here) */
+  --color-mindx-red: #a1001f;
+  --color-mindx-red-dark: #8a0019;
+  --color-mindx-red-light: #c41230;
+
+  /* Destructive */
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+
+  /* Secondary */
+  --color-secondary: #f5f5f5;
+  --color-secondary-foreground: #171717;
+
+  /* Muted */
+  --color-muted: #f5f5f5;
+  --color-muted-foreground: #737373;
+
+  /* Accent */
+  --color-accent: #f5f5f5;
+  --color-accent-foreground: #171717;
+
+  /* Background / Foreground */
+  --color-background: #ffffff;
+  --color-foreground: #171717;
+
+  /* Border / Input / Ring */
+  --color-border: #e5e5e5;
+  --color-input: #e5e5e5;
+  --color-ring: #a1001f;
+
+  /* Card */
+  --color-card: #ffffff;
+  --color-card-foreground: #171717;
+
+  /* Popover */
+  --color-popover: #ffffff;
+  --color-popover-foreground: #171717;
+}
+
+@layer base {
+  :root {
+    --app-background: #f8fafc;
+    --app-foreground: #0f172a;
+    --app-card: #ffffff;
+    --app-card-foreground: #0f172a;
+    --app-muted: #eef2f7;
+    --app-muted-foreground: #64748b;
+    --app-border: #dbe3ec;
+    --app-ring: #a1001f;
+    --app-primary: #a1001f;
+    --app-primary-foreground: #ffffff;
+  }
+
+  * {
+    font-family:
+      'Exo',
+      system-ui,
+      -apple-system,
+      sans-serif;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at top, rgba(161, 0, 31, 0.08), transparent 32%),
+      linear-gradient(180deg, #f8fafc 0%, #ffffff 58%, #fef2f4 100%);
+    background-attachment: fixed;
+    color: var(--app-foreground);
+  }
+
+  ::selection {
+    background: rgba(161, 0, 31, 0.18);
+    color: var(--app-foreground);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 700;
+  }
+
+  /* Custom Scrollbar */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #a1001f, #c41230);
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #c41230, #a1001f);
+  }
+
+  /* Animations */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes fade-in-up {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slide-in-right {
+    from {
+      opacity: 0;
+      transform: translateX(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes slide-out-right {
+    from {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateX(30px);
+    }
+  }
+
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    10%,
+    30%,
+    50%,
+    70%,
+    90% {
+      transform: translateX(-5px);
+    }
+    20%,
+    40%,
+    60%,
+    80% {
+      transform: translateX(5px);
+    }
+  }
+
+  @keyframes gradient {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%,
+    100% {
+      box-shadow: 0 0 5px rgba(161, 0, 31, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(161, 0, 31, 0.6);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  @keyframes tab-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-tab-enter {
+    animation: tab-enter 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.6s ease-out;
+  }
+
+  .animate-fade-in-up {
+    animation: fade-in-up 0.7s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.6s ease-out;
+  }
+
+  .animate-slide-in-right {
+    animation: slide-in-right 0.6s ease-out;
+  }
+
+  .animate-slide-out-right {
+    animation: slide-out-right 0.3s ease-in forwards;
+  }
+
+  .animation-delay-200 {
+    animation-delay: 0.2s;
+    animation-fill-mode: both;
+  }
+
+  .animation-delay-300 {
+    animation-delay: 0.3s;
+    animation-fill-mode: both;
+  }
+
+  .animation-delay-400 {
+    animation-delay: 0.4s;
+    animation-fill-mode: both;
+  }
+
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient 3s ease infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes cta-glow-pulse {
+    0%,
+    100% {
+      box-shadow:
+        0 0 0 0 rgba(161, 0, 31, 0.35),
+        0 8px 18px rgba(161, 0, 31, 0.18);
+      filter: brightness(1);
+    }
+    50% {
+      box-shadow:
+        0 0 0 5px rgba(161, 0, 31, 0),
+        0 10px 26px rgba(161, 0, 31, 0.45);
+      filter: brightness(1.1);
+    }
+  }
+
+  @keyframes cta-shine-sweep {
+    0%,
+    35% {
+      transform: translateX(-140%) skewX(-18deg);
+      opacity: 0;
+    }
+    50% {
+      opacity: 0.75;
+    }
+    75%,
+    100% {
+      transform: translateX(140%) skewX(-18deg);
+      opacity: 0;
+    }
+  }
+
+  .animate-cta-glow {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    animation: cta-glow-pulse 1.7s ease-in-out infinite;
+  }
+
+  .animate-cta-glow::after {
+    content: "";
+    position: absolute;
+    inset: -20% -45%;
+    z-index: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.18) 42%,
+      rgba(255, 255, 255, 0.7) 50%,
+      rgba(255, 255, 255, 0.18) 58%,
+      transparent 100%
+    );
+    animation: cta-shine-sweep 2.2s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-cta-glow,
+    .animate-cta-glow::after {
+      animation: none;
+    }
+  }
+
+  /* Smooth transitions for all interactive elements */
+  button,
+  a,
+  input:not([id^='react-select']),
+  textarea,
+  select {
+    transition: all 0.3s ease-in-out;
+  }
+
+  /* Focus states */
+  button:focus-visible,
+  a:focus-visible,
+  input:not([id^='react-select']):focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px #a1001f,
+      0 0 0 4px white;
+  }
+
+  /* Modern card styles */
+  .card-modern {
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow:
+      0 4px 6px -1px rgb(0 0 0 / 0.1),
+      0 2px 4px -2px rgb(0 0 0 / 0.1);
+    border: 1px solid rgb(243 244 246);
+    transition: all 0.3s;
+  }
+
+  .card-modern:hover {
+    box-shadow:
+      0 20px 25px -5px rgb(0 0 0 / 0.1),
+      0 8px 10px -6px rgb(0 0 0 / 0.1);
+  }
+
+  /* Glass morphism effect */
+  .glass {
+    backdrop-filter: blur(24px);
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.1),
+      0 4px 6px -4px rgb(0 0 0 / 0.1);
+  }
+
+  /* Hide scrollbar utility */
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Grid auto-fit utilities */
+  .grid-auto-fit-xs {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  .grid-auto-fit-sm {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .grid-auto-fit-md {
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+
+  .grid-auto-fit-lg {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+
+  /* Interactive controls should clearly indicate clickability */
+  a[href],
+  button,
+  [role='button'],
+  label[for],
+  summary,
+  input[type='button'],
+  input[type='submit'],
+  input[type='reset'],
+  input[type='checkbox'],
+  input[type='radio'] {
+    cursor: pointer;
+  }
+
+  textarea,
+  input[type='text'],
+  input[type='email'],
+  input[type='password'],
+  input[type='search'],
+  input[type='url'],
+  input[type='tel'],
+  input[type='number'],
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'],
+  input[type='month'],
+  input[type='week'] {
+    cursor: text;
+  }
+
+  button:disabled,
+  [role='button'][aria-disabled='true'],
+  input:disabled,
+  select:disabled,
+  textarea:disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* Tiptap Editor Styles */
+.ProseMirror {
+  outline: none;
+}
+
+.ProseMirror > * + * {
+  margin-top: 0.75em;
+}
+
+/* Ensure empty paragraphs generated by Tiptap maintain their spacing in read-only mode */
+.ProseMirror p:empty::after {
+  content: '\00A0';
+}
+
+.ProseMirror h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.ProseMirror h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.ProseMirror h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+}
+
+.ProseMirror li {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.ProseMirror code {
+  background-color: rgb(243 244 246);
+  border-radius: 0.25rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.875rem;
+  font-family: ui-monospace, monospace;
+}
+
+.ProseMirror pre {
+  background-color: rgb(17 24 39);
+  color: white;
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  overflow-x: auto;
+}
+
+.ProseMirror pre code {
+  background-color: transparent;
+  color: white;
+  padding: 0;
+}
+
+.ProseMirror blockquote {
+  border-left: 4px solid rgb(209 213 219);
+  padding-left: 1rem;
+  font-style: italic;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  color: rgb(55 65 81);
+}
+
+.ProseMirror hr {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-top: 2px solid rgb(229 231 235);
+}
+
+.ProseMirror a {
+  color: rgb(59 130 246);
+  text-decoration: underline;
+}
+
+.ProseMirror a:hover {
+  color: rgb(29 78 216);
+}
+
+.ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.375rem;
+  /* KHÔNG set display:block ở đây — để ảnh inline hoạt động đúng */
+  transition: opacity 0.2s;
+}
+
+.ProseMirror img:hover {
+  opacity: 0.85;
+}
+
+/* Ảnh standalone (không trong wrapper) — block */
+.ProseMirror > p > img:only-child,
+.ProseMirror > img {
+  display: block;
+  margin: 0.75rem auto;
+}
+
+/* Image grid: khi nhiều ảnh liên tiếp được wrap trong .image-grid */
+.ProseMirror .image-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.ProseMirror .image-grid img,
+.ProseMirror .image-grid .image-wrapper {
+  width: 100% !important;
+  height: 200px !important;
+  object-fit: cover;
+  border-radius: 0.5rem;
+  margin: 0 !important;
+  display: block;
+}
+
+.ProseMirror .image-grid .image-wrapper img {
+  width: 100% !important;
+  height: 200px !important;
+  object-fit: cover;
+}
+
+/* Selected image (NodeView) */
+.ProseMirror .image-wrapper-selected {
+  outline: 2px solid #3b82f6;
+  outline-offset: 1px;
+  border-radius: 4px;
+}
+
+.ProseMirror .image-wrapper-selected img {
+  opacity: 0.95;
+}
+
+.tiptap-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.375rem;
+  display: block;
+}
+
+/* Resize handle */
+.ProseMirror .image-wrapper,
+.prose .image-wrapper {
+  position: relative;
+  display: inline-block !important;
+  vertical-align: top;
+  max-width: 100%;
+  /* QUAN TRỌNG: overflow visible để resize handles (-10px) không bị clip */
+  overflow: visible !important;
+}
+
+/* Editor: cursor grab */
+.ProseMirror[contenteditable='true'] .image-wrapper {
+  cursor: grab;
+}
+.ProseMirror[contenteditable='true'] .image-wrapper:active {
+  cursor: grabbing;
+}
+
+.ProseMirror .image-wrapper img,
+.prose .image-wrapper img {
+  display: block !important;
+  margin: 0 !important;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* User view: pointer events bình thường */
+.prose .image-wrapper img {
+  pointer-events: auto !important;
+  user-select: auto !important;
+  cursor: default;
+}
+
+/* Float variants — text wrap xung quanh ảnh */
+.ProseMirror .img-float-left,
+.prose .img-float-left {
+  float: left !important;
+  margin: 2px 14px 8px 0 !important;
+  max-width: 50% !important;
+  display: block !important;
+}
+
+.ProseMirror .img-float-right,
+.prose .img-float-right {
+  float: right !important;
+  margin: 2px 0 8px 14px !important;
+  max-width: 50% !important;
+  display: block !important;
+}
+
+/* Clearfix cho paragraph chứa float image */
+.ProseMirror p::after,
+.prose p::after {
+  content: '';
+  display: table;
+  clear: both;
+}
+
+/* Float controls — popup nhỏ trên ảnh khi selected */
+.img-float-controls {
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(6px);
+  border-radius: 6px;
+  padding: 3px 5px;
+  z-index: 200;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  pointer-events: all;
+}
+
+.ifc-btn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+  padding: 0;
+  line-height: 1;
+}
+
+.ifc-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+}
+.ifc-btn.active {
+  background: #3b82f6;
+  color: white;
+}
+.ifc-btn.ifc-del:hover {
+  background: rgba(239, 68, 68, 0.85);
+  color: white;
+}
+
+.ifc-sep {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 2px;
+}
+
+/* Toolbar float buttons */
+.ifc-btn-toolbar {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #bfdbfe;
+  background: white;
+  color: #3b82f6;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.1s;
+  line-height: 1;
+}
+
+.ifc-btn-toolbar:hover {
+  background: #eff6ff;
+}
+.ifc-btn-toolbar.active {
+  background: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+/* Drop zone highlight khi đang kéo ảnh */
+.ProseMirror p.img-drop-target-left {
+  border-left: 3px solid #3b82f6;
+  padding-left: 4px;
+}
+
+.ProseMirror p.img-drop-target-right {
+  border-right: 3px solid #3b82f6;
+  padding-right: 4px;
+}
+
+.ProseMirror .image-wrapper .resize-handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #3b82f6;
+  border: 2px solid white;
+  border-radius: 4px;
+  z-index: 100; /* Tăng z-index để luôn ở trên cùng */
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  transition: all 0.15s;
+  pointer-events: all !important;
+}
+
+.ProseMirror .image-wrapper .resize-handle:hover {
+  background: #2563eb;
+  transform: scale(1.25);
+  cursor: crosshair;
+}
+
+/* Consistent pointer cursor for interactive elements (excluding text inputs) */
+button:not(:disabled),
+a[href],
+[role='button']:not([aria-disabled='true']),
+summary,
+label[for] {
+  cursor: pointer;
+}
+
+/* Standard cursor for inputs to ensure better UX */
+input:not([type='button']):not([type='submit']):not([type='reset']),
+textarea,
+select {
+  cursor: auto;
+}
+
+input[type='button'],
+input[type='submit'],
+input[type='reset'] {
+  cursor: pointer;
+}
+
+/* Corner-specific positions and cursors */
+.ProseMirror .image-wrapper .resize-se {
+  bottom: -10px;
+  right: -10px;
+  cursor: nwse-resize;
+}
+
+.ProseMirror .image-wrapper .resize-sw {
+  bottom: -10px;
+  left: -10px;
+  cursor: nesw-resize;
+}
+
+.ProseMirror .image-wrapper .resize-ne {
+  top: -10px;
+  right: -10px;
+  cursor: nesw-resize;
+}
+
+.ProseMirror .image-wrapper .resize-nw {
+  top: -10px;
+  left: -10px;
+  cursor: nwse-resize;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+  color: #adb5bd;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* ─── Inline icon/emoji (từ Facebook, Zalo...) ─────────────────────────────── */
+.ProseMirror img[data-icon='true'] {
+  display: inline !important;
+  vertical-align: text-bottom !important;
+  border-radius: 0 !important;
+  margin: 0 1px !important;
+  cursor: default !important;
+  box-shadow: none !important;
+  transition: none !important;
+}
+
+.ProseMirror img[data-icon='true']:hover {
+  opacity: 1 !important;
+  box-shadow: none !important;
+}
+
+/* ─── Table styles ─────────────────────────────────────────────────────────── */
+
+/* Tiptap v3 wrap table trong .tableWrapper — scroll ngang khi cần */
+.ProseMirror .tableWrapper {
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 1rem 0;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 0.375rem;
+}
+
+.ProseMirror table {
+  border-collapse: collapse !important;
+  /* width: auto — bảng co theo nội dung, không bị tràn container */
+  width: auto !important;
+  max-width: 100% !important;
+  table-layout: auto !important;
+  margin: 0 !important;
+  font-size: 0.875rem;
+}
+
+.ProseMirror table td,
+.ProseMirror table th {
+  border: 1px solid #d1d5db !important;
+  padding: 7px 12px !important;
+  min-width: 60px;
+  vertical-align: top;
+  word-break: break-word;
+  position: relative;
+  box-sizing: border-box;
+  white-space: normal;
+}
+
+.ProseMirror table th {
+  background-color: #f3f4f6 !important;
+  font-weight: 600;
+  text-align: left;
+}
+
+.ProseMirror table tr:nth-child(even) td {
+  background-color: #f9fafb;
+}
+
+/* Column resize handle — Tiptap v3 inject tự động khi resizable: true */
+.ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: #3b82f6;
+  cursor: col-resize;
+  z-index: 20;
+  pointer-events: all;
+}
+
+/* Luôn hiển thị handle để user biết có thể resize */
+.ProseMirror td .column-resize-handle,
+.ProseMirror th .column-resize-handle {
+  opacity: 0.3;
+}
+
+.ProseMirror td:hover .column-resize-handle,
+.ProseMirror th:hover .column-resize-handle,
+.ProseMirror.resize-cursor .column-resize-handle {
+  opacity: 1;
+}
+
+.ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
+/* Selected cell highlight */
+.ProseMirror .selectedCell {
+  position: relative;
+}
+
+.ProseMirror .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(59, 130, 246, 0.15);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ─── Image Gallery Node ────────────────────────────────────────────────────── */
+.image-gallery-node {
+  margin: 1rem 0;
+  border: 2px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: #fafafa;
+  user-select: none;
+}
+
+.image-gallery-node.image-gallery-selected {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Toolbar nổi trên gallery */
+.image-gallery-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+  flex-wrap: wrap;
+}
+
+.gallery-col-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gallery-col-btn.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.gallery-col-btn:hover:not(.active) {
+  background: #e2e8f0;
+}
+
+.gallery-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  font-size: 11px;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.gallery-add-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.gallery-delete-btn {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid #fca5a5;
+  background: white;
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.gallery-delete-btn:hover {
+  background: #fee2e2;
+}
+
+/* Grid ảnh */
+.image-gallery-grid {
+  padding: 8px;
+}
+
+.image-gallery-item {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: grab;
+  aspect-ratio: 4/3;
+  background: #e5e7eb;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s,
+    opacity 0.15s;
+}
+
+.image-gallery-item:active {
+  cursor: grabbing;
+}
+
+.image-gallery-item.dragging {
+  opacity: 0.4;
+  transform: scale(0.97);
+}
+
+.image-gallery-item.drag-over {
+  box-shadow: 0 0 0 3px #3b82f6;
+  transform: scale(1.02);
+}
+
+.gallery-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+/* Overlay hiện khi hover */
+.gallery-item-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 6px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.image-gallery-item:hover .gallery-item-overlay {
+  opacity: 1;
+}
+
+.gallery-remove-btn {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.9);
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.gallery-remove-btn:hover {
+  background: #dc2626;
+}
+
+/* Drop zone thêm ảnh */
+.image-gallery-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 2px dashed #d1d5db;
+  border-radius: 6px;
+  aspect-ratio: 4/3;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: white;
+}
+
+.image-gallery-dropzone:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .image-gallery-node [style*='grid-template-columns: repeat(4'] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .image-gallery-node [style*='grid-template-columns: repeat(3'] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ─── ImageLayout Node ──────────────────────────────────────────────────────── */
+
+.image-layout-node {
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background: #f8fafc;
+  border: 2px solid transparent;
+  transition: border-color 0.15s;
+}
+
+.image-layout-node.selected {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+/* Toolbar */
+.il-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.il-toolbar-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  flex: 1;
+}
+
+.il-toolbar-section {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.il-toolbar-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  font-size: 11px;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.il-toolbar-btn:hover {
+  background: #e2e8f0;
+}
+
+.il-toolbar-btn-danger {
+  border-color: #fca5a5;
+  color: #ef4444;
+  margin-left: auto;
+}
+
+.il-toolbar-btn-danger:hover {
+  background: #fee2e2;
+}
+
+/* Layout picker */
+.il-layout-picker-wrap {
+  padding: 6px 8px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.il-layout-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.il-layout-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 5px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: white;
+  cursor: pointer;
+  color: #64748b;
+  transition: all 0.15s;
+  min-width: 60px;
+}
+
+.il-layout-btn:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
+}
+.il-layout-btn.active {
+  border-color: #3b82f6;
+  background: #3b82f6;
+  color: white;
+}
+
+.il-preview-icon {
+  width: 36px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.il-preview-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.il-layout-label {
+  font-size: 9px;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+/* Slot dragging state */
+.il-slot.dragging {
+  opacity: 0.35;
+  transform: scale(0.96);
+}
+
+/* Grid */
+.il-grid {
+  padding: 4px;
+  background: #1e293b;
+  gap: 4px;
+}
+
+/* Slot */
+.il-slot {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #334155;
+  cursor: grab;
+  transition:
+    box-shadow 0.15s,
+    transform 0.1s;
+}
+
+.il-slot:active {
+  cursor: grabbing;
+}
+
+.il-slot.drag-over {
+  box-shadow: 0 0 0 3px #3b82f6;
+  transform: scale(1.01);
+}
+
+.il-slot.empty {
+  cursor: default;
+  min-height: 120px;
+}
+
+.il-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Overlay controls */
+.il-slot-overlay {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 3px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.il-slot:hover .il-slot-overlay {
+  opacity: 1;
+}
+
+.il-slot-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: none;
+  background: rgba(15, 23, 42, 0.75);
+  color: white;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  transition: background 0.1s;
+}
+
+.il-slot-btn:hover {
+  background: rgba(59, 130, 246, 0.85);
+}
+.il-slot-btn-del:hover {
+  background: rgba(239, 68, 68, 0.85) !important;
+}
+
+/* Drag hint */
+.il-drag-hint {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 1px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+}
+
+.il-slot:hover .il-drag-hint {
+  opacity: 1;
+}
+
+/* Paste hint */
+.il-paste-hint {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(59, 130, 246, 0.6);
+  padding: 1px 6px;
+  border-radius: 10px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Slot hover state — viền xanh để biết có thể paste */
+.il-slot.hovered {
+  outline: 2px dashed rgba(59, 130, 246, 0.5);
+  outline-offset: -2px;
+}
+
+/* Empty slot */
+.il-slot-empty {
+  width: 100%;
+  height: 100%;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 2px dashed #475569;
+  border-radius: 4px;
+  transition: all 0.15s;
+  background: #1e293b;
+}
+
+.il-slot-empty:hover {
+  border-color: #3b82f6;
+  background: #1e3a5f;
+}
+
+/* Quick preset dropdown */
+.il-quick-presets {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 50;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  padding: 4px;
+  min-width: 160px;
+  display: none;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.group:hover .il-quick-presets {
+  display: flex;
+}
+
+.il-quick-preset-btn {
+  padding: 5px 10px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-size: 12px;
+  color: #374151;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.1s;
+  white-space: nowrap;
+}
+
+.il-quick-preset-btn:hover {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+/* Responsive: mobile 1 cột */
+@media (max-width: 640px) {
+  .il-grid {
+    grid-template-columns: 1fr !important;
+    grid-template-areas: none !important;
+  }
+  .il-slot {
+    grid-area: unset !important;
+  }
+}
+
+/* ─── Table Responsive ────────────────────────────────────────────────────────── */
+
+/* Đảm bảo bảng trong Editor và Renderer không bị tràn khung */
+.ProseMirror table,
+.post-content-renderer table {
+  min-width: 100%;
+  table-layout: auto !important;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.9em;
+}
+
+.ProseMirror table td,
+.ProseMirror table th,
+.post-content-renderer table td,
+.post-content-renderer table th {
+  min-width: 80px; /* Giữ cột đủ rộng để đọc được, không bị bóp quá nhỏ */
+  padding: 6px 10px !important;
+  word-break: break-word;
+  white-space: nowrap; /* Giữ nội dung trên 1 dòng → buộc scroll ngang */
+}
+
+/* Wrap trực tiếp table trong post-content để scroll ngang trên mobile */
+.post-content-renderer div:has(> table),
+.post-content-renderer .table-wrapper,
+.post-content-renderer .table-scroll-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 6px;
+}
+
+/* Fallback cho trình duyệt không hỗ trợ :has() */
+@supports not selector(:has(*)) {
+  .post-content-renderer table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
+  }
+}
+
+/* Tinh chỉnh thanh cuộn cho bảng */
+.ProseMirror table::-webkit-scrollbar,
+.post-content-renderer table::-webkit-scrollbar,
+.post-content-renderer div:has(> table)::-webkit-scrollbar,
+.post-content-renderer .table-scroll-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+.ProseMirror table::-webkit-scrollbar-thumb,
+.post-content-renderer table::-webkit-scrollbar-thumb,
+.post-content-renderer div:has(> table)::-webkit-scrollbar-thumb,
+.post-content-renderer .table-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+/* ─── Smart Image Layout (Facebook-style) ──────────────────────────────────── */
+
+/* ─── Smart Image Layout (Facebook-style) — CSS only ───────────────────────── */
+
+/* Paragraph chứa nhiều image-wrapper liên tiếp → flex layout tự động */
+/* Dùng :has() để detect số lượng ảnh — không cần JS */
+
+/* 2+ ảnh trong paragraph */
+.ProseMirror p:has(> .image-wrapper + .image-wrapper) {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  align-items: flex-start !important;
+  overflow: visible !important;
+  padding: 14px 0 !important;
+}
+
+/* Wrapper trong smart row: flex item, overflow visible cho resize handles */
+.ProseMirror p:has(> .image-wrapper + .image-wrapper) > .image-wrapper {
+  flex: 1 1 0 !important;
+  min-width: 80px !important;
+  margin: 0 !important;
+  overflow: visible !important;
+  vertical-align: unset !important;
+}
+
+/* Ảnh trong smart row: fill wrapper, object-fit cover */
+.ProseMirror
+  p:has(> .image-wrapper + .image-wrapper)
+  > .image-wrapper:not(.image-wrapper-selected)
+  > img {
+  width: 100% !important;
+  height: 200px !important;
+  object-fit: cover !important;
+  border-radius: 6px !important;
+}
+
+/* Ảnh đang được selected: giữ nguyên kích thước tự nhiên để resize hoạt động */
+.ProseMirror
+  p:has(> .image-wrapper + .image-wrapper)
+  > .image-wrapper-selected
+  > img {
+  width: auto !important;
+  height: auto !important;
+  object-fit: unset !important;
+  max-width: 100%;
+}
+
+/* Khi ảnh được selected trong smart row — không bị constrain */
+.ProseMirror
+  p:has(> .image-wrapper + .image-wrapper)
+  > .image-wrapper-selected {
+  z-index: 50 !important;
+  overflow: visible !important;
+}
+
+/* Resize handles luôn visible và trên cùng */
+.ProseMirror p:has(> .image-wrapper + .image-wrapper) .resize-handle {
+  z-index: 100 !important;
+}
+
+/* User view (PostContentRenderer) — tương tự */
+.prose p:has(> .image-wrapper + .image-wrapper) {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 10px !important;
+  align-items: flex-start !important;
+  overflow: visible !important;
+}
+
+.prose p:has(> .image-wrapper + .image-wrapper) > .image-wrapper {
+  flex: 1 1 0 !important;
+  min-width: 80px !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+.prose p:has(> .image-wrapper + .image-wrapper) > .image-wrapper > img {
+  width: 100% !important;
+  height: 200px !important;
+  object-fit: cover !important;
+  border-radius: 6px !important;
+}
+
+/* Group nhiều ảnh liên tiếp */
+.smart-img-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 8px 0;
+  align-items: flex-start;
+  line-height: 0;
+}
+
+.smart-img-item {
+  overflow: hidden;
+  border-radius: 6px;
+  display: block;
+  line-height: 0;
+  min-width: 0;
+}
+
+.smart-img-item img {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+  border-radius: 6px;
+}
+
+.smart-img-single {
+  display: block;
+  margin: 8px 0;
+}
+
+.smart-img-single img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  display: block;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .smart-img-item {
+    flex-basis: 100% !important;
+    flex-grow: 1 !important;
+    max-width: 100% !important;
+  }
+  .smart-img-item img {
+    height: 180px;
+  }
+}
+
+/* ─── Image Lightbox ────────────────────────────────────────────────────────── */
+
+.lightbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+  animation: lightbox-in 0.18s ease;
+}
+
+@keyframes lightbox-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.lightbox-img-wrap {
+  max-width: 90vw;
+  max-height: 85vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.lightbox-img {
+  max-width: 90vw;
+  max-height: 85vh;
+  object-fit: contain;
+  display: block;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  transform-origin: center;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Close button */
+.lightbox-close {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  z-index: 10001;
+}
+.lightbox-close:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Counter */
+.lightbox-counter {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 4px 12px;
+  border-radius: 20px;
+  z-index: 10001;
+}
+
+/* Zoom controls */
+.lightbox-zoom-controls {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  padding: 4px 8px;
+  z-index: 10001;
+}
+.lightbox-zoom-controls button {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.1s;
+}
+.lightbox-zoom-controls button:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* Nav buttons */
+.lightbox-nav {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+  z-index: 10001;
+}
+.lightbox-nav:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+.lightbox-nav-prev {
+  left: 16px;
+}
+.lightbox-nav-next {
+  right: 16px;
+}
+.lightbox-nav-prev:hover {
+  transform: translateY(-50%) translateX(-2px);
+}
+.lightbox-nav-next:hover {
+  transform: translateY(-50%) translateX(2px);
+}
+
+/* Thumbnails */
+.lightbox-thumbs {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  max-width: 90vw;
+  overflow-x: auto;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 12px;
+  z-index: 10001;
+  scrollbar-width: none;
+}
+.lightbox-thumbs::-webkit-scrollbar {
+  display: none;
+}
+
+.lightbox-thumb {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
+  padding: 0;
+  background: none;
+}
+.lightbox-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.lightbox-thumb.active {
+  border-color: #3b82f6;
+  transform: scale(1.08);
+}
+
+@media (max-width: 1023px) {
+  .lightbox-overlay {
+    inset: calc(56px + env(safe-area-inset-top, 0px)) 0 0 0;
+  }
+
+  .lightbox-close {
+    top: calc(56px + env(safe-area-inset-top, 0px) + 8px);
+  }
+
+  .lightbox-counter {
+    top: calc(56px + env(safe-area-inset-top, 0px) + 12px);
+  }
+}
+.lightbox-thumb:hover:not(.active) {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Hover effect trên ảnh trong bài viết */
+.smart-img-thumb {
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease !important;
+}
+.smart-img-item:hover .smart-img-thumb {
+  transform: scale(1.03);
+  filter: brightness(0.92);
+}
+
+.smart-img-hover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.2s;
+  border-radius: 0;
+  pointer-events: none;
+}
+.smart-img-item:hover .smart-img-hover-overlay {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* "+N" overlay — ảnh cuối khi có nhiều hơn 4 ảnh */
+.smart-img-more-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.smart-img-item:hover .smart-img-more-overlay {
+  background: rgba(0, 0, 0, 0.45);
+}
+.smart-img-more-count {
+  color: white;
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  line-height: 1;
+}
+
+/* Ảnh đơn cũng có hover effect */
+.post-content-renderer .image-wrapper {
+  cursor: pointer;
+}
+.post-content-renderer .image-wrapper img {
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease;
+}
+.post-content-renderer .image-wrapper:hover img {
+  filter: brightness(0.92);
+}
+
+/* —— Trang /bao-tri: mascot & typography —— */
+@keyframes bao-tri-mascot-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-14px) rotate(2deg);
+  }
+}
+
+@keyframes bao-tri-mascot-jump {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  35% {
+    transform: translateY(-22px) scale(1.06);
+  }
+  55% {
+    transform: translateY(-6px) scale(1.02);
+  }
+  75% {
+    transform: translateY(-12px) scale(1.04);
+  }
+}
+
+@keyframes bao-tri-mascot-sway {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(4deg);
+  }
+}
+
+@keyframes bao-tri-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+@keyframes bao-tri-glow-pulse {
+  0%,
+  100% {
+    text-shadow:
+      0 0 20px rgba(161, 0, 31, 0.35),
+      0 0 40px rgba(161, 0, 31, 0.15);
+  }
+  50% {
+    text-shadow:
+      0 0 28px rgba(248, 113, 113, 0.45),
+      0 0 56px rgba(161, 0, 31, 0.25);
+  }
+}
+
+@keyframes bao-tri-badge-pulse {
+  0%,
+  100% {
+    opacity: 0.95;
+    letter-spacing: 0.25em;
+  }
+  50% {
+    opacity: 1;
+    letter-spacing: 0.32em;
+  }
+}
+
+@keyframes bao-tri-fade-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bao-tri-line-shine {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateX(200%);
+    opacity: 0;
+  }
+}
+
+.bao-tri-mascot-wrap {
+  will-change: transform;
+}
+
+.bao-tri-mascot-wrap--a {
+  animation: bao-tri-mascot-float 2.8s ease-in-out infinite;
+}
+
+.bao-tri-mascot-wrap--b {
+  animation: bao-tri-mascot-jump 2.5s ease-in-out infinite;
+  animation-delay: 0.15s;
+}
+
+.bao-tri-mascot-wrap--c {
+  animation: bao-tri-mascot-sway 3.2s ease-in-out infinite;
+  animation-delay: 0.08s;
+}
+
+.bao-tri-mascot-wrap img {
+  filter: drop-shadow(0 12px 24px rgba(161, 0, 31, 0.35));
+  transition: filter 0.3s ease;
+}
+
+.bao-tri-gradient-title {
+  background: linear-gradient(
+    90deg,
+    #ffffff 0%,
+    #fecdd3 22%,
+    #ffffff 45%,
+    #fda4af 68%,
+    #ffffff 100%
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: bao-tri-shimmer 7s linear infinite;
+}
+
+.bao-tri-closing {
+  animation: bao-tri-glow-pulse 3.5s ease-in-out infinite;
+}
+
+.bao-tri-badge-animated {
+  animation: bao-tri-badge-pulse 4s ease-in-out infinite;
+}
+
+.bao-tri-fade-rise {
+  opacity: 0;
+  animation: bao-tri-fade-rise 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.bao-tri-fade-delay-1 {
+  animation-delay: 0.12s;
+}
+.bao-tri-fade-delay-2 {
+  animation-delay: 0.26s;
+}
+.bao-tri-fade-delay-3 {
+  animation-delay: 0.4s;
+}
+.bao-tri-fade-delay-4 {
+  animation-delay: 0.54s;
+}
+
+.bao-tri-eyebrow-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.bao-tri-eyebrow-glow::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 35%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  animation: bao-tri-line-shine 3.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bao-tri-mascot-wrap--a,
+  .bao-tri-mascot-wrap--b,
+  .bao-tri-mascot-wrap--c {
+    animation: none;
+  }
+
+  .bao-tri-gradient-title {
+    animation: none;
+    background: none;
+    -webkit-background-clip: unset;
+    background-clip: unset;
+    color: #ffffff;
+  }
+
+  .bao-tri-closing,
+  .bao-tri-badge-animated {
+    animation: none;
+  }
+
+  .bao-tri-fade-rise {
+    opacity: 1;
+    animation: none;
+    transform: none;
+  }
+
+  .bao-tri-eyebrow-glow::after {
+    display: none;
+  }
+}

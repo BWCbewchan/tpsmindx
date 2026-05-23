@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Modal, ModalBody, ModalClose, ModalHeader, ModalTitle } from '@/components/ui/modal'
 import { Bot, ChevronDown, ExternalLink, Image, Loader2, MessageCircle, Search, Sparkles, Users, Video } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 type StudentInfo = {
   id: string
@@ -143,6 +143,13 @@ export function UserClassAssistant({ documentId }: { documentId?: number | null 
   const [asking, setAsking] = useState(false)
   const [followUp, setFollowUp] = useState<AiSupportResponse['followUp'] | null>(null)
   const [questionMessage, setQuestionMessage] = useState('')
+  const [selectedText, setSelectedText] = useState('')
+  const [selectedTextModalOpen, setSelectedTextModalOpen] = useState(false)
+  const [selectedTextLoading, setSelectedTextLoading] = useState(false)
+  const [selectedTextMessage, setSelectedTextMessage] = useState('')
+  const [selectedTextSuggestion, setSelectedTextSuggestion] = useState<AiSupportResponse['followUp'] | null>(null)
+  const ignoredSelectionRef = useRef('')
+  const selectionTimerRef = useRef<number | null>(null)
   const [geminiApiKey, setGeminiApiKey] = useState('')
   const [apiKeyDraft, setApiKeyDraft] = useState('')
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false)
@@ -158,6 +165,44 @@ export function UserClassAssistant({ documentId }: { documentId?: number | null 
       }
     } catch {}
   }, [])
+
+  useEffect(() => {
+    if (!documentId || !geminiApiKey) return
+
+    const handleSelection = () => {
+      if (selectionTimerRef.current) window.clearTimeout(selectionTimerRef.current)
+      selectionTimerRef.current = window.setTimeout(() => {
+        const selection = window.getSelection()
+        const text = selection?.toString().replace(/\s+/g, ' ').trim() || ''
+        if (!text) {
+          ignoredSelectionRef.current = ''
+          return
+        }
+        if (text === ignoredSelectionRef.current) return
+        if (text.length < 30) return
+
+        const range = selection?.rangeCount ? selection.getRangeAt(0) : null
+        const node = range?.commonAncestorContainer
+        const element = node instanceof Element ? node : node?.parentElement
+        const inDocumentViewer = Boolean(element?.closest('.secure-docx-frame'))
+        const inModal = Boolean(element?.closest('[role="dialog"]'))
+        if (!inDocumentViewer || inModal) return
+
+        setSelectedText(text.slice(0, 3000))
+        setSelectedTextSuggestion(null)
+        setSelectedTextMessage('')
+        setSelectedTextModalOpen(true)
+      }, 350)
+    }
+
+    document.addEventListener('mouseup', handleSelection)
+    document.addEventListener('keyup', handleSelection)
+    return () => {
+      if (selectionTimerRef.current) window.clearTimeout(selectionTimerRef.current)
+      document.removeEventListener('mouseup', handleSelection)
+      document.removeEventListener('keyup', handleSelection)
+    }
+  }, [documentId, geminiApiKey])
 
   useEffect(() => {
     let mounted = true
@@ -335,6 +380,46 @@ export function UserClassAssistant({ documentId }: { documentId?: number | null 
     }
   }
 
+  const askAboutSelectedText = async () => {
+    if (!documentId || !selectedText || !geminiApiKey) return
+    if (!selectedClass) {
+      setSelectedTextMessage('Hãy chọn lớp trước khi dùng AI cho đoạn đang chọn.')
+      return
+    }
+
+    setSelectedTextLoading(true)
+    setSelectedTextMessage('')
+    setSelectedTextSuggestion(null)
+    try {
+      const response = await fetch('/api/user/teaching-documents/ai-support', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentId,
+          classContext: selectedClass,
+          geminiApiKey,
+          selectedText,
+          question:
+            'Hãy gợi ý cách giảng dạy, ví dụ minh họa, câu hỏi kiểm tra hiểu và tài nguyên hỗ trợ cho đoạn giáo trình đang được tô đen.',
+        }),
+      })
+      const data = (await readJsonResponse(response)) as AiSupportResponse
+      if (!response.ok || !data.success || !data.followUp) {
+        throw new Error(data.error || 'Không thể tạo gợi ý cho đoạn đang chọn.')
+      }
+      setSelectedTextSuggestion(data.followUp)
+    } catch (error: any) {
+      setSelectedTextMessage(error?.message || 'Không thể tạo gợi ý cho đoạn đang chọn.')
+    } finally {
+      setSelectedTextLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!selectedTextModalOpen || selectedTextSuggestion || selectedTextLoading || selectedTextMessage) return
+    void askAboutSelectedText()
+  }, [selectedTextModalOpen, selectedTextSuggestion, selectedTextLoading, selectedTextMessage])
+
   const saveGeminiApiKey = () => {
     const trimmed = apiKeyDraft.trim()
     if (!trimmed) {
@@ -359,6 +444,16 @@ export function UserClassAssistant({ documentId }: { documentId?: number | null 
     } catch {}
     setGeminiApiKey('')
     setApiKeyDraft('')
+  }
+
+  const closeSelectedTextModal = () => {
+    ignoredSelectionRef.current = selectedText
+    setSelectedTextModalOpen(false)
+    window.setTimeout(() => {
+      try {
+        window.getSelection()?.removeAllRanges()
+      } catch {}
+    }, 0)
   }
 
   return (
@@ -542,6 +637,56 @@ export function UserClassAssistant({ documentId }: { documentId?: number | null 
                 Lưu key
               </Button>
             </div>
+          </div>
+        </ModalBody>
+      </Modal>
+
+      <Modal open={selectedTextModalOpen} onClose={closeSelectedTextModal} size="4xl">
+        <ModalHeader>
+          <div className="min-w-0">
+            <ModalTitle>AI gợi ý cho đoạn đang chọn</ModalTitle>
+            <p className="mt-1 text-sm text-slate-500">{selectedClass?.className || 'Lớp đang chọn'}</p>
+          </div>
+          <ModalClose onClick={closeSelectedTextModal} />
+        </ModalHeader>
+        <ModalBody className="max-h-[72vh]">
+          <div className="space-y-4">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+              <p className="text-xs font-black uppercase tracking-wide text-slate-500">Đoạn đã chọn</p>
+              <p className="mt-2 max-h-32 overflow-auto text-sm font-semibold text-slate-800">{selectedText}</p>
+            </div>
+
+            {selectedTextLoading ? (
+              <div className="flex h-40 items-center justify-center text-sm font-semibold text-slate-500">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                AI đang tạo gợi ý cho đoạn đang chọn...
+              </div>
+            ) : selectedTextMessage ? (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+                {selectedTextMessage}
+              </div>
+            ) : selectedTextSuggestion ? (
+              <div className="space-y-3">
+                <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800">
+                  <FormattedAiAnswer text={selectedTextSuggestion.answer} />
+                </div>
+                <div className="grid gap-3 lg:grid-cols-3">
+                  <QueryCard
+                    title="Tìm hình ảnh"
+                    icon={<Image className="h-4 w-4 text-rose-700" />}
+                    queries={selectedTextSuggestion.imageQueries}
+                    baseUrl="https://www.google.com/search?tbm=isch&q="
+                  />
+                  <QueryCard
+                    title="Tìm video"
+                    icon={<Video className="h-4 w-4 text-rose-700" />}
+                    queries={selectedTextSuggestion.videoQueries}
+                    baseUrl="https://www.youtube.com/results?search_query="
+                  />
+                  <ReferenceLinks links={selectedTextSuggestion.referenceLinks} />
+                </div>
+              </div>
+            ) : null}
           </div>
         </ModalBody>
       </Modal>

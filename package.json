@@ -63,6 +63,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.20",
+    "docx-preview": "^0.3.7",
     "dotenv": "^17.2.3",
     "formidable": "^3.5.4",
     "formidable-serverless": "^1.1.1",

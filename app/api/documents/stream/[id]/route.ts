@@ -56,6 +56,10 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy tài liệu' }, { status: 404 })
   }
 
+  if (!auth.privileged && document.document_status !== 'published') {
+    return NextResponse.json({ success: false, error: 'Không có quyền xem tài liệu này' }, { status: 403 })
+  }
+
   const { searchParams } = new URL(request.url)
   const action = searchParams.get('action') || 'content'
   const mode = searchParams.get('mode') || ''

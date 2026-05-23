@@ -119,7 +119,11 @@ export function Sidebar() {
     document.documentElement.dataset.onboarding === '1'
 
   // Determine menu items based on current path (admin or user)
-  const isUserArea = pathname.startsWith('/user')
+  const isCandidatePortalArea = pathname.startsWith('/candidate-portal')
+  const isUserArea = pathname.startsWith('/user') || isCandidatePortalArea
+  const trainingDocsBasePath = isCandidatePortalArea
+    ? '/candidate-portal'
+    : '/user'
 
   const adminMenuItems = [
     { href: '/admin/dashboard', label: 'Bảng Điều Khiển', icon: Home },
@@ -227,7 +231,7 @@ export function Sidebar() {
           submenu: [
             { href: '/admin/giao-trinh-trai-nghiem', label: 'Giáo trình trải nghiệm' },
             { href: '/admin/giao-trinh-chuyen-mon', label: 'Giáo trình chuyên môn' },
-            { href: '/admin/quan-ly-tai-lieu-giang-day', label: 'Quản lý tài liệu' },
+            { href: '/admin/quan-ly-tai-lieu-giang-day', label: 'Quản lý giáo trình' },
           ],
         },
       ],
@@ -292,6 +296,19 @@ export function Sidebar() {
       icon: BookOpen,
       submenu: [
         { href: '/user/quy-trinh-quy-dinh', label: 'Quy trình & Quy định' },
+        {
+          label: 'Giáo trình',
+          submenu: [
+            {
+              href: `${trainingDocsBasePath}/giao-trinh-trai-nghiem`,
+              label: 'Giáo trình trải nghiệm',
+            },
+            {
+              href: `${trainingDocsBasePath}/giao-trinh-chuyen-mon`,
+              label: 'Giáo trình chuyên môn',
+            },
+          ],
+        },
       ],
     },
     {

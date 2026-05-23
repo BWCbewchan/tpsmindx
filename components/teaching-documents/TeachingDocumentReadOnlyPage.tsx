@@ -5,13 +5,22 @@ import {
   TeachingDocumentLibrary,
   type TeachingDocument,
 } from '@/components/teaching-documents/TeachingDocumentLibrary'
+import { UserClassAssistant } from '@/components/teaching-documents/UserClassAssistant'
 import { Card } from '@/components/ui/card'
 import { useEffect, useMemo, useState } from 'react'
 
-const EXPERIENCE_SUBJECTS = ['Trải nghiệm'] as const
+type TeachingDocumentReadOnlyPageProps = {
+  title: string
+  description: string
+  subjects: readonly string[]
+  viewerBasePath: string
+  showClassAssistant?: boolean
+}
 
-function normalizeStatus(document: TeachingDocument) {
-  return document.document_status || 'published'
+function normalizeSubject(subject: string) {
+  if (subject === 'Robotics') return 'Robotic'
+  if (subject === 'Digital Art' || subject === 'Game Design' || subject === 'Khoa học máy tính') return 'Coding'
+  return subject
 }
 
 async function readJsonResponse(response: Response) {
@@ -29,7 +38,13 @@ async function readJsonResponse(response: Response) {
   }
 }
 
-export default function GiaoTrinhTraiNghiemPage() {
+export function TeachingDocumentReadOnlyPage({
+  title,
+  description,
+  subjects,
+  viewerBasePath,
+  showClassAssistant = false,
+}: TeachingDocumentReadOnlyPageProps) {
   const [documents, setDocuments] = useState<TeachingDocument[]>([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
@@ -40,7 +55,7 @@ export default function GiaoTrinhTraiNghiemPage() {
     async function loadDocuments() {
       setLoading(true)
       try {
-        const response = await fetch('/api/admin/teaching-documents', { cache: 'no-store' })
+        const response = await fetch('/api/teaching-documents', { cache: 'no-store' })
         const data = await readJsonResponse(response)
         if (!response.ok || !data.success) throw new Error(data.error || 'Không thể tải giáo trình')
         if (mounted) setDocuments(data.documents || [])
@@ -60,22 +75,25 @@ export default function GiaoTrinhTraiNghiemPage() {
 
   const visibleDocuments = useMemo(
     () =>
-      documents.filter(
-        (document) => document.subject_name === 'Trải nghiệm' && normalizeStatus(document) === 'published',
+      documents.filter((document) =>
+        subjects.includes(normalizeSubject(document.subject_name)),
       ),
-    [documents],
+    [documents, subjects],
   )
 
   return (
-    <PageContainer
-      title="Giáo trình trải nghiệm"
-      description="Giáo trình trải nghiệm đã ban hành cho giáo viên"
-    >
+    <PageContainer title={title} description={description}>
       {message && (
         <p className="rounded-md bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">{message}</p>
       )}
+      {showClassAssistant && <UserClassAssistant />}
       <Card className="rounded-lg border border-slate-200 p-0">
-        <TeachingDocumentLibrary documents={visibleDocuments} loading={loading} subjects={EXPERIENCE_SUBJECTS} />
+        <TeachingDocumentLibrary
+          documents={visibleDocuments}
+          loading={loading}
+          subjects={subjects}
+          viewerBasePath={viewerBasePath}
+        />
       </Card>
     </PageContainer>
   )

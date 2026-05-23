@@ -415,7 +415,7 @@ export default function TeacherAssignmentPage() {
       try {
         if (
           assignment.video_id &&
-          assignment.video_completion_status !== 'completed'
+          !['completed', 'watched'].includes(assignment.video_completion_status || '')
         ) {
           toast.error(
             `Bạn cần hoàn thành xem video "${assignment.video_title}" trước khi làm bài tập này.`,
@@ -705,18 +705,22 @@ export default function TeacherAssignmentPage() {
       } else if (assignments.length > 0 && view === 'list') {
         const target = assignments.find((a) => a.id.toString() === startId)
         if (target) {
+          const isVideoFinished =
+            target.video_completion_status === 'completed' ||
+            target.video_completion_status === 'watched';
+
           if (
             target.video_id &&
-            target.video_completion_status !== 'completed'
+            !isVideoFinished
           ) {
             toast.error(
               `Bạn cần hoàn thành xem video "${target.video_title}" trước khi làm bài kiểm tra.`,
               { icon: '📺' },
-            )
-            router.replace(pathname || '/user/dao-tao-nang-cao')
-            return
+            );
+            router.replace(pathname || '/user/dao-tao-nang-cao');
+            return;
           }
-          startAssignment(target)
+          startAssignment(target);
         }
       }
     }
@@ -2909,7 +2913,7 @@ export default function TeacherAssignmentPage() {
 
                   <Button
                     onClick={() => {
-                      if (assignment.video_id && assignment.video_completion_status !== 'completed') {
+                      if (assignment.video_id && !['completed', 'watched'].includes(assignment.video_completion_status || '')) {
                         toast.error(`Bạn cần hoàn thành xem video "${assignment.video_title}" trước khi làm bài tập này.`, {
                           icon: '📺'
                         });
@@ -2920,14 +2924,14 @@ export default function TeacherAssignmentPage() {
                     disabled={assignment.status !== 'published'}
                     className={`w-full py-2 text-sm font-semibold h-auto cursor-pointer disabled:cursor-not-allowed ${
                       assignment.status === 'published'
-                        ? assignment.video_id && assignment.video_completion_status !== 'completed'
+                        ? assignment.video_id && !['completed', 'watched'].includes(assignment.video_completion_status || '')
                           ? 'bg-gray-400 text-white hover:bg-gray-500'
                           : 'shadow-sm hover:shadow-md bg-[#a1001f] text-white hover:bg-[#840018]'
                         : 'bg-gray-200 text-gray-500 hover:bg-gray-200'
                     }`}
                   >
                     {assignment.status === 'published'
-                      ? assignment.video_id && assignment.video_completion_status !== 'completed'
+                      ? assignment.video_id && !['completed', 'watched'].includes(assignment.video_completion_status || '')
                         ? 'Cần xem video'
                         : assignment.recent_submission
                           ? 'Làm lại'

@@ -78,14 +78,17 @@ export const POST = withApiProtection(async (request: NextRequest) => {
       const clampedServerTime = Math.floor(Math.min(newServerTime, maxServerTime));
 
       // ── 3. Validate isCompleted ──────────────────────────────────────────
-      // Chỉ chấp nhận nếu server_time_seconds >= 90% duration
+      // Tự động mark completed nếu xem quá 98% duration (tránh kẹt ở 99% do lệch giây)
+      const AUTO_COMPLETE_THRESHOLD = 0.98;
       let validatedIsCompleted = isCompleted === true;
-      if (validatedIsCompleted && videoDurationSeconds) {
-        const minRequired = videoDurationSeconds * COMPLETION_THRESHOLD;
-        if (clampedServerTime < minRequired) {
-          validatedIsCompleted = false;
+
+      if (videoDurationSeconds) {
+        const progressRatio = clampedServerTime / videoDurationSeconds;
+        if (progressRatio >= AUTO_COMPLETE_THRESHOLD) {
+          validatedIsCompleted = true;
         }
       }
+
       // Nếu đã completed trước đó → giữ nguyên
       if (existing?.completion_status === 'completed') {
         validatedIsCompleted = true;
@@ -132,7 +135,7 @@ export const POST = withApiProtection(async (request: NextRequest) => {
 
       // ── 6. Upsert progress ───────────────────────────────────────────────
       const statusParam = validatedIsCompleted
-        ? 'watched'
+        ? 'completed'
         : (clampedServerTime > 0 ? 'in_progress' : 'not_started');
 
       const result = await client.query(

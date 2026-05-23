@@ -316,6 +316,8 @@ function CheckDataSourceContent() {
   const continueToApp = async () => {
     if (!user?.email) return;
     const nextPath = "/user/truyenthong";
+    const teacherCode = (onboardingData?.["Code"] || user.email.split("@")[0]).toLowerCase().trim();
+
     try {
       const response = await fetch("/api/checkdatasource/confirm", {
         method: "POST",
@@ -326,7 +328,7 @@ function CheckDataSourceContent() {
         body: JSON.stringify({
           userEmail: user.email,
           userName: user.displayName,
-          userCode: onboardingData?.["Code"] || user.email.split("@")[0],
+          userCode: teacherCode,
           onboardingData: onboardingData || {},
         }),
       });
@@ -350,6 +352,35 @@ function CheckDataSourceContent() {
       console.warn("checkdatasource confirm failed:", message);
       // Still set localStorage so user can proceed even if DB had transient issue
       localStorage.setItem("tps_profile_check_done_email", userEmail);
+    }
+
+    // ── Import advanced training scores from Google Sheet (first-login only) ──
+    // This is done silently: failure must not block the teacher from entering the system.
+    try {
+      const importRes = await fetch("/api/internal/import-teacher-scores", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...authHeaders(token),
+        },
+        body: JSON.stringify({ teacherCode }),
+      });
+      const importData = (await importRes.json().catch(() => ({}))) as {
+        success?: boolean;
+        alreadyImported?: boolean;
+        imported?: boolean;
+        error?: string;
+      };
+      if (importData.success && importData.imported) {
+        console.info("[checkdatasource] Advanced training scores imported for", teacherCode);
+      } else if (importData.alreadyImported) {
+        console.info("[checkdatasource] Scores already imported for", teacherCode);
+      } else if (!importData.success) {
+        console.warn("[checkdatasource] Score import returned failure:", importData.error);
+      }
+    } catch (importErr) {
+      // Non-fatal – log and continue
+      console.warn("[checkdatasource] Could not import advanced training scores:", importErr);
     }
 
     router.replace(nextPath);

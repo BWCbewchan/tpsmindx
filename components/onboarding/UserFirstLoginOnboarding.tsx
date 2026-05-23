@@ -162,7 +162,7 @@ const TOUR_STEPS = ALL_TOUR_STEPS.filter(
 
 function getMascotFrames(action: MascotAction) {
   const folder = action === 'jump' ? 'jump' : 'walk'
-  return [1, 2, 3, 4, 5].map((index) => `/mascot/${folder}/frame-${index}.png`)
+  return Array.from({ length: 25 }, (_, i) => `/mascot/${folder}/frame-${i + 1}.png`)
 }
 
 export default function UserFirstLoginOnboarding() {

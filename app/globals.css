@@ -2240,3 +2240,50 @@ input[type='reset'] {
     display: none;
   }
 }
+
+/* Secure DOCX viewer */
+.secure-docx-frame {
+  color: #111827;
+}
+
+.secure-docx-frame .docx-wrapper {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.secure-docx-frame .docx {
+  margin: 0 auto 18px !important;
+  box-shadow:
+    0 18px 45px rgba(15, 23, 42, 0.16),
+    0 0 0 1px rgba(15, 23, 42, 0.08) !important;
+}
+
+.secure-docx-frame .docx:last-child {
+  margin-bottom: 0 !important;
+}
+
+.secure-docx-frame table {
+  border-collapse: collapse;
+  max-width: 100%;
+}
+
+.secure-docx-frame td,
+.secure-docx-frame th {
+  vertical-align: top;
+}
+
+.secure-docx-frame img {
+  max-width: 100%;
+}
+
+.secure-docx-frame a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .secure-docx-frame .docx-wrapper {
+    overflow-x: auto;
+  }
+}

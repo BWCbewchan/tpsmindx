@@ -728,12 +728,12 @@ export default function TrainingPage() {
                                   <div className="flex justify-between text-xs text-[#a1001f] mb-1">
                                     <span>Đang học</span>
                                     <span>
-                                      {Math.round(
+                                      {Math.min(100, Math.round(
                                         ((lesson.time_spent_seconds || 0) /
                                           ((lesson.duration_minutes || 1) *
                                             60)) *
                                           100,
-                                      )}
+                                      ))}
                                       %
                                     </span>
                                   </div>

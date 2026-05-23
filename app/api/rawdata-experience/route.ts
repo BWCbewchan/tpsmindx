@@ -137,16 +137,51 @@ export const GET = withApiProtection(async (request: NextRequest) => {
 
     const monthlyData: MonthlyAverage[] = [];
     monthlyMap.forEach((monthRecords, month) => {
-      const countedRecords = monthRecords.filter((r) => r.isCountedInAverage);
-      if (countedRecords.length > 0) {
-        const sum = countedRecords.reduce((acc, r) => {
-          return acc + parseFloat(r.score.replace(",", "."));
-        }, 0);
-        const average = sum / countedRecords.length;
+      // Nhóm theo cấp độ giảng dạy trong tháng
+      const levelMap = new Map<string, TestRecord[]>();
+      monthRecords.forEach(r => {
+        if (!levelMap.has(r.teachingLevel)) {
+          levelMap.set(r.teachingLevel, []);
+        }
+        levelMap.get(r.teachingLevel)!.push(r);
+      });
+
+      let totalCombinedScore = 0;
+      let levelCount = 0;
+
+      levelMap.forEach((levelRecords) => {
+        // Chỉ tính những cấp độ có ít nhất một bài thi được tính vào trung bình
+        if (levelRecords.some(r => r.isCountedInAverage)) {
+          let officialScore = 0;
+          let supplementScore = 0;
+
+          levelRecords.forEach(r => {
+            if (!r.isCountedInAverage) return;
+            
+            const type = r.type.toLowerCase();
+            const isSupplement = type.includes('bổ sung') || type.includes('bo') || type === 'additional';
+            const score = parseFloat(r.score.replace(",", "."));
+
+            if (isSupplement) {
+              supplementScore = score;
+            } else {
+              officialScore = score;
+            }
+          });
+
+          // Công thức: (Điểm Chính thức + Điểm Bổ sung) / 2
+          const combinedScore = (officialScore + supplementScore) / 2;
+          totalCombinedScore += combinedScore;
+          levelCount++;
+        }
+      });
+
+      if (levelCount > 0) {
+        const average = totalCombinedScore / levelCount;
         monthlyData.push({
           month: month,
           average: average,
-          count: countedRecords.length,
+          count: levelCount,
           records: monthRecords,
         });
       } else {

@@ -15,21 +15,21 @@ export async function GET(request: NextRequest) {
 
     const questions = await pool.query(
       `SELECT
-        q.question_text,
-        q.question_type,
-        q.correct_answer,
+        cq.noi_dung_cau_hoi AS question_text,
+        cq.loai_cau_hoi AS question_type,
+        cq.dap_an_dung AS correct_answer,
         CASE
-          WHEN q.option_a IS NULL AND q.option_b IS NULL AND q.option_c IS NULL AND q.option_d IS NULL THEN NULL
-          ELSE jsonb_build_array(q.option_a, q.option_b, q.option_c, q.option_d)
+          WHEN cq.lua_chon_a IS NULL AND cq.lua_chon_b IS NULL AND cq.lua_chon_c IS NULL AND cq.lua_chon_d IS NULL THEN NULL
+          ELSE jsonb_build_array(cq.lua_chon_a, cq.lua_chon_b, cq.lua_chon_c, cq.lua_chon_d)
         END AS options,
-        COALESCE(sq.points_override, q.points) AS points,
-        q.difficulty,
-        q.explanation,
-        sq.display_order AS order_number
+        cq.diem AS points,
+        cq.do_kho AS difficulty,
+        cq.giai_thich AS explanation,
+        cq.image_url AS image_url
       FROM chuyen_sau_bode_cauhoi sq
-      JOIN chuyen_sau_cauhoi q ON q.id = sq.question_id
-      WHERE sq.set_id = $1
-      ORDER BY sq.display_order ASC`,
+      JOIN chuyen_sau_cauhoi cq ON cq.id = sq.id_cau
+      WHERE sq.id_de = $1
+      ORDER BY sq.thu_tu_hien_thi ASC`,
       [setId]
     );
 
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
         q.points || 1,
         q.difficulty || 'medium',
         escapeCsvValue(q.explanation || ''),
-        '',
+        escapeCsvValue(q.image_url || ''),
       ].join(',');
     });
 

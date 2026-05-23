@@ -1002,7 +1002,7 @@ export default function Comments({
             <div className="mt-2 flex flex-wrap gap-2">
               <Button
                 size="sm"
-                variant={sortBy === 'most_reactions' ? 'default' : 'outline'}
+                variant={sortBy === 'newest' ? 'default' : 'outline'}
                 onClick={() => {
                   setSortBy('newest')
                   setDisplayCount(5)
@@ -1014,7 +1014,7 @@ export default function Comments({
               </Button>
               <Button
                 size="sm"
-                variant={sortBy === 'newest' ? 'default' : 'outline'}
+                variant={sortBy === 'most_reactions' ? 'default' : 'outline'}
                 onClick={() => {
                   setSortBy('most_reactions')
                   setDisplayCount(5)

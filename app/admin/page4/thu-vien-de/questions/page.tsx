@@ -129,7 +129,7 @@ function ExamSetQuestionsContent() {
         question_text: normalizedQuestionText,
         question_type: questionType,
         correct_answer: correctAnswer,
-        options: questionType === 'multiple_choice' || questionType === 'true_false'
+        options: questionType === 'multiple_choice' || questionType === 'true_false' || questionType === 'multiple_select'
           ? normalizedOptions
           : null,
         image_url: questionData.image_url || null,

@@ -89,7 +89,13 @@ export async function GET(request: NextRequest) {
         csr.dia_chi_email,
         csr.co_so_lam_viec,
         csr.khu_vuc,
-        COALESCE(csr.hinh_thuc, 'Chính Thức')                    AS registration_type,
+        CASE
+          WHEN LOWER(TRIM(COALESCE(csr.hinh_thuc, ''))) LIKE '%b%sung%'
+            OR LOWER(TRIM(COALESCE(csr.hinh_thuc, ''))) LIKE '%bo%'
+            OR LOWER(TRIM(COALESCE(csr.hinh_thuc, ''))) = 'additional'
+          THEN 'additional'
+          ELSE 'official'
+        END                                                     AS registration_type,
         csr.khoi_giang_day                                       AS block_code,
         csm.ma_mon                                               AS subject_code,
         csm.ten_mon                                              AS subject_name,

@@ -66,6 +66,8 @@ async function selectStoredQuestion(client: any, id: unknown) {
   );
 }
 
+// ─── GET ─────────────────────────────────────────────────────────────────────
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -112,37 +114,41 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// ─── POST ────────────────────────────────────────────────────────────────────
+
 export async function POST(request: NextRequest) {
-  let client: any = null;
+  // Persist ảnh base64/blob TRƯỚC khi pool.connect() để tránh deadlock (pool.max=1)
+  const body = await request.json();
+  const {
+    set_id,
+    question_text,
+    question_type = 'trac_nghiem',
+    correct_answer,
+    options,
+    explanation,
+    points = 1,
+    order_number,
+    difficulty = 'medium',
+    image_url,
+  } = body;
+
+  if (!set_id) {
+    return NextResponse.json({ error: 'set_id is required' }, { status: 400 });
+  }
+
+  // Tất cả persist/upload ảnh xảy ra TRƯỚC khi lấy DB connection
+  const persistedText = await persistHtmlValue(question_text);
+  const normalizedText = persistedText?.trim() || '[Chua co noi dung]';
+  const persistedCorrectAnswer = await persistHtmlValue(correct_answer);
+  const persistedExplanation = await persistHtmlValue(explanation);
+  const persistedOptions = await persistOptions(options);
+  const persistedImageUrl = await persistQuestionImageUrl(image_url);
+
+  const client = await pool.connect();
   try {
-    const body = await request.json();
-    const {
-      set_id,
-      question_text,
-      question_type = 'trac_nghiem',
-      correct_answer,
-      options,
-      explanation,
-      points = 1,
-      order_number,
-      difficulty = 'medium',
-      image_url,
-    } = body;
-
-    if (!set_id) {
-      return NextResponse.json({ error: 'set_id is required' }, { status: 400 });
-    }
-
-    const persistedText = await persistHtmlValue(question_text);
-    const normalizedText = persistedText?.trim() || '[Chua co noi dung]';
-    const persistedCorrectAnswer = await persistHtmlValue(correct_answer);
-    const persistedExplanation = await persistHtmlValue(explanation);
-    const persistedOptions = await persistOptions(options);
-    const persistedImageUrl = await persistQuestionImageUrl(image_url);
-
-    client = await pool.connect();
     await client.query('BEGIN');
 
+    // Dùng client cho tất cả queries — không gọi pool.query() khi client đang giữ connection
     const questionResult = await client.query(
       `INSERT INTO chuyen_sau_cauhoi (
          loai_cau_hoi, noi_dung_cau_hoi,
@@ -164,6 +170,7 @@ export async function POST(request: NextRequest) {
         persistedImageUrl,
       ],
     );
+
     const questionId = questionResult.rows[0].id;
 
     await client.query(
@@ -203,13 +210,15 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
   } catch (error) {
-    if (client) await client.query('ROLLBACK').catch(() => undefined);
+    await client.query('ROLLBACK').catch(() => undefined);
     console.error('Error creating exam set question:', error);
     return NextResponse.json({ error: 'Failed to create exam set question' }, { status: 500 });
   } finally {
-    client?.release();
+    client.release();
   }
 }
+
+// ─── PUT ─────────────────────────────────────────────────────────────────────
 
 export async function PUT(request: NextRequest) {
   let client: any = null;
@@ -242,48 +251,57 @@ export async function PUT(request: NextRequest) {
         mappingValues.push(Number(updates[key] || 1));
         continue;
       }
+
       if (key === 'points') {
         questionClauses.push(`diem = $${questionValues.length + 1}`);
         questionValues.push(Number(updates[key] || 1));
         continue;
       }
+
       if (key === 'options') {
         const persisted = await persistOptions(updates[key]);
         const fields = ['lua_chon_a', 'lua_chon_b', 'lua_chon_c', 'lua_chon_d'] as const;
-        fields.forEach((field, idx) => {
+        for (const [idx, field] of fields.entries()) {
           questionClauses.push(`${field} = $${questionValues.length + 1}`);
           questionValues.push(persisted[idx] || null);
-        });
+        }
         continue;
       }
+
       if (key === 'question_text') {
         questionClauses.push(`noi_dung_cau_hoi = $${questionValues.length + 1}`);
         questionValues.push(await persistHtmlValue(updates[key]));
         continue;
       }
+
       if (key === 'correct_answer') {
         questionClauses.push(`dap_an_dung = $${questionValues.length + 1}`);
         questionValues.push(await persistHtmlValue(updates[key]));
         continue;
       }
+
+      if (key === 'image_url') {
+        questionClauses.push(`image_url = $${questionValues.length + 1}`);
+        questionValues.push(await persistQuestionImageUrl(updates[key]));
+        continue;
+      }
+
       if (key === 'explanation') {
         questionClauses.push(`giai_thich = $${questionValues.length + 1}`);
         questionValues.push(await persistHtmlValue(updates[key]));
         continue;
       }
+
       if (key === 'question_type') {
         questionClauses.push(`loai_cau_hoi = $${questionValues.length + 1}`);
         questionValues.push(updates[key] === 'essay' ? 'tu_luan' : updates[key]);
         continue;
       }
+
       if (key === 'difficulty') {
         questionClauses.push(`do_kho = $${questionValues.length + 1}`);
         questionValues.push(normalizeDifficulty(updates[key]));
         continue;
-      }
-      if (key === 'image_url') {
-        questionClauses.push(`image_url = $${questionValues.length + 1}`);
-        questionValues.push(await persistQuestionImageUrl(updates[key]));
       }
     }
 
@@ -335,6 +353,8 @@ export async function PUT(request: NextRequest) {
     client?.release();
   }
 }
+
+// ─── DELETE ──────────────────────────────────────────────────────────────────
 
 export async function DELETE(request: NextRequest) {
   let client: any = null;

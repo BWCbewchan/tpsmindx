@@ -54,6 +54,12 @@ export interface HrSheetCandidate {
   subjectCode: string;
   desiredProgram: string;
   sheetGen: string;
+  birthYear?: string;
+  facebookUrl?: string;
+  teachingExperience?: string;
+  gender?: string;
+  currentAddress?: string;
+  regionName?: string;
   raw: Record<string, string>;
 }
 

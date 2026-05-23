@@ -35,6 +35,8 @@ const MOCK_SCHEDULES = [
   { gen: '107', region: 'Hà Nội', session: 3, date: '2026-04-06', time: '18:30 - 21:00', location: 'Nguyễn Phong Sắc' },
 ];
 
+export type TrainingScheduleEvent = (typeof MOCK_SCHEDULES)[number];
+
 // ─── Utils ──────────────────────────────────────────────────────────────────
 function startOfDay(date: Date) {
   const copy = new Date(date);
@@ -84,6 +86,9 @@ interface GenOverviewTabProps {
   activeGenKey: string;
   activeGenInfo: { genCode: string; regionCode: string } | null;
   onSelectGen: (entry: GenEntry) => void;
+  schedules?: TrainingScheduleEvent[];
+  scopeLabel?: string;
+  hideInfoBox?: boolean;
 }
 
 export default function GenOverviewTab({ 
@@ -91,7 +96,10 @@ export default function GenOverviewTab({
   regionFilter,
   activeGenKey,
   activeGenInfo,
-  onSelectGen
+  onSelectGen,
+  schedules,
+  scopeLabel,
+  hideInfoBox = false,
 }: GenOverviewTabProps) {
   const [focusDate, setFocusDate] = useState(new Date());
 
@@ -99,9 +107,10 @@ export default function GenOverviewTab({
   const cells = useMemo(() => buildCalendarCells(focusDate), [focusDate]);
 
   const filteredSchedules = useMemo(() => {
-    if (!activeGenKey) return MOCK_SCHEDULES;
-    return MOCK_SCHEDULES.filter(s => s.gen === activeGenInfo?.genCode);
-  }, [activeGenKey, activeGenInfo]);
+    const source = schedules || MOCK_SCHEDULES;
+    if (!activeGenKey || schedules) return source;
+    return source.filter(s => s.gen === activeGenInfo?.genCode);
+  }, [activeGenKey, activeGenInfo, schedules]);
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, typeof MOCK_SCHEDULES>();
@@ -137,7 +146,7 @@ export default function GenOverviewTab({
               <div>
                 <h2 className="text-lg font-black text-gray-900 capitalize">{currentMonthLabel}</h2>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                  {activeGenKey ? `Đang xem: ${activeGenInfo?.genCode}` : 'Lịch training tất cả GEN'}
+                  {scopeLabel || (activeGenKey ? `Đang xem: ${activeGenInfo?.genCode}` : 'Lịch training tất cả GEN')}
                 </p>
               </div>
             </div>
@@ -239,17 +248,19 @@ export default function GenOverviewTab({
         </div>
 
         {/* Info Box */}
-        <div className="mx-6 mb-6 rounded-2xl bg-emerald-50 border border-emerald-100 p-4 flex items-start gap-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm border border-emerald-50">
-            <Info className="h-5 w-5" />
+        {!hideInfoBox && (
+          <div className="mx-6 mb-6 rounded-2xl bg-emerald-50 border border-emerald-100 p-4 flex items-start gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm border border-emerald-50">
+              <Info className="h-5 w-5" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-black text-emerald-900">Tính năng Calendar</h4>
+              <p className="text-xs text-emerald-700/80 leading-relaxed font-medium">
+                Lịch training giúp HR theo dõi tất cả các buổi đào tạo đang diễn ra. Bạn có thể nhấn vào từng GEN ở sidebar bên trái để lọc riêng lịch của GEN đó.
+              </p>
+            </div>
           </div>
-          <div className="space-y-1">
-            <h4 className="text-sm font-black text-emerald-900">Tính năng Calendar</h4>
-            <p className="text-xs text-emerald-700/80 leading-relaxed font-medium">
-              Lịch training giúp HR theo dõi tất cả các buổi đào tạo đang diễn ra. Bạn có thể nhấn vào từng GEN ở sidebar bên trái để lọc riêng lịch của GEN đó.
-            </p>
-          </div>
-        </div>
+        )}
       </section>
     </div>
   );

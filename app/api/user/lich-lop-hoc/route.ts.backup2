@@ -1,0 +1,138 @@
+import pool from '@/lib/db';
+import { findTeacherRowByEmailOrCode } from '@/lib/teacher-profile-bundle';
+import { TPS_SESSION_COOKIE, verifySessionCookieValue } from '@/lib/session-cookie';
+import { NextRequest, NextResponse } from 'next/server';
+import { callLmsApi } from '@/lib/lms-api';
+
+const FIREBASE_API_KEY = process.env.FIREBASE_API_KEY || process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '';
+const FIREBASE_REFRESH_URL = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`;
+
+const GET_TEACHER_ID_QUERY = /* graphql */ `
+  query GetTeacherByCode($code: String) {
+    users(payload: { filter_textSearch: $code, pageIndex: 0, itemsPerPage: 10 }) {
+      data { id, username, code, email, fullName }
+    }
+  }
+`;
+
+const GET_TEACHER_CLASSES_QUERY = /* graphql */ `
+  query GetTeacherClasses($teacherId: String, $haveSlotFrom: Date, $haveSlotTo: Date) {
+    classes(payload: {
+      teacher_equals: $teacherId,
+      haveSlot_from: $haveSlotFrom,
+      haveSlot_to: $haveSlotTo,
+      status_in: ["RUNNING", "PREPARING"],
+      pageIndex: 0,
+      itemsPerPage: 200,
+      orderBy: "startDate_asc"
+    }) {
+      data {
+        id, name, status, course { id, name, shortName, courseLine { id, name } },
+        centre { id, name, shortName },
+        slots {
+          _id, date, startTime, endTime, sessionHour,
+          teachers { _id, teacher { id, fullName }, role { shortName } },
+        },
+        students { _id, student { id, fullName }, activeInClass },
+      }
+    }
+  }
+`;
+
+async function refreshFirebaseToken(refreshToken: string): Promise<string | null> {
+  // ... (implementation is correct, keep as is)
+  if (!FIREBASE_API_KEY) return null;
+  try {
+    const res = await fetch(FIREBASE_REFRESH_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.id_token as string) || null;
+  } catch {
+    return null;
+  }
+}
+
+function isFirebaseTokenExpired(token: string): boolean {
+    // ... (implementation is correct, keep as is)
+    try {
+        const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        return Date.now() / 1000 > payload.exp - 60;
+    } catch { return true; }
+}
+
+export async function GET(request: NextRequest) {
+  const sessionCookie = request.cookies.get(TPS_SESSION_COOKIE)?.value;
+  if (!sessionCookie) {
+    return NextResponse.json({ error: 'Chưa đăng nhập' }, { status: 401 });
+  }
+
+  const session = await verifySessionCookieValue(sessionCookie);
+  if (!session?.email) {
+    return NextResponse.json({ error: 'Phiên đăng nhập không hợp lệ' }, { status: 401 });
+  }
+
+  let firebaseToken = request.cookies.get('lms_firebase_token')?.value || '';
+  const refreshToken = request.cookies.get('lms_firebase_refresh')?.value || '';
+
+  if (!firebaseToken && !refreshToken) {
+    return NextResponse.json({ noLmsToken: true, message: 'Tài khoản này không có kết nối LMS.' });
+  }
+
+  let authHeader = `Bearer ${firebaseToken}`;
+
+  const teacherRow = await findTeacherRowByEmailOrCode(pool, { email: session.email });
+  if (!teacherRow) {
+    return NextResponse.json({ success: false, message: 'Không tìm thấy thông tin giáo viên trong hệ thống.' });
+  }
+  
+  const teacherCode = String(teacherRow.code ?? '').trim();
+  const teacherEmail = String(teacherRow.work_email ?? session.email).trim();
+
+  try {
+    const lookupResult = await callLmsApi<any>({ query: GET_TEACHER_ID_QUERY, variables: { code: teacherCode } }, authHeader);
+    const lmsTeacherId = lookupResult.data?.users?.data?.[0]?.id;
+    
+    if (!lmsTeacherId) {
+      return NextResponse.json({ success: false, message: 'Không tìm thấy giáo viên trên LMS.' });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const fromParam = searchParams.get('from');
+    const toParam = searchParams.get('to');
+    const LMS_TZ_OFFSET_MS = 7 * 60 * 60 * 1000;
+    const haveSlotFrom = new Date(new Date(fromParam!).getTime() - LMS_TZ_OFFSET_MS).toISOString();
+    const haveSlotTo = new Date(new Date(toParam!).getTime() - LMS_TZ_OFFSET_MS).toISOString();
+
+    const classesResult = await callLmsApi<any>({
+      query: GET_TEACHER_CLASSES_QUERY,
+      variables: { teacherId: lmsTeacherId, haveSlotFrom, haveSlotTo },
+    }, authHeader);
+    
+    // Remap data
+    const slots = classesResult.data.classes.data.flatMap((cls: any) =>
+      cls.slots.map((slot: any) => ({
+        id: slot._id,
+        classId: cls.id,
+        className: cls.name,
+        courseName: cls.course?.name,
+        courseLineName: cls.course?.courseLine?.name,
+        centreName: cls.centre?.shortName || cls.centre?.name,
+        status: cls.status,
+        students: (cls.students || []).filter((s:any) => s.activeInClass).map((s:any) => ({ id: s.student.id, fullName: s.student.fullName })),
+        date: slot.date,
+        startTime: slot.startTime,
+        endTime: slot.endTime,
+      }))
+    );
+
+    return NextResponse.json({ success: true, slots });
+
+  } catch (error: any) {
+    console.error('[lich-lop-hoc] Error:', error);
+    return NextResponse.json({ success: false, message: 'Không thể kết nối đến LMS API.' }, { status: 500 });
+  }
+}

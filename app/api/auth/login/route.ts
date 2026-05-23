@@ -181,6 +181,28 @@ export async function POST(request: NextRequest) {
       },
     });
     setSessionCookieOnResponse(res, edgeSessionJwt);
+
+    // Lưu Firebase idToken + refreshToken vào httpOnly cookie riêng để dùng cho LMS API
+    // Cookie này độc lập với session TPS, chỉ dùng để gọi lms-api.mindx.edu.vn
+    if (successData.idToken && typeof successData.idToken === 'string') {
+      res.cookies.set('lms_firebase_token', String(successData.idToken), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60, // 1 giờ — khớp thời hạn Firebase idToken
+      });
+    }
+    if (successData.refreshToken && typeof successData.refreshToken === 'string') {
+      res.cookies.set('lms_firebase_refresh', String(successData.refreshToken), {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 60 * 60 * 24 * 30, // 30 ngày — refresh token sống lâu hơn
+      });
+    }
+
     return res;
   } catch (error: unknown) {
     console.error('Login error:', error);

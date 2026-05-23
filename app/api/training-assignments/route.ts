@@ -224,6 +224,32 @@ export async function GET(request: Request) {
             quizEvidenceVideoIds,
           });
           row.video_completion_status = effective.completion_status;
+
+          // Merge imported score with recent_submission
+          const importedScores = sourceVideoIds
+            .map((id) => scoresMapAll.get(id)?.score)
+            .filter((s): s is number => s !== undefined && s !== null);
+          const bestImportedScore = importedScores.length > 0 ? Math.max(...importedScores) : 0;
+
+          let finalScore = bestImportedScore;
+          if (row.recent_submission && (row.recent_submission as any).score !== null) {
+            finalScore = Math.max(bestImportedScore, Number((row.recent_submission as any).score));
+          }
+
+          if (finalScore > 0 || row.recent_submission) {
+            if (!row.recent_submission) {
+              row.recent_submission = {
+                score: finalScore,
+                percentage: null,
+                is_passed: true,
+                submitted_at: effective.completed_at || null,
+                attempt_number: 1,
+                total_points: row.question_count // To display correctly on frontend
+              };
+            } else {
+              (row.recent_submission as any).score = finalScore;
+            }
+          }
         } else {
           row.video_completion_status = null;
         }

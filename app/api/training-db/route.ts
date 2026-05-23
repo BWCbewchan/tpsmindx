@@ -107,7 +107,7 @@ export const GET = withApiProtection(async (request: NextRequest) => {
         )
     `;
 
-    const [videosResult, scoresResult, quizEvidenceResult] = await Promise.all([
+    const [videosResult, scoresResult, quizEvidenceResult, attemptsResult] = await Promise.all([
       pool.query(videosQuery),
       pool.query(
         `
@@ -125,6 +125,17 @@ export const GET = withApiProtection(async (request: NextRequest) => {
         [teacherCode],
       ),
       pool.query(quizEvidenceByVideoQuery, [teacherCode]),
+      pool.query(`
+        SELECT
+          tva.video_id,
+          tas.score,
+          tas.status
+        FROM training_assignment_submissions tas
+        JOIN training_video_assignments tva ON tva.id = tas.assignment_id
+        WHERE LOWER(TRIM(tas.teacher_code)) = LOWER(TRIM($1))
+          AND tas.status IN ('submitted', 'graded')
+          AND tas.score IS NOT NULL
+      `, [teacherCode]),
     ]);
 
     const quizEvidenceVideoIds = new Set<number>(
@@ -173,6 +184,15 @@ export const GET = withApiProtection(async (request: NextRequest) => {
         server_time_seconds: Number(row.server_time_seconds) || 0,
         last_heartbeat_at: row.last_heartbeat_at ?? null,
       });
+    });
+
+    // Map video_id -> best quiz score
+    const quizScoresMap = new Map<number, number>();
+    attemptsResult.rows.forEach((row: { video_id: number; score: number }) => {
+      const currentBest = quizScoresMap.get(row.video_id) || -Infinity;
+      if (row.score > currentBest) {
+        quizScoresMap.set(row.video_id, row.score);
+      }
     });
 
     // Group split videos into one representative lesson per group.
@@ -272,37 +292,31 @@ export const GET = withApiProtection(async (request: NextRequest) => {
         hasTmsWatchHeartbeat,
       });
 
-      return {
-        id: video.id,
-        name: video.title || `Video ${video.id}`,
-        score: scoreData ? scoreData.score : 0,
-        link: normalizeStorageUrl(video.video_link),
-        segments: video.segments, // Included chunks
-        thumbnail_url: normalizeStorageUrl(video.thumbnail_url) || null,
-        description: video.description,
-        duration_minutes: video.duration_minutes,
-        lesson_number: video.lesson_number || (index + 1),
-        completion_status: effective.completion_status,
-        completed_at: effective.completed_at,
-        time_spent_seconds: displayWatchedSeconds,
-      };
+       const importedScore = scoreData ? scoreData.score : 0;
+       const quizScore = quizScoresMap.get(video.id) || -Infinity;
+       const finalScore = Math.max(importedScore, quizScore);
+
+       return {
+         id: video.id,
+         name: video.title || `Video ${video.id}`,
+         score: finalScore === -Infinity ? 0 : finalScore,
+         link: normalizeStorageUrl(video.video_link),
+         segments: video.segments, // Included chunks
+         thumbnail_url: normalizeStorageUrl(video.thumbnail_url) || null,
+         description: video.description,
+         duration_minutes: video.duration_minutes,
+         lesson_number: video.lesson_number || (index + 1),
+         completion_status: effective.completion_status,
+         completed_at: effective.completed_at,
+         time_spent_seconds: displayWatchedSeconds,
+       };
     });
 
-    // Tính averageScore từ submissions thực tế — giống công thức tại public/training-detail
-    // Lấy điểm cao nhất mỗi assignment đã nộp (submitted/graded) rồi tính trung bình
-    const assignmentScoreResult = await pool.query(
-      `SELECT COALESCE(AVG(best_score), 0) as avg_score
-       FROM (
-         SELECT assignment_id, MAX(score) as best_score
-         FROM training_assignment_submissions
-         WHERE LOWER(TRIM(teacher_code)) = LOWER(TRIM($1))
-           AND status IN ('submitted', 'graded')
-           AND score IS NOT NULL
-         GROUP BY assignment_id
-       ) sub`,
-      [teacherCode]
-    );
-    const averageScore = parseFloat(assignmentScoreResult.rows[0]?.avg_score) || 0;
+    // Calculate averageScore from the merged lessons data
+    // Điểm trung bình bằng tổng điểm số chia cho tổng số lượng bài tập (lessons) bao gồm cả bài chưa làm
+    const averageScore = lessons.length > 0
+      ? lessons.reduce((sum, l) => sum + (l.score || 0), 0) / lessons.length
+      : 0;
 
     const trainingData = {
       no: teacherStats.id,

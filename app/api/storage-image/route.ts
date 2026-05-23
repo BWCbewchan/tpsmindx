@@ -24,6 +24,7 @@ const ANONYMOUS_READ_BUCKETS = new Set([
   'mindx-thumbnails',
   'mindx-videos',
   'mindx-question-images',
+  'mindx-candidate-harvest',
 ]);
 
 async function isAuthenticatedRequest(request: NextRequest): Promise<boolean> {

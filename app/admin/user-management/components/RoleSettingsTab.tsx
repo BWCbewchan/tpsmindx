@@ -102,7 +102,13 @@ export default function RoleSettingsTab() {
 
     if (loading) return <div className="flex justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-[#a1001f]" /></div>;
 
-    const depts = [...new Set(roles.map(r => r.department))];
+    // Group departments case-insensitively, display in uppercase
+    const deptMap = new Map<string, string>(); // lowercase key → display name (uppercase)
+    roles.forEach(r => {
+        const key = (r.department ?? 'Other').toLowerCase();
+        if (!deptMap.has(key)) deptMap.set(key, (r.department ?? 'Other').toUpperCase());
+    });
+    const depts = [...deptMap.keys()]; // lowercase keys used for comparison
 
     return (
         <div className="space-y-6">
@@ -115,30 +121,30 @@ export default function RoleSettingsTab() {
             </div>
 
             {/* Role list by department */}
-            {depts.map(dept => (
-                <div key={dept}>
-                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">{dept}</h3>
+            {depts.map(deptKey => (
+                <div key={deptKey}>
+                    <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 px-1">{deptMap.get(deptKey)}</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {roles.filter(r => r.department === dept).map(r => {
+                        {roles.filter(r => (r.department ?? 'Other').toLowerCase() === deptKey).map(r => {
                             const isSelected = selectedRole?.role_code === r.role_code;
                             return (
                                 <Button 
                                     key={r.role_code} 
                                     onClick={() => openRole(r)}
                                     variant="outline"
-                                    className={`text-left p-4 h-auto justify-start transition-all duration-200 hover:shadow-md ${
+                                    className={`w-full whitespace-normal text-left p-4 h-auto justify-start transition-all duration-200 hover:shadow-md ${
                                         isSelected ? 'border-[#a1001f] bg-red-50 shadow-md' : 'hover:border-gray-300'
                                     }`}
                                     asChild
                                 >
-                                    <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-sm font-bold text-gray-900">{r.role_code}</span>
-                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.permission_count > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                                    <div className="overflow-hidden flex flex-col items-start w-full">
+                                        <div className="flex items-center justify-between w-full mb-1">
+                                            <span className="text-sm font-bold text-gray-900 truncate pr-2">{r.role_code}</span>
+                                            <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${r.permission_count > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                                                 }`}>{r.permission_count} màn hình</span>
                                         </div>
-                                        <p className="text-xs font-medium text-gray-700">{r.role_name}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">{r.description}</p>
+                                        <p className="text-xs font-medium text-gray-700 w-full truncate">{r.role_name}</p>
+                                        <p className="text-xs text-gray-400 mt-0.5 w-full line-clamp-2" title={r.description}>{r.description}</p>
                                     </div>
                                 </Button>
                             );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from '@/lib/auth-context';
+import { buildLoginRedirectPath } from '@/lib/auth-redirect';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef } from 'react';
 
@@ -14,7 +15,12 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     // Only redirect once to prevent loop
     if (!isLoading && !user && pathname !== '/login' && !hasRedirected.current) {
       hasRedirected.current = true;
-      router.push('/login');
+      router.push(
+        buildLoginRedirectPath(
+          `${window.location.pathname}${window.location.search}${window.location.hash}`,
+          window.location.origin,
+        ),
+      );
     }
     
     // Reset redirect flag when user logs in

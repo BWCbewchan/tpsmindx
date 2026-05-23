@@ -30,6 +30,7 @@ import { useAuth } from '@/lib/auth-context'
 import { HrCandidateRow, HrPagination, GenEntry } from '../types'
 
 const PAGE_SIZE = 50
+const CREATE_GEN_OPTION = '__create_gen__'
 
 const emptyPagination: HrPagination = {
   page: 1,
@@ -199,6 +200,7 @@ export default function HrGenPlannerPage() {
 
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set())
   const [creatingGen, setCreatingGen] = useState(false)
+  const [showBulkCreateGen, setShowBulkCreateGen] = useState(false)
   const [assigning, setAssigning] = useState(false)
 
   useEffect(() => {
@@ -354,11 +356,11 @@ export default function HrGenPlannerPage() {
     }, 0)
 
     let next = maxGenNumber + 1
-    while (uniqueGenCodes.has(`GEN ${next}`)) {
+    while (uniqueGenCodes.has(String(next))) {
       next += 1
     }
 
-    return `GEN ${next}`
+    return String(next)
   }, [availableGenEntries])
 
   const handleToggleSelect = (candidateKey: string) => {
@@ -403,6 +405,7 @@ export default function HrGenPlannerPage() {
       )
       setNewGenName('')
       setTargetGen(data.gen)
+      setShowBulkCreateGen(false)
       await fetchBoardData(true)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Lỗi không xác định')
@@ -935,16 +938,103 @@ export default function HrGenPlannerPage() {
                 {selectedRows.length > 0 && (
                   <div className="sticky bottom-4 z-20 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl">
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                      <p className="text-sm font-semibold text-gray-900">
-                        Đã chọn{' '}
-                        <span className="text-blue-600">
-                          {selectedRows.length}
-                        </span>{' '}
-                        ứng viên. Mục tiêu:{' '}
-                        <span className="text-emerald-700">
-                          {targetGen || 'Chưa chọn GEN'}
-                        </span>
-                      </p>
+                      <div className="flex flex-wrap items-center gap-3">
+                        <p className="text-sm font-semibold text-gray-900">
+                          Đã chọn{' '}
+                          <span className="text-blue-600 font-extrabold">
+                            {selectedRows.length}
+                          </span>{' '}
+                          ứng viên.
+                        </p>
+                        <div className="relative flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-semibold text-gray-500">Mục tiêu:</span>
+                          <select
+                            value={targetGen}
+                            onChange={(e) => {
+                              const value = e.target.value
+                              if (value === CREATE_GEN_OPTION) {
+                                if (!newGenName.trim()) setNewGenName(suggestedNextGen)
+                                setShowBulkCreateGen(true)
+                                return
+                              }
+                              setTargetGen(value)
+                              setShowBulkCreateGen(false)
+                            }}
+                            className="min-w-[11.25rem] cursor-pointer rounded-xl border border-gray-300 bg-white px-3 py-1.5 text-sm font-bold text-emerald-700 shadow-sm outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10"
+                          >
+                            <option value="">-- Chọn GEN mục tiêu --</option>
+                            <option value={CREATE_GEN_OPTION}>+ Tạo GEN mới...</option>
+                            {availableGenEntries.map((entry) => (
+                              <option key={entry.genCode} value={entry.genCode} className="text-gray-900">
+                                {entry.genCode}
+                              </option>
+                            ))}
+                          </select>
+                          {showBulkCreateGen && (
+                            <div className="absolute bottom-full left-0 z-30 mb-2 w-[min(92vw,420px)] rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-bold text-gray-900">Tạo GEN mục tiêu mới</p>
+                                  <p className="text-xs font-medium text-gray-500">
+                                    GEN mới sẽ được chọn ngay sau khi tạo.
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowBulkCreateGen(false)}
+                                  className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 hover:bg-gray-50"
+                                  aria-label="Đóng tạo GEN"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                                <input
+                                  value={newGenName}
+                                  onChange={(e) => setNewGenName(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault()
+                                      void handleCreateGen()
+                                    }
+                                  }}
+                                  placeholder={`VD: ${suggestedNextGen}`}
+                                  className="h-10 min-w-0 flex-1 rounded-xl border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-900 outline-none focus:border-[#a1001f] focus:ring-4 focus:ring-[#a1001f]/10"
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={handleAutoCreateGen}
+                                    disabled={creatingGen}
+                                    className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 text-xs font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+                                    title={`Tạo nhanh GEN ${suggestedNextGen}`}
+                                  >
+                                    {creatingGen ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <WandSparkles className="h-4 w-4" />
+                                    )}
+                                    Gợi ý
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={handleCreateGen}
+                                    disabled={creatingGen}
+                                    className="inline-flex h-10 shrink-0 items-center gap-2 rounded-xl bg-[#a1001f] px-3 text-sm font-bold text-white hover:bg-[#880019] disabled:opacity-60"
+                                  >
+                                    {creatingGen ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Plus className="h-4 w-4" />
+                                    )}
+                                    Tạo
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"

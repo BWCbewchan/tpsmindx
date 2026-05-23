@@ -1081,7 +1081,7 @@ const migrations: Migration[] = [
     sql: `
       ALTER TABLE training_teacher_video_scores
         ADD COLUMN IF NOT EXISTS last_heartbeat_at TIMESTAMP,
-        ADD COLUMN IF NOT EXISTS server_time_seconds INTEGER DEFAULT 0;
+        ADD COLUMN IF NOT EXISTS server_time_seconds INTEGER DEFAULT 0  
 
       UPDATE training_teacher_video_scores
         SET server_time_seconds = COALESCE(time_spent_seconds, 0)
@@ -1996,6 +1996,224 @@ const migrations: Migration[] = [
         BEFORE UPDATE ON teacher_avatars
         FOR EACH ROW
         EXECUTE FUNCTION update_updated_at_column();
+    `,
+  },
+  {
+    name: 'V79_hr_onboarding_foundation',
+    version: 79,
+    sql: `
+      ALTER TABLE hr_candidates
+        ADD COLUMN IF NOT EXISTS candidate_code VARCHAR(20) UNIQUE,
+        ADD COLUMN IF NOT EXISTS initial_gen_id INTEGER,
+        ADD COLUMN IF NOT EXISTS current_gen_id INTEGER,
+        ADD COLUMN IF NOT EXISTS training_phase VARCHAR(30) DEFAULT 'new',
+        ADD COLUMN IF NOT EXISTS assessment_profile VARCHAR(30) DEFAULT 'default',
+        ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN DEFAULT FALSE,
+        ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+      CREATE TABLE IF NOT EXISTS hr_candidate_users (
+        id SERIAL PRIMARY KEY,
+        candidate_id INTEGER REFERENCES hr_candidates(id) ON DELETE CASCADE,
+        username VARCHAR(100) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        is_active BOOLEAN DEFAULT TRUE,
+        last_login_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS hr_candidate_gen_transfers (
+        id SERIAL PRIMARY KEY,
+        candidate_id INTEGER REFERENCES hr_candidates(id),
+        from_gen_id INTEGER,
+        to_gen_id INTEGER NOT NULL,
+        reason TEXT,
+        changed_by_email VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE training_videos ADD COLUMN IF NOT EXISTS video_category VARCHAR(50) DEFAULT 'general';
+      CREATE INDEX IF NOT EXISTS idx_training_videos_category ON training_videos(video_category);
+    `,
+  },
+  {
+    name: 'V80_hr_observe_sessions',
+    version: 80,
+    sql: `
+      CREATE TABLE IF NOT EXISTS hr_observe_sessions (
+        id SERIAL PRIMARY KEY,
+        candidate_id INTEGER REFERENCES hr_candidates(id) ON DELETE CASCADE,
+        center_code VARCHAR(100) NOT NULL,
+        observe_date DATE NOT NULL,
+        class_type VARCHAR(50) NOT NULL,
+        harvest_file_url TEXT NOT NULL,
+        status VARCHAR(20) DEFAULT 'submitted',
+        reviewed_by VARCHAR(255),
+        reviewed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `,
+  },
+  {
+    name: 'V81_hr_candidate_assessments',
+    version: 81,
+    sql: `
+      CREATE TABLE IF NOT EXISTS hr_candidate_assessments (
+        id SERIAL PRIMARY KEY,
+        candidate_id INTEGER REFERENCES hr_candidates(id) ON DELETE CASCADE,
+        evaluator_email VARCHAR(255) NOT NULL,
+        assessment_type VARCHAR(50) NOT NULL,
+        total_score DECIMAL(5,2),
+         webinars_score DECIMAL(5,2),
+        is_passed BOOLEAN NOT NULL,
+        feedback_note TEXT,
+        criteria_scores JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(candidate_id, assessment_type)
+      );
+    `,
+  },
+  {
+    name: 'V82_app_screens_onboarding',
+    version: 82,
+    sql: `
+      INSERT INTO app_screens (route_path, label, group_name, sort_order, is_active)
+      VALUES 
+        ('/admin/hr-onboarding/videos', 'Video Đào tạo Đầu vào', 'Đào tạo đầu vào', 11, true),
+        ('/candidate-portal', 'Cổng Ứng viên (Candidate Portal)', 'Đào tạo đầu vào', 12, true)
+      ON CONFLICT (route_path) DO NOTHING;
+    `,
+  },
+  {
+    name: 'V83_add_candidate_role',
+    version: 83,
+    sql: `
+      INSERT INTO roles (role_code, role_name, department, description) 
+      VALUES ('CANDI', 'Candidate', 'TEACHING', 'Ứng viên giáo viên đào tạo đầu vào')
+      ON CONFLICT (role_code) DO NOTHING;
+    `,
+  },
+  {
+    name: 'V84_hr_candidates_data_migration',
+    version: 84,
+    sql: `
+      -- 1. Chuyển dữ liệu từ hr_candidate_gen_assignments sang hr_candidates
+      -- Các bản ghi cũ sẽ có candidate_code là NULL (được phép trong PostgreSQL UNIQUE constraint)
+      INSERT INTO hr_candidates (
+        full_name,
+        email,
+        phone,
+        gen_id,
+        initial_gen_id,
+        current_gen_id,
+        status,
+        source,
+        created_by_email,
+        created_at,
+        updated_at
+      )
+      SELECT
+        COALESCE(a.candidate_name, 'Unknown'),
+        a.candidate_email,
+        a.candidate_phone,
+        g.id as gen_id,
+        g.id as initial_gen_id,
+        g.id as current_gen_id,
+        'new' as status,
+        'manual' as source,
+        a.assigned_by_email,
+        a.assigned_at,
+        a.updated_at
+      FROM hr_candidate_gen_assignments a
+      LEFT JOIN hr_gen_catalog g ON a.assigned_gen = g.gen_name
+      WHERE a.candidate_email IS NOT NULL
+      ON CONFLICT (email, gen_id) DO NOTHING;
+    `
+  },
+  {
+    name: 'V85_add_hr_candidate_details',
+    version: 85,
+    sql: `
+      ALTER TABLE hr_candidates
+        ADD COLUMN IF NOT EXISTS birth_year VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS facebook_url VARCHAR(500),
+        ADD COLUMN IF NOT EXISTS teaching_experience VARCHAR(1000),
+        ADD COLUMN IF NOT EXISTS gender VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS current_address VARCHAR(1000),
+        ADD COLUMN IF NOT EXISTS region_name VARCHAR(100);
+    `
+  },
+  {
+    name: 'V86_teaching_documents_secure_library',
+    version: 86,
+    sql: `
+      CREATE TABLE IF NOT EXISTS teaching_documents (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        s3_bucket VARCHAR(100) NOT NULL,
+        s3_key VARCHAR(500) NOT NULL UNIQUE,
+        file_name VARCHAR(255) NOT NULL,
+        file_size BIGINT NOT NULL,
+        file_type VARCHAR(100) NOT NULL,
+        subject_name VARCHAR(150) NOT NULL,
+        document_level VARCHAR(50) NOT NULL CHECK (document_level IN ('Basic', 'Advance', 'Intensive')),
+        lesson_number VARCHAR(100) NOT NULL,
+        is_secure_view BOOLEAN DEFAULT TRUE,
+        watermark_config JSONB DEFAULT '{"show_email": true, "show_ip": true, "opacity": 0.15}'::jsonb,
+        created_by_email VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_teaching_documents_tree
+        ON teaching_documents(subject_name, document_level, lesson_number);
+      CREATE INDEX IF NOT EXISTS idx_teaching_documents_created_at
+        ON teaching_documents(created_at DESC);
+
+      DROP TRIGGER IF EXISTS update_teaching_documents_updated_at ON teaching_documents;
+      CREATE TRIGGER update_teaching_documents_updated_at
+        BEFORE UPDATE ON teaching_documents
+        FOR EACH ROW
+        EXECUTE FUNCTION update_updated_at_column();
+
+      INSERT INTO app_screens (route_path, label, group_name, sort_order, is_active)
+      VALUES
+        ('/admin/quan-ly-tai-lieu-giang-day', 'Quản lý tài liệu giảng dạy', 'Tài liệu giảng dạy', 30, true),
+        ('/user/tai-lieu-giang-day', 'Tài liệu giảng dạy', 'Tài liệu giảng dạy', 31, true)
+      ON CONFLICT (route_path) DO NOTHING;
+
+      INSERT INTO app_permissions (user_id, route_path, can_access)
+      SELECT u.id, '/admin/quan-ly-tai-lieu-giang-day', true
+      FROM app_users u
+      WHERE u.role = 'super_admin'
+      ON CONFLICT (user_id, route_path) DO NOTHING;
+    `,
+  },
+  {
+    name: 'V87_teaching_documents_status',
+    version: 87,
+    sql: `
+      ALTER TABLE teaching_documents
+        ADD COLUMN IF NOT EXISTS document_status VARCHAR(20) DEFAULT 'published'
+          CHECK (document_status IN ('published', 'draft', 'disabled'));
+
+      UPDATE teaching_documents
+      SET document_status = 'published'
+      WHERE document_status IS NULL;
+
+      CREATE INDEX IF NOT EXISTS idx_teaching_documents_status
+        ON teaching_documents(document_status);
+    `,
+  },
+  {
+    name: 'V88_teaching_documents_course_name',
+    version: 88,
+    sql: `
+      ALTER TABLE teaching_documents
+        ADD COLUMN IF NOT EXISTS course_name VARCHAR(150);
+
+      CREATE INDEX IF NOT EXISTS idx_teaching_documents_course_name
+        ON teaching_documents(course_name);
     `,
   },
 ]

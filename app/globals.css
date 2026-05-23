@@ -144,6 +144,8 @@
 
 @layer base {
   :root {
+    --font-exo: 'Exo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-kaushan-script: 'Kaushan Script', 'Brush Script MT', cursive;
     --app-background: #f8fafc;
     --app-foreground: #0f172a;
     --app-card: #ffffff;

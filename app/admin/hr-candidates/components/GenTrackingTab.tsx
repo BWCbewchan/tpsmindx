@@ -10,7 +10,10 @@ import {
   Save,
   Search,
   Users,
+  ArrowLeftRight,
+  Star,
 } from 'lucide-react'
+import TransferGenModal from './TransferGenModal'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 type GenEntry = {
@@ -35,6 +38,11 @@ interface DbCandidate {
   full_name: string
   email: string
   status: string
+  candidate_code?: string
+  training_phase?: string
+  qualification_result?: string
+  weighted_score?: number | null
+  transfer_count?: number
   sessions: Array<{
     session_id: number
     session_number: number
@@ -97,6 +105,9 @@ export default function GenTrackingTab({
   const [saving, setSaving] = useState(false)
 
   const [candidateSearch, setCandidateSearch] = useState('')
+  const [transferModal, setTransferModal] = useState<{ open: boolean; candidate: any | null }>({
+    open: false, candidate: null,
+  })
 
   // Reset khi đổi region
   useEffect(() => {
@@ -382,6 +393,9 @@ export default function GenTrackingTab({
                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 min-w-[80px] text-center">Điểm TB</th>
                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 min-w-[90px] text-center">Chuyên cần</th>
                       <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 min-w-[90px] text-center">Trạng thái</th>
+                      <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 min-w-[90px] text-center">Phase</th>
+                      <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 min-w-[100px] text-center">Đánh giá</th>
+                      <th className="px-3 py-3 text-xs font-bold uppercase tracking-wider text-gray-500 min-w-[80px] text-center">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -506,6 +520,56 @@ export default function GenTrackingTab({
                               {candidate.status}
                             </span>
                           </td>
+
+                          {/* Training Phase */}
+                          <td className="px-3 py-2.5 align-middle text-center">
+                            {candidate.training_phase ? (
+                              <span className={`inline-flex px-2 py-0.5 text-[10px] font-bold rounded-full whitespace-nowrap ${
+                                candidate.training_phase === 'passed' ? 'bg-emerald-100 text-emerald-700' :
+                                candidate.training_phase.includes('failed') ? 'bg-red-100 text-red-700' :
+                                candidate.training_phase === 'dropped' ? 'bg-gray-100 text-gray-500' :
+                                candidate.training_phase === 'new' ? 'bg-blue-100 text-blue-700' :
+                                'bg-violet-100 text-violet-700'
+                              }`}>
+                                {candidate.training_phase}
+                              </span>
+                            ) : <span className="text-xs text-gray-400">—</span>}
+                          </td>
+
+                          {/* Qualification */}
+                          <td className="px-3 py-2.5 align-middle text-center">
+                            {candidate.qualification_result ? (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full ${
+                                  candidate.qualification_result === 'passed' ? 'bg-emerald-100 text-emerald-700' :
+                                  candidate.qualification_result === 'failed' ? 'bg-red-100 text-red-700' :
+                                  'bg-yellow-100 text-yellow-700'
+                                }`}>
+                                  <Star className="h-2.5 w-2.5" />
+                                  {candidate.qualification_result === 'passed' ? 'Đạt' :
+                                   candidate.qualification_result === 'failed' ? 'Trượt' : 'Chờ'}
+                                </span>
+                                {candidate.weighted_score != null && (
+                                  <span className="text-[10px] text-gray-400 font-bold">{Number(candidate.weighted_score).toFixed(2)}</span>
+                                )}
+                              </div>
+                            ) : <span className="text-xs text-gray-400">—</span>}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="px-3 py-2.5 align-middle text-center">
+                            <button
+                              onClick={() => setTransferModal({
+                                open: true,
+                                candidate: { id: candidate.candidate_id, full_name: candidate.full_name, current_gen_id: currentGenId },
+                              })}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition-colors"
+                              title="Chuyển GEN"
+                            >
+                              <ArrowLeftRight className="h-3 w-3" />
+                              {candidate.transfer_count ? `(${candidate.transfer_count})` : 'Chuyển'}
+                            </button>
+                          </td>
                         </tr>
                       )
                     })}
@@ -516,6 +580,19 @@ export default function GenTrackingTab({
           </>
         )}
       </section>
+
+      {/* Transfer GEN Modal */}
+      {transferModal.open && transferModal.candidate && (
+        <TransferGenModal
+          isOpen={transferModal.open}
+          onClose={() => setTransferModal({ open: false, candidate: null })}
+          candidate={transferModal.candidate}
+          onSuccess={() => {
+            setTransferModal({ open: false, candidate: null })
+            if (activeGenInfo) fetchData(activeGenInfo.genCode)
+          }}
+        />
+      )}
     </div>
   )
 }

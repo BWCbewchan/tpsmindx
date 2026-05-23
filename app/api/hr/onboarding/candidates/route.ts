@@ -89,20 +89,46 @@ export const POST = withApiProtection(async (req: NextRequest) => {
   }
 
   try {
+    // Determine initial_gen_id and current_gen_id
+    const initialGenId = gen_id || null;
+    const currentGenId = gen_id || null;
+
+    // Get gen_number from hr_gen_catalog if gen_id exists
+    let genNumber = 0;
+    if (gen_id) {
+      const genRes = await pool.query('SELECT gen_name FROM hr_gen_catalog WHERE id = $1', [gen_id]);
+      if (genRes.rows.length > 0) {
+        // Assume gen_name is like 'GEN 131', extract the number
+        const match = genRes.rows[0].gen_name.match(/\d+/);
+        if (match) genNumber = parseInt(match[0], 10);
+      }
+    }
+
+    // Generate candidate code
+    const { generateCandidateCode, createCandidateUser } = await import('@/lib/candidate-code');
+    const candidateCode = await generateCandidateCode(region_code || 'HN', genNumber, work_block || 'Tech');
+
     const result = await pool.query(
       `INSERT INTO hr_candidates
-         (full_name, email, phone, region_code, desired_campus, work_block, subject_code, gen_id, source, created_by_email)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'manual',$9)
+         (full_name, email, phone, region_code, desired_campus, work_block, subject_code, gen_id, initial_gen_id, current_gen_id, candidate_code, source, created_by_email)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'manual',$12)
        RETURNING *`,
       [full_name, email.toLowerCase().trim(), phone || null, region_code || null,
        desired_campus || null, work_block || null, subject_code || null,
-       gen_id || null, auth.sessionEmail]
+       gen_id || null, initialGenId, currentGenId, candidateCode, auth.sessionEmail]
     )
-    return NextResponse.json({ success: true, candidate: result.rows[0] }, { status: 201 })
+    
+    const candidate = result.rows[0];
+    
+    // Create candidate user
+    await createCandidateUser(candidate.id, candidateCode);
+
+    return NextResponse.json({ success: true, candidate }, { status: 201 })
   } catch (err: any) {
     if (err.code === '23505') {
       return NextResponse.json({ error: 'Ứng viên với email này đã tồn tại trong GEN.' }, { status: 409 })
     }
+    console.error('Create candidate error:', err);
     throw err
   }
 })

@@ -2287,3 +2287,24 @@ input[type='reset'] {
     overflow-x: auto;
   }
 }
+
+@media print {
+  .secure-doc-viewer {
+    min-height: 160px !important;
+    border: 2px solid #991b1b !important;
+    background: #fff !important;
+    color: #991b1b !important;
+    visibility: hidden;
+  }
+
+  .secure-doc-viewer::before {
+    content: "Tài liệu nội bộ không được phép in hoặc sao chép.";
+    display: block;
+    margin: 24px;
+    padding: 24px;
+    border: 2px solid #991b1b;
+    color: #991b1b;
+    font: 700 18px/1.5 sans-serif;
+    visibility: visible;
+  }
+}

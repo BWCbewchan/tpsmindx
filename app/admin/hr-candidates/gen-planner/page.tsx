@@ -203,8 +203,6 @@ export default function HrGenPlannerPage() {
 
   useEffect(() => {
     const regionParam = searchParams.get('region')
-    if (!regionParam) return
-
     if (
       regionParam === 'south' ||
       regionParam === 'north' ||
@@ -213,6 +211,17 @@ export default function HrGenPlannerPage() {
       setRegionFilter(regionParam as PlannerRegionFilter)
       setPage(1)
       setSelectedKeys(new Set())
+    }
+
+    const tabParam = searchParams.get('tab')
+    if (
+      tabParam === 'planner' ||
+      tabParam === 'tracking' ||
+      tabParam === 'scheduling' ||
+      tabParam === 'overview' ||
+      tabParam === 'onboarding'
+    ) {
+      setActiveTab(tabParam)
     }
   }, [searchParams])
 

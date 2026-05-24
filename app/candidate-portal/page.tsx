@@ -10,6 +10,7 @@ import {
   Download,
   ExternalLink,
   FileText,
+  Flag,
   LogOut,
   Mail,
   MapPin,
@@ -26,6 +27,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useSearchParams } from 'next/navigation';
 import GenOverviewTab, { TrainingScheduleEvent } from '../admin/hr-candidates/components/GenOverviewTab';
 import K12DocsClient, { K12ClientDocItem, K12ClientDocNode } from '@/components/k12-docs/K12DocsClient';
+import ImageLightbox from '@/components/ImageLightbox';
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { setVideo } from '@/lib/redux/features/trainingSlice';
@@ -408,6 +410,7 @@ function CandidatePortalContent() {
   const [harvestFile, setHarvestFile] = useState<File | null>(null);
   const [fileInputKey, setFileInputKey] = useState(0);
   const [isObserveModalOpen, setIsObserveModalOpen] = useState(false);
+  const [isRoadmapLightboxOpen, setIsRoadmapLightboxOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState(true);
   const [currentGen, setCurrentGen] = useState<CandidateCurrentGen | null>(null);
@@ -431,28 +434,15 @@ function CandidatePortalContent() {
   const [teLeaderSearch, setTeLeaderSearch] = useState('');
 
   const allowedTabs = useMemo(() => {
-    const tabs: CandidateTab[] = [
+    return [
       { id: 'roadmap', label: 'Lộ trình đào tạo', href: CANDIDATE_TAB_HREFS.roadmap },
       { id: 'observe', label: 'Quản lý dự thính', href: CANDIDATE_TAB_HREFS.observe },
-    ];
-    if (!profile) return tabs;
-    const perms = profile.permissions || [];
-    
-    if (perms.some(p => p === '/admin/hr-onboarding/videos')) {
-      tabs.push({ id: 'videos', label: 'Video Đào tạo đầu vào', href: CANDIDATE_TAB_HREFS.videos });
-    }
-    
-    if (perms.some(p => p === '/admin/hr-candidates/gen-planner/overview' || p === '/admin/hr-candidates')) {
-      tabs.push({ id: 'schedule', label: 'Lịch đào tạo', href: CANDIDATE_TAB_HREFS.schedule });
-    }
-
-    tabs.push(
+      { id: 'videos', label: 'Video Đào tạo đầu vào', href: CANDIDATE_TAB_HREFS.videos },
+      { id: 'schedule', label: 'Lịch đào tạo', href: CANDIDATE_TAB_HREFS.schedule },
       { id: 'te-leader-info', label: 'Thông tin TE/Leader', href: CANDIDATE_TAB_HREFS['te-leader-info'] },
-      { id: 'k12-teaching-policy', label: 'Quy trình quy định K12 Teaching', href: CANDIDATE_TAB_HREFS['k12-teaching-policy'] }
-    );
-    
-    return tabs;
-  }, [profile]);
+      { id: 'k12-teaching-policy', label: 'Quy trình quy định K12 Teaching', href: CANDIDATE_TAB_HREFS['k12-teaching-policy'] },
+    ] satisfies CandidateTab[];
+  }, []);
 
   const renderTabIcon = (tabId: CandidateTabId) => {
     if (tabId === 'videos') return <Video className="h-3.5 w-3.5" />;
@@ -816,7 +806,7 @@ function CandidatePortalContent() {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-sidebar-custom h-dvh max-h-dvh w-56 overflow-hidden border-r border-gray-200 bg-white/95 shadow-xl backdrop-blur-xl transition-all duration-500 ease-in-out will-change-transform md:w-[300px] ${
+        className={`fixed inset-y-0 left-0 z-sidebar-custom h-dvh max-h-dvh w-56 overflow-hidden border-r border-gray-200 bg-white/95 shadow-xl backdrop-blur-xl transition-all duration-500 ease-in-out will-change-transform ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } ${isDesktopSidebarOpen ? 'md:translate-x-0' : 'md:-translate-x-full'}`}
         aria-hidden={!isSidebarOpen && !isDesktopSidebarOpen}
@@ -921,11 +911,11 @@ function CandidatePortalContent() {
         className={
           activeTab === 'k12-teaching-policy' || activeTab === 'roadmap'
             ? `w-full pb-0 pt-14 transition-all duration-500 md:pt-0 ${
-                isDesktopSidebarOpen ? 'md:ml-[300px] md:w-[calc(100%_-_300px)]' : 'md:ml-0 md:w-full'
+                isDesktopSidebarOpen ? 'md:ml-56 md:w-[calc(100%_-_14rem)]' : 'md:ml-0 md:w-full'
               }`
             : `mx-auto px-4 pb-6 pt-20 transition-all duration-500 sm:px-6 md:px-8 md:pt-6 ${
                 isDesktopSidebarOpen
-                  ? 'md:ml-[300px] md:w-[calc(100%_-_300px)] md:max-w-none'
+                  ? 'md:ml-56 md:w-[calc(100%_-_14rem)] md:max-w-none'
                   : 'md:ml-0 md:w-full md:max-w-none'
               }`
         }
@@ -1319,13 +1309,18 @@ function CandidatePortalContent() {
               </div>
 
               <div className="border-t border-border bg-muted/50 p-4 sm:p-5 lg:border-l lg:border-t-0 lg:p-6">
-                <div className="flex min-h-[260px] items-center justify-center overflow-hidden rounded-xl border border-border bg-white p-2 shadow-sm sm:min-h-[340px] lg:min-h-[430px] xl:min-h-[500px]">
+                <button
+                  type="button"
+                  onClick={() => setIsRoadmapLightboxOpen(true)}
+                  className="group flex min-h-[260px] w-full cursor-zoom-in items-center justify-center overflow-hidden rounded-xl border border-border bg-white p-2 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 sm:min-h-[340px] lg:min-h-[430px] xl:min-h-[500px]"
+                  aria-label="Mở ảnh lộ trình đào tạo đầu vào"
+                >
                   <img
                     src={ROADMAP_ILLUSTRATION_URL}
                     alt="Lộ trình đào tạo đầu vào"
-                    className="h-auto max-h-full w-full object-contain"
+                    className="h-auto max-h-full w-full object-contain transition duration-300 group-hover:scale-[1.01]"
                   />
-                </div>
+                </button>
               </div>
             </div>
           </section>
@@ -1342,6 +1337,59 @@ function CandidatePortalContent() {
                   <Clock className="h-3.5 w-3.5" />
                   Đang cập nhật theo hồ sơ
                 </span>
+              </div>
+
+              <div className="mb-6 overflow-x-auto rounded-lg border border-border bg-muted/40 p-4">
+                <div className="flex min-w-[820px] items-start">
+                  {ROADMAP_STAGES.map((stage, index) => {
+                    const status = getRoadmapStageStatus(stage.id);
+                    const isDone = status === 'done';
+                    const isCurrent = status === 'current';
+                    const isScheduled = status === 'scheduled';
+                    const milestoneLabel = index === 0 ? null : index + 1;
+                    return (
+                      <div
+                        key={`rail-${stage.id}`}
+                        className="relative flex min-w-28 flex-1 flex-col items-center px-2 text-center"
+                        aria-current={isCurrent ? 'step' : undefined}
+                      >
+                        {index > 0 && (
+                          <span
+                            className={`absolute left-0 top-5 h-0.5 w-[calc(50%_-_24px)] ${
+                              isDone || isCurrent || isScheduled ? 'bg-primary/50' : 'bg-border'
+                            }`}
+                          />
+                        )}
+                        {index < ROADMAP_STAGES.length - 1 && (
+                          <span
+                            className={`absolute right-0 top-5 h-0.5 w-[calc(50%_-_24px)] ${
+                              isDone ? 'bg-primary/50' : 'bg-border'
+                            }`}
+                          />
+                        )}
+                        <span
+                          className={`relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 shadow-sm ${
+                            isCurrent
+                              ? 'border-primary bg-primary text-white'
+                              : isDone
+                                ? 'border-emerald-600 bg-emerald-600 text-white'
+                                : isScheduled
+                                  ? 'border-primary/40 bg-primary/10 text-primary'
+                                  : 'border-border bg-white text-gray-700'
+                          }`}
+                        >
+                          {milestoneLabel === null ? <Flag className="h-4 w-4" /> : milestoneLabel}
+                        </span>
+                        <span className="mt-2 text-[11px] font-black uppercase tracking-wide text-primary">
+                          {stage.phase}
+                        </span>
+                        <span className="mt-1 line-clamp-2 min-h-8 text-xs font-bold leading-4 text-foreground" title={stage.title}>
+                          {stage.title}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="relative space-y-4">
@@ -1440,6 +1488,14 @@ function CandidatePortalContent() {
               </div>
           </section>
         </div>
+      )}
+
+      {isRoadmapLightboxOpen && (
+        <ImageLightbox
+          images={[{ src: ROADMAP_ILLUSTRATION_URL, alt: 'Lộ trình đào tạo đầu vào' }]}
+          initialIndex={0}
+          onClose={() => setIsRoadmapLightboxOpen(false)}
+        />
       )}
 
       {activeTab === 'te-leader-info' && (

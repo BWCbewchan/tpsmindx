@@ -5,6 +5,13 @@ import jwt from 'jsonwebtoken';
 import { getJwtSecret } from '@/lib/jwt-secret';
 import { setSessionCookieOnResponse } from '@/lib/session-cookie';
 
+const CANDIDATE_DEFAULT_PERMISSIONS = [
+  '/candidate-portal',
+  '/admin/hr-onboarding/videos',
+  '/admin/hr-candidates/gen-planner/overview',
+  '/admin/hr-candidates',
+];
+
 export async function POST(request: Request) {
   try {
     const { username, password } = await request.json();
@@ -50,12 +57,17 @@ export async function POST(request: Request) {
     await pool.query('UPDATE hr_candidate_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
     // Fetch permissions of role CANDI
-    let permissions: string[] = [];
+    let permissions: string[] = [...CANDIDATE_DEFAULT_PERMISSIONS];
     try {
       const permResult = await pool.query(
         "SELECT DISTINCT route_path FROM role_permissions WHERE role_code = 'CANDI'"
       );
-      permissions = permResult.rows.map((row: any) => row.route_path);
+      permissions = Array.from(
+        new Set([
+          ...permissions,
+          ...permResult.rows.map((row: any) => row.route_path),
+        ]),
+      );
     } catch (permErr) {
       console.error('[Candidate Auth] failed to fetch CANDI permissions:', permErr);
     }

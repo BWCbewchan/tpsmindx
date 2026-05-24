@@ -67,6 +67,8 @@ export function SecureDocViewer({ documentId, viewerEmail, className = '' }: Sec
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [isAway, setIsAway] = useState(false)
+  const [securityNotice, setSecurityNotice] = useState('')
+  const [watermarkTime, setWatermarkTime] = useState(() => new Date().toLocaleString('vi-VN'))
   const [slideIndex, setSlideIndex] = useState(1)
   const [thumbnailOpen, setThumbnailOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -77,6 +79,7 @@ export function SecureDocViewer({ documentId, viewerEmail, className = '' }: Sec
 
   const isPresentation = metadata?.kind === 'pptx'
   const displayEmail = viewerEmail || 'secure-viewer'
+  const watermarkText = `MindX / ${displayEmail} / ${watermarkTime}`
 
   const loadMetadata = useCallback(async () => {
     if (!documentId) {
@@ -190,21 +193,62 @@ export function SecureDocViewer({ documentId, viewerEmail, className = '' }: Sec
       context.rotate(-Math.PI / 8)
       for (let y = 120; y < canvas.height * 1.5; y += 120) {
         for (let x = -canvas.width; x < canvas.width * 1.5; x += 360) {
-          context.fillText(`${displayEmail} - ${new Date().toLocaleString('vi-VN')}`, x, y)
+          context.fillText(watermarkText, x, y)
         }
       }
       context.setTransform(1, 0, 0, 1, 0, 0)
       context.globalAlpha = 1
     }
     image.src = assetUrl
-  }, [assetUrl, displayEmail, metadata])
+  }, [assetUrl, metadata, watermarkText])
 
   useEffect(() => {
+    const interval = window.setInterval(() => {
+      setWatermarkTime(new Date().toLocaleString('vi-VN'))
+    }, 30_000)
+    return () => window.clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    let noticeTimer: number | undefined
+
+    const showSecurityNotice = (message: string) => {
+      setIsAway(true)
+      setSecurityNotice(message)
+      if (noticeTimer) window.clearTimeout(noticeTimer)
+      noticeTimer = window.setTimeout(() => {
+        setSecurityNotice('')
+        if (document.hasFocus() && !document.hidden) setIsAway(false)
+      }, 2500)
+    }
+
+    const blockEvent = (event: Event, message = 'Thao tác này đã bị khóa để bảo vệ tài liệu.') => {
+      event.preventDefault()
+      event.stopPropagation()
+      showSecurityNotice(message)
+    }
+
     const blockKeys = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase()
-      const blockedCombo = (event.ctrlKey || event.metaKey) && ['c', 'p', 's', 'u', 'a'].includes(key)
-      if (blockedCombo || key === 'f12') {
+      const ctrlOrMeta = event.ctrlKey || event.metaKey
+      const blockedCombo =
+        (ctrlOrMeta && ['c', 'p', 's', 'u', 'a'].includes(key)) ||
+        (ctrlOrMeta && event.shiftKey && ['c', 'i', 'j', 'k'].includes(key)) ||
+        (event.metaKey && event.altKey && ['c', 'i', 'j', 'u'].includes(key)) ||
+        (event.metaKey && event.shiftKey && ['3', '4', '5'].includes(key))
+      const blockedKey = ['f12', 'printscreen', 'snapshot'].includes(key)
+
+      if (blockedCombo || blockedKey) {
         event.preventDefault()
+        event.stopPropagation()
+        if (key === 'printscreen' || key === 'snapshot' || (event.metaKey && event.shiftKey && ['3', '4', '5'].includes(key))) {
+          void navigator.clipboard?.writeText?.('').catch(() => undefined)
+        }
+        showSecurityNotice(
+          key === 'printscreen' || key === 'snapshot' || (event.metaKey && event.shiftKey && ['3', '4', '5'].includes(key))
+            ? 'Nội dung tạm ẩn khi phát hiện phím chụp màn hình.'
+            : 'Phím tắt này đã bị khóa để bảo vệ tài liệu.',
+        )
         return
       }
 
@@ -222,19 +266,34 @@ export function SecureDocViewer({ documentId, viewerEmail, className = '' }: Sec
     const blur = () => setIsAway(true)
     const focus = () => setIsAway(false)
     const visibility = () => setIsAway(document.hidden)
-    const contextMenu = (event: MouseEvent) => event.preventDefault()
+    const contextMenu = (event: MouseEvent) => blockEvent(event, 'Chuột phải đã bị khóa để bảo vệ tài liệu.')
+    const beforePrint = (event: Event) => blockEvent(event, 'In tài liệu đã bị khóa.')
+    const copy = (event: ClipboardEvent) => blockEvent(event, 'Sao chép nội dung đã bị khóa.')
+    const selectStart = (event: Event) => blockEvent(event, 'Chọn nội dung đã bị khóa.')
+    const dragStart = (event: DragEvent) => blockEvent(event, 'Kéo thả nội dung đã bị khóa.')
 
     window.addEventListener('keydown', blockKeys)
     window.addEventListener('blur', blur)
     window.addEventListener('focus', focus)
+    window.addEventListener('beforeprint', beforePrint)
     document.addEventListener('visibilitychange', visibility)
     document.addEventListener('contextmenu', contextMenu)
+    document.addEventListener('copy', copy)
+    document.addEventListener('cut', copy)
+    document.addEventListener('selectstart', selectStart)
+    document.addEventListener('dragstart', dragStart)
     return () => {
+      if (noticeTimer) window.clearTimeout(noticeTimer)
       window.removeEventListener('keydown', blockKeys)
       window.removeEventListener('blur', blur)
       window.removeEventListener('focus', focus)
+      window.removeEventListener('beforeprint', beforePrint)
       document.removeEventListener('visibilitychange', visibility)
       document.removeEventListener('contextmenu', contextMenu)
+      document.removeEventListener('copy', copy)
+      document.removeEventListener('cut', copy)
+      document.removeEventListener('selectstart', selectStart)
+      document.removeEventListener('dragstart', dragStart)
     }
   }, [isPresentation])
 
@@ -262,7 +321,7 @@ export function SecureDocViewer({ documentId, viewerEmail, className = '' }: Sec
     return () => window.clearInterval(interval)
   }, [])
 
-  const watermarkTiles = useMemo(() => Array.from({ length: 28 }, (_, index) => index), [])
+  const watermarkTiles = useMemo(() => Array.from({ length: 48 }, (_, index) => index), [])
 
   const requestFullscreen = () => {
     void rootRef.current?.requestFullscreen?.()
@@ -283,7 +342,11 @@ export function SecureDocViewer({ documentId, viewerEmail, className = '' }: Sec
   return (
     <div
       ref={rootRef}
-      className={`relative min-h-[640px] overflow-hidden rounded-lg border border-slate-200 bg-slate-950 text-white shadow-sm ${className}`}
+      className={`secure-doc-viewer relative min-h-[640px] select-none overflow-hidden rounded-lg border border-slate-200 bg-slate-950 text-white shadow-sm ${className}`}
+      onCopy={(event) => event.preventDefault()}
+      onCut={(event) => event.preventDefault()}
+      onContextMenu={(event) => event.preventDefault()}
+      onDragStart={(event) => event.preventDefault()}
     >
       <div className="flex items-center justify-between border-b border-white/10 bg-slate-900 px-4 py-3">
         <div className="min-w-0">
@@ -356,16 +419,16 @@ export function SecureDocViewer({ documentId, viewerEmail, className = '' }: Sec
 
         <div
           ref={watermarkRef}
-          className="pointer-events-none absolute inset-0 z-10 grid grid-cols-4 gap-6 overflow-hidden p-8 opacity-20"
+          className="pointer-events-none absolute inset-0 z-10 grid grid-cols-3 gap-6 overflow-hidden p-8 opacity-[0.18] mix-blend-multiply sm:grid-cols-4"
           aria-hidden="true"
         >
           {watermarkTiles.map((tile) => (
             <div
               key={tile}
               className="-rotate-12 select-none whitespace-nowrap text-[11px] font-bold uppercase text-rose-900"
-              style={{ letterSpacing: '0.18em' }}
+              style={{ letterSpacing: '0.16em' }}
             >
-              MindX / {displayEmail} / {new Date().toLocaleString('vi-VN')}
+              {watermarkText}
             </div>
           ))}
         </div>
@@ -375,7 +438,9 @@ export function SecureDocViewer({ documentId, viewerEmail, className = '' }: Sec
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-slate-950/72 backdrop-blur-sm">
           <div className="rounded-lg border border-white/15 bg-slate-900 px-5 py-4 text-center shadow-2xl">
             <Shield className="mx-auto mb-3 h-8 w-8 text-rose-300" />
-            <p className="text-sm font-bold text-white">Nội dung tạm ẩn khi cửa sổ mất focus</p>
+            <p className="text-sm font-bold text-white">
+              {securityNotice || 'Nội dung tạm ẩn khi cửa sổ mất focus'}
+            </p>
           </div>
         </div>
       )}

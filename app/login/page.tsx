@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button';
 import { Icon } from '@/components/ui/primitives/icon';
 
 const SAVED_LOGIN_KEY = 'tps_saved_login_account';
-type LandingRole = 'teacher' | 'manager';
-type AppRole = LandingRole | 'super_admin' | 'admin' | 'hr';
+type LandingRole = 'teacher' | 'manager' | 'candidate';
+type AppRole = 'teacher' | 'manager' | 'super_admin' | 'admin' | 'hr';
 
 const ADMIN_LANDING_ROLES = new Set<AppRole>(['super_admin', 'admin', 'hr']);
 
@@ -56,18 +56,24 @@ export default function LoginPage() {
       const saved = localStorage.getItem(SAVED_LOGIN_KEY);
       if (!saved) return;
 
-      const parsed = JSON.parse(saved) as { email?: string; role?: 'teacher' | 'manager' };
+      const parsed = JSON.parse(saved) as { email?: string; role?: LandingRole };
       if (parsed.email) {
         setEmail(parsed.email);
         setRememberAccount(true);
       }
-      if (parsed.role === 'teacher' || parsed.role === 'manager') {
+      if (parsed.role === 'teacher' || parsed.role === 'manager' || parsed.role === 'candidate') {
         setRole(parsed.role);
       }
     } catch (e) {
       logger.warn('Unable to load saved login account', { error: (e as Error).message });
     } finally {
       setLoginPreferenceReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('role') === 'candidate') {
+      setRole('candidate');
     }
   }, []);
 
@@ -101,7 +107,7 @@ export default function LoginPage() {
     }
   }, [user, isLoading, loginPreferenceReady, role, router]);
 
-  const handleRoleChange = useCallback((newRole: 'teacher' | 'manager') => {
+  const handleRoleChange = useCallback((newRole: LandingRole) => {
     setRole(newRole);
   }, []);
 
@@ -140,6 +146,28 @@ export default function LoginPage() {
     logger.info('Đang thực hiện login', { email: trimmedEmail, role });
 
     try {
+      if (role === 'candidate') {
+        const candidateAuthResponse = await fetch('/api/hr/onboarding/candidate-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: trimmedEmail, password }),
+        });
+
+        const candidateAuthData = await candidateAuthResponse.json().catch(() => ({}));
+        if (!candidateAuthResponse.ok || !candidateAuthData.success) {
+          throw new Error(candidateAuthData.error || 'Đăng nhập ứng viên thất bại');
+        }
+
+        window.localStorage.setItem(
+          'candidatePortalProfile',
+          JSON.stringify(candidateAuthData.data),
+        );
+        persistRememberedAccount(trimmedEmail, role);
+        toast.success(`Chào mừng ${candidateAuthData.data?.full_name || 'ứng viên'}!`);
+        router.replace('/candidate-portal');
+        return;
+      }
+
       // ─── Step 1: Try app-internal login ───
       const appAuthResponse = await fetch('/api/app-auth/login', {
         method: 'POST',
@@ -356,9 +384,22 @@ export default function LoginPage() {
             >
               Quản lý
             </Button>
-            
+            <Button
+              variant={role === 'candidate' ? 'default' : 'outline'}
+              onClick={() => handleRoleChange('candidate')}
+              type="button"
+              disabled={isSubmitting}
+              className={role === 'candidate' ? 'bg-[#800000] hover:bg-[#a1001f] border-[#a1001f]' : 'text-[#800000] border-[#a1001f] hover:border-[#c1122f]'}
+            >
+              Ứng viên
+            </Button>
+             
           </div>
-            <div className="text-sm text-gray-500 text-center mb-3 animate-fade-in animation-delay-400">Đăng nhập bằng tài khoản <a href="https://lms.mindx.edu.vn/" target="_blank" rel="noreferrer" className="text-[#a1001f] font-medium hover:underline transition-colors">https://lms.mindx.edu.vn/</a></div>
+            <div className="text-sm text-gray-500 text-center mb-3 animate-fade-in animation-delay-400">
+              {role === 'candidate' ? 'Đăng nhập bằng mã ứng viên được cấp.' : (
+                <>Đăng nhập bằng tài khoản <a href="https://lms.mindx.edu.vn/" target="_blank" rel="noreferrer" className="text-[#a1001f] font-medium hover:underline transition-colors">https://lms.mindx.edu.vn/</a></>
+              )}
+            </div>
 </div>
           <form className="flex flex-col gap-3 animate-fade-in animation-delay-300" onSubmit={handleSubmit} noValidate>
             <div className="relative group">

@@ -138,6 +138,14 @@ export function Sidebar() {
       icon: Users,
       submenu: [
         {
+          href: '/admin/hr-candidates',
+          label: 'Danh sách ứng viên',
+        },
+        {
+          href: '/admin/hr-onboarding/videos',
+          label: 'Video đào tạo đầu vào',
+        },
+        {
           href: '/admin/hr-candidates/gen-planner?region=south',
           label: 'Miền Nam (HCM + Tỉnh Nam)',
         },

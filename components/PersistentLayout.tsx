@@ -11,13 +11,15 @@ function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { isOpen } = useSidebar();
   const { user } = useAuth();
+  const isCandidatePortal = pathname.startsWith('/candidate-portal');
 
   // Don't show sidebar on login/root/checkdatasource/maintenance pages
   const noSidebarPaths =
     pathname.startsWith('/login') ||
     pathname === '/' ||
     pathname.startsWith('/checkdatasource') ||
-    pathname.startsWith('/bao-tri')
+    pathname.startsWith('/bao-tri') ||
+    isCandidatePortal
   let shouldShowSidebar = !noSidebarPaths
 
   // Hide sidebar if admin user has no permissions
@@ -69,7 +71,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </main>
-      {!pathname.startsWith('/bao-tri') && <UserFirstLoginOnboarding />}
+      {!pathname.startsWith('/bao-tri') && !isCandidatePortal && <UserFirstLoginOnboarding />}
     </div>
   );
 }

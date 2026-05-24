@@ -1,37 +1,16 @@
 import { requireBearerSession } from '@/lib/datasource-api-auth'
 import { withApiProtection } from '@/lib/api-protection'
 import pool from '@/lib/db'
+import { validateHrOnboardingAccess } from '@/lib/hr-onboarding-access'
 import { parseCsvCandidates } from '@/lib/hr-onboarding-utils'
 import { NextRequest, NextResponse } from 'next/server'
-
-const HR_ONBOARDING_ROUTE = '/admin/hr-onboarding'
-
-async function validateHrAccess(email: string): Promise<boolean> {
-  const r = await pool.query(
-    `SELECT u.id, u.role FROM app_users u WHERE u.email = $1 AND u.is_active = true LIMIT 1`,
-    [email]
-  )
-  if (r.rows.length === 0) return false
-  const user = r.rows[0]
-  if (user.role === 'super_admin') return true
-
-  const perm = await pool.query(
-    `SELECT 1 FROM app_permissions WHERE user_id = $1 AND route_path = $2 AND can_access = true
-     UNION
-     SELECT 1 FROM user_roles ur JOIN role_permissions rp ON rp.role_code = ur.role_code
-     WHERE ur.user_id = $1 AND rp.route_path = $2
-     LIMIT 1`,
-    [user.id, HR_ONBOARDING_ROUTE]
-  )
-  return (perm.rowCount ?? 0) > 0
-}
 
 // ─── GET: Danh sách ứng viên ─────────────────────────────────────────────────
 export const GET = withApiProtection(async (req: NextRequest) => {
   const auth = await requireBearerSession(req)
   if (!auth.ok) return auth.response
 
-  if (!(await validateHrAccess(auth.sessionEmail))) {
+  if (!(await validateHrOnboardingAccess(auth.sessionEmail))) {
     return NextResponse.json({ error: 'Bạn không có quyền truy cập module HR Onboarding.' }, { status: 403 })
   }
 
@@ -77,7 +56,7 @@ export const POST = withApiProtection(async (req: NextRequest) => {
   const auth = await requireBearerSession(req)
   if (!auth.ok) return auth.response
 
-  if (!(await validateHrAccess(auth.sessionEmail))) {
+  if (!(await validateHrOnboardingAccess(auth.sessionEmail))) {
     return NextResponse.json({ error: 'Bạn không có quyền truy cập module HR Onboarding.' }, { status: 403 })
   }
 
@@ -112,7 +91,7 @@ export const PATCH = withApiProtection(async (req: NextRequest) => {
   const auth = await requireBearerSession(req)
   if (!auth.ok) return auth.response
 
-  if (!(await validateHrAccess(auth.sessionEmail))) {
+  if (!(await validateHrOnboardingAccess(auth.sessionEmail))) {
     return NextResponse.json({ error: 'Bạn không có quyền truy cập module HR Onboarding.' }, { status: 403 })
   }
 
@@ -150,7 +129,7 @@ export const DELETE = withApiProtection(async (req: NextRequest) => {
   const auth = await requireBearerSession(req)
   if (!auth.ok) return auth.response
 
-  if (!(await validateHrAccess(auth.sessionEmail))) {
+  if (!(await validateHrOnboardingAccess(auth.sessionEmail))) {
     return NextResponse.json({ error: 'Bạn không có quyền truy cập module HR Onboarding.' }, { status: 403 })
   }
 

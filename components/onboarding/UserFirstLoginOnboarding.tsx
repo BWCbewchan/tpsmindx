@@ -214,12 +214,13 @@ export default function UserFirstLoginOnboarding() {
   }, [])
 
   useEffect(() => {
+    if (!tourEnabled) return
     // Preload all frames to tránh "ghosting/overlap" khi Next/Image đổi src liên tục.
     frames.forEach((src) => {
       const img = new window.Image()
       img.src = src
     })
-  }, [frames])
+  }, [frames, tourEnabled])
 
   useEffect(() => {
     const timer = window.setInterval(
@@ -555,7 +556,6 @@ export default function UserFirstLoginOnboarding() {
               }}
             >
               <Image
-                key={frames[frameIndex]}
                 src={frames[frameIndex]}
                 alt="Linh vật hướng dẫn"
                 width={180}

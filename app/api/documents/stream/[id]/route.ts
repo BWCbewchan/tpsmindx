@@ -122,7 +122,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         success: true,
         kind,
         html,
-        warnings: result.messages?.map((message) => message.message) || [],
+        warnings: result.messages?.map((message: { message: string }) => message.message) || [],
       },
       { headers: watermarkHeaders() },
     )

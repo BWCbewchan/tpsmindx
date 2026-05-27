@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
  *  - Returns minimal error information to the client.
  */
 
-const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_SPREADSHEET_ID!;
+const SPREADSHEET_ID = '1pOfZp4w__q-KBEE-wrwGjjq_J3KSjAYfpHCJxL-LsGs';
 const SHEET_GID = '1375184237'; // Specific GID for the "Dashboard" tab
 
 // Mapping from CSV column index (0‑based) to video_id – identical to import_advanced_scores.js
@@ -100,10 +100,31 @@ export async function POST(request: NextRequest) {
 
   // ---- 2. Verify that the authenticated user really owns this code ----------
   // In our system the email prefix is usually the teacher code.
-  // We perform a simple check: if the session email (lower‑cased) does NOT contain the code,
-  // we reject the request. This prevents a user from importing another teacher's scores.
+  // We perform a robust check: either the email prefix matches teacherCode exactly,
+  // or there is a matching row in the teachers table for this email and code.
+  // This prevents substrings from matching (e.g. "thanh" matching "thanhnq") and ensures absolute security.
   const sessionEmail = auth.sessionEmail?.toLowerCase().trim() ?? '';
-  if (!sessionEmail.includes(teacherCode)) {
+  const emailPrefix = sessionEmail.split('@')[0];
+  let isAuthorized = (emailPrefix === teacherCode);
+
+  if (!isAuthorized) {
+    try {
+      const dbCheck = await pool.query(
+        `SELECT 1 FROM teachers 
+         WHERE LOWER(TRIM(code)) = $1 
+           AND (LOWER(TRIM(work_email)) = $2 OR LOWER(TRIM("Work email")) = $2)
+         LIMIT 1`,
+        [teacherCode, sessionEmail]
+      );
+      if (dbCheck.rows.length > 0) {
+        isAuthorized = true;
+      }
+    } catch (err) {
+      console.error('[ImportTeacherScores] Secure verification error:', err);
+    }
+  }
+
+  if (!isAuthorized) {
     return NextResponse.json(
       { success: false, error: 'Forbidden: teacherCode does not match session' },
       { status: 403 }

@@ -63,30 +63,34 @@ interface TeacherMatrixEntry {
 }
 
 function calculateAverageScoreFromColumns(row: TeacherStats, videoColumns: ActiveVideo[]): number {
+  // Điểm TK = tổng điểm / tổng số bài học (kể cả bài chưa làm tính là 0)
+  // Đồng nhất với công thức phía Giáo viên tại /api/training-db
+  if (videoColumns.length === 0) return 0;
+
   const scoreMap = new Map<number, VideoScore>();
   (row.video_scores || []).forEach((vs) => scoreMap.set(vs.video_id, vs));
 
-  const scores = videoColumns
-    .map((v) => scoreMap.get(v.id)?.score)
-    .filter((s): s is number => s !== null && s !== undefined && !Number.isNaN(Number(s)))
-    .map((s) => Number(s));
+  const total = videoColumns.reduce((sum, v) => {
+    const raw = scoreMap.get(v.id)?.score;
+    const s = (raw !== null && raw !== undefined && !Number.isNaN(Number(raw))) ? Number(raw) : 0;
+    return sum + s;
+  }, 0);
 
-  if (scores.length === 0) return 0;
-
-  const total = scores.reduce((sum, s) => sum + s, 0);
-  return total / scores.length;
+  return total / videoColumns.length;
 }
 
 function calculateAverageScoreFromMatrix(entry: TeacherMatrixEntry, videoStats: VideoStat[]): number {
-  const scores = videoStats
-    .map((v) => entry.videos[v.video_id]?.score)
-    .filter((s): s is number => s !== null && s !== undefined && !Number.isNaN(Number(s)))
-    .map((s) => Number(s));
+  // Điểm TK = tổng điểm / tổng số bài học (kể cả bài chưa làm tính là 0)
+  // Đồng nhất với công thức phía Giáo viên tại /api/training-db
+  if (videoStats.length === 0) return 0;
 
-  if (scores.length === 0) return 0;
+  const total = videoStats.reduce((sum, v) => {
+    const raw = entry.videos[v.video_id]?.score;
+    const s = (raw !== null && raw !== undefined && !Number.isNaN(Number(raw))) ? Number(raw) : 0;
+    return sum + s;
+  }, 0);
 
-  const total = scores.reduce((sum, s) => sum + s, 0);
-  return total / scores.length;
+  return total / videoStats.length;
 }
 
 // Map arbitrary block values into the three canonical blocks used in UI

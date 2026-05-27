@@ -611,6 +611,7 @@ async function buildGeminiFollowUp(
   lessonText: string,
   question: string,
   apiKey: string,
+  selectedText = '',
 ) {
   try {
     const prompt = `
@@ -619,6 +620,7 @@ Bạn là trợ lý sư phạm MindX. Giáo viên đang hỏi thêm trong modal 
 Yêu cầu:
 - Trả về DUY NHẤT JSON hợp lệ, không markdown, không HTML.
 - Câu trả lời phải bám giáo trình đang mở và lớp đang chọn.
+- Nếu có "Đoạn giáo trình được chọn", ưu tiên phân tích/gợi ý trực tiếp trên đoạn đó.
 - Nếu câu hỏi yêu cầu hình ảnh, trả imageQueries hữu ích để tìm ảnh minh họa.
 - Nếu câu hỏi yêu cầu video, trả videoQueries hữu ích để tìm video minh họa.
 - referenceLinks phải là URL http/https hợp lệ, ưu tiên tài liệu/hướng dẫn dễ dùng cho giáo viên.
@@ -640,6 +642,9 @@ Schema:
 
 Câu hỏi của giáo viên:
 ${question}
+
+Đoạn giáo trình được chọn:
+${selectedText || 'Không có'}
 
 Giáo trình:
 ${JSON.stringify({
@@ -690,6 +695,7 @@ export async function POST(request: NextRequest) {
     const documentId = Number(body.documentId)
     const classContext = (body.classContext || {}) as ClassContext
     const userQuestion = stripHtml(body.question).slice(0, 1000)
+    const selectedText = stripHtml(body.selectedText).slice(0, 3000)
     const geminiApiKey = stripHtml(body.geminiApiKey).trim()
 
     if (!Number.isInteger(documentId) || documentId <= 0) {
@@ -712,7 +718,7 @@ export async function POST(request: NextRequest) {
 
     const lessonText = await extractLessonText(document)
     if (userQuestion) {
-      const followUp = await buildGeminiFollowUp(document, classContext, lessonText, userQuestion, geminiApiKey)
+      const followUp = await buildGeminiFollowUp(document, classContext, lessonText, userQuestion, geminiApiKey, selectedText)
       if (!followUp) {
         return NextResponse.json(
           {

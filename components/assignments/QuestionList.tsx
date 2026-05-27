@@ -216,21 +216,19 @@ export function QuestionList({
           <div className="flex gap-2 flex-wrap">
             {/* Bulk Actions */}
             {selectedIds.length > 0 && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg">
-                <select
-                  value={bulkAction}
-                  onChange={(e) => {
-                    setBulkAction(e.target.value);
-                    if (e.target.value) {
-                      setTimeout(() => handleBulkAction(), 0);
-                    }
-                  }}
-                  className="text-sm border-none bg-transparent focus:outline-none font-medium text-blue-700"
-                >
-                  <option value="">Chọn thao tác...</option>
-                  <option value="delete">🗑️ Xóa đã chọn</option>
-                </select>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkAction('delete');
+                  setTimeout(() => handleBulkAction(), 0);
+                }}
+                disabled={selectedIds.length === 0}
+                className="text-sm border-none bg-transparent focus:outline-none font-medium text-blue-700 px-3 py-2 hover:text-blue-800"
+                title="Xóa các câu đã chọn"
+              >
+                🗑️ Xóa đã chọn
+              </button>
+
             )}
             
             {onImportCSV && (

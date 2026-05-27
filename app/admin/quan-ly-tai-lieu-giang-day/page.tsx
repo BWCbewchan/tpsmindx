@@ -1,8 +1,6 @@
 'use client'
 
 import { PageContainer } from '@/components/PageContainer'
-import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
 import {
   COURSE_OPTIONS,
   LEVELS,
@@ -11,6 +9,8 @@ import {
   type DocumentStatus,
   type TeachingDocument,
 } from '@/components/teaching-documents/TeachingDocumentLibrary'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import {
   Dialog,
   DialogBody,
@@ -98,10 +98,10 @@ export default function QuanLyTaiLieuGiangDayPage() {
     try {
       const response = await fetch('/api/admin/teaching-documents', { cache: 'no-store' })
       const data = await readJsonResponse(response)
-      if (!response.ok || !data.success) throw new Error(data.error || 'Không thể tải tài liệu')
+      if (!response.ok || !data.success) throw new Error(data.error || 'Không thể tải giáo trình')
       setDocuments(data.documents || [])
     } catch (error: any) {
-      setMessage(error?.message || 'Không thể tải tài liệu')
+      setMessage(error?.message || 'Không thể tải giáo trình')
     } finally {
       setLoading(false)
     }
@@ -113,9 +113,8 @@ export default function QuanLyTaiLieuGiangDayPage() {
 
   const groupedStats = useMemo(() => {
     const subjects = new Set(documents.map((doc) => doc.subject_name)).size
-    const lessons = new Set(documents.map((doc) => `${doc.subject_name}-${doc.document_level}-${doc.lesson_number}`)).size
     const totalSize = documents.reduce((sum, doc) => sum + Number(doc.file_size || 0), 0)
-    return { subjects, lessons, totalSize }
+    return { subjects, totalSize }
   }, [documents])
 
   const statusCounts = useMemo(() => {
@@ -159,7 +158,7 @@ export default function QuanLyTaiLieuGiangDayPage() {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!file) {
-      setMessage('Vui lòng chọn file tài liệu')
+      setMessage('Vui lòng chọn file giáo trình')
       return
     }
     if (file.size > MAX_DOCUMENT_MB * 1024 * 1024) {
@@ -182,13 +181,13 @@ export default function QuanLyTaiLieuGiangDayPage() {
       const data = await readJsonResponse(response)
       if (!response.ok || !data.success) throw new Error(data.error || 'Ban hành thất bại')
 
-      setMessage('Đã ban hành tài liệu giảng dạy')
+      setMessage('Đã ban hành giáo trình')
       resetUploadForm()
       setIsUploadOpen(false)
       setActiveStatus('published')
       await loadDocuments()
     } catch (error: any) {
-      setMessage(error?.message || 'Không thể ban hành tài liệu')
+      setMessage(error?.message || 'Không thể ban hành giáo trình')
     } finally {
       setUploading(false)
     }
@@ -196,8 +195,8 @@ export default function QuanLyTaiLieuGiangDayPage() {
 
   return (
     <PageContainer
-      title="Quản lý tài liệu giảng dạy"
-      description="Upload tài liệu bảo mật theo khối, môn học, level và buổi học"
+      title="Quản lý giáo trình"
+      description="Upload và ban hành giáo trình theo khối, môn học, level và buổi học"
       headerActions={
         <Button type="button" variant="mindx" onClick={() => setIsUploadOpen(true)}>
           <UploadCloud className="h-4 w-4" />
@@ -209,12 +208,12 @@ export default function QuanLyTaiLieuGiangDayPage() {
         <Card className="rounded-lg border border-slate-200 p-4">
           <FileText className="mb-3 h-5 w-5 text-rose-700" />
           <p className="text-2xl font-black text-slate-950">{documents.length}</p>
-          <p className="text-sm text-slate-500">Tài liệu</p>
+          <p className="text-sm text-slate-500">Giáo trình</p>
         </Card>
         <Card className="rounded-lg border border-slate-200 p-4">
           <BookOpen className="mb-3 h-5 w-5 text-rose-700" />
           <p className="text-2xl font-black text-slate-950">{groupedStats.subjects}</p>
-          <p className="text-sm text-slate-500">Bộ môn</p>
+          <p className="text-sm text-slate-500">Khối</p>
         </Card>
         <Card className="rounded-lg border border-slate-200 p-4">
           <ShieldCheck className="mb-3 h-5 w-5 text-rose-700" />
@@ -247,10 +246,14 @@ export default function QuanLyTaiLieuGiangDayPage() {
         ))}
       </div>
 
+      {message && (
+        <p className="rounded-md bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-700">{message}</p>
+      )}
+
       <Card className="rounded-lg border border-slate-200 p-0">
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
-            <h2 className="text-lg font-black text-slate-950">Kho tài liệu</h2>
+            <h2 className="text-lg font-black text-slate-950">Kho giáo trình</h2>
             <p className="text-sm text-slate-500">Người tạo: {user?.email || 'Super Admin'}</p>
           </div>
           <FileArchive className="h-5 w-5 text-rose-700" />
@@ -269,7 +272,7 @@ export default function QuanLyTaiLieuGiangDayPage() {
         <DialogContent className="max-h-[92vh] max-w-3xl overflow-hidden">
           <DialogHeader className="flex-row items-start justify-between gap-4">
             <div>
-              <DialogTitle className="text-xl font-black">Upload tài liệu</DialogTitle>
+              <DialogTitle className="text-xl font-black">Upload giáo trình</DialogTitle>
               <p className="mt-1 text-sm text-slate-500">
                 PDF, DOCX, PPTX hoặc hình ảnh, tối đa {MAX_DOCUMENT_MB}MB.
               </p>

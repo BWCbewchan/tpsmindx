@@ -14,16 +14,16 @@ type UploadState = {
   originalFilename: string;
 };
 
-type UploadContextType = {
-  uploadState: UploadState;
-  startUpload: (file: File, options?: UploadVideoOptions) => Promise<void>;
-};
-
-type UploadVideoOptions = {
+type StartUploadOptions = {
   saveEndpoint?: string;
-  status?: "draft" | "active" | "inactive";
+  status?: string;
   successEventName?: string;
   successMessage?: string;
+};
+
+type UploadContextType = {
+  uploadState: UploadState;
+  startUpload: (file: File, options?: StartUploadOptions) => Promise<void>;
 };
 
 const UploadContext = createContext<UploadContextType | undefined>(undefined);
@@ -155,14 +155,14 @@ const completeMultipartUpload = async (
 const saveVideoToDB = async (params: {
   title: string;
   video_link: string;
+  saveEndpoint?: string;
+  status?: string;
   duration_seconds?: number;
   video_group_id?: string;
   chunk_index?: number;
   chunk_total?: number;
   original_filename?: string;
   original_size_bytes?: number;
-  saveEndpoint?: string;
-  status?: "draft" | "active" | "inactive";
 }) => {
   const res = await fetchWithRetry(params.saveEndpoint || "/api/training-videos", {
     method: "POST",
@@ -198,7 +198,7 @@ export const UploadVideoProvider = ({ children }: { children: React.ReactNode })
     originalFilename: "",
   });
 
-  const startUpload = async (file: File, options: UploadVideoOptions = {}) => {
+  const startUpload = async (file: File, options: StartUploadOptions = {}) => {
     if (uploadState.isUploading) {
       toast.error("Đang có một tiến trình upload, vui lòng chờ!");
       return;
@@ -254,11 +254,11 @@ export const UploadVideoProvider = ({ children }: { children: React.ReactNode })
         const videoData = await saveVideoToDB({
           title: file.name.replace(/\.[^/.]+$/, ""),
           video_link: videoUrl,
+          saveEndpoint: options.saveEndpoint,
+          status: options.status,
           duration_seconds: durationSec,
           original_filename: file.name,
           original_size_bytes: file.size,
-          saveEndpoint: options.saveEndpoint,
-          status: options.status,
         });
 
         if (videoData.success) {
@@ -294,11 +294,11 @@ export const UploadVideoProvider = ({ children }: { children: React.ReactNode })
         const videoData = await saveVideoToDB({
           title: file.name.replace(/\.[^/.]+$/, ""),
           video_link: uploadData.url,
+          saveEndpoint: options.saveEndpoint,
+          status: options.status,
           duration_seconds: durationSec,
           original_filename: file.name,
           original_size_bytes: file.size,
-          saveEndpoint: options.saveEndpoint,
-          status: options.status,
         });
 
         if (videoData.success) {

@@ -55,10 +55,14 @@ function addTokenToUrl(documentId: number, token: string) {
   return `/api/documents/stream/${documentId}?token=${encodeURIComponent(token)}`
 }
 
+function addSearchParam(url: string, key: string, value: string) {
+  const separator = url.includes('?') ? '&' : '?'
+  return `${url}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}`
+}
+
 export function SecureDocViewer({ documentId, viewerEmail, className = '' }: SecureDocViewerProps) {
   const [metadata, setMetadata] = useState<Metadata | null>(null)
   const [token, setToken] = useState('')
-  const [html, setHtml] = useState('')
   const [assetUrl, setAssetUrl] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -68,6 +72,8 @@ export function SecureDocViewer({ documentId, viewerEmail, className = '' }: Sec
   const rootRef = useRef<HTMLDivElement>(null)
   const watermarkRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const docxContainerRef = useRef<HTMLDivElement>(null)
+  const docxStyleRef = useRef<HTMLDivElement>(null)
 
   const isPresentation = metadata?.kind === 'pptx'
   const displayEmail = viewerEmail || 'secure-viewer'
@@ -76,7 +82,6 @@ export function SecureDocViewer({ documentId, viewerEmail, className = '' }: Sec
     if (!documentId) {
       setMetadata(null)
       setToken('')
-      setHtml('')
       setAssetUrl('')
       return
     }
@@ -95,15 +100,8 @@ export function SecureDocViewer({ documentId, viewerEmail, className = '' }: Sec
       const url = addTokenToUrl(documentId, data.token)
 
       if (data.document.kind === 'docx') {
-        const contentResponse = await fetch(url, { cache: 'no-store' })
-        const contentData = await contentResponse.json()
-        if (!contentResponse.ok || !contentData.success) {
-          throw new Error(contentData.error || 'Không thể đọc nội dung DOCX')
-        }
-        setHtml(contentData.html || '')
-        setAssetUrl('')
+        setAssetUrl(addSearchParam(url, 'mode', 'raw'))
       } else {
-        setHtml('')
         setAssetUrl(url)
       }
     } catch (err: any) {
@@ -116,6 +114,59 @@ export function SecureDocViewer({ documentId, viewerEmail, className = '' }: Sec
   useEffect(() => {
     void loadMetadata()
   }, [loadMetadata])
+
+  useEffect(() => {
+    if (!metadata || metadata.kind !== 'docx' || !assetUrl || !docxContainerRef.current) return
+
+    let cancelled = false
+    const container = docxContainerRef.current
+    const styleContainer = docxStyleRef.current || undefined
+    container.innerHTML = ''
+    if (styleContainer) styleContainer.innerHTML = ''
+    setLoading(true)
+    setError('')
+
+    async function renderDocx() {
+      try {
+        const response = await fetch(assetUrl, { cache: 'no-store' })
+        if (!response.ok) {
+          const text = await response.text()
+          throw new Error(text || 'Không thể đọc nội dung DOCX')
+        }
+
+        const blob = await response.blob()
+        const { renderAsync } = await import('docx-preview')
+        if (cancelled) return
+
+        await renderAsync(blob, container, styleContainer, {
+          className: 'secure-docx-preview',
+          inWrapper: true,
+          ignoreWidth: false,
+          ignoreHeight: false,
+          ignoreFonts: false,
+          breakPages: true,
+          experimental: true,
+          renderHeaders: true,
+          renderFooters: true,
+          renderFootnotes: true,
+          renderEndnotes: true,
+          useBase64URL: true,
+        })
+      } catch (err: any) {
+        if (!cancelled) setError(err?.message || 'Không thể tải định dạng DOCX')
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+
+    void renderDocx()
+
+    return () => {
+      cancelled = true
+      container.innerHTML = ''
+      if (styleContainer) styleContainer.innerHTML = ''
+    }
+  }, [assetUrl, metadata])
 
   useEffect(() => {
     if (!metadata || metadata.kind !== 'image' || !assetUrl || !canvasRef.current) return
@@ -282,10 +333,10 @@ export function SecureDocViewer({ documentId, viewerEmail, className = '' }: Sec
         )}
 
         {!error && metadata?.kind === 'docx' && (
-          <article
-            className="secure-doc-html mx-auto min-h-[584px] max-w-4xl bg-white px-8 py-10 text-slate-900 shadow-sm"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+          <div className="secure-docx-frame min-h-[584px] overflow-auto bg-slate-200 p-3 md:p-6">
+            <div ref={docxStyleRef} className="hidden" />
+            <div ref={docxContainerRef} className="secure-docx-container" />
+          </div>
         )}
 
         {!error && metadata?.kind === 'image' && (

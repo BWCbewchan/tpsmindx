@@ -1,12 +1,16 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Calendar as CalendarIcon, 
-  MapPin, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  LayoutGrid,
+  Calendar as CalendarIcon,
+  MapPin,
   Clock,
+  Search,
+  Filter,
+  Info
 } from 'lucide-react';
 import { GenEntry } from '../types';
 
@@ -31,17 +35,7 @@ const MOCK_SCHEDULES = [
   { gen: '107', region: 'Hà Nội', session: 3, date: '2026-04-06', time: '18:30 - 21:00', location: 'Nguyễn Phong Sắc' },
 ];
 
-export type TrainingScheduleEvent = {
-  gen: string;
-  region?: string;
-  session: number;
-  date: string;
-  time?: string;
-  location?: string;
-  title?: string;
-};
-
-type CalendarViewMode = 'month' | 'week' | 'day';
+export type TrainingScheduleEvent = (typeof MOCK_SCHEDULES)[number];
 
 // ─── Utils ──────────────────────────────────────────────────────────────────
 function startOfDay(date: Date) {
@@ -52,12 +46,6 @@ function startOfDay(date: Date) {
 
 function formatDateKey(date: Date) {
   return date.toISOString().split('T')[0];
-}
-
-function normalizeDateKey(value: string | Date | null | undefined) {
-  if (!value) return '';
-  if (value instanceof Date) return formatDateKey(value);
-  return String(value).split('T')[0];
 }
 
 function buildCalendarCells(focusDate: Date) {
@@ -91,16 +79,6 @@ function buildCalendarCells(focusDate: Date) {
   return cells;
 }
 
-function buildWeekCells(focusDate: Date) {
-  const start = startOfDay(focusDate);
-  start.setDate(start.getDate() - start.getDay());
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(start);
-    date.setDate(start.getDate() + index);
-    return { date, isCurrentMonth: date.getMonth() === focusDate.getMonth() };
-  });
-}
-
 // ─── Component ───────────────────────────────────────────────────────────────
 interface GenOverviewTabProps {
   genEntries: GenEntry[];
@@ -124,24 +102,20 @@ export default function GenOverviewTab({
   hideInfoBox = false,
 }: GenOverviewTabProps) {
   const [focusDate, setFocusDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<CalendarViewMode>('month');
 
   // ── Logic ──────────────────────────────────────────────────────────────────
-  const monthCells = useMemo(() => buildCalendarCells(focusDate), [focusDate]);
-  const weekCells = useMemo(() => buildWeekCells(focusDate), [focusDate]);
-  const visibleCells = viewMode === 'month' ? monthCells : viewMode === 'week' ? weekCells : [{ date: focusDate, isCurrentMonth: true }];
+  const cells = useMemo(() => buildCalendarCells(focusDate), [focusDate]);
 
   const filteredSchedules = useMemo(() => {
-    const sourceSchedules = schedules ?? MOCK_SCHEDULES;
-    if (!activeGenKey) return sourceSchedules;
-    return sourceSchedules.filter(s => String(s.gen) === String(activeGenInfo?.genCode));
+    const source = schedules || MOCK_SCHEDULES;
+    if (!activeGenKey || schedules) return source;
+    return source.filter(s => s.gen === activeGenInfo?.genCode);
   }, [activeGenKey, activeGenInfo, schedules]);
 
   const eventsByDate = useMemo(() => {
-    const map = new Map<string, TrainingScheduleEvent[]>();
+    const map = new Map<string, typeof MOCK_SCHEDULES>();
     filteredSchedules.forEach(s => {
-      const key = normalizeDateKey(s.date);
-      if (!key) return;
+      const key = formatDateKey(new Date(s.date));
       const list = map.get(key) || [];
       list.push(s);
       map.set(key, list);
@@ -149,33 +123,13 @@ export default function GenOverviewTab({
     return map;
   }, [filteredSchedules]);
 
-  const moveDate = (offset: number) => {
+  const moveMonth = (offset: number) => {
     const next = new Date(focusDate);
-    if (viewMode === 'month') {
-      next.setMonth(next.getMonth() + offset);
-    } else if (viewMode === 'week') {
-      next.setDate(next.getDate() + offset * 7);
-    } else {
-      next.setDate(next.getDate() + offset);
-    }
+    next.setMonth(next.getMonth() + offset);
     setFocusDate(next);
   };
 
-  const currentPeriodLabel = useMemo(() => {
-    if (viewMode === 'day') {
-      return focusDate.toLocaleDateString('vi-VN', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-    }
-    if (viewMode === 'week') {
-      const start = weekCells[0]?.date;
-      const end = weekCells[6]?.date;
-      return `${start?.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })} - ${end?.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
-    }
-    return focusDate.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
-  }, [focusDate, viewMode, weekCells]);
-
-  const emptyMessage = activeGenKey
-    ? `Chưa có lịch training cho ${activeGenInfo?.genCode || 'GEN hiện tại'}.`
-    : 'Chưa có lịch training.';
+  const currentMonthLabel = focusDate.toLocaleDateString('vi-VN', { month: 'long', year: 'numeric' });
 
   return (
     <div className="w-full animate-in fade-in duration-500">
@@ -183,81 +137,55 @@ export default function GenOverviewTab({
       {/* ══ RIGHT: Calendar Area ══════════════════════════════════════════ */}
       <section className="w-full rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden flex flex-col">
         {/* Calendar Header */}
-        <div className="border-b border-gray-100 bg-gray-50/50 p-4 sm:p-5">
+        <div className="border-b border-gray-100 bg-gray-50/50 p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow-sm border border-blue-100">
                 <CalendarIcon className="h-6 w-6 text-blue-600" />
               </div>
-              <div className="min-w-0">
-                <h2 className="text-lg font-black text-gray-900 capitalize">{currentPeriodLabel}</h2>
+              <div>
+                <h2 className="text-lg font-black text-gray-900 capitalize">{currentMonthLabel}</h2>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                  {scopeLabel || (activeGenKey ? `Lịch training GEN ${activeGenInfo?.genCode}` : 'Lịch training tất cả GEN')}
+                  {scopeLabel || (activeGenKey ? `Đang xem: ${activeGenInfo?.genCode}` : 'Lịch training tất cả GEN')}
                 </p>
               </div>
             </div>
 
-            <div className="ml-auto grid w-fit max-w-full grid-cols-1 justify-items-end gap-2 self-end sm:flex sm:w-auto sm:flex-wrap sm:items-center">
-              <div className="grid grid-cols-3 rounded-xl border border-gray-200 bg-white p-1 shadow-sm sm:flex">
-                {[
-                  { value: 'day', label: 'Ngày' },
-                  { value: 'week', label: 'Tuần' },
-                  { value: 'month', label: 'Tháng' },
-                ].map((item) => (
-                  <button
-                    key={item.value}
-                    type="button"
-                    onClick={() => setViewMode(item.value as CalendarViewMode)}
-                    className={`h-9 rounded-lg px-3 text-xs font-bold transition-all sm:h-8 ${
-                      viewMode === item.value
-                        ? 'bg-[#a1001f] text-white shadow-sm'
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-              <div className="grid grid-cols-[40px_minmax(0,1fr)_40px] gap-2 sm:flex sm:items-center">
-                <button 
-                  onClick={() => moveDate(-1)}
-                  aria-label="Kỳ trước"
-                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <button 
-                  onClick={() => setFocusDate(new Date())}
-                  className="flex h-10 min-w-0 items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-xs font-bold text-gray-700 shadow-sm transition-all hover:bg-gray-50"
-                >
-                  Hôm nay
-                </button>
-                <button 
-                  onClick={() => moveDate(1)}
-                  aria-label="Kỳ sau"
-                  className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50"
-                >
-                  <ChevronRight className="h-5 w-5" />
-                </button>
-              </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => moveMonth(-1)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setFocusDate(new Date())}
+                className="px-4 h-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-xs font-bold text-gray-700 hover:bg-gray-50 transition-all shadow-sm hidden sm:flex"
+              >
+                Hôm nay
+              </button>
+              <button
+                onClick={() => moveMonth(1)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all shadow-sm"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
             </div>
           </div>
         </div>
 
         {/* Calendar Grid */}
         <div className="flex-1 bg-gray-50/30 p-4 sm:p-6">
-          <div className={`grid gap-px overflow-hidden rounded-2xl border border-gray-200 bg-gray-200 shadow-sm ${
-            viewMode === 'day' ? 'grid-cols-1' : 'grid-cols-7'
-          }`}>
+          <div className="grid grid-cols-7 gap-px overflow-hidden rounded-2xl border border-gray-200 bg-gray-200 shadow-sm">
             {/* Weekdays */}
-            {viewMode !== 'day' && WEEKDAY_LABELS.map(label => (
+            {WEEKDAY_LABELS.map(label => (
               <div key={label} className="bg-gray-50 py-3 text-center">
                 <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</span>
               </div>
             ))}
 
             {/* Days */}
-            {visibleCells.map((cell, idx) => {
+            {cells.map((cell, idx) => {
               const key = formatDateKey(cell.date);
               const dayEvents = eventsByDate.get(key) || [];
               const isToday = formatDateKey(new Date()) === key;
@@ -265,7 +193,7 @@ export default function GenOverviewTab({
               return (
                 <div 
                   key={idx} 
-                  className={`${viewMode === 'day' ? 'min-h-[360px]' : 'min-h-[100px] sm:min-h-[140px]'} bg-white p-2 transition-colors hover:bg-gray-50/50 ${!cell.isCurrentMonth ? 'opacity-40 bg-gray-50/20' : ''}`}
+                  className={`min-h-[100px] sm:min-h-[140px] bg-white p-2 transition-colors hover:bg-gray-50/50 ${!cell.isCurrentMonth ? 'opacity-40 bg-gray-50/20' : ''}`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-black ${
@@ -273,11 +201,6 @@ export default function GenOverviewTab({
                     }`}>
                       {cell.date.getDate()}
                     </span>
-                    {viewMode === 'day' && (
-                      <span className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                        {cell.date.toLocaleDateString('vi-VN', { weekday: 'long' })}
-                      </span>
-                    )}
                   </div>
 
                   <div className="space-y-1.5">
@@ -287,48 +210,30 @@ export default function GenOverviewTab({
                         <div 
                           key={evIdx}
                           className={`group relative rounded-lg border p-1.5 shadow-sm transition-all hover:shadow-md cursor-help ${style.bg} ${style.text} ${style.border}`}
-                          title={`${ev.gen} - Session ${ev.session}${ev.time ? `\nTime: ${ev.time}` : ''}${ev.location ? `\nLoc: ${ev.location}` : ''}`}
+                          title={`${ev.gen} - Session ${ev.session}\nTime: ${ev.time}\nLoc: ${ev.location}`}
                         >
                           <div className="flex items-center justify-between gap-1 mb-0.5">
                             <span className="text-[9px] font-black truncate">GEN {ev.gen}</span>
                             <span className="text-[8px] font-bold opacity-70 whitespace-nowrap">S{ev.session}</span>
                           </div>
-                          {ev.title && (
-                            <div className="mb-0.5 truncate text-[9px] font-bold opacity-90">{ev.title}</div>
-                          )}
-                          <div className={viewMode === 'day' ? 'block' : 'hidden sm:block'}>
-                            {ev.time && (
+                          <div className="hidden sm:block">
                             <div className="flex items-center gap-1 text-[8px] opacity-80 mb-0.5">
                               <Clock className="h-2 w-2" />
                               <span className="truncate">{ev.time}</span>
                             </div>
-                            )}
-                            {ev.location && (
                             <div className="flex items-center gap-1 text-[8px] opacity-80">
                               <MapPin className="h-2 w-2" />
                               <span className="truncate">{ev.location}</span>
                             </div>
-                            )}
                           </div>
                         </div>
                       );
                     })}
-                    {dayEvents.length === 0 && viewMode === 'day' && (
-                      <div className="flex h-52 items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-center text-sm font-semibold text-gray-400">
-                        {emptyMessage}
-                      </div>
-                    )}
                   </div>
                 </div>
               );
             })}
           </div>
-
-          {filteredSchedules.length === 0 && viewMode !== 'day' && (
-            <div className="mt-4 rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm font-semibold text-gray-500">
-              {emptyMessage}
-            </div>
-          )}
 
           {/* Legend */}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-6 rounded-2xl bg-white border border-gray-200 p-4 shadow-sm">
@@ -344,17 +249,17 @@ export default function GenOverviewTab({
 
         {/* Info Box */}
         {!hideInfoBox && (
-        <div className="mx-6 mb-6 rounded-2xl bg-emerald-50 border border-emerald-100 p-4 flex items-start gap-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm border border-emerald-50">
-            <CalendarIcon className="h-5 w-5" />
+          <div className="mx-6 mb-6 rounded-2xl bg-emerald-50 border border-emerald-100 p-4 flex items-start gap-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600 shadow-sm border border-emerald-50">
+              <Info className="h-5 w-5" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-black text-emerald-900">Tính năng Calendar</h4>
+              <p className="text-xs text-emerald-700/80 leading-relaxed font-medium">
+                Lịch training giúp HR theo dõi tất cả các buổi đào tạo đang diễn ra. Bạn có thể nhấn vào từng GEN ở sidebar bên trái để lọc riêng lịch của GEN đó.
+              </p>
+            </div>
           </div>
-          <div className="space-y-1">
-            <h4 className="text-sm font-black text-emerald-900">Tính năng Calendar</h4>
-            <p className="text-xs text-emerald-700/80 leading-relaxed font-medium">
-              Lịch training giúp HR theo dõi tất cả các buổi đào tạo đang diễn ra. Bạn có thể nhấn vào từng GEN ở sidebar bên trái để lọc riêng lịch của GEN đó.
-            </p>
-          </div>
-        </div>
         )}
       </section>
     </div>

@@ -12,13 +12,12 @@ function Layout({ children }: { children: React.ReactNode }) {
   const { isOpen } = useSidebar();
   const { user } = useAuth();
 
-  // Don't show sidebar on login/root/checkdatasource/maintenance/candidate-portal pages
+  // Don't show sidebar on login/root/checkdatasource/maintenance pages
   const noSidebarPaths =
     pathname.startsWith('/login') ||
     pathname === '/' ||
     pathname.startsWith('/checkdatasource') ||
-    pathname.startsWith('/bao-tri') ||
-    pathname.startsWith('/candidate-portal')
+    pathname.startsWith('/bao-tri')
   let shouldShowSidebar = !noSidebarPaths
 
   // Hide sidebar if admin user has no permissions

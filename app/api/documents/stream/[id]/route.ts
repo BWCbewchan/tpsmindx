@@ -56,8 +56,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
     return NextResponse.json({ success: false, error: 'Không tìm thấy tài liệu' }, { status: 404 })
   }
 
+  if (!auth.privileged && document.document_status !== 'published') {
+    return NextResponse.json({ success: false, error: 'Không có quyền xem tài liệu này' }, { status: 403 })
+  }
+
   const { searchParams } = new URL(request.url)
   const action = searchParams.get('action') || 'content'
+  const mode = searchParams.get('mode') || ''
   const page = Math.max(1, Number(searchParams.get('page') || '1') || 1)
   const kind = classifyTeachingDocument(document.file_type, document.file_name)
 
@@ -97,6 +102,17 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const object = await getTeachingDocumentObject(document.s3_bucket, document.s3_key)
+
+  if (kind === 'docx' && mode === 'raw') {
+    return new NextResponse(object.buffer, {
+      status: 200,
+      headers: {
+        ...watermarkHeaders(),
+        'Content-Type': document.file_type || object.contentType,
+        'Content-Disposition': `inline; filename="${encodeURIComponent(document.file_name)}"`,
+      },
+    })
+  }
 
   if (kind === 'docx') {
     const result = await mammoth.convertToHtml({ buffer: object.buffer })

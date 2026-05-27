@@ -8,7 +8,7 @@ import { useAppSelector } from '@/lib/redux/hooks'
 import { useTeacher } from '@/lib/teacher-context'
 import { useToast } from '@/lib/use-toast'
 import { Loader2 } from 'lucide-react'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import {
     Suspense,
     useCallback,
@@ -53,16 +53,11 @@ type LessonUser = {
 
 function LessonContent() {
   const router = useRouter()
-  const pathname = usePathname()
   const { user } = useAuth()
   const { teacherProfile, isLoading: isTeacherLoading } = useTeacher()
   const toast = useToast()
   const searchParams = useSearchParams()
   const lessonIdParam = searchParams.get('id')
-  const isCandidatePortalLesson = pathname.startsWith('/candidate-portal')
-  const lessonListPath = isCandidatePortalLesson
-    ? '/candidate-portal/videos'
-    : '/user/dao-tao-nang-cao'
 
   // Get video details from Redux
   const {
@@ -178,7 +173,6 @@ function LessonContent() {
 
   // ── Guard: redirect non-admin users if teacher profile missing ──
   useEffect(() => {
-    if (isCandidatePortalLesson) return
     if (!user) return
     if (isTeacherLoading) return
 
@@ -192,9 +186,9 @@ function LessonContent() {
       flatToast.error(
         'Chưa đồng bộ được thông tin giáo viên. Vui lòng thử lại sau.',
       )
-      router.replace(lessonListPath)
+      router.replace('/user/dao-tao-nang-cao')
     }
-  }, [user, isTeacherLoading, teacherProfile, router, isCandidatePortalLesson, lessonListPath])
+  }, [user, isTeacherLoading, teacherProfile, router])
 
   // Helper to save progress
   const saveCompletion = async (id: string | null, time: number) => {
@@ -1175,9 +1169,9 @@ function LessonContent() {
   // Handle invalid session (e.g. refresh) by redirecting
   useEffect(() => {
     if (!videoUrl) {
-      router.push(lessonListPath)
+      router.push('/user/dao-tao-nang-cao')
     }
-  }, [videoUrl, router, lessonListPath])
+  }, [videoUrl, router])
 
   if (!videoUrl) return null // Render nothing while redirecting
 
@@ -1187,7 +1181,7 @@ function LessonContent() {
         {/* Header - compact */}
         <div className="bg-gradient-to-r from-purple-900 to-indigo-900 px-4 py-2 flex items-center gap-3 z-50">
           <button
-            onClick={() => router.push(lessonListPath)}
+            onClick={() => router.push('/user/dao-tao-nang-cao')}
             className="p-1.5 hover:bg-white/10 rounded-full transition"
           >
             <svg
@@ -1671,13 +1665,11 @@ function LessonContent() {
                       if (currentAssignment) {
                         // User requested to keep flow in /user/dao-tao-nang-cao
                         router.push(
-                          isCandidatePortalLesson
-                            ? lessonListPath
-                            : `/user/dao-tao-nang-cao?start_assignment_id=${currentAssignment.id}`,
+                          `/user/dao-tao-nang-cao?start_assignment_id=${currentAssignment.id}`,
                         )
                       } else {
                         // Fallback to training list if no assignment found
-                        router.push(lessonListPath)
+                        router.push(`/user/dao-tao-nang-cao`)
                       }
                     }}
                     className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 h-auto text-lg rounded-xl shadow-lg hover:shadow-xl transition-all transform hover:-translate-y-1"

@@ -2,12 +2,13 @@
 
 import { PageContainer } from '@/components/PageContainer'
 import { SecureDocViewer } from '@/components/secure-viewer/SecureDocViewer'
+import { UserClassAssistant } from '@/components/teaching-documents/UserClassAssistant'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useAuth } from '@/lib/auth-context'
 import { ArrowLeft, ChevronRight, ShieldCheck } from 'lucide-react'
 import Link from 'next/link'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, usePathname, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
 type DocumentMetadata = {
@@ -45,19 +46,36 @@ function normalizeSubject(subject: string) {
   return subject
 }
 
-function parentRouteForSubject(subject: string) {
-  if (subject === 'Trải nghiệm') return '/admin/giao-trinh-trai-nghiem'
-  return '/admin/giao-trinh-chuyen-mon'
+function getGiaoTrinhCategory(metadata: Pick<DocumentMetadata, 'subjectName' | 'courseName'>) {
+  const subject = normalizeSubject(metadata.subjectName).trim().toLowerCase()
+  const course = (metadata.courseName || '').trim().toLowerCase()
+
+  if (subject === 'trải nghiệm') return 'trai-nghiem'
+  if (course.includes('trải nghiệm') || course.includes('kind')) return 'trai-nghiem'
+  return 'chuyen-mon'
+}
+
+function parentRouteForGiaoTrinh(metadata: Pick<DocumentMetadata, 'subjectName' | 'courseName'>, pathname: string) {
+  const prefix = pathname.startsWith('/candidate-portal')
+    ? '/candidate-portal'
+    : pathname.startsWith('/user')
+      ? '/user'
+      : '/admin'
+  return getGiaoTrinhCategory(metadata) === 'trai-nghiem'
+    ? `${prefix}/giao-trinh-trai-nghiem`
+    : `${prefix}/giao-trinh-chuyen-mon`
 }
 
 export default function GiaoTrinhDetailPage() {
   const params = useParams<{ id: string }>()
+  const pathname = usePathname()
   const router = useRouter()
   const { user } = useAuth()
   const documentId = Number(params.id)
   const validDocumentId = Number.isInteger(documentId) && documentId > 0 ? documentId : null
   const [metadata, setMetadata] = useState<DocumentMetadata | null>(null)
   const [message, setMessage] = useState('')
+  const showUserAssistant = pathname.startsWith('/user') && validDocumentId !== null
 
   useEffect(() => {
     if (!validDocumentId) return
@@ -92,7 +110,7 @@ export default function GiaoTrinhDetailPage() {
     const subject = normalizeSubject(metadata.subjectName)
     const course = metadata.courseName || 'Chưa phân môn'
     const levelLabel = `${course} ${metadata.documentLevel}`
-    const baseRoute = parentRouteForSubject(subject)
+    const baseRoute = parentRouteForGiaoTrinh(metadata, pathname)
     const subjectHref = `${baseRoute}?subject=${encodeURIComponent(subject)}`
     const courseHref = `${subjectHref}&course=${encodeURIComponent(course)}`
     const levelHref = `${courseHref}&level=${encodeURIComponent(metadata.documentLevel)}`
@@ -112,7 +130,7 @@ export default function GiaoTrinhDetailPage() {
         </Link>
       </nav>
     )
-  }, [metadata])
+  }, [metadata, pathname])
 
   return (
     <PageContainer
@@ -126,6 +144,7 @@ export default function GiaoTrinhDetailPage() {
         </Button>
       }
     >
+      {showUserAssistant && <UserClassAssistant documentId={validDocumentId} />}
       <Card className="rounded-lg border border-slate-200 p-3">
         <div className="mb-3 flex items-center gap-2 rounded-md bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
           <ShieldCheck className="h-4 w-4 text-rose-700" />

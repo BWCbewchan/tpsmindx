@@ -87,7 +87,7 @@ export default function HrCandidateRow({
                 </div>
                 <div className="rounded-lg bg-gray-50 p-2">
                   <p className="text-[10px] font-semibold uppercase text-gray-500">Khu vực</p>
-                  <p className="mt-1 font-semibold text-gray-800">{row.region_name || `KV ${row.region_code || 'N/A'}`}</p>
+                  <p className="mt-1 font-semibold text-gray-800">KV {row.region_code || 'N/A'}</p>
                 </div>
                 <div className="rounded-lg bg-gray-50 p-2 col-span-2">
                   <p className="text-[10px] font-semibold uppercase text-gray-500">Email</p>
@@ -129,7 +129,7 @@ export default function HrCandidateRow({
       {/* Region */}
       <TableCell className="py-3 px-3">
         <span className="inline-flex rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-xs font-semibold text-sky-700">
-          {row.region_name || `KV ${row.region_code || 'N/A'}`}
+          KV {row.region_code || 'N/A'}
         </span>
       </TableCell>
 

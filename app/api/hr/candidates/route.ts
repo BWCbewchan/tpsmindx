@@ -80,14 +80,13 @@ const handleGet = async (request: NextRequest) => {
     const search = normalizeValue(sp.get('search'));
     const genFilter = normalizeValue(sp.get('gen'));
     const regionFilter = normalizeValue(sp.get('region'));
-    const campusFilter = normalizeValue(sp.get('campus'));
     const page = parsePageParam(sp.get('page'), 1);
     const pageSize = Math.min(parsePageParam(sp.get('pageSize'), DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
 
     const selectedRegionCodes = resolveRegionCodes(regionFilter);
 
     // Build WHERE conditions
-    const conditions: string[] = ['c.is_deleted = FALSE'];
+    const conditions: string[] = ['1=1'];
     const params: unknown[] = [];
     let idx = 1;
 
@@ -97,6 +96,7 @@ const handleGet = async (request: NextRequest) => {
     } else if (statusFilter === 'unassigned') {
       conditions.push(`c.gen_id IS NULL`);
     }
+    // 'missing-sheet-gen' và 'manual-assigned' không còn ý nghĩa với DB — bỏ qua
 
     // Gen filter
     if (genFilter && genFilter !== 'all' && genFilter !== '__unassigned__') {
@@ -112,35 +112,20 @@ const handleGet = async (request: NextRequest) => {
       params.push(selectedRegionCodes);
     }
 
-    // Campus filter
-    if (campusFilter && campusFilter !== 'all') {
-      conditions.push(`c.desired_campus = $${idx++}`);
-      params.push(campusFilter);
-    }
-
     // Search
     if (search) {
       const q = `%${search}%`;
       conditions.push(`(c.full_name ILIKE $${idx} OR c.email ILIKE $${idx} OR c.phone ILIKE $${idx})`);
-      params.push(q);
-      idx++;
+      params.push(q); idx++;
     }
 
     const where = conditions.join(' AND ');
 
-    let summaryWhere = 'c.is_deleted = FALSE';
-    const summaryParams: unknown[] = [];
-    if (selectedRegionCodes && selectedRegionCodes.length > 0) {
-      summaryWhere += ' AND c.region_code = ANY($1::text[])';
-      summaryParams.push(selectedRegionCodes);
-    }
-
-    const [rowsResult, countResult, summaryResult, gensResult, campusesResult, byGenResult] = await Promise.all([
+    const [rowsResult, countResult, summaryResult, gensResult] = await Promise.all([
       pool.query(
-        `SELECT c.id, c.candidate_code, c.full_name, c.email, c.phone, c.region_code, c.desired_campus,
+        `SELECT c.id, c.full_name, c.email, c.phone, c.region_code, c.desired_campus,
                 c.work_block, c.subject_code, c.gen_id, c.status, c.source,
                 c.created_by_email, c.updated_by_email, c.created_at, c.updated_at,
-                c.birth_year, c.facebook_url, c.teaching_experience, c.gender, c.current_address, c.region_name,
                 g.gen_name
          FROM hr_candidates c
          LEFT JOIN hr_gen_catalog g ON g.id = c.gen_id
@@ -163,35 +148,24 @@ const handleGet = async (request: NextRequest) => {
            COUNT(*) FILTER (WHERE c.region_code = '3') AS r3,
            COUNT(*) FILTER (WHERE c.region_code = '4') AS r4,
            COUNT(*) FILTER (WHERE c.region_code = '5') AS r5
-         FROM hr_candidates c
-         WHERE ${summaryWhere}`,
-        summaryParams
+         FROM hr_candidates c`
       ),
       pool.query(`SELECT id, gen_name FROM hr_gen_catalog WHERE is_active = true ORDER BY gen_name ASC`),
-      pool.query(`SELECT DISTINCT desired_campus FROM hr_candidates WHERE desired_campus IS NOT NULL AND desired_campus != '' ORDER BY desired_campus ASC`),
-      pool.query(
-        `SELECT g.gen_name, COUNT(*) AS count
-         FROM hr_candidates c
-         JOIN hr_gen_catalog g ON g.id = c.gen_id
-         WHERE ${summaryWhere} AND c.gen_id IS NOT NULL
-         GROUP BY g.gen_name`,
-        summaryParams
-      ),
     ]);
 
     const total = parseInt(countResult.rows[0].count);
     const s = summaryResult.rows[0];
 
-    // Build byGen from database group by result
+    // Build byGen from rows
     const byGen: Record<string, number> = {};
-    for (const row of byGenResult.rows) {
-      byGen[row.gen_name] = parseInt(row.count);
+    for (const row of rowsResult.rows) {
+      const gen = row.gen_name || 'Chưa xếp GEN';
+      byGen[gen] = (byGen[gen] || 0) + 1;
     }
 
     // Map rows to HrCandidateRow shape
     const rows = rowsResult.rows.map((r: any) => ({
       id: r.id,
-      candidate_code: r.candidate_code || '',
       full_name: r.full_name,
       email: r.email,
       phone: r.phone || '',
@@ -207,12 +181,6 @@ const handleGet = async (request: NextRequest) => {
       updated_by_email: r.updated_by_email,
       created_at: r.created_at,
       updated_at: r.updated_at,
-      birth_year: r.birth_year || null,
-      facebook_url: r.facebook_url || null,
-      teaching_experience: r.teaching_experience || null,
-      gender: r.gender || null,
-      current_address: r.current_address || null,
-      region_name: r.region_name || null,
     }));
 
     return NextResponse.json({
@@ -238,7 +206,6 @@ const handleGet = async (request: NextRequest) => {
         },
       },
       availableGens: gensResult.rows.map((r: any) => r.gen_name),
-      availableCampuses: campusesResult.rows.map((r: any) => r.desired_campus),
     });
   } catch (error) {
     console.error('HR candidates GET error:', error);
@@ -263,17 +230,16 @@ const handlePost = async (request: NextRequest) => {
       return NextResponse.json({ error: 'candidateId và assignedGen là bắt buộc.' }, { status: 400 });
     }
 
-    // 1. Lấy thông tin ứng viên hiện tại
+    // Load the current candidate so a first GEN assignment can create code/account.
     const candResult = await pool.query(
       `SELECT candidate_code, region_code, work_block, gen_id FROM hr_candidates WHERE id = $1`,
       [candidateId]
     );
     if (candResult.rowCount === 0) {
-      return NextResponse.json({ error: 'Không tìm thấy ứng viên.' }, { status: 404 });
+      return NextResponse.json({ error: 'Candidate not found.' }, { status: 404 });
     }
     const candidate = candResult.rows[0];
 
-    // 2. Lookup hoặc tạo gen_id từ catalog
     const genResult = await pool.query(
       `INSERT INTO hr_gen_catalog (gen_name, source, created_by_email, is_active)
        VALUES ($1, 'manual', $2, true)
@@ -283,13 +249,10 @@ const handlePost = async (request: NextRequest) => {
     );
     const genId = genResult.rows[0].id;
 
-    // 3. Nếu chưa có candidate_code, tự động tạo mã và tạo tài khoản
     let updatedCode = candidate.candidate_code;
     if (!updatedCode) {
       const genNumberMatch = genName.match(/\d+/);
       const genNumber = genNumberMatch ? parseInt(genNumberMatch[0]) : 0;
-      
-      // Auto-generate code
       updatedCode = await generateCandidateCode(
         candidate.region_code || '2',
         genNumber,
@@ -297,25 +260,22 @@ const handlePost = async (request: NextRequest) => {
       );
     }
 
-    // 4. Cập nhật candidate
     const result = await pool.query(
-      `UPDATE hr_candidates 
-       SET gen_id = $1, 
-           initial_gen_id = COALESCE(initial_gen_id, $1), 
+      `UPDATE hr_candidates
+       SET gen_id = $1,
+           initial_gen_id = COALESCE(initial_gen_id, $1),
            current_gen_id = COALESCE(current_gen_id, $1),
-           candidate_code = $2, 
-           updated_by_email = $3, 
+           candidate_code = $2,
+           updated_by_email = $3,
            updated_at = CURRENT_TIMESTAMP
        WHERE id = $4 RETURNING *`,
       [genId, updatedCode, auth.sessionEmail, candidateId]
     );
 
-    // 5. Nếu lúc đầu chưa có candidate_code, tạo tài khoản người dùng tương ứng
     if (!candidate.candidate_code && updatedCode) {
       try {
         await createCandidateUser(candidateId, updatedCode);
       } catch (userErr: any) {
-        // Nếu đã tồn tại username trong bảng hr_candidate_users thì bỏ qua
         console.warn('User account creation skipped or warning:', userErr.message);
       }
     }

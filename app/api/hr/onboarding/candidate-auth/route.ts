@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { getJwtSecret } from '@/lib/jwt-secret';
+import { setSessionCookieOnResponse } from '@/lib/session-cookie';
 
 export async function POST(request: Request) {
   try {
@@ -57,7 +60,20 @@ export async function POST(request: Request) {
       console.error('[Candidate Auth] failed to fetch CANDI permissions:', permErr);
     }
 
-    return NextResponse.json({
+    const sessionEmail = `candidate-${user.candidate_id}@candidate.local`;
+    const token = jwt.sign(
+      {
+        candidateId: user.candidate_id,
+        email: sessionEmail,
+        role: 'candidate',
+        purpose: 'tps_edge',
+        ap: false,
+      },
+      getJwtSecret(),
+      { expiresIn: '12h' },
+    );
+
+    const res = NextResponse.json({
       success: true,
       data: {
         candidate_id: user.candidate_id,
@@ -71,6 +87,8 @@ export async function POST(request: Request) {
         permissions,
       }
     });
+    setSessionCookieOnResponse(res, token);
+    return res;
 
   } catch (error) {
     console.error('[Candidate Auth Error]', error);

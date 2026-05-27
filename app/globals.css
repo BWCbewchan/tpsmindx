@@ -144,8 +144,6 @@
 
 @layer base {
   :root {
-    --font-exo: 'Exo', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-kaushan-script: 'Kaushan Script', 'Brush Script MT', cursive;
     --app-background: #f8fafc;
     --app-foreground: #0f172a;
     --app-card: #ffffff;
@@ -2240,5 +2238,52 @@ input[type='reset'] {
 
   .bao-tri-eyebrow-glow::after {
     display: none;
+  }
+}
+
+/* Secure DOCX viewer */
+.secure-docx-frame {
+  color: #111827;
+}
+
+.secure-docx-frame .docx-wrapper {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.secure-docx-frame .docx {
+  margin: 0 auto 18px !important;
+  box-shadow:
+    0 18px 45px rgba(15, 23, 42, 0.16),
+    0 0 0 1px rgba(15, 23, 42, 0.08) !important;
+}
+
+.secure-docx-frame .docx:last-child {
+  margin-bottom: 0 !important;
+}
+
+.secure-docx-frame table {
+  border-collapse: collapse;
+  max-width: 100%;
+}
+
+.secure-docx-frame td,
+.secure-docx-frame th {
+  vertical-align: top;
+}
+
+.secure-docx-frame img {
+  max-width: 100%;
+}
+
+.secure-docx-frame a {
+  color: #2563eb;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+  .secure-docx-frame .docx-wrapper {
+    overflow-x: auto;
   }
 }

@@ -192,7 +192,7 @@ export async function GET(request: NextRequest) {
       // Thời gian xem gộp tất cả chunk
       const mergedWatchSeconds = mergedWatchSecondsForVideoIds(sourceVideoIds, scoresMap);
 
-      // Điểm bài kiểm tra: lấy từ attempts của tất cả chunk trong group
+      // Điểm bài kiểm tra: ưu tiên từ attempts, nếu không có thì lấy điểm được ghi nhận trực tiếp (import)
       const allAttempts = sourceVideoIds.flatMap((id) => attemptMap.get(id) || []);
       // Sắp xếp theo created_at DESC
       allAttempts.sort((a, b) => {
@@ -204,7 +204,23 @@ export async function GET(request: NextRequest) {
       const bestScore = allAttempts.length > 0
         ? Math.max(...allAttempts.map((a) => a.score ?? -Infinity))
         : null;
-      const quizScore = bestScore !== null && bestScore !== -Infinity ? bestScore : null;
+      let quizScore = bestScore !== null && bestScore !== -Infinity ? bestScore : null;
+      
+      // Fallback lấy điểm từ bảng scores nếu được import (không có attempt log) nhưng có score ghi nhận
+      if (quizScore === null) {
+        const importedScores = sourceVideoIds
+          .map((id) => scoresMap.get(id)?.score)
+          .filter((s) => s != null && s > 0); // chỉ lấy những điểm được nhập > 0
+        if (importedScores.length > 0) {
+          quizScore = Math.max(...(importedScores as number[]));
+        }
+      }
+
+      // Tự động nhận diện 'completed' nếu đã có điểm quiz (do import thủ công hoặc do bug DB cũ)
+      if (quizScore !== null && quizScore > 0 && effective.completion_status !== 'completed') {
+        effective.completion_status = 'completed';
+        if (!effective.completed_at) effective.completed_at = new Date().toISOString();
+      }
 
       // submission_id tốt nhất (điểm cao nhất)
       const bestSubmission = allAttempts.length > 0
@@ -226,7 +242,7 @@ export async function GET(request: NextRequest) {
         video_link: representative.video_link,
         video_description: representative.description,
         lesson_number: representative.lesson_number,
-        score: quizScore,
+        score: quizScore !== null ? Number(quizScore) : null,
         completion_status: effective.completion_status,
         time_spent_seconds: mergedWatchSeconds,
         viewed_at: sourceVideoIds
@@ -252,19 +268,10 @@ export async function GET(request: NextRequest) {
       (v) => v.completion_status && v.completion_status !== 'not_started'
     ).length;
 
-    // ── 7. Total score từ submissions ─────────────────────────────────────────
-    const totalScoreResult = await pool.query(`
-      SELECT COALESCE(AVG(best_score), 0) as avg_score
-      FROM (
-        SELECT assignment_id, MAX(score) as best_score
-        FROM training_assignment_submissions
-        WHERE LOWER(TRIM(teacher_code)) = $1
-          AND status IN ('submitted', 'graded')
-          AND score IS NOT NULL
-        GROUP BY assignment_id
-      ) sub
-    `, [normalizedCode]);
-    const computedTotalScore = parseFloat(totalScoreResult.rows[0]?.avg_score) || 0;
+    // ── 7. Tính lại điểm tổng kết trung bình trên TỔNG SỐ BÀI ĐƯỢC GIAO (chưa có điểm tính là 0) ──
+    const computedTotalScore = totalLessons > 0
+      ? videoScores.reduce((sum, v) => sum + (Number(v.score) || 0), 0) / totalLessons
+      : 0;
 
     return NextResponse.json({
       success: true,

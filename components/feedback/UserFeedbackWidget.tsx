@@ -5,12 +5,12 @@ import { authHeaders } from '@/lib/auth-headers'
 import { lockBodyScroll, unlockBodyScroll } from '@/lib/body-scroll-lock'
 import { isTempHiddenUserRoute } from '@/lib/temp-hidden-user-routes'
 import {
-    ChevronLeft,
-    ChevronRight,
-    Map,
-    MessageCircleMore,
-    UploadCloud,
-    X,
+  ChevronLeft,
+  ChevronRight,
+  Map,
+  MessageCircleMore,
+  UploadCloud,
+  X,
 } from 'lucide-react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -60,8 +60,10 @@ function MascotWalker({ onFeedback, onTour }: { onFeedback: () => void; onTour: 
   const [bubble, setBubble] = useState(false)
   const hoveredRef = useRef(false)  // RAF reads this directly — no stale closure
 
-  // Single render-state: what to actually display
-  const [display, setDisplay] = useState({ src: WALK_FRAMES[0], posX: 0, scaleX: -1 })
+  // Refs for direct DOM manipulation to bypass React renders
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const imagesRef = useRef<globalThis.Map<string, HTMLImageElement>>(new globalThis.Map())
 
   // All mutable animation state lives in ONE ref — no stale closure issues
   const s = useRef({
@@ -77,6 +79,7 @@ function MascotWalker({ onFeedback, onTour }: { onFeedback: () => void; onTour: 
     turnCount: 0,
     pausedPhase: null as 'walk' | 'jump' | 'turn' | null,
     pausedPosX: 0,
+    isHidden: false,
   })
 
   const bubbleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -109,19 +112,46 @@ function MascotWalker({ onFeedback, onTour }: { onFeedback: () => void; onTour: 
     }
   }, [])
 
-  // Preload
+  // Preload frames incrementally to avoid freezing main thread
   useEffect(() => {
-    ;[...WALK_FRAMES, ...JUMP_FRAMES, ...TURN_FRAMES, ...WAVE_FRAMES].forEach((src) => {
-      const img = new window.Image(); img.src = src
-    })
+    const allFrames = [...WALK_FRAMES, ...JUMP_FRAMES, ...TURN_FRAMES, ...WAVE_FRAMES]
+    let i = 0
+    const loadNext = () => {
+      if (i >= allFrames.length) return
+      const img = new window.Image()
+      img.src = allFrames[i]
+      imagesRef.current.set(allFrames[i], img)
+      i++
+
+      // Draw first frame immediately to avoid flash
+      if (i === 1 && canvasRef.current) {
+        img.onload = () => {
+          const ctx = canvasRef.current?.getContext('2d')
+          if (ctx) {
+            ctx.clearRect(0, 0, 200, 200)
+            ctx.save()
+            ctx.scale(-1, 1)
+            ctx.drawImage(img, -200, 0, 200, 200)
+            ctx.restore()
+          }
+        }
+      }
+
+      const raf = window.requestIdleCallback || ((cb) => setTimeout(cb, 16))
+      raf(() => loadNext())
+    }
+    loadNext()
   }, [])
 
   // Bubble scheduler
   const scheduleBubble = useCallback(function pumpBubble() {
     const delay = (45 + Math.random() * 15) * 1000
     bubbleTimerRef.current = setTimeout(() => {
-      setBubble(true)
-      setTimeout(() => setBubble(false), 8000)
+      // Don't show bubble if tab is hidden
+      if (!s.current.isHidden) {
+        setBubble(true)
+        setTimeout(() => setBubble(false), 8000)
+      }
       pumpBubble()
     }, delay)
   }, [])
@@ -131,6 +161,19 @@ function MascotWalker({ onFeedback, onTour }: { onFeedback: () => void; onTour: 
     return () => { if (bubbleTimerRef.current) clearTimeout(bubbleTimerRef.current) }
   }, [scheduleBubble])
 
+  // Visibility change listener
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      s.current.isHidden = document.visibilityState === 'hidden'
+      if (!s.current.isHidden) {
+        s.current.lastPosTime = performance.now()
+        s.current.lastFrameTime = performance.now()
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
   // Main RAF loop
   useEffect(() => {
     const st = s.current
@@ -139,18 +182,24 @@ function MascotWalker({ onFeedback, onTour }: { onFeedback: () => void; onTour: 
     const scheduleJump = () => {
       const delay = JUMP_COOLDOWN_MIN + Math.random() * (JUMP_COOLDOWN_MAX - JUMP_COOLDOWN_MIN)
       st.jumpTimer = window.setTimeout(() => {
-        if (st.phase === 'walk') {  // only jump when walking, never during wave/turn/jump
+        if (!st.isHidden && st.phase === 'walk') {  // only jump when walking, never during wave/turn/jump
           st.phase = 'jump'
           st.frameIdx = 0
-          st.lastFrameTime = 0
+          st.lastFrameTime = performance.now()
         }
         scheduleJump()
       }, delay)
     }
-    scheduleJump()
+    setTimeout(() => scheduleJump(), 2000)
 
     const tick = (now: number) => {
       st.rafId = requestAnimationFrame(tick)
+
+      if (st.isHidden) {
+        return // Skip all processing when hidden
+      }
+
+      if (st.lastFrameTime === 0) st.lastFrameTime = now
 
       const frames =
         st.phase === 'wave' ? WAVE_FRAMES :
@@ -166,10 +215,13 @@ function MascotWalker({ onFeedback, onTour }: { onFeedback: () => void; onTour: 
 
       const msPerFrame = 1000 / fps
 
+      let frameChanged = false
+
       // ── Advance sprite frame ──────────────────────────────────────────────
       if (now - st.lastFrameTime >= msPerFrame) {
         st.lastFrameTime = now
         st.frameIdx++
+        frameChanged = true
 
         if (st.phase === 'wave' && st.frameIdx >= WAVE_FRAMES.length) {
           // Wave loops continuously while hovered
@@ -189,6 +241,8 @@ function MascotWalker({ onFeedback, onTour }: { onFeedback: () => void; onTour: 
         }
       }
 
+      let positionChanged = false
+
       // ── Move position (walk + jump both move, wave/turn freeze) ──────────────
       if (st.phase !== 'turn' && st.phase !== 'wave') {
         if (st.lastPosTime === 0) st.lastPosTime = now
@@ -203,7 +257,8 @@ function MascotWalker({ onFeedback, onTour }: { onFeedback: () => void; onTour: 
             st.phase = 'turn'
             st.frameIdx = 0
             st.turnCount = 0
-            st.lastFrameTime = 0
+            st.lastFrameTime = now
+            frameChanged = true
           }
         } else {
           st.posX = Math.max(-AMPLITUDE, st.posX - delta)
@@ -212,23 +267,43 @@ function MascotWalker({ onFeedback, onTour }: { onFeedback: () => void; onTour: 
             st.phase = 'turn'
             st.frameIdx = 0
             st.turnCount = 0
-            st.lastFrameTime = 0
+            st.lastFrameTime = now
+            frameChanged = true
           }
         }
+        positionChanged = true
       } else {
         st.lastPosTime = now // keep lastPosTime fresh during turn so no dt spike after
       }
 
-      // ── Push to React render ──────────────────────────────────────────────
-      const currentFrames =
-        st.phase === 'wave' ? WAVE_FRAMES :
-          st.phase === 'jump' ? JUMP_FRAMES :
-            st.phase === 'turn' ? TURN_FRAMES :
-              WALK_FRAMES
-      const src = currentFrames[st.frameIdx] ?? currentFrames[0]
-      const scaleX = st.dirRight ? 1 : -1
+      // ── Push directly to DOM (Bypass React Render) ─────────────────────────
+      if (positionChanged && wrapperRef.current) {
+        wrapperRef.current.style.transform = `translateX(${st.posX}px)`
+      }
 
-      setDisplay({ src, posX: st.posX, scaleX })
+      if (frameChanged && canvasRef.current) {
+        const currentFrames =
+          st.phase === 'wave' ? WAVE_FRAMES :
+            st.phase === 'jump' ? JUMP_FRAMES :
+              st.phase === 'turn' ? TURN_FRAMES :
+                WALK_FRAMES
+        const src = currentFrames[st.frameIdx] ?? currentFrames[0]
+        const scaleX = st.dirRight ? 1 : -1
+
+        const ctx = canvasRef.current.getContext('2d')
+        const img = imagesRef.current.get(src)
+        if (ctx && img && img.complete) {
+          ctx.clearRect(0, 0, 200, 200)
+          ctx.save()
+          if (scaleX === -1) {
+            ctx.scale(-1, 1)
+            ctx.drawImage(img, -200, 0, 200, 200)
+          } else {
+            ctx.drawImage(img, 0, 0, 200, 200)
+          }
+          ctx.restore()
+        }
+      }
     }
 
     st.rafId = requestAnimationFrame(tick)
@@ -242,11 +317,12 @@ function MascotWalker({ onFeedback, onTour }: { onFeedback: () => void; onTour: 
 
   return (
     <div
-      className="fixed z-[999]"
+      ref={wrapperRef}
+      className="fixed z-[15]"
       style={{
         bottom: 'calc(env(safe-area-inset-bottom, 0px) + 0px)',
         right: 'calc(env(safe-area-inset-right, 0px) + 1rem)',
-        transform: `translateX(${display.posX}px)`,
+        transform: `translateX(0px)`,
         willChange: 'transform',
         paddingTop: '100px',
       }}
@@ -365,14 +441,11 @@ function MascotWalker({ onFeedback, onTour }: { onFeedback: () => void; onTour: 
         {/* Bóng dưới chân — scale theo mascot */}
         <div className="absolute bottom-[28px] w-[60px] h-[10px] bg-black/20 mix-blend-multiply rounded-[100%] blur-[4px] pointer-events-none z-0" />
 
-        <img
-          src={display.src}
-          alt="mascot"
+        <canvas
+          ref={canvasRef}
           width={200}
           height={200}
-          style={{ transform: `scaleX(${display.scaleX})` }}
-          className="h-[160px] w-auto object-contain drop-shadow-sm relative z-10"
-          draggable={false}
+          className="h-[160px] w-[160px] object-contain drop-shadow-sm relative z-10"
         />
       </div>
     </div>

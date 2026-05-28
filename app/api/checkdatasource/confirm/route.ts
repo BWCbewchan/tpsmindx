@@ -52,7 +52,7 @@ export const POST = withApiProtection(async (request: NextRequest) => {
     const rankK12Check  = f("Rank K12 check");
     const snapshotJson  = JSON.stringify(raw);
 
-    await pool.query(
+    const queryResult = await pool.query(
       `INSERT INTO teachers (
          code, full_name, user_name, work_email, personal_email, phone_number,
          status_update, centers, khoi_final, role, course_line, rank,
@@ -104,7 +104,8 @@ export const POST = withApiProtection(async (request: NextRequest) => {
          "Status"        = EXCLUDED."Status",
          "Course Line"   = EXCLUDED."Course Line",
          onboarding_snapshot = EXCLUDED.onboarding_snapshot,
-         updated_at      = CURRENT_TIMESTAMP`,
+         updated_at      = CURRENT_TIMESTAMP
+       RETURNING (xmax = 0) AS is_insert`,
       [
         code, fullName, userNameField, workEmail, personalEmail || null, phoneNumber || null,
         statusUpdate || null, centers || null, khoiFinal || null, role || null, courseLine || null, rank || null,
@@ -114,8 +115,12 @@ export const POST = withApiProtection(async (request: NextRequest) => {
         snapshotJson,
       ]
     );
+    
+    // Nếu giáo viên đăng nhập lần đầu tiên (~ Insert mới) hoặc trả về là success,
+    // ta trả về cờ "isNewTeacher" để phía client có thể quyết định gọi API import điểm.
+    const isNewTeacher = queryResult.rows[0]?.is_insert === true;
 
-    return NextResponse.json({ success: true, persisted: true });
+    return NextResponse.json({ success: true, persisted: true, isNewTeacher });
   } catch (error: unknown) {
     if (isDatabaseUnavailableError(error)) {
       // Cho phép client coi như thành công để user vẫn vào được app; đồng bộ DB khi slot trở lại.

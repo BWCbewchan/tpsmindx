@@ -178,7 +178,7 @@ export default function TrainingDetailPage() {
               </div>
             </div>
             <div className="text-center bg-red-600 text-white rounded-2xl px-6 py-4 shadow-sm">
-              <div className="text-3xl font-bold">{teacher.total_score.toFixed(1)}</div>
+              <div className="text-3xl font-bold">{(teacher.total_score ?? 0).toFixed(2)}</div>
               <div className="text-xs opacity-90 mt-0.5">Điểm tổng kết</div>
             </div>
           </div>
@@ -340,6 +340,8 @@ export default function TrainingDetailPage() {
                                   )}
                                 </div>
                               </div>
+                            ) : v.score != null ? (
+                              <span className="text-emerald-600 text-xs font-medium px-2 py-0.5 bg-emerald-50 rounded border border-emerald-100">Đã nhập điểm</span>
                             ) : (
                               <span className="text-slate-300 text-xs italic">Chưa làm bài</span>
                             )}

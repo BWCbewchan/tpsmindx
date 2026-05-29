@@ -239,15 +239,15 @@ export default function GiaiTrinhPage() {
     setFormData((prev) => ({
       ...prev,
       assignment_id: prefillAssignmentId || prev.assignment_id,
-      campus: prefillCampus || prev.campus,
-      subject: prefillSubject || prev.subject,
+      campus: (prefillCampus || prev.campus).trim(),
+      subject: (prefillSubject || prev.subject).trim(),
       test_date: normalizedDate || prev.test_date,
       reason:
         prev.reason ||
         `Giải trình cho bài thi quá hạn (Assignment #${prefillAssignmentId}).`,
     }))
-    setCampusSearch(prefillCampus || '')
-    setSubjectSearch(prefillSubject || '')
+    setCampusSearch((prefillCampus || '').trim())
+    setSubjectSearch((prefillSubject || '').trim())
     setShowModal(true)
   }, [
     user,
@@ -273,6 +273,19 @@ export default function GiaiTrinhPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Manual validation cho các fields không dùng HTML required (tránh lỗi hidden input)
+    if (!formData.subject.trim()) {
+      toast.error('Vui lòng chọn bộ môn')
+      return
+    }
+    if (!formData.test_date) {
+      toast.error('Vui lòng chọn ngày kiểm tra')
+      return
+    }
+    if (!formData.reason.trim()) {
+      toast.error('Vui lòng nhập lý do giải trình')
+      return
+    }
     if (formData.test_date && !isExamInCurrentVietnamMonth(formData.test_date)) {
       toast.error(
         'Chỉ được gửi giải trình trong tháng hiện tại (giờ Việt Nam).',
@@ -390,7 +403,6 @@ export default function GiaiTrinhPage() {
                   Bộ môn <span className="text-red-500">*</span>
                 </label>
                 <select
-                  required
                   value={formData.subject}
                   onChange={(e) => {
                     const subject = e.target.value
@@ -410,7 +422,6 @@ export default function GiaiTrinhPage() {
                 <div className="relative hidden sm:block">
                   <input
                     type="text"
-                    required
                     value={subjectSearch || formData.subject}
                     onChange={(e) => {
                       setSubjectSearch(e.target.value)
@@ -452,7 +463,6 @@ export default function GiaiTrinhPage() {
                 </label>
                 <input
                   type="date"
-                  required
                   value={formData.test_date}
                   onChange={(e) =>
                     setFormData({ ...formData, test_date: e.target.value })
@@ -467,7 +477,6 @@ export default function GiaiTrinhPage() {
                   Lý do không tham gia <span className="text-red-500">*</span>
                 </label>
                 <textarea
-                  required
                   rows={4}
                   value={formData.reason}
                   onChange={(e) =>

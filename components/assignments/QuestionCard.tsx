@@ -17,7 +17,9 @@ interface QuestionCardProps {
 export function QuestionCard({ question, index, onEdit, onDelete, isDraggable = false }: QuestionCardProps) {
   const template = QUESTION_TEMPLATES[question.question_type];
   const difficultyLevel = DIFFICULTY_LEVELS.find(d => d.value === question.difficulty);
-  const IconComponent = template.icon;
+  const IconComponent = template?.icon;
+
+
 
   const decodeEscapedHtml = (value: string) => {
     if (!value || !value.includes('&lt;')) return value;

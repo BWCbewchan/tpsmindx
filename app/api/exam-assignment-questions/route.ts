@@ -65,24 +65,38 @@ export async function GET(request: NextRequest) {
          LIMIT 1
        ) ct_sub ON (r.id_de_thi IS NULL)
        LEFT JOIN chuyen_sau_bode bd ON bd.id = COALESCE(r.id_de_thi, ct_sub.id_de)
-       -- Lấy thời gian làm bài từ event_schedules: ưu tiên id_su_kien, fallback tìm theo tháng/năm/môn
+       -- Lấy thời gian làm bài từ event_schedules:
+       -- Ưu tiên 1: id_su_kien trỏ đến sự kiện 'exam' → dùng bat_dau_luc/ket_thuc_luc của exam
+       -- Ưu tiên 2: id_su_kien trỏ đến sự kiện 'registration' (bổ sung) → close_at = ket_thuc_luc của registration
+       -- Ưu tiên 3: fallback tìm exam theo tháng/năm/môn
        LEFT JOIN LATERAL (
          SELECT
-           (EXTRACT(EPOCH FROM (ket_thuc_luc - bat_dau_luc)) / 60)::int AS duration_min,
-           bat_dau_luc AT TIME ZONE 'Asia/Ho_Chi_Minh' AS event_open_at,
-           ket_thuc_luc AT TIME ZONE 'Asia/Ho_Chi_Minh' AS event_close_at
-         FROM event_schedules
-         WHERE loai_su_kien = 'exam'
-           AND (
-             (r.id_su_kien IS NOT NULL AND id = r.id_su_kien)
+           CASE
+             WHEN es.loai_su_kien = 'exam'
+               THEN (EXTRACT(EPOCH FROM (es.ket_thuc_luc - es.bat_dau_luc)) / 60)::int
+             ELSE COALESCE(mh.thoi_gian_thi_phut, 90)
+           END AS duration_min,
+           CASE
+             WHEN es.loai_su_kien = 'exam'
+               THEN es.bat_dau_luc AT TIME ZONE 'Asia/Ho_Chi_Minh'
+             ELSE NULL
+           END AS event_open_at,
+           -- close_at: với registration (bổ sung) → đóng theo ket_thuc_luc của sự kiện đăng ký
+           es.ket_thuc_luc AT TIME ZONE 'Asia/Ho_Chi_Minh' AS event_close_at
+         FROM event_schedules es
+         WHERE (
+             (r.id_su_kien IS NOT NULL AND es.id = r.id_su_kien)
              OR (
                r.id_su_kien IS NULL
-               AND chuyen_nganh = mh.ma_mon
-               AND EXTRACT(YEAR  FROM bat_dau_luc) = COALESCE(r.nam_dk,  EXTRACT(YEAR  FROM NOW()))
-               AND EXTRACT(MONTH FROM bat_dau_luc) = COALESCE(r.thang_dk, EXTRACT(MONTH FROM NOW()))
+               AND es.loai_su_kien = 'exam'
+               AND es.chuyen_nganh = mh.ma_mon
+               AND EXTRACT(YEAR  FROM es.bat_dau_luc) = COALESCE(r.nam_dk,  EXTRACT(YEAR  FROM NOW()))
+               AND EXTRACT(MONTH FROM es.bat_dau_luc) = COALESCE(r.thang_dk, EXTRACT(MONTH FROM NOW()))
              )
            )
-         ORDER BY (r.id_su_kien IS NOT NULL AND id = r.id_su_kien) DESC, bat_dau_luc DESC
+         ORDER BY
+           (r.id_su_kien IS NOT NULL AND es.id = r.id_su_kien) DESC,
+           es.bat_dau_luc DESC
          LIMIT 1
        ) ev_dur ON TRUE
        WHERE r.id = $1
@@ -105,43 +119,60 @@ export async function GET(request: NextRequest) {
     }
 
     // Tính open_at / close_at:
-    // - Nếu đã bắt đầu thi (thoi_gian_kiem_tra set): open_at = lúc bắt đầu, close_at = bắt đầu + thời gian thi
-    // - Nếu chưa: open_at = đầu tháng, close_at = đầu tháng sau (window cho phép lấy bài)
-    // Thời gian làm bài = event_duration_minutes (từ event_schedules) hoặc fallback 90 phút
+    // - Đợt CHÍNH THỨC (loai_su_kien='exam'): event_open_at VÀ event_close_at đều có → dùng cả hai
+    // - Đợt BỔ SUNG (loai_su_kien='registration'): chỉ có event_close_at (deadline đóng bài)
+    //   → open_at tính từ thoi_gian_kiem_tra hoặc fallback, close_at = ket_thuc_luc sự kiện đăng ký
+    // - Fallback: không có event → dùng thoi_gian_kiem_tra hoặc tháng/năm
     const timeLimitMinutes = Number(row.event_duration_minutes) || 90;
     const durationMs = timeLimitMinutes * 60_000;
 
-    // Ưu tiên dùng event_schedules.bat_dau_luc / ket_thuc_luc nếu có (admin đặt giờ qua "Tạo sự kiện")
     let openAtTs: string;
     let closeAtTs: string;
 
     if (row.event_open_at && row.event_close_at) {
+      // Đợt CHÍNH THỨC: có cả open và close từ sự kiện exam
       openAtTs  = new Date(row.event_open_at).toISOString();
       closeAtTs = new Date(row.event_close_at).toISOString();
+    } else if (!row.event_open_at && row.event_close_at) {
+      // Đợt BỔ SUNG: chỉ có close_at từ sự kiện registration
+      // open_at = dang_ky_luc (thời điểm tạo assignment), không dùng thoi_gian_kiem_tra
+      openAtTs = row.dang_ky_luc
+        ? new Date(row.dang_ky_luc).toISOString()
+        : new Date().toISOString();
+      closeAtTs = new Date(row.event_close_at).toISOString();
     } else {
+      // Đợt BỔ SUNG hoặc không có sự kiện: tính open_at từ thoi_gian_kiem_tra / fallback
       const THOI_GIAN_REGEX = /^[0-9]{1,2}:[0-9]{2} [0-9]{2}\/[0-9]{2}\/[0-9]{4}$/;
       const hasStartedTime =
         typeof row.thoi_gian_kiem_tra === 'string' &&
         THOI_GIAN_REGEX.test(row.thoi_gian_kiem_tra.trim());
 
       if (hasStartedTime) {
-        // Parse 'HH:MM DD/MM/YYYY' as Asia/Ho_Chi_Minh -> compute UTC ms
         const [timePart, datePart] = row.thoi_gian_kiem_tra.trim().split(' ');
         const [hh, mm] = timePart.split(':').map(Number);
         const [dd, mo, yyyy] = datePart.split('/').map(Number);
-        // VN is UTC+7: subtract 7 hours to get UTC
         const startMs = Date.UTC(yyyy, mo - 1, dd, hh - 7, mm, 0, 0);
         openAtTs = new Date(startMs).toISOString();
-        closeAtTs = new Date(startMs + durationMs).toISOString();
+        // close_at: nếu có event_close_at (bổ sung) → dùng deadline sự kiện, không dùng startMs + duration
+        closeAtTs = row.event_close_at
+          ? new Date(row.event_close_at).toISOString()
+          : new Date(startMs + durationMs).toISOString();
       } else if (row.thang_dk && row.nam_dk) {
-        openAtTs = new Date(row.nam_dk, row.thang_dk - 1, 1).toISOString();
-        closeAtTs = new Date(row.nam_dk, row.thang_dk, 1).toISOString();
+        openAtTs  = new Date(row.nam_dk, row.thang_dk - 1, 1).toISOString();
+        // close_at: nếu có event_close_at (bổ sung) → dùng deadline sự kiện
+        closeAtTs = row.event_close_at
+          ? new Date(row.event_close_at).toISOString()
+          : new Date(row.nam_dk, row.thang_dk, 1).toISOString();
       } else if (row.dang_ky_luc) {
-        openAtTs = new Date(row.dang_ky_luc).toISOString();
-        closeAtTs = new Date(new Date(row.dang_ky_luc).getTime() + durationMs).toISOString();
+        openAtTs  = new Date(row.dang_ky_luc).toISOString();
+        closeAtTs = row.event_close_at
+          ? new Date(row.event_close_at).toISOString()
+          : new Date(new Date(row.dang_ky_luc).getTime() + durationMs).toISOString();
       } else {
-        openAtTs = new Date().toISOString();
-        closeAtTs = new Date(Date.now() + durationMs).toISOString();
+        openAtTs  = new Date().toISOString();
+        closeAtTs = row.event_close_at
+          ? new Date(row.event_close_at).toISOString()
+          : new Date(Date.now() + durationMs).toISOString();
       }
     }
 

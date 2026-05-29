@@ -164,9 +164,15 @@ export const GET = withApiProtection(async (request: NextRequest) => {
             }
           });
 
-          // Công thức: (Điểm Chính thức + Điểm Bổ sung) / 2
-          // Nếu không thi chính thức, mặc định là 0
-          const combinedScore = (officialScore + supplementScore) / 2;
+          // Công thức:
+          // - Có cả chính thức VÀ bổ sung → (officialScore + supplementScore) / 2
+          // - Chỉ có bổ sung (không có chính thức) → lấy điểm bổ sung làm điểm chính
+          // - Chỉ có chính thức → lấy điểm chính thức
+          const combinedScore = (hasOfficial && hasSupplement)
+            ? (officialScore + supplementScore) / 2
+            : hasSupplement
+              ? supplementScore
+              : officialScore;
           totalCombinedScore += combinedScore;
           subjectCount++;
         }

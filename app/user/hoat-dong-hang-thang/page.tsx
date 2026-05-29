@@ -81,6 +81,9 @@ interface CalendarExamAssignment {
   is_open: boolean
   is_set_active_now: boolean
   registration_type?: string
+  score?: number | null
+  correct_answers?: number | null
+  total_points?: number | null
 }
 
 const WEEKDAY_LABELS = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN']
@@ -2557,23 +2560,6 @@ export default function MonthlyActivitiesPage() {
                           event.eventType,
                         )
 
-                        if (event.eventType === 'registration') {
-                          return (
-                            <button
-                              type="button"
-                              key={event.id}
-                              className={`rounded-sm px-1 py-1 text-center text-[11px] leading-4 font-bold whitespace-pre-line ${calendarEventStyle.titleClassName}`}
-                              title={event.title.replace(/\n/g, ' ')}
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDayEventClick(date, event)
-                              }}
-                            >
-                              {event.title}
-                            </button>
-                          )
-                        }
-
                         return (
                           <button
                             type="button"
@@ -2872,7 +2858,7 @@ export default function MonthlyActivitiesPage() {
                             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
                           >
                             {event.registrationTemplate === 'supplement'
-                              ? 'Đăng ký kiểm tra chuyên sâu bổ sung'
+                              ? 'Kiểm tra chuyên sâu bổ sung'
                               : 'Đăng ký kiểm tra chuyên sâu chính thức'}
                           </button>
                         </div>
@@ -3511,13 +3497,40 @@ export default function MonthlyActivitiesPage() {
                         Làm bài
                       </button>
                     ) : assignment ? (
-                      <button
-                        type="button"
-                        disabled
-                        className="rounded-md bg-gray-300 px-3 py-2 text-sm font-semibold text-gray-600"
-                      >
-                        Đã hoàn thành
-                      </button>
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                        <p className="text-xs font-semibold text-amber-800">
+                          ✅ Đã hoàn thành bài kiểm tra bổ sung
+                        </p>
+                        {assignment.open_at && (
+                          <p className="mt-1 text-xs text-amber-700">
+                            Ngày làm: {new Date(assignment.open_at).toLocaleDateString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            })}
+                          </p>
+                        )}
+                        {assignment.score != null ? (
+                          <p className="mt-1 text-xs text-amber-700">
+                            Điểm: <span className="font-bold text-amber-900">{assignment.score}</span>
+                            {assignment.total_points != null && (
+                              <span className="text-amber-600"> / {assignment.total_points}</span>
+                            )}
+                            {assignment.correct_answers != null && (
+                              <span className="ml-1 text-amber-600">
+                                ({assignment.correct_answers} câu đúng)
+                              </span>
+                            )}
+                          </p>
+                        ) : (
+                          <p className="mt-1 text-xs text-amber-600">
+                            Điểm chưa được cập nhật
+                          </p>
+                        )}
+                        <p className="mt-2 text-[11px] text-amber-600">
+                          Mỗi môn chỉ được làm bổ sung 1 lần trong đợt này.
+                        </p>
+                      </div>
                     ) : (
                       <button
                         type="button"

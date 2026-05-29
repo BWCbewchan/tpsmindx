@@ -16,6 +16,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     ".agents/**",
     ".claude/**",
+    "mindx-kpi-control/**",
     "scripts/*.cjs",
     "scripts/**/*.cjs",
   ]),

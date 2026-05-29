@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test AI Analysis API</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 30px;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #555;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover {
+      transform: translateY(-2px);
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .result {
+      margin-top: 30px;
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      border-left: 4px solid #667eea;
+    }
+    .error {
+      border-left-color: #e53e3e;
+      background: #fff5f5;
+      color: #c53030;
+    }
+    .success {
+      border-left-color: #38a169;
+      background: #f0fff4;
+      color: #276749;
+    }
+    pre {
+      background: #2d3748;
+      color: #e2e8f0;
+      padding: 15px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .loading {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 10px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🤖 Test AI Analysis API</h1>
+    
+    <div class="form-group">
+      <label for="classId">Class ID:</label>
+      <input type="text" id="classId" placeholder="696d8a0e37d80b8de08f9ac4" value="696d8a0e37d80b8de08f9ac4">
+    </div>
+
+    <div class="form-group">
+      <label for="className">Class Name:</label>
+      <input type="text" id="className" placeholder="TT-C4K-SA39" value="TT-C4K-SA39">
+    </div>
+
+    <div class="form-group">
+      <label for="courseName">Course Name:</label>
+      <input type="text" id="courseName" placeholder="Scratch" value="Scratch">
+    </div>
+
+    <div class="form-group">
+      <label for="sessionNumber">Session Number:</label>
+      <input type="number" id="sessionNumber" placeholder="4" value="4">
+    </div>
+
+    <button id="testBtn" onclick="testAPI()">
+      <span id="btnText">🚀 Test API</span>
+    </button>
+
+    <div id="result"></div>
+  </div>
+
+  <script>
+    async function testAPI() {
+      const btn = document.getElementById('testBtn');
+      const btnText = document.getElementById('btnText');
+      const resultDiv = document.getElementById('result');
+      
+      // Get values
+      const classId = document.getElementById('classId').value;
+      const className = document.getElementById('className').value;
+      const courseName = document.getElementById('courseName').value;
+      const sessionNumber = parseInt(document.getElementById('sessionNumber').value);
+
+      // Validate
+      if (!classId || !className || !courseName || !sessionNumber) {
+        resultDiv.innerHTML = '<div class="result error">❌ Vui lòng điền đầy đủ thông tin</div>';
+        return;
+      }
+
+      // Loading state
+      btn.disabled = true;
+      btnText.innerHTML = '<span class="loading"></span>Đang gọi API...';
+      resultDiv.innerHTML = '';
+
+      try {
+        console.log('Calling API with:', { classId, className, courseName, sessionNumber });
+
+        const response = await fetch('http://localhost:3000/api/ai/teaching-analysis', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include', // Important: include cookies
+          body: JSON.stringify({
+            classId,
+            className,
+            courseName,
+            sessionNumber,
+          }),
+        });
+
+        console.log('Response status:', response.status);
+        const data = await response.json();
+        console.log('Response data:', data);
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || `HTTP ${response.status}`);
+        }
+
+        // Success
+        resultDiv.innerHTML = `
+          <div class="result success">
+            <h3>✅ Thành công!</h3>
+            <p><strong>AI Provider:</strong> ${data.metadata?.aiProvider || 'Unknown'}</p>
+            <p><strong>Used AI:</strong> ${data.metadata?.usedAI ? 'Yes' : 'No (Mock data)'}</p>
+            <p><strong>Previous Sessions:</strong> ${data.metadata?.previousSessionsCount || 0}</p>
+            <p><strong>Comments:</strong> ${data.metadata?.commentsCount || 0}</p>
+          </div>
+          <div class="result">
+            <h3>📊 Analysis Result:</h3>
+            <pre>${JSON.stringify(data.analysis, null, 2)}</pre>
+          </div>
+        `;
+
+      } catch (error) {
+        console.error('Error:', error);
+        resultDiv.innerHTML = `
+          <div class="result error">
+            <h3>❌ Lỗi</h3>
+            <p>${error.message}</p>
+            <p><small>Kiểm tra Console để xem chi tiết</small></p>
+          </div>
+        `;
+      } finally {
+        btn.disabled = false;
+        btnText.innerHTML = '🚀 Test API';
+      }
+    }
+
+    // Auto-fill from URL params
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('classId')) document.getElementById('classId').value = params.get('classId');
+      if (params.get('className')) document.getElementById('className').value = params.get('className');
+      if (params.get('courseName')) document.getElementById('courseName').value = params.get('courseName');
+      if (params.get('sessionNumber')) document.getElementById('sessionNumber').value = params.get('sessionNumber');
+    });
+  </script>
+</body>
+</html>

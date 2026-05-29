@@ -326,7 +326,7 @@ const handlePost = async (request: NextRequest) => {
            current_gen_id = $1,
            candidate_code = CASE
              WHEN candidate_code IS NULL OR candidate_code !~ '^\\d{7}$'
-             THEN $4
+             THEN COALESCE($4, candidate_code)
              ELSE candidate_code
            END,
            updated_by_email = $2,
@@ -335,10 +335,6 @@ const handlePost = async (request: NextRequest) => {
        RETURNING *`,
       [genId, auth.sessionEmail, candidateId, generatedCandidateCode]
     );
-
-    if (result.rowCount === 0) {
-      return NextResponse.json({ error: 'Không tìm thấy ứng viên.' }, { status: 404 });
-    }
 
     const candidateCode = result.rows[0].candidate_code;
     if (candidateCode) {

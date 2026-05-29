@@ -2063,6 +2063,125 @@ const migrations: Migration[] = [
         ON hr_training_sessions(training_mode);
     `,
   },
+
+  // ═══════════════════════════════════════════════════════
+  // V89: AI Usage Tracking, Rate Limiting & Caching
+  // ═══════════════════════════════════════════════════════
+  {
+    name: 'V89_ai_usage_tracking',
+    version: 89,
+    sql: `
+      -- Table 1: AI Usage Logs (tracking & monitoring)
+      CREATE TABLE IF NOT EXISTS ai_usage_logs (
+        id SERIAL PRIMARY KEY,
+        user_email VARCHAR(255) NOT NULL,
+        feature VARCHAR(100) NOT NULL,
+        class_id VARCHAR(100),
+        session_number INTEGER,
+        model VARCHAR(50) NOT NULL,
+        input_tokens INTEGER DEFAULT 0,
+        output_tokens INTEGER DEFAULT 0,
+        total_tokens INTEGER DEFAULT 0,
+        estimated_cost DECIMAL(10, 6) DEFAULT 0,
+        response_time_ms INTEGER,
+        success BOOLEAN DEFAULT true,
+        error_message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_user_email ON ai_usage_logs(user_email);
+      CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_created_at ON ai_usage_logs(created_at);
+      CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_feature ON ai_usage_logs(feature);
+      CREATE INDEX IF NOT EXISTS idx_ai_usage_logs_user_date ON ai_usage_logs(user_email, created_at);
+
+      -- Table 2: AI Rate Limits (per-user daily limits)
+      CREATE TABLE IF NOT EXISTS ai_rate_limits (
+        id SERIAL PRIMARY KEY,
+        user_email VARCHAR(255) NOT NULL,
+        feature VARCHAR(100) NOT NULL,
+        request_count INTEGER DEFAULT 0,
+        limit_per_day INTEGER DEFAULT 10,
+        reset_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (user_email, feature, reset_at)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ai_rate_limits_user_feature ON ai_rate_limits(user_email, feature);
+      CREATE INDEX IF NOT EXISTS idx_ai_rate_limits_reset_at ON ai_rate_limits(reset_at);
+
+      -- Table 3: AI Analysis Cache (cache analysis results)
+      CREATE TABLE IF NOT EXISTS ai_analysis_cache (
+        id SERIAL PRIMARY KEY,
+        cache_key VARCHAR(255) NOT NULL UNIQUE,
+        analysis_data JSONB NOT NULL,
+        metadata JSONB,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP NOT NULL,
+        hit_count INTEGER DEFAULT 0,
+        last_accessed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_ai_analysis_cache_key ON ai_analysis_cache(cache_key);
+      CREATE INDEX IF NOT EXISTS idx_ai_analysis_cache_expires_at ON ai_analysis_cache(expires_at);
+      CREATE INDEX IF NOT EXISTS idx_ai_analysis_cache_created_at ON ai_analysis_cache(created_at);
+
+      -- Function: Auto-delete expired cache entries
+      CREATE OR REPLACE FUNCTION delete_expired_ai_cache()
+      RETURNS void AS $$
+      BEGIN
+        DELETE FROM ai_analysis_cache WHERE expires_at < NOW();
+      END;
+      $$ LANGUAGE plpgsql;
+
+      -- View: Daily cost summary
+      CREATE OR REPLACE VIEW ai_daily_cost_summary AS
+      SELECT
+        DATE(created_at) as date,
+        user_email,
+        feature,
+        model,
+        COUNT(*) as request_count,
+        SUM(total_tokens) as total_tokens,
+        SUM(estimated_cost) as total_cost,
+        AVG(response_time_ms) as avg_response_time_ms,
+        SUM(CASE WHEN success THEN 1 ELSE 0 END) as success_count,
+        SUM(CASE WHEN NOT success THEN 1 ELSE 0 END) as error_count
+      FROM ai_usage_logs
+      GROUP BY DATE(created_at), user_email, feature, model
+      ORDER BY date DESC, total_cost DESC;
+
+      -- View: User rate limit status
+      CREATE OR REPLACE VIEW ai_user_rate_limit_status AS
+      SELECT
+        user_email,
+        feature,
+        request_count,
+        limit_per_day,
+        (limit_per_day - request_count) as remaining,
+        ROUND((request_count::DECIMAL / limit_per_day * 100), 2) as usage_percentage,
+        reset_at,
+        CASE
+          WHEN request_count >= limit_per_day THEN 'EXCEEDED'
+          WHEN request_count >= limit_per_day * 0.8 THEN 'WARNING'
+          ELSE 'OK'
+        END as status
+      FROM ai_rate_limits
+      WHERE reset_at > NOW()
+      ORDER BY usage_percentage DESC;
+
+      -- View: Cache statistics
+      CREATE OR REPLACE VIEW ai_cache_statistics AS
+      SELECT
+        COUNT(*) as total_entries,
+        COUNT(CASE WHEN expires_at > NOW() THEN 1 END) as active_entries,
+        COUNT(CASE WHEN expires_at <= NOW() THEN 1 END) as expired_entries,
+        SUM(hit_count) as total_hits,
+        AVG(hit_count) as avg_hits_per_entry,
+        ROUND(AVG(EXTRACT(EPOCH FROM (expires_at - created_at)) / 3600), 2) as avg_ttl_hours
+      FROM ai_analysis_cache;
+    `,
+  },
 ]
 
 // ========== HÀM CHẠY MIGRATIONS ==========

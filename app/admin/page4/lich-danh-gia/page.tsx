@@ -156,7 +156,7 @@ interface LectureReviewRegistrationRow {
 
 const REGISTRATION_TEMPLATE_LABELS: Record<RegistrationTemplate, string> = {
   official: "Đăng ký kiểm tra chuyên sâu chính thức",
-  supplement: "Đăng ký kiểm tra chuyên sâu bổ sung",
+  supplement: "Kiểm tra chuyên sâu bổ sung",
 };
 
 const EVENT_TYPE_LABELS: Record<EventCategory, string> = {
@@ -245,10 +245,20 @@ function getEventDetailSectionClass(_eventType: EventCategory) {
   return "border-gray-200 bg-gray-50";
 }
 
+function normalizeEventTitle(title: string, registrationTemplate?: RegistrationTemplate): string {
+  // Normalize tên cũ → tên mới cho các event đã lưu trong DB
+  if (title === "Đăng ký kiểm tra chuyên sâu bổ sung" || 
+      (registrationTemplate === "supplement" && title.startsWith("Đăng ký kiểm tra chuyên sâu bổ sung"))) {
+    return "Kiểm tra chuyên sâu bổ sung";
+  }
+  return title;
+}
+
 function mapEventRowToEvent(row: EventRow): EvaluationEvent {
+  const template = (row.registration_template || undefined) as RegistrationTemplate | undefined;
   return {
     id: row.id,
-    title: row.title,
+    title: normalizeEventTitle(row.title, template),
     specialty: row.specialty || row.title,
     startAt: row.start_at,
     endAt: row.end_at,

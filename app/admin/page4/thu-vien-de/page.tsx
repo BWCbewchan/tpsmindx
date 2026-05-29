@@ -57,7 +57,7 @@ interface MonthlyDefaultSelection {
 const WEEKDAY_LABELS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 const REGISTRATION_EVENT_LABELS = {
   official: "Đăng ký kiểm tra chuyên sâu chính thức",
-  supplement: "Đăng ký kiểm tra chuyên sâu bổ sung",
+  supplement: "Kiểm tra chuyên sâu bổ sung",
 } as const;
 
 function startOfDay(date: Date) {

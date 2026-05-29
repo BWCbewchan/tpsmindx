@@ -153,8 +153,9 @@ export async function insertExamRegistration(
         `SELECT id FROM chuyen_sau_results
          WHERE id_su_kien = $1::uuid
            AND LOWER(TRIM(ma_giao_vien)) = LOWER(TRIM($2))
+           AND id_mon = $3
          LIMIT 1`,
-        [id_su_kien, ma_giao_vien]
+        [id_su_kien, ma_giao_vien, resolvedSubjectId]
       );
       if (dupEvent.rows.length > 0) {
         await client.query("ROLLBACK");

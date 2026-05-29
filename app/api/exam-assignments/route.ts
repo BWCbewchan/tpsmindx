@@ -90,8 +90,9 @@ export async function GET(request: NextRequest) {
         csr.co_so_lam_viec,
         csr.khu_vuc,
         CASE
-          WHEN LOWER(TRIM(COALESCE(csr.hinh_thuc, ''))) LIKE '%b%sung%'
-            OR LOWER(TRIM(COALESCE(csr.hinh_thuc, ''))) LIKE '%bo%'
+          -- Chỉ match chính xác 'additional', 'bổ sung', 'bo sung' — tránh false positive với 'robotics', 'combo', v.v.
+          WHEN LOWER(TRIM(COALESCE(csr.hinh_thuc, ''))) LIKE '%bổ sung%'
+            OR LOWER(TRIM(COALESCE(csr.hinh_thuc, ''))) LIKE '%bo sung%'
             OR LOWER(TRIM(COALESCE(csr.hinh_thuc, ''))) = 'additional'
           THEN 'additional'
           ELSE 'official'

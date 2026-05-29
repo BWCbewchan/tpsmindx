@@ -2,8 +2,10 @@
 
 import StudentInsightsPanel from './StudentInsightsPanel';
 import Modal from '@/components/Modal';
-import { BookOpen, Building2, CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { BookOpen, Building2, CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Users, Sparkles } from 'lucide-react';
 import { Fragment, memo, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -210,6 +212,7 @@ function ClassDetailPanel({
   fromDate: string;
   toDate: string;
 }): React.ReactNode {
+  const router = useRouter();
   const [activeSlot, setActiveSlot] = useState<ClassSlot>(slot);
   const classSlots = useMemo(
     () => (slot.classSlots && slot.classSlots.length > 0 ? slot.classSlots : [slot])
@@ -217,6 +220,25 @@ function ClassDetailPanel({
       .sort((a, b) => new Date(a.date || a.startTime).getTime() - new Date(b.date || b.startTime).getTime()),
     [slot]
   );
+
+  // Tìm buổi học mới nhất (buổi gần nhất với hôm nay hoặc trong tương lai)
+  const latestSessionIndex = useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    
+    // Tìm buổi đầu tiên >= hôm nay
+    const futureIndex = classSlots.findIndex(s => {
+      const sessionDate = new Date(s.date || s.startTime);
+      sessionDate.setHours(0, 0, 0, 0);
+      return sessionDate >= now;
+    });
+    
+    // Nếu có buổi trong tương lai, trả về buổi đó
+    if (futureIndex !== -1) return futureIndex;
+    
+    // Nếu không, trả về buổi cuối cùng (buổi gần nhất trong quá khứ)
+    return classSlots.length - 1;
+  }, [classSlots]);
 
   useEffect(() => {
     setActiveSlot(slot);
@@ -229,6 +251,21 @@ function ClassDetailPanel({
   const colors = useMemo(() => getCategoryColors(category), [category]);
   const statusStyle = useMemo(() => getStatusStyle(slot.status), [slot.status]);
 
+  // Hàm xử lý khi bấm nút AI
+  const handleAIAnalysis = async () => {
+    const sessionNumber = latestSessionIndex + 1;
+    
+    // Tạo URL với query params để tìm giáo trình
+    const params = new URLSearchParams({
+      course: slot.courseName || '',
+      session: `buoi${sessionNumber}`,
+      class: slot.classId || '',
+      className: slot.className || '',
+      analyze: 'true', // Flag để trigger AI analysis
+    });
+    
+    router.push(`/user/giao-trinh-chuyen-mon?${params.toString()}`);
+  };
 
   return (
     <div className="relative">
@@ -290,28 +327,43 @@ function ClassDetailPanel({
           <div className="flex gap-2 overflow-x-auto pb-2">
             {classSlots.map((sessionSlot, index) => {
               const isActive = sessionSlot.id === activeSlot.id;
+              const isLatest = index === latestSessionIndex;
               const attendanceCount = sessionSlot.studentAttendance?.length || 0;
               return (
-                <button
-                  key={sessionSlot.id}
-                  onClick={() => setActiveSlot(sessionSlot)}
-                  className={`flex-shrink-0 min-w-[116px] rounded-xl border px-3 py-2 text-left transition ${
-                    isActive
-                      ? 'border-blue-500 bg-blue-50 text-blue-800 shadow-sm'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <div className="text-xs font-bold">Buổi {index + 1}</div>
-                  <div className="mt-1 text-[11px] text-current opacity-80">
-                    {new Date(sessionSlot.date || sessionSlot.startTime).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
-                  </div>
-                  <div className="mt-1 text-[11px] text-current opacity-70">
-                    {fmtTime(sessionSlot.startTime)} - {fmtTime(sessionSlot.endTime)}
-                  </div>
-                  <div className="mt-1 text-[11px] text-current opacity-70">
-                    {attendanceCount}/{sessionSlot.students?.length || 0} điểm danh
-                  </div>
-                </button>
+                <div key={sessionSlot.id} className="flex-shrink-0 flex flex-col gap-2">
+                  <button
+                    onClick={() => setActiveSlot(sessionSlot)}
+                    className={`min-w-[116px] rounded-xl border-2 px-3 py-2 text-left transition ${
+                      isActive
+                        ? 'border-blue-500 bg-blue-50 text-blue-800 shadow-sm'
+                        : isLatest
+                        ? 'border-green-500 bg-white text-gray-700 shadow-sm'
+                        : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="text-xs font-bold">Buổi {index + 1}</div>
+                    <div className="mt-1 text-[11px] text-current opacity-80">
+                      {new Date(sessionSlot.date || sessionSlot.startTime).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' })}
+                    </div>
+                    <div className="mt-1 text-[11px] text-current opacity-70">
+                      {fmtTime(sessionSlot.startTime)} - {fmtTime(sessionSlot.endTime)}
+                    </div>
+                    <div className="mt-1 text-[11px] text-current opacity-70">
+                      {attendanceCount}/{sessionSlot.students?.length || 0} điểm danh
+                    </div>
+                  </button>
+                  {isLatest && (
+                    <Button
+                      size="xs"
+                      variant="default"
+                      className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white shadow-md"
+                      onClick={handleAIAnalysis}
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      Phân tích AI
+                    </Button>
+                  )}
+                </div>
               );
             })}
           </div>

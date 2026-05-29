@@ -986,7 +986,9 @@ export default function TeacherAssignmentPage() {
   }
 
   function buildExplanationHref(item: ExamAssignment): string {
-    return `/user/giaitrinh?assignment_id=${item.id}&subject=${encodeURIComponent(item.subject_code)}&test_date=${encodeURIComponent(item.open_at)}&campus=${encodeURIComponent(item.block_code)}`
+    // Trim subject_code để loại bỏ ký tự thừa (CRLF, spaces) có thể có trong DB
+    const cleanSubject = (item.subject_code || '').trim()
+    return `/user/giaitrinh?assignment_id=${item.id}&subject=${encodeURIComponent(cleanSubject)}&test_date=${encodeURIComponent(item.open_at)}&campus=${encodeURIComponent(item.block_code)}`
   }
 
   function formatScoreSummary(

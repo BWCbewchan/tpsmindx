@@ -208,6 +208,35 @@ export function ExplanationSection({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    // Manual validation — không dùng HTML required để tránh lỗi hidden input trong modal
+    if (!formData.teacher_name.trim()) {
+      toast.error('Vui lòng nhập họ và tên')
+      return
+    }
+    if (!formData.lms_code.trim()) {
+      toast.error('Vui lòng nhập mã LMS')
+      return
+    }
+    if (!formData.email.trim()) {
+      toast.error('Vui lòng nhập email')
+      return
+    }
+    if (!formData.campus.trim()) {
+      toast.error('Vui lòng chọn cơ sở')
+      return
+    }
+    if (!formData.subject.trim()) {
+      toast.error('Vui lòng chọn bộ môn')
+      return
+    }
+    if (!formData.test_date) {
+      toast.error('Vui lòng chọn ngày kiểm tra')
+      return
+    }
+    if (!formData.reason.trim()) {
+      toast.error('Vui lòng nhập lý do giải trình')
+      return
+    }
     setSubmitting(true)
 
     try {
@@ -331,7 +360,6 @@ export function ExplanationSection({
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.teacher_name}
                   onChange={(e) =>
                     setFormData({ ...formData, teacher_name: e.target.value })
@@ -350,7 +378,6 @@ export function ExplanationSection({
                 </label>
                 <input
                   type="text"
-                  required
                   value={formData.lms_code}
                   onChange={(e) =>
                     setFormData({ ...formData, lms_code: e.target.value })
@@ -368,7 +395,6 @@ export function ExplanationSection({
               </label>
               <input
                 type="email"
-                required
                 value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
@@ -385,7 +411,6 @@ export function ExplanationSection({
                 </label>
                 <input
                   type="text"
-                  required
                   value={campusSearch || formData.campus}
                   onChange={(e) => {
                     setCampusSearch(e.target.value)
@@ -422,7 +447,6 @@ export function ExplanationSection({
                   Bộ môn <span className="text-red-500">*</span>
                 </label>
                 <select
-                  required
                   value={formData.subject}
                   onChange={(e) => {
                     const subject = e.target.value
@@ -442,7 +466,6 @@ export function ExplanationSection({
                 <div className="relative hidden sm:block">
                   <input
                     type="text"
-                    required
                     value={subjectSearch || formData.subject}
                     onChange={(e) => {
                       setSubjectSearch(e.target.value)
@@ -484,7 +507,6 @@ export function ExplanationSection({
               </label>
               <input
                 type="date"
-                required
                 value={formData.test_date}
                 onChange={(e) =>
                   setFormData({ ...formData, test_date: e.target.value })
@@ -498,7 +520,6 @@ export function ExplanationSection({
                 Lý do không tham gia <span className="text-red-500">*</span>
               </label>
               <textarea
-                required
                 rows={4}
                 value={formData.reason}
                 onChange={(e) =>

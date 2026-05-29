@@ -176,14 +176,14 @@ export async function GET(request: NextRequest) {
 
     if (registrationType === 'official') {
       conditions.push(`NOT (
-        LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%b%sung%'
-        OR LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%bo%'
+        LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%bổ sung%'
+        OR LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%bo sung%'
         OR LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) = 'additional'
       )`);
     } else if (registrationType === 'additional') {
       conditions.push(`(
-        LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%b%sung%'
-        OR LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%bo%'
+        LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%bổ sung%'
+        OR LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%bo sung%'
         OR LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) = 'additional'
       )`);
     }
@@ -285,9 +285,10 @@ export async function GET(request: NextRequest) {
          COALESCE(${eventScheduleTsInstantExpr('es', 'bat_dau_luc')}, r.lich_thi_dk, r.tao_luc)             AS scheduled_at,
          es.loai_su_kien,
          -- registration_type: map hinh_thuc → official/additional
+         -- Chỉ match chính xác 'additional', 'bổ sung', 'bo sung' — tránh false positive với 'robotics', 'combo', v.v.
          CASE
-           WHEN LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%b%sung%'
-             OR LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%bo%'
+           WHEN LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%bổ sung%'
+             OR LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%bo sung%'
              OR LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) = 'additional'
            THEN 'additional'
            ELSE 'official'

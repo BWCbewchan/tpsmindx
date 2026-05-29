@@ -10,6 +10,7 @@ export interface HrCandidateRow {
   subject_code: string;
   gen_id: number | null;
   gen_name: string;       // join từ hr_gen_catalog
+  candidate_code: string;
   status: 'new' | 'in_training' | 'passed' | 'failed' | 'dropped';
   source: 'manual' | 'csv';
   created_by_email: string;
@@ -35,6 +36,7 @@ export interface HrPagination {
 
 export interface GenEntry {
   key: string;
+  id?: number;
   genCode: string;
   count: number;
   regionCode: string;

@@ -133,12 +133,13 @@ const handlePost = async (request: NextRequest) => {
        DO UPDATE SET
          is_active = true,
          updated_at = CURRENT_TIMESTAMP
-       RETURNING gen_name`,
+       RETURNING id, gen_name`,
       [genName, requestEmail]
     );
 
     return NextResponse.json({
       success: true,
+      id: result.rows[0]?.id,
       gen: result.rows[0]?.gen_name || genName,
     });
   } catch (error) {

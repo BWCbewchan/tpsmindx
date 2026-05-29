@@ -73,6 +73,11 @@ export default function HrCandidateRow({
                 <Maximize2 className="w-3.5 h-3.5" />
               </button>
             </div>
+            {row.candidate_code && (
+              <p className="truncate text-[11px] font-bold text-[#a1001f]">
+                Mã UV: {row.candidate_code}
+              </p>
+            )}
             {row.email && <p className="truncate text-xs text-gray-500">{row.email}</p>}
             {row.phone && <p className="truncate text-[11px] font-medium text-gray-400 font-mono">{row.phone}</p>}
           </div>
@@ -81,6 +86,10 @@ export default function HrCandidateRow({
             <div className="pointer-events-none absolute left-0 top-full z-30 mt-2 w-[340px] rounded-xl border border-gray-200 bg-white p-3 shadow-xl">
               <p className="text-sm font-bold text-gray-900">{row.full_name}</p>
               <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-lg bg-gray-50 p-2">
+                  <p className="text-[10px] font-semibold uppercase text-gray-500">Mã ứng viên</p>
+                  <p className="mt-1 font-semibold text-[#a1001f]">{row.candidate_code || 'Chưa có'}</p>
+                </div>
                 <div className="rounded-lg bg-gray-50 p-2">
                   <p className="text-[10px] font-semibold uppercase text-gray-500">GEN</p>
                   <p className="mt-1 font-semibold text-gray-800">{row.gen_name || 'Chưa xếp'}</p>

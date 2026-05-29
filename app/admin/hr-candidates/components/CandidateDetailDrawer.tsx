@@ -37,6 +37,9 @@ export default function CandidateDetailDrawer({ candidate, isOpen, onClose }: Ca
                 {candidate.phone && (
                   <p className="flex items-center gap-2"><Phone className="h-4 w-4 text-gray-400" /> {candidate.phone}</p>
                 )}
+                <p className="font-bold text-[#a1001f]">
+                  Mã ứng viên: {candidate.candidate_code || 'Chưa có'}
+                </p>
               </div>
             </div>
             <span className={`shrink-0 px-2 py-1.5 rounded-lg text-xs font-bold border ${
@@ -72,6 +75,10 @@ export default function CandidateDetailDrawer({ candidate, isOpen, onClose }: Ca
           <div className="mb-6">
             <h3 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2 mb-3">Thông tin GEN</h3>
             <div className="space-y-3 bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <div className="flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-gray-100">
+                <span className="text-xs font-semibold text-gray-500">Mã ứng viên:</span>
+                <span className="text-sm font-black text-[#a1001f]">{candidate.candidate_code || 'Chưa có'}</span>
+              </div>
               <div className="flex justify-between items-center bg-white px-3 py-2 rounded-lg border border-gray-100">
                 <span className="text-xs font-semibold text-gray-500">GEN hiện tại:</span>
                 <span className="text-sm font-black text-emerald-600">{candidate.gen_name || 'Chưa xếp'}</span>

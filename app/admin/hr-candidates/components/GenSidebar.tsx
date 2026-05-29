@@ -10,7 +10,9 @@ import {
   Plus, 
   Loader2, 
   Menu,
-  X
+  X,
+  ArrowDownAZ,
+  ArrowUpZA
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GenEntry } from '../types';
@@ -78,7 +80,7 @@ export default function GenSidebar({
           transition={{ duration: 0.3, ease: 'easeInOut' }}
           className="relative flex flex-col h-full overflow-hidden"
         >
-          <div className="w-80 space-y-4 pr-1 flex flex-col h-full mt-2">
+          <div className="w-full space-y-4 pr-0 xl:w-80 xl:pr-1 flex flex-col h-full mt-2">
             {/* Create GEN Section - Only for Planner tab optionally */}
             {showCreateGen && (
               <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -149,31 +151,15 @@ export default function GenSidebar({
                     value={genSearchInput}
                     onChange={(e) => setGenSearchInput(e.target.value)}
                     placeholder="Tìm GEN..."
-                    className="w-full rounded-xl border border-gray-300 bg-white pl-9 pr-3 py-2 text-sm outline-none focus:border-[#a1001f] focus:ring-4 focus:ring-[#a1001f]/10"
+                    className="w-full rounded-xl border border-gray-300 bg-white py-2 pl-9 pr-14 text-sm outline-none focus:border-[#a1001f] focus:ring-4 focus:ring-[#a1001f]/10"
                   />
-                </div>
-                <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setGenSortOrder('asc')}
-                    className={`flex-1 inline-flex h-8 items-center justify-center rounded-lg border text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                      genSortOrder === 'asc'
-                        ? 'border-[#a1001f] bg-[#a1001f] text-white shadow-sm'
-                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
+                    onClick={() => setGenSortOrder((order) => order === 'asc' ? 'desc' : 'asc')}
+                    title={genSortOrder === 'asc' ? 'Đang sắp xếp tăng dần' : 'Đang sắp xếp giảm dần'}
+                    className="absolute right-1.5 top-1/2 inline-flex h-8 min-w-10 -translate-y-1/2 items-center justify-center rounded-lg bg-[#a1001f] px-2 text-[10px] font-black uppercase text-white shadow-sm transition hover:bg-[#87001a]"
                   >
-                    Tăng dần
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setGenSortOrder('desc')}
-                    className={`flex-1 inline-flex h-8 items-center justify-center rounded-lg border text-[10px] font-bold uppercase tracking-wider transition-colors ${
-                      genSortOrder === 'desc'
-                        ? 'border-[#a1001f] bg-[#a1001f] text-white shadow-sm'
-                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    Giảm dần
+                    {genSortOrder === 'asc' ? <ArrowDownAZ className="h-4 w-4" /> : <ArrowUpZA className="h-4 w-4" />}
                   </button>
                 </div>
               </div>

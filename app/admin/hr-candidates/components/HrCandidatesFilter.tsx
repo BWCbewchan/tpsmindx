@@ -7,6 +7,8 @@ interface HrCandidatesFilterProps {
   setStatusFilter: (val: string) => void
   genFilter: string
   setGenFilter: (val: string) => void
+  genSort: 'none' | 'asc' | 'desc'
+  setGenSort: (val: 'none' | 'asc' | 'desc') => void
   availableGens: string[]
   refreshing: boolean
   onRefresh: () => void
@@ -18,6 +20,7 @@ export default function HrCandidatesFilter({
   searchInput, setSearchInput,
   statusFilter, setStatusFilter,
   genFilter, setGenFilter,
+  genSort, setGenSort,
   availableGens, refreshing, onRefresh, syncing, onSync,
 }: HrCandidatesFilterProps) {
   return (
@@ -58,6 +61,14 @@ export default function HrCandidatesFilter({
             {availableGens.map((gen) => (
               <option key={gen} value={gen}>{gen}</option>
             ))}
+          </select>
+
+          <select value={genSort} onChange={(e) => setGenSort(e.target.value as 'none' | 'asc' | 'desc')}
+            className="cursor-pointer rounded-xl border-gray-300 py-2.5 pl-3.5 pr-8 text-sm font-medium text-gray-700 shadow-sm outline-none focus:border-[#a1001f] focus:ring-4 focus:ring-[#a1001f]/10 hover:bg-gray-50"
+            style={{ maxWidth: '180px' }}>
+            <option value="none">Sắp xếp GEN</option>
+            <option value="asc">GEN tăng dần</option>
+            <option value="desc">GEN giảm dần</option>
           </select>
 
           <button onClick={onRefresh} disabled={refreshing}

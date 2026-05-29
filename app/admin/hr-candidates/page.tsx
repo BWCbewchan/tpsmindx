@@ -23,6 +23,7 @@ export default function HrCandidatesPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [regionFilter, setRegionFilter] = useState('all');
   const [genFilter, setGenFilter] = useState('all');
+  const [genSort, setGenSort] = useState<'none' | 'asc' | 'desc'>('none');
   const [page, setPage] = useState(1);
 
   const [availableGens, setAvailableGens] = useState<string[]>([]);
@@ -55,6 +56,7 @@ export default function HrCandidatesPage() {
       });
       if (search) params.set('search', search);
       if (genFilter !== 'all') params.set('gen', genFilter);
+      if (genSort !== 'none') params.set('genSort', genSort);
       if (regionFilter !== 'all') params.set('region', regionFilter);
 
       const res = await fetch(`/api/hr/candidates?${params.toString()}`, { cache: 'no-store' });
@@ -71,7 +73,7 @@ export default function HrCandidatesPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [statusFilter, page, search, genFilter, regionFilter]);
+  }, [statusFilter, page, search, genFilter, genSort, regionFilter]);
 
   useEffect(() => { fetchRows(false); }, [fetchRows]);
 
@@ -161,6 +163,8 @@ export default function HrCandidatesPage() {
             setStatusFilter={(v) => { setStatusFilter(v); setPage(1); setSelectedKeys(new Set()); }}
             genFilter={genFilter}
             setGenFilter={(v) => { setGenFilter(v); setPage(1); setSelectedKeys(new Set()); }}
+            genSort={genSort}
+            setGenSort={(v) => { setGenSort(v); setPage(1); setSelectedKeys(new Set()); }}
             availableGens={availableGens}
             refreshing={refreshing}
             onRefresh={() => fetchRows(true)}
@@ -176,7 +180,7 @@ export default function HrCandidatesPage() {
             pagination={pagination}
             onOpenDetails={setSelectedDetailsCandidate}
             onPageChange={(p) => setPage(p)}
-            onClearFilters={() => { applyQuickFilter('all'); setGenFilter('all'); }}
+            onClearFilters={() => { applyQuickFilter('all'); setGenFilter('all'); setGenSort('none'); }}
             selectedKeys={selectedKeys}
             onToggleSelect={handleToggleSelect}
             onToggleSelectAll={handleToggleSelectAll}

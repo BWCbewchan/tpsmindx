@@ -146,6 +146,10 @@ export function Sidebar() {
           label: 'Video đào tạo đầu vào',
         },
         {
+          href: '/admin/hr-candidates/training-calendar',
+          label: 'Lịch đào tạo',
+        },
+        {
           href: '/admin/hr-candidates/gen-planner?region=south',
           label: 'Miền Nam (HCM + Tỉnh Nam)',
         },

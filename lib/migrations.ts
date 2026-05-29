@@ -2009,6 +2009,60 @@ const migrations: Migration[] = [
         ADD COLUMN IF NOT EXISTS image_url VARCHAR(1000);
     `,
   },
+  {
+    name: 'V80_hr_training_schedule_mapping',
+    version: 80,
+    sql: `
+      ALTER TABLE teaching_leaders
+        ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+
+      ALTER TABLE hr_training_sessions
+        ADD COLUMN IF NOT EXISTS start_time TIME,
+        ADD COLUMN IF NOT EXISTS end_time TIME,
+        ADD COLUMN IF NOT EXISTS center_id INTEGER REFERENCES centers(id) ON DELETE SET NULL,
+        ADD COLUMN IF NOT EXISTS location TEXT,
+        ADD COLUMN IF NOT EXISTS mentor_code VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS mentor_name VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS mentor_email VARCHAR(255),
+        ADD COLUMN IF NOT EXISTS status VARCHAR(30) NOT NULL DEFAULT 'draft';
+
+      CREATE INDEX IF NOT EXISTS idx_hr_training_sessions_date
+        ON hr_training_sessions(session_date);
+      CREATE INDEX IF NOT EXISTS idx_hr_training_sessions_status
+        ON hr_training_sessions(status);
+      CREATE INDEX IF NOT EXISTS idx_hr_training_sessions_center
+        ON hr_training_sessions(center_id);
+
+      INSERT INTO app_permissions (user_id, route_path, can_access)
+      SELECT u.id, '/admin/hr-candidates/training-calendar', true
+      FROM app_users u
+      WHERE u.role = 'super_admin'
+      ON CONFLICT (user_id, route_path) DO NOTHING;
+    `,
+  },
+  {
+    name: 'V81_hr_training_dynamic_sessions',
+    version: 81,
+    sql: `
+      ALTER TABLE hr_training_sessions
+        ADD COLUMN IF NOT EXISTS training_mode VARCHAR(20) NOT NULL DEFAULT 'offline';
+
+      ALTER TABLE hr_training_sessions
+        DROP CONSTRAINT IF EXISTS hr_training_sessions_session_number_check;
+      ALTER TABLE hr_training_sessions
+        ADD CONSTRAINT hr_training_sessions_session_number_check
+        CHECK (session_number >= 1);
+
+      ALTER TABLE hr_training_sessions
+        DROP CONSTRAINT IF EXISTS hr_training_sessions_training_mode_check;
+      ALTER TABLE hr_training_sessions
+        ADD CONSTRAINT hr_training_sessions_training_mode_check
+        CHECK (LOWER(training_mode) IN ('offline', 'online'));
+
+      CREATE INDEX IF NOT EXISTS idx_hr_training_sessions_mode
+        ON hr_training_sessions(training_mode);
+    `,
+  },
 ]
 
 // ========== HÀM CHẠY MIGRATIONS ==========

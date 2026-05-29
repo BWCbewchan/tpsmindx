@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import GenTrackingTab from '../components/GenTrackingTab'
 import GenSchedulingTab from '../components/GenSchedulingTab'
 import GenOverviewTab from '../components/GenOverviewTab'
-import GenOnboardingTab from '../components/GenOnboardingTab'
 import GenSidebar from '../components/GenSidebar'
 import {
   ArrowLeft,
@@ -22,7 +21,6 @@ import {
   Eye,
   Menu,
   X,
-  GraduationCap,
 } from 'lucide-react'
 
 import { PageContainer } from '@/components/PageContainer'
@@ -48,6 +46,10 @@ function sortGenEntries(a: GenEntry, b: GenEntry, order: 'asc' | 'desc') {
     return order === 'desc' ? -compareByCode : compareByCode
   }
   return a.regionCode.localeCompare(b.regionCode, 'vi')
+}
+
+function normalizeGenCountKey(genName: string) {
+  return genName.trim().toUpperCase().replace(/^GEN\s+/, '').replace(/\s+/g, ' ')
 }
 
 // --- Sub-component: Candidate hover popup cell ---
@@ -88,6 +90,11 @@ function CandidatePopupCell({
       <p className="text-sm font-semibold text-gray-900">
         {row.full_name || 'Chưa có tên'}
       </p>
+      {row.candidate_code && (
+        <p className="text-xs font-bold text-[#a1001f]">
+          Mã UV: {row.candidate_code}
+        </p>
+      )}
       <p className="text-xs text-gray-500">{row.email || 'Không có email'}</p>
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[10px] font-semibold">
         <span
@@ -127,6 +134,10 @@ function CandidatePopupCell({
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
               <div className="rounded-lg bg-gray-50 p-2">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Mã ứng viên</p>
+                <p className="mt-1 font-bold text-[#a1001f]">{row.candidate_code || 'Chưa có'}</p>
+              </div>
+              <div className="rounded-lg bg-gray-50 p-2">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Email</p>
                 <p className="mt-1 font-medium text-gray-800 break-all">{row.email || 'Không có'}</p>
               </div>
@@ -157,7 +168,7 @@ function CandidatePopupCell({
     </div>
   )
 }
-type ActiveTab = 'planner' | 'tracking' | 'scheduling' | 'overview' | 'onboarding'
+type ActiveTab = 'planner' | 'tracking' | 'scheduling' | 'overview'
 
 export default function HrGenPlannerPage() {
   const { user } = useAuth()
@@ -178,7 +189,7 @@ export default function HrGenPlannerPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<
     'all' | 'assigned' | 'unassigned'
-  >('unassigned')
+  >('all')
   const [sourceGenFilter, setSourceGenFilter] = useState('all')
   const [sourceGenRegionFilter, setSourceGenRegionFilter] = useState<
     'all' | '1' | '2' | '3' | '4' | '5'
@@ -188,7 +199,9 @@ export default function HrGenPlannerPage() {
 
   const [availableGenEntries, setAvailableGenEntries] = useState<GenEntry[]>([])
   const [targetGen, setTargetGen] = useState('')
+  const [targetGenId, setTargetGenId] = useState<number | null>(null)
   const [newGenName, setNewGenName] = useState('')
+  const [isCreatingTargetGen, setIsCreatingTargetGen] = useState(false)
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [activeGenKey, setActiveGenKey] = useState('')
@@ -218,8 +231,7 @@ export default function HrGenPlannerPage() {
       tabParam === 'planner' ||
       tabParam === 'tracking' ||
       tabParam === 'scheduling' ||
-      tabParam === 'overview' ||
-      tabParam === 'onboarding'
+      tabParam === 'overview'
     ) {
       setActiveTab(tabParam)
     }
@@ -253,15 +265,26 @@ export default function HrGenPlannerPage() {
         if (sourceGenFilter !== 'all') candidateParams.set('gen', sourceGenFilter)
         if (regionFilter !== 'all') candidateParams.set('region', regionFilter)
 
-        const [candidateRes, genRes] = await Promise.all([
+        const genCountParams = new URLSearchParams({
+          page: '1',
+          pageSize: '1',
+          status: statusFilter,
+        })
+        if (search) genCountParams.set('search', search)
+        if (regionFilter !== 'all') genCountParams.set('region', regionFilter)
+
+        const [candidateRes, genCountRes, genRes] = await Promise.all([
           fetch(`/api/hr/candidates?${candidateParams.toString()}`, { cache: 'no-store' }),
+          fetch(`/api/hr/candidates?${genCountParams.toString()}`, { cache: 'no-store' }),
           fetch('/api/hr/gens', { cache: 'no-store' }),
         ])
 
         const candidateData = await candidateRes.json()
+        const genCountData = await genCountRes.json()
         const genData = await genRes.json()
 
         if (!candidateRes.ok) throw new Error(candidateData.error || 'Không thể tải dữ liệu ứng viên.')
+        if (!genCountRes.ok) throw new Error(genCountData.error || 'Không thể tải thống kê GEN.')
         if (!genRes.ok) throw new Error(genData.error || 'Không thể tải danh mục GEN.')
 
         setRows(candidateData.rows || [])
@@ -273,12 +296,19 @@ export default function HrGenPlannerPage() {
         setRegionUnassignedCandidates(summary.unassigned ?? 0)
 
         // Build GenEntry list từ catalog + summary.byGen
-        const byGen: Record<string, number> = summary.byGen || {}
+        const rawByGen: Record<string, number> = genCountData.summary?.byGen || {}
+        const byGen = Object.fromEntries(
+          Object.entries(rawByGen).map(([genName, count]) => [
+            normalizeGenCountKey(genName),
+            count,
+          ]),
+        )
         const catalog: Array<{ id: number; gen_name: string }> = genData.catalog || []
         const entries: GenEntry[] = catalog.map(g => ({
           key: `all::${g.gen_name}`,
+          id: g.id,
           genCode: g.gen_name,
-          count: byGen[g.gen_name] || 0,
+          count: byGen[normalizeGenCountKey(g.gen_name)] || 0,
           regionCode: 'all',
           regionLabel: 'Tất cả khu vực',
           isTeacher4Plus: false,
@@ -335,7 +365,7 @@ export default function HrGenPlannerPage() {
 
   const hasActiveFilters =
     Boolean(search) ||
-    statusFilter !== 'unassigned' ||
+    statusFilter !== 'all' ||
     sourceGenFilter !== 'all' ||
     sourceGenRegionFilter !== 'all' ||
     regionFilter !== 'all'
@@ -412,6 +442,8 @@ export default function HrGenPlannerPage() {
       )
       setNewGenName('')
       setTargetGen(data.gen)
+      setTargetGenId(data.id ?? null)
+      setIsCreatingTargetGen(false)
       await fetchBoardData(true)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Lỗi không xác định')
@@ -437,18 +469,26 @@ export default function HrGenPlannerPage() {
       setSourceGenFilter('all')
       setSourceGenRegionFilter('all')
       setTargetGen('')
-      if (activeTab === 'planner') setStatusFilter('unassigned')
+      setTargetGenId(null)
+      setIsCreatingTargetGen(false)
+      if (activeTab === 'planner') setStatusFilter('all')
     } else {
       setActiveGenKey(entry.key)
       setActiveGenInfo({ genCode: entry.genCode, regionCode: entry.regionCode })
-      setSourceGenFilter(entry.genCode)
-      setSourceGenRegionFilter(entry.regionCode as '1' | '2' | '3' | '4' | '5')
       setTargetGen(entry.genCode)
+      setTargetGenId(entry.id ?? null)
+      setIsCreatingTargetGen(false)
+      if (selectedRows.length === 0) {
+        setSourceGenFilter(entry.genCode)
+        setSourceGenRegionFilter(entry.regionCode as '1' | '2' | '3' | '4' | '5')
+      }
       if (activeTab === 'planner') setStatusFilter('all')
     }
 
-    setPage(1)
-    setSelectedKeys(new Set())
+    if (selectedRows.length === 0) {
+      setPage(1)
+      setSelectedKeys(new Set())
+    }
   }
 
   const handleBulkAssign = async () => {
@@ -462,18 +502,52 @@ export default function HrGenPlannerPage() {
       return
     }
 
+    const resolvedTargetGenId =
+      targetGenId ??
+      availableGenEntries.find((entry) => entry.genCode === targetGen)?.id ??
+      null
+
+    const needsTransfer = selectedRows.some((row) => row.gen_id !== null)
+    if (needsTransfer && !resolvedTargetGenId) {
+      toast.error('Vui lòng chọn GEN đích có sẵn từ bộ lọc GEN để chuyển GEN.')
+      return
+    }
+    if (
+      resolvedTargetGenId &&
+      selectedRows.every((row) => row.gen_id === resolvedTargetGenId)
+    ) {
+      toast.error('Ứng viên đã ở GEN được chọn.')
+      return
+    }
+
     setAssigning(true)
     try {
-      const assignRequests = selectedRows.map((row) =>
-        fetch('/api/hr/candidates', {
+      const assignRequests = selectedRows.map((row) => {
+        if (row.gen_id === resolvedTargetGenId) {
+          return Promise.resolve(new Response(null, { status: 204 }))
+        }
+
+        if (row.gen_id !== null && resolvedTargetGenId) {
+          return fetch('/api/hr/onboarding/transfer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              candidate_id: row.id,
+              to_gen_id: resolvedTargetGenId,
+              reason: 'Chuyển GEN từ GEN Planner',
+            }),
+          })
+        }
+
+        return fetch('/api/hr/candidates', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             candidateId: row.id,
             assignedGen: targetGen,
           }),
-        }),
-      )
+        })
+      })
 
       const responses = await Promise.allSettled(assignRequests)
       let successCount = 0
@@ -488,8 +562,10 @@ export default function HrGenPlannerPage() {
         }
       }
 
-      if (successCount > 0) toast.success(`Đã gán ${successCount} ứng viên vào GEN ${targetGen}.`)
-      if (failCount > 0) toast.error(`${failCount} ứng viên gán GEN thất bại.`)
+      if (successCount > 0) {
+        toast.success(`${needsTransfer ? 'Đã chuyển/gán' : 'Đã gán'} ${successCount} ứng viên vào GEN ${targetGen}.`)
+      }
+      if (failCount > 0) toast.error(`${failCount} ứng viên xử lý GEN thất bại.`)
 
       setSelectedKeys(new Set())
       await fetchBoardData(true)
@@ -501,9 +577,12 @@ export default function HrGenPlannerPage() {
   const handleResetFilters = () => {
     setSearchInput('')
     setSearch('')
-    setStatusFilter('unassigned')
+    setStatusFilter('all')
     setSourceGenFilter('all')
     setSourceGenRegionFilter('all')
+    setTargetGen('')
+    setTargetGenId(null)
+    setIsCreatingTargetGen(false)
     setRegionFilter('all')
     setPage(1)
     setSelectedKeys(new Set())
@@ -520,6 +599,9 @@ export default function HrGenPlannerPage() {
   const handleResetSourceGen = () => {
     setSourceGenFilter('all')
     setSourceGenRegionFilter('all')
+    setTargetGen('')
+    setTargetGenId(null)
+    setIsCreatingTargetGen(false)
     setPage(1)
     setSelectedKeys(new Set())
   }
@@ -598,22 +680,10 @@ export default function HrGenPlannerPage() {
               <Eye className="h-4 w-4" />
               Lịch training
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('onboarding')}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-bold transition-all ${
-                activeTab === 'onboarding'
-                  ? 'bg-[#a1001f] text-white shadow-sm'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <GraduationCap className="h-4 w-4" />
-              Đào tạo đầu vào
-            </button>
           </div>
         </div>
 
-        <div className="flex gap-6 items-start relative">
+        <div className="relative flex flex-col gap-6 xl:flex-row xl:items-start">
           <AnimatePresence mode="wait">
             {!isSidebarOpen && (
               <motion.div
@@ -651,7 +721,7 @@ export default function HrGenPlannerPage() {
             suggestedNextGen={suggestedNextGen}
           />
 
-          <div className="flex-1 min-w-0 space-y-6">
+          <div className="min-w-0 flex-1 space-y-6">
             {/* ══ TAB: GEN Planner ══════════════════════════════════════════ */}
             {activeTab === 'planner' && (
               <>
@@ -954,7 +1024,66 @@ export default function HrGenPlannerPage() {
                           {targetGen || 'Chưa chọn GEN'}
                         </span>
                       </p>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select
+                          value={isCreatingTargetGen ? '__new__' : targetGen}
+                          onChange={(event) => {
+                            if (event.target.value === '__new__') {
+                              setIsCreatingTargetGen(true)
+                              setTargetGen('')
+                              setTargetGenId(null)
+                              setNewGenName('')
+                              return
+                            }
+
+                            const selectedGen = availableGenEntries.find(
+                              (entry) => entry.genCode === event.target.value,
+                            )
+                            setIsCreatingTargetGen(false)
+                            setTargetGen(event.target.value)
+                            setTargetGenId(selectedGen?.id ?? null)
+                            if (selectedGen) {
+                              setActiveGenKey(selectedGen.key)
+                              setActiveGenInfo({
+                                genCode: selectedGen.genCode,
+                                regionCode: selectedGen.regionCode,
+                              })
+                            }
+                          }}
+                          className="h-10 min-w-40 rounded-xl border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#a1001f] focus:ring-4 focus:ring-[#a1001f]/10"
+                        >
+                          <option value="">Chọn GEN đích</option>
+                          <option value="__new__">+ Tạo GEN mới</option>
+                          {availableGenEntries.map((entry) => (
+                            <option key={entry.key} value={entry.genCode}>
+                              {entry.genCode} ({entry.count} UV)
+                            </option>
+                          ))}
+                        </select>
+                        {isCreatingTargetGen && (
+                          <>
+                            <input
+                              value={newGenName}
+                              onChange={(event) => setNewGenName(event.target.value)}
+                              placeholder={`Tạo ${suggestedNextGen}`}
+                              className="h-10 min-w-36 rounded-xl border border-gray-300 bg-white px-3 text-sm font-semibold text-gray-700 outline-none focus:border-[#a1001f] focus:ring-4 focus:ring-[#a1001f]/10"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => submitCreateGen(newGenName || suggestedNextGen, !newGenName.trim())}
+                              disabled={creatingGen}
+                              className="inline-flex h-10 items-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 text-sm font-bold text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+                              title="Tạo GEN mới và chọn làm GEN đích"
+                            >
+                              {creatingGen ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Plus className="h-4 w-4" />
+                              )}
+                              Tạo GEN
+                            </button>
+                          </>
+                        )}
                         <button
                           type="button"
                           onClick={() => setSelectedKeys(new Set())}
@@ -971,7 +1100,9 @@ export default function HrGenPlannerPage() {
                           {assigning ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : null}
-                          Gán vào GEN {targetGen || ''}
+                          {selectedRows.some((row) => row.gen_id !== null)
+                            ? `Chuyển sang GEN ${targetGen || ''}`
+                            : `Gán vào GEN ${targetGen || ''}`}
                         </button>
                       </div>
                     </div>
@@ -1003,16 +1134,6 @@ export default function HrGenPlannerPage() {
             {/* ══ TAB: Overview ════════════════════════════════════════════ */}
             {activeTab === 'overview' && (
               <GenOverviewTab
-                genEntries={availableGenEntries}
-                regionFilter={regionFilter}
-                activeGenKey={activeGenKey}
-                activeGenInfo={activeGenInfo}
-                onSelectGen={handleSelectGen}
-              />
-            )}
-            {/* ══ TAB: Đào tạo đầu vào ═════════════════════════════════════ */}
-            {activeTab === 'onboarding' && (
-              <GenOnboardingTab
                 genEntries={availableGenEntries}
                 regionFilter={regionFilter}
                 activeGenKey={activeGenKey}

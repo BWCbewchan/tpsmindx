@@ -177,7 +177,8 @@ function buildEventScheduleSelect(columns: Set<string>) {
         ${hasColumn('center_id') ? 'c.map_url AS center_map_url' : 'NULL::TEXT AS center_map_url'},
         ${hasColumn('center_id') ? 'c.latitude AS center_latitude' : 'NULL::DECIMAL AS center_latitude'},
         ${hasColumn('center_id') ? 'c.longitude AS center_longitude' : 'NULL::DECIMAL AS center_longitude'},
-        ${hasColumn('center_id') ? 'c.hotline AS center_hotline' : 'NULL::VARCHAR AS center_hotline'}
+        ${hasColumn('center_id') ? 'c.hotline AS center_hotline' : 'NULL::VARCHAR AS center_hotline'},
+        ${hasColumn('metadata') ? 'es.metadata' : 'NULL::JSONB AS metadata'}
       FROM event_schedules es
       ${centerJoin}
       WHERE TRUE
@@ -250,6 +251,9 @@ function toTimestampString(value: Date | string | null | undefined): string | nu
 
 // Serialize row â€” map DB column names to API response fields (both VN and EN aliases)
 function serializeEventScheduleRow(row: Record<string, any>) {
+  const metadata = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
+  const flowRound = Number(metadata?.flow_round);
+
   return {
     id: row.id,
     // Vietnamese column names (primary)
@@ -261,6 +265,8 @@ function serializeEventScheduleRow(row: Record<string, any>) {
     bat_dau_luc: toTimestampString(row.bat_dau_luc),
     ket_thuc_luc: toTimestampString(row.ket_thuc_luc),
     tao_luc: toTimestampString(row.tao_luc),
+    metadata,
+    flow_round: Number.isFinite(flowRound) ? flowRound : undefined,
     mode: row.mode,
     center_id: row.center_id,
     room: row.room,
@@ -410,6 +416,12 @@ export const POST = withApiProtection(async (request: NextRequest) => {
     const reminder_channels = toTextArray(body.reminder_channels);
     const participants = toJsonArray(body.participants);
     const attachments = toJsonArray(body.attachments);
+    
+    // Xử lý metadata (bao gồm flow_round)
+    const metadata = body.metadata && typeof body.metadata === 'object' ? body.metadata : {};
+    if (body.flow_round != null) {
+      metadata.flow_round = Number(body.flow_round);
+    }
 
     let resolvedMeetingUrl = meeting_url;
     if (!resolvedMeetingUrl && lecture_reviewer) {
@@ -460,6 +472,7 @@ export const POST = withApiProtection(async (request: NextRequest) => {
     insert.append('reminder_channels', reminder_channels, '::text[]');
     insert.append('allow_registration', allow_registration, '::boolean');
     insert.append('slot_limit', slot_limit);
+    insert.append('metadata', JSON.stringify(metadata), '::jsonb');
 
     const query = `
       INSERT INTO event_schedules (
@@ -569,6 +582,12 @@ export const PUT = withApiProtection(async (request: NextRequest) => {
     const reminder_channels = body.reminder_channels !== undefined ? toTextArray(body.reminder_channels) : undefined;
     const participants = body.participants !== undefined ? toJsonArray(body.participants) : undefined;
     const attachments = body.attachments !== undefined ? toJsonArray(body.attachments) : undefined;
+    
+    // Xử lý metadata (bao gồm flow_round)
+    let metadata = body.metadata !== undefined ? (body.metadata && typeof body.metadata === 'object' ? body.metadata : {}) : undefined;
+    if (metadata !== undefined && body.flow_round != null) {
+      metadata.flow_round = Number(body.flow_round);
+    }
 
     let resolvedMeetingUrl = meeting_url;
     if (resolvedMeetingUrl === undefined && lecture_reviewer !== undefined) {
@@ -625,6 +644,7 @@ export const PUT = withApiProtection(async (request: NextRequest) => {
     if (reminder_channels !== undefined && columns.has('reminder_channels')) pushField('reminder_channels', reminder_channels);
     if (allow_registration !== undefined && columns.has('allow_registration')) pushField('allow_registration', allow_registration);
     if (slot_limit !== undefined && columns.has('slot_limit')) pushField('slot_limit', slot_limit);
+    if (metadata !== undefined && columns.has('metadata')) pushField('metadata', JSON.stringify(metadata));
 
     if (fields.length === 0) {
       return NextResponse.json(

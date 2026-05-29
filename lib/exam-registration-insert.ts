@@ -1,3 +1,4 @@
+import pool from "@/lib/db";
 import type { Pool } from "pg";
 import { parseNgayDangKyImportFormat } from "./csv-registration-import";
 
@@ -41,9 +42,35 @@ export type InsertRegistrationResult =
   | { ok: true; data: Record<string, unknown> }
   | { ok: false; error: string; httpStatus: number; result_id?: number };
 
+let cachedEventSchedulesHasMetadataColumn: boolean | null = null;
+
+async function eventSchedulesHasMetadataColumn(): Promise<boolean> {
+  if (cachedEventSchedulesHasMetadataColumn !== null) {
+    return cachedEventSchedulesHasMetadataColumn;
+  }
+
+  const columnCheck = await pool.query<{ ok: boolean }>(`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = current_schema()
+        AND table_name = 'event_schedules'
+        AND column_name = 'metadata'
+    ) AS ok
+  `);
+
+  cachedEventSchedulesHasMetadataColumn = Boolean(columnCheck.rows[0]?.ok);
+  return cachedEventSchedulesHasMetadataColumn;
+}
+
 /**
  * Tạo một bản ghi đăng ký kiểm tra (INSERT chuyen_sau_results) — dùng chung cho POST /api/exam-registrations và import CSV.
  */
+function isSupplementaryRegistrationType(value: unknown): boolean {
+  const normalized = String(value ?? '').trim().toLowerCase();
+  return normalized === 'additional' || normalized.includes('bổ sung') || normalized.includes('bo sung');
+}
+
 export async function insertExamRegistration(
   pool: Pool,
   body: Record<string, unknown>
@@ -61,6 +88,7 @@ export async function insertExamRegistration(
   const ma_mon = body.ma_mon || body.subject_code;
   const id_su_kien = body.id_su_kien || body.schedule_id || body.scheduled_event_id || null;
   const id_de_thi = body.id_de_thi;
+  const supplementaryRound = num(body.flow_round) ?? num((body as Record<string, unknown>).flowRound);
 
   /** Khi không gắn lịch sự kiện (import CSV/Excel): lưu ngày giờ từ cột Lịch thi để GET không rơi về tao_luc (hôm nay). */
   let lich_thi_dk: Date | null = null;
@@ -94,6 +122,10 @@ export async function insertExamRegistration(
     dangKyResolved = parseNgayDangKyImportFormat(dangKyRaw);
   }
 
+  // Khai báo biến để dùng trong catch block
+  let resolvedSubjectId: number | null = null;
+  let resolvedSupplementaryRound: number | null | undefined = supplementaryRound;
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
@@ -107,7 +139,7 @@ export async function insertExamRegistration(
       resolvedHoTen = teacherRow.rows[0]?.full_name || ma_giao_vien;
     }
 
-    let resolvedSubjectId = id_mon;
+    resolvedSubjectId = id_mon as number | null;
     if (!resolvedSubjectId && ma_mon) {
       const subj = await client.query(
         `SELECT id FROM chuyen_sau_monhoc
@@ -145,6 +177,63 @@ export async function insertExamRegistration(
       const bodeOk = await client.query(`SELECT 1 FROM chuyen_sau_bode WHERE id = $1 LIMIT 1`, [resolvedSetId]);
       if (bodeOk.rows.length === 0) {
         resolvedSetId = null;
+      }
+    }
+
+    const hasEventMetadataColumn = await eventSchedulesHasMetadataColumn();
+
+    resolvedSupplementaryRound = supplementaryRound;
+    if (id_su_kien && isSupplementaryRegistrationType(hinh_thuc) && resolvedSupplementaryRound == null && hasEventMetadataColumn) {
+      try {
+        const metadataRound = await client.query(
+          `SELECT COALESCE((metadata->>'flow_round')::int, NULL) AS flow_round
+           FROM event_schedules
+           WHERE id = $1::uuid
+           LIMIT 1`,
+          [id_su_kien]
+        );
+        resolvedSupplementaryRound = num(metadataRound.rows[0]?.flow_round);
+        console.log('[insertExamRegistration] Resolved flow_round from event:', resolvedSupplementaryRound);
+      } catch (err) {
+        console.warn('[insertExamRegistration] Failed to get flow_round from event:', err);
+        // Không có flow_round không phải lỗi nghiêm trọng, tiếp tục
+      }
+    }
+
+    // Nếu vẫn không có flow_round cho đợt bổ sung, sử dụng event_id để phân biệt
+    const useEventIdForDuplication = isSupplementaryRegistrationType(hinh_thuc) && 
+                                      id_su_kien && 
+                                      (resolvedSupplementaryRound == null || resolvedSupplementaryRound === 0);
+
+    if (
+      isSupplementaryRegistrationType(hinh_thuc) &&
+      hasEventMetadataColumn &&
+      resolvedSupplementaryRound != null &&
+      resolvedSupplementaryRound > 0
+    ) {
+      const dupSupplement = await client.query(
+        `SELECT r.id
+         FROM chuyen_sau_results r
+         LEFT JOIN event_schedules es ON es.id::text = r.id_su_kien::text
+         WHERE LOWER(TRIM(r.ma_giao_vien)) = LOWER(TRIM($1))
+           AND r.id_mon = $2
+           AND (
+             LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%bổ sung%'
+             OR LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) LIKE '%bo sung%'
+             OR LOWER(TRIM(COALESCE(r.hinh_thuc, ''))) = 'additional'
+           )
+           AND COALESCE((es.metadata->>'flow_round')::int, 0) = $3
+         LIMIT 1`,
+        [ma_giao_vien, resolvedSubjectId, resolvedSupplementaryRound]
+      );
+      if (dupSupplement.rows.length > 0) {
+        await client.query("ROLLBACK");
+        return {
+          ok: false,
+          error: `Bạn đã làm môn này trong đợt bổ sung #${resolvedSupplementaryRound} rồi.`,
+          httpStatus: 409,
+          result_id: dupSupplement.rows[0].id,
+        };
       }
     }
 
@@ -205,8 +294,27 @@ export async function insertExamRegistration(
     return { ok: true, data: insertResult.rows[0] as Record<string, unknown> };
   } catch (error) {
     await client.query("ROLLBACK");
-    console.error("insertExamRegistration:", error);
-    return { ok: false, error: "Failed to create registration", httpStatus: 500 };
+    console.error("insertExamRegistration ERROR:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const pgError = error as { code?: string; detail?: string; constraint?: string };
+    
+    // Log chi tiết để debug
+    console.error("Error details:", {
+      message: errorMessage,
+      code: pgError?.code,
+      detail: pgError?.detail,
+      constraint: pgError?.constraint,
+      teacher_code: ma_giao_vien,
+      subject_id: resolvedSubjectId,
+      event_id: id_su_kien,
+      flow_round: resolvedSupplementaryRound,
+    });
+    
+    return { 
+      ok: false, 
+      error: `Failed to create registration: ${errorMessage}`, 
+      httpStatus: 500 
+    };
   } finally {
     client.release();
   }

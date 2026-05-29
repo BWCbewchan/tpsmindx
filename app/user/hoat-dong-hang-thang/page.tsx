@@ -41,6 +41,8 @@ interface EvaluationEvent {
   note?: string
   eventType?: EventCategory
   registrationTemplate?: RegistrationTemplate
+  metadata?: Record<string, unknown>
+  flowRound?: number
   lectureReviewer?: string | null
   centerId?: number | null
   centerName?: string | null
@@ -76,6 +78,7 @@ interface CalendarExamAssignment {
   open_at: string
   close_at: string
   event_schedule_id?: string | null
+  flow_round?: number | null
   assignment_status: string
   can_take: boolean
   is_open: boolean
@@ -731,6 +734,8 @@ export default function MonthlyActivitiesPage() {
           note?: string | null
           event_type: EventCategory
           registration_template?: RegistrationTemplate | null
+          metadata?: Record<string, unknown> | null
+          flow_round?: number | null
           lecture_reviewer?: string | null
           center_id?: number | null
           center_name?: string | null
@@ -750,6 +755,8 @@ export default function MonthlyActivitiesPage() {
             note: item.note || undefined,
             eventType: item.event_type,
             registrationTemplate: item.registration_template || undefined,
+            metadata: item.metadata || undefined,
+            flowRound: Number(item.flow_round ?? (item.metadata && typeof item.metadata === 'object' ? (item.metadata as Record<string, unknown>).flow_round : undefined)) || undefined,
             lectureReviewer: item.lecture_reviewer || undefined,
             centerId: item.center_id ?? null,
             centerName: item.center_name || null,
@@ -1012,9 +1019,17 @@ export default function MonthlyActivitiesPage() {
   )
 
   const supplementSubjectAssignmentByOption = useMemo(() => {
+    const selectedEventStartAt = selectedSupplementEvent
+      ? parseLocalDateTime(selectedSupplementEvent.startAt)
+      : null
+    const selectedRound = selectedSupplementEvent?.flowRound
+      ? Number(selectedSupplementEvent.flowRound)
+      : null
+    const selectedEventId = selectedSupplementEvent?.id
+
     return Object.entries(REGISTER_OPTION_MAP).reduce(
       (acc, [option, mapped]) => {
-        const selectedAssignment = examAssignments.find((assignment) => {
+        const matchingAssignments = examAssignments.filter((assignment) => {
           // Chỉ lấy bài thi thuộc đợt bổ sung (additional)
           if (assignment.registration_type !== 'additional') return false
 
@@ -1029,20 +1044,48 @@ export default function MonthlyActivitiesPage() {
             .map(normalizeSubjectCode)
             .filter(Boolean)
 
-          return candidates.some(
+          const subjectMatches = candidates.some(
             (candidate) =>
               candidate === normalizedAssignmentSubject ||
               normalizedAssignmentSubject.includes(candidate) ||
               candidate.includes(normalizedAssignmentSubject),
           )
+
+          if (!subjectMatches) return false
+
+          // QUAN TRỌNG: Phải match đúng flow_round để phân biệt các đợt bổ sung
+          // Nếu event có flow_round, chỉ lấy assignment cùng flow_round
+          if (selectedRound != null && selectedRound > 0) {
+            return Number(assignment.flow_round || 0) === selectedRound
+          }
+
+          // Nếu event KHÔNG CÓ flow_round (event cũ), match theo event_schedule_id
+          if (selectedEventId && !selectedRound) {
+            return assignment.event_schedule_id === selectedEventId
+          }
+
+          // Fallback: match theo ngày
+          if (selectedEventStartAt) {
+            const assignmentOpenAt = parseLocalDateTime(assignment.open_at)
+            return isSameDate(assignmentOpenAt, selectedEventStartAt)
+          }
+
+          return false
         })
+
+        // Lấy assignment gần nhất (đã làm hoặc đang làm)
+        const selectedAssignment = matchingAssignments.sort((first, second) => {
+          const firstTime = parseLocalDateTime(first.open_at).getTime()
+          const secondTime = parseLocalDateTime(second.open_at).getTime()
+          return secondTime - firstTime
+        })[0]
 
         acc[option] = selectedAssignment || null
         return acc
       },
       {} as Record<string, CalendarExamAssignment | null>,
     )
-  }, [examAssignments, REGISTER_OPTION_MAP])
+  }, [examAssignments, REGISTER_OPTION_MAP, selectedSupplementEvent])
 
   const periodLabel = useMemo(() => {
     if (view === 'day') {
@@ -1895,6 +1938,7 @@ export default function MonthlyActivitiesPage() {
             open_at: scheduledAt.toISOString(),
             close_at: closeAt.toISOString(),
             scheduled_event_id: targetEventId,
+            flow_round: matchedExamEvent?.flowRound ?? undefined,
             teacher_info: teacherAutoFillData,
           }),
         })
@@ -2008,6 +2052,13 @@ export default function MonthlyActivitiesPage() {
       return
     }
 
+    // Kiểm tra đã làm bài bổ sung trong đợt này chưa
+    const existingAssignment = supplementSubjectAssignmentByOption[option]
+    if (existingAssignment) {
+      toast.error(`Bạn đã làm bài kiểm tra bổ sung cho môn ${option} trong đợt này rồi. Mỗi môn chỉ được làm 1 lần trong cùng đợt bổ sung.`)
+      return
+    }
+
     const validTeacherCode = await resolveValidTeacherCode()
     if (!validTeacherCode) {
       toast.error(
@@ -2022,28 +2073,35 @@ export default function MonthlyActivitiesPage() {
 
     setRegisteringSupplementOption(option)
     try {
+      const payload = {
+        teacher_code: validTeacherCode,
+        exam_type: mapped.exam_type,
+        registration_type: 'additional',
+        block_code: mapped.block_code,
+        subject_code: mapped.subject_code,
+        id_de_thi: mapped.default_set_id || undefined,
+        center_code: teacherCenterCode || null,
+        scheduled_at: new Date(registrationEvent.startAt).toISOString(),
+        source_form: 'additional_form',
+        open_at: new Date(registrationEvent.startAt).toISOString(),
+        close_at: new Date(registrationEvent.endAt).toISOString(),
+        scheduled_event_id: registrationEvent.id,
+        flow_round: registrationEvent.flowRound ?? undefined,
+        thang_dk: registrationMonth,
+        nam_dk: registrationYear,
+        teacher_info: teacherInfo,
+      };
+      
+      console.log('[createSupplementAssignmentForOption] Sending payload:', JSON.stringify(payload, null, 2));
+      
       const response = await fetch('/api/exam-registrations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          teacher_code: validTeacherCode,
-          exam_type: mapped.exam_type,
-          registration_type: 'additional',
-          block_code: mapped.block_code,
-          subject_code: mapped.subject_code,
-          id_de_thi: mapped.default_set_id || undefined,
-          center_code: teacherCenterCode || null,
-          scheduled_at: new Date(registrationEvent.startAt).toISOString(),
-          source_form: 'additional_form',
-          open_at: new Date(registrationEvent.startAt).toISOString(),
-          close_at: new Date(registrationEvent.endAt).toISOString(),
-          scheduled_event_id: registrationEvent.id,
-          thang_dk: registrationMonth,
-          nam_dk: registrationYear,
-          teacher_info: teacherInfo,
-        }),
+        body: JSON.stringify(payload),
       })
       const data = await response.json()
+      console.log('[createSupplementAssignmentForOption] Response:', { ok: response.ok, status: response.status, data });
+      
       if (!response.ok || !data?.success) {
         throw new Error(data?.error || 'Không thể tạo assignment cho môn này')
       }
@@ -3503,13 +3561,14 @@ export default function MonthlyActivitiesPage() {
                         </p>
                         {assignment.open_at && (
                           <p className="mt-1 text-xs text-amber-700">
-                            Ngày làm: {new Date(assignment.open_at).toLocaleDateString('vi-VN', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric',
-                            })}
+                            Thời gian làm: {formatDateTime(assignment.open_at)}
                           </p>
                         )}
+                        {assignment.flow_round ? (
+                          <p className="mt-1 text-xs text-amber-600">
+                            Đợt bổ sung #{assignment.flow_round}
+                          </p>
+                        ) : null}
                         {assignment.score != null ? (
                           <p className="mt-1 text-xs text-amber-700">
                             Điểm: <span className="font-bold text-amber-900">{assignment.score}</span>

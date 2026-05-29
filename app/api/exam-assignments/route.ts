@@ -106,6 +106,7 @@ export async function GET(request: NextRequest) {
         csr.id_mon,
         COALESCE(csr.id_de_thi, fallback_chonde.id_de)          AS selected_set_id,
         csr.id_su_kien::text                                     AS event_schedule_id,
+        COALESCE((ev_dur.flow_round)::int, 0)                    AS flow_round,
         csr.thang_dk,
         csr.nam_dk,
         csr.dot,
@@ -196,13 +197,14 @@ export async function GET(request: NextRequest) {
         SELECT
           (EXTRACT(EPOCH FROM (ket_thuc_luc - bat_dau_luc)) / 60)::int AS duration_min,
           bat_dau_luc AT TIME ZONE 'Asia/Ho_Chi_Minh' AS event_open_at,
-          ket_thuc_luc AT TIME ZONE 'Asia/Ho_Chi_Minh' AS event_close_at
+          ket_thuc_luc AT TIME ZONE 'Asia/Ho_Chi_Minh' AS event_close_at,
+          COALESCE((metadata->>'flow_round')::int, 0) AS flow_round
         FROM event_schedules
-        WHERE loai_su_kien = 'exam'
-          AND (
+        WHERE (
             (csr.id_su_kien IS NOT NULL AND id = csr.id_su_kien)
             OR (
               csr.id_su_kien IS NULL
+              AND loai_su_kien = 'exam'
               AND chuyen_nganh = csm.ma_mon
               AND EXTRACT(YEAR  FROM bat_dau_luc) = COALESCE(csr.nam_dk,  EXTRACT(YEAR  FROM NOW()))
               AND EXTRACT(MONTH FROM bat_dau_luc) = COALESCE(csr.thang_dk, EXTRACT(MONTH FROM NOW()))

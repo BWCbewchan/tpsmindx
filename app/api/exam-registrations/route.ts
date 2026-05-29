@@ -365,8 +365,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    console.log('[exam-registrations POST] Request body:', JSON.stringify(body, null, 2));
+    
     const result = await insertExamRegistration(pool, body as Record<string, unknown>);
     if (!result.ok) {
+      console.error('[exam-registrations POST] Insert failed:', result.error);
       return NextResponse.json(
         {
           success: false,
@@ -376,13 +379,18 @@ export async function POST(request: NextRequest) {
         { status: result.httpStatus }
       );
     }
+    console.log('[exam-registrations POST] Success:', result.data);
     return NextResponse.json(
       { success: true, data: result.data, message: 'Đăng ký thi thành công' },
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating registration:', error);
-    return NextResponse.json({ success: false, error: 'Invalid request body' }, { status: 400 });
+    console.error('[exam-registrations POST] Unexpected error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ 
+      success: false, 
+      error: `Invalid request body: ${errorMessage}` 
+    }, { status: 400 });
   }
 }
 

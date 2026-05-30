@@ -950,6 +950,11 @@ export default function TeacherAssignmentPage() {
   }
 
   function shouldShowExplanationCTA(item: ExamAssignment): boolean {
+    // Chỉ cho phép giải trình bài CHÍNH THỨC, không cho phép giải trình bài BỔ SUNG
+    if (item.registration_type === 'additional') {
+      return false
+    }
+
     if (!isExamInCurrentVietnamMonth(item.open_at)) {
       return false
     }

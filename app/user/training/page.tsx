@@ -1012,7 +1012,7 @@ export default function TrainingPage() {
                           (l) => l.id === assignment.video_id,
                         )
                         const isLocked =
-                          assignment.video_completion_status !== 'completed'
+                          !['completed', 'watched'].includes(assignment.video_completion_status || '')
                         const submission = assignment.recent_submission
 
                         // Điểm bài kiểm tra: ưu tiên recent_submission.score, fallback về 0

@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       SELECT DISTINCT tva.video_id
       FROM training_assignment_submissions tas
       INNER JOIN training_video_assignments tva ON tva.id = tas.assignment_id
-      WHERE tas.teacher_code = $1
+      WHERE LOWER(TRIM(tas.teacher_code)) = $1
         AND tva.video_id IS NOT NULL
         AND (
           tas.status = 'graded'
@@ -98,7 +98,7 @@ export async function GET(request: Request) {
         const submissionsResult = await pool.query(
           `SELECT DISTINCT ON (assignment_id) *
            FROM training_assignment_submissions
-           WHERE teacher_code = $1 AND assignment_id = ANY($2)
+           WHERE LOWER(TRIM(teacher_code)) = $1 AND assignment_id = ANY($2)
              AND status IN ('submitted', 'graded')
            ORDER BY assignment_id, submitted_at DESC NULLS LAST`,
           [teacher_code, assignmentIds]
@@ -151,7 +151,7 @@ export async function GET(request: Request) {
                       COALESCE(server_time_seconds, 0) AS server_time_seconds,
                       last_heartbeat_at
                FROM training_teacher_video_scores
-               WHERE teacher_code = $1 AND video_id = ANY($2::int[])`,
+               WHERE LOWER(TRIM(teacher_code)) = $1 AND video_id = ANY($2::int[])`,
               [teacher_code, allScoreVideoIds],
             );
             scoresRes.rows.forEach(

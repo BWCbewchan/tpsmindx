@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
           SELECT DISTINCT tva.video_id
           FROM training_assignment_submissions tas
           INNER JOIN training_video_assignments tva ON tva.id = tas.assignment_id
-          WHERE tas.teacher_code = $1
+          WHERE LOWER(TRIM(tas.teacher_code)) = $1
             AND tva.video_id IS NOT NULL
             AND (
               tas.status = 'graded'
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
                       COALESCE(server_time_seconds, 0) AS server_time_seconds,
                       last_heartbeat_at
                FROM training_teacher_video_scores
-               WHERE teacher_code = $1 AND video_id = ANY($2::int[])`,
+               WHERE LOWER(TRIM(teacher_code)) = $1 AND video_id = ANY($2::int[])`,
               [teacher_code, allScoreVideoIds],
             );
             scoresRes.rows.forEach(
@@ -323,7 +323,7 @@ export async function POST(request: NextRequest) {
     // Check if there's already an in-progress submission
     const existingQuery = `
       SELECT * FROM training_assignment_submissions 
-      WHERE teacher_code = $1 AND assignment_id = $2 AND status = 'in_progress'
+      WHERE LOWER(TRIM(teacher_code)) = $1 AND assignment_id = $2 AND status = 'in_progress'
       ORDER BY created_at DESC
       LIMIT 1
     `;
@@ -379,7 +379,7 @@ export async function POST(request: NextRequest) {
     const attemptResult = await pool.query(
       `SELECT COALESCE(MAX(attempt_number), 0) + 1 as next_attempt
        FROM training_assignment_submissions
-       WHERE teacher_code = $1 AND assignment_id = $2`,
+       WHERE LOWER(TRIM(teacher_code)) = $1 AND assignment_id = $2`,
       [teacher_code, assignment_id]
     );
     const nextAttempt = attemptResult.rows[0].next_attempt;

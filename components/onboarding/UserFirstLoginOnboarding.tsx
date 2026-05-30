@@ -8,8 +8,9 @@ import { Check, ChevronLeft, ChevronRight, Sparkles, X } from 'lucide-react'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Mascot, MascotAnimation } from '@/components/mascot/Mascot'
 
-type MascotAction = 'walk' | 'jump'
+type MascotAction = MascotAnimation
 
 type TourStep = {
   id: string
@@ -51,7 +52,7 @@ const ALL_TOUR_STEPS: TourStep[] = [
     description:
       'Thanh điều hướng bên trái là nơi bạn truy cập nhanh tất cả các tính năng mà không cần quay lại trang chủ.',
     target: 'tour-sidebar',
-    mascotAction: 'walk',
+    mascotAction: 'walkToSit',
   },
   {
     id: 'content',
@@ -160,11 +161,6 @@ const TOUR_STEPS = ALL_TOUR_STEPS.filter(
   (s) => !s.route || !isTempHiddenUserRoute(s.route),
 )
 
-function getMascotFrames(action: MascotAction) {
-  const folder = action === 'jump' ? 'jump' : 'walk'
-  return Array.from({ length: 25 }, (_, i) => `/mascot/${folder}/frame-${i + 1}.png`)
-}
-
 export default function UserFirstLoginOnboarding() {
   const { user, isLoading } = useAuth()
   const { isOpen, setIsOpen, setRequestExpandLabels } = useSidebar()
@@ -173,16 +169,12 @@ export default function UserFirstLoginOnboarding() {
   const [tourEnabled, setTourEnabled] = useState(false)
   const [sessionDismissed, setSessionDismissed] = useState(false)
   const [stepIndex, setStepIndex] = useState(0)
-  const [frameIndex, setFrameIndex] = useState(0)
+  const [mascotPhase, setMascotPhase] = useState<'initial' | 'reading' | 'walking' | 'sitting'>('initial')
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null)
   const [viewport, setViewport] = useState({ width: 1280, height: 720 })
   const tooltipRef = useRef<HTMLDivElement | null>(null)
 
   const step = TOUR_STEPS[stepIndex]
-  const frames = useMemo(
-    () => getMascotFrames(step.mascotAction),
-    [step.mascotAction],
-  )
   const mascotFacing = useMemo<'left' | 'right'>(() => {
     // Quy tắc theo flow hiện tại:
     // - Các step nói về sidebar / nav item: linh vật quay về bên trái
@@ -215,22 +207,30 @@ export default function UserFirstLoginOnboarding() {
 
   useEffect(() => {
     if (!tourEnabled) return
-    // Preload all frames to tránh "ghosting/overlap" khi Next/Image đổi src liên tục.
-    frames.forEach((src) => {
-      const img = new window.Image()
-      img.src = src
-    })
-  }, [frames, tourEnabled])
+    
+    setMascotPhase('initial')
+    
+    // 1. Start reading after a short delay (1.5s)
+    const readingTimer = setTimeout(() => {
+      setMascotPhase('reading')
+      
+      // 2. After reading finishes (approx 6.5s for 3 cycles), start walking
+      const walkingTimer = setTimeout(() => {
+        setMascotPhase('walking')
+        
+        // 3. After walking for a bit, sit down
+        const sittingTimer = setTimeout(() => {
+          setMascotPhase('sitting')
+        }, 2000)
+        
+        return () => clearTimeout(sittingTimer)
+      }, 6500)
+      
+      return () => clearTimeout(walkingTimer)
+    }, 1500)
 
-  useEffect(() => {
-    const timer = window.setInterval(
-      () => {
-        setFrameIndex((prev) => (prev + 1) % frames.length)
-      },
-      step.mascotAction === 'jump' ? 120 : 140,
-    )
-    return () => window.clearInterval(timer)
-  }, [frames.length, step.mascotAction])
+    return () => clearTimeout(readingTimer)
+  }, [stepIndex, tourEnabled])
 
   useEffect(() => {
     const updateViewport = () =>
@@ -273,8 +273,8 @@ export default function UserFirstLoginOnboarding() {
 
     return () => {
       clearTimeout(timer)
-      window.removeEventListener('resize', () => {})
-      window.removeEventListener('scroll', () => {}, true)
+      window.removeEventListener('resize', () => { })
+      window.removeEventListener('scroll', () => { }, true)
     }
   }, [
     step.target,
@@ -555,15 +555,16 @@ export default function UserFirstLoginOnboarding() {
                 height: 180,
               }}
             >
-              <Image
-                src={frames[frameIndex]}
-                alt="Linh vật hướng dẫn"
-                width={180}
-                height={180}
-                priority
-                unoptimized
+              <Mascot
+                animation={
+                  mascotPhase === 'reading' ? 'standAndRead' : 
+                  mascotPhase === 'walking' ? 'walk' :
+                  mascotPhase === 'sitting' ? 'walkToSit' : 
+                  (step.mascotAction as MascotAnimation)
+                }
+                className="w-full h-full"
                 style={{
-                  transform: `scaleX(${mascotFacing === 'left' ? -1 : 1})`,
+                  transform: 'scaleX(1)',
                 }}
               />
             </div>

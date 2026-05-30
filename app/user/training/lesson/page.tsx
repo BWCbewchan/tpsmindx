@@ -195,7 +195,7 @@ function LessonContent() {
     const currentUser = userRef.current
     if (!id || !currentUser?.email) return
     try {
-      const teacherCode = currentUser.email.split('@')[0]
+      const teacherCode = currentUser.email.split('@')[0].toLowerCase().trim()
       await fetch('/api/training-progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -632,12 +632,14 @@ function LessonContent() {
   useEffect(() => {
     if (!isPlaying || !lessonId || !user?.email) return
 
-    const teacherCode = user.email.split('@')[0]
+    const teacherCode = user.email.split('@')[0].toLowerCase().trim()
     const interval = setInterval(async () => {
       // Get current time directly from video element for accuracy
       const time = videoRef.current ? videoRef.current.currentTime : 0
-      const duration = videoRef.current ? videoRef.current.duration : 0
       if (time <= 0) return
+
+      const globalTime = (startTimesRef.current[currentIndexRef.current] ?? 0) + time
+      const globalDuration = totalDurationMapRef.current
 
       try {
         await fetch('/api/training-progress', {
@@ -646,9 +648,9 @@ function LessonContent() {
           body: JSON.stringify({
             teacherCode,
             videoId: lessonId,
-            timeSpent: time,
+            timeSpent: globalTime,
             isCompleted: false,
-            totalDuration: duration > 0 ? duration : undefined,
+            totalDuration: globalDuration > 0 ? globalDuration : undefined,
           }),
         })
       } catch (err) {
@@ -960,16 +962,20 @@ function LessonContent() {
 
     const handlePause = () => {
       if (lessonIdRef.current && userRef.current?.email) {
-        const teacherCode = userRef.current.email.split('@')[0]
+        const teacherCode = userRef.current.email.split('@')[0].toLowerCase().trim()
+        const time = video.currentTime
+        const globalTime = (startTimesRef.current[currentIndexRef.current] ?? 0) + time
+        const globalDuration = totalDurationMapRef.current
+
         fetch('/api/training-progress', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             teacherCode,
             videoId: lessonIdRef.current,
-            timeSpent: video.currentTime,
+            timeSpent: globalTime,
             isCompleted: false,
-            totalDuration: video.duration, // Update duration
+            totalDuration: globalDuration > 0 ? globalDuration : undefined, // Update duration
           }),
         }).catch((err) =>
           console.error('[Lesson] Failed to save on pause:', err),

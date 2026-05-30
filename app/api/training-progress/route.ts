@@ -14,7 +14,9 @@ const COMPLETION_THRESHOLD  = 0.90; // phải xem ít nhất 90% mới được 
 export const POST = withApiProtection(async (request: NextRequest) => {
   try {
     const body = await request.json();
-    const { teacherCode, videoId, timeSpent, isCompleted, totalDuration } = body;
+    const { videoId, timeSpent, isCompleted, totalDuration } = body;
+    // Normalize teacher_code: lowercase + trim để tránh case mismatch với các API khác
+    const teacherCode: string = (body.teacherCode || '').toString().toLowerCase().trim();
 
     if (!teacherCode || !videoId) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
@@ -28,7 +30,7 @@ export const POST = withApiProtection(async (request: NextRequest) => {
           `SELECT time_spent_seconds, server_time_seconds, completion_status,
                   last_heartbeat_at, first_viewed_at
            FROM training_teacher_video_scores
-           WHERE teacher_code = $1 AND video_id = $2`,
+           WHERE LOWER(TRIM(teacher_code)) = $1 AND video_id = $2`,
           [teacherCode, videoId]
         ),
         client.query(
@@ -184,7 +186,7 @@ export const POST = withApiProtection(async (request: NextRequest) => {
 });
 
 export const GET = withApiProtection(async (request: NextRequest) => {
-  const teacherCode = request.nextUrl.searchParams.get('teacherCode');
+  const teacherCode = (request.nextUrl.searchParams.get('teacherCode') || '').toLowerCase().trim();
   const videoId     = request.nextUrl.searchParams.get('videoId');
 
   if (!teacherCode || !videoId) {
@@ -195,7 +197,7 @@ export const GET = withApiProtection(async (request: NextRequest) => {
     const result = await pool.query(
       `SELECT time_spent_seconds, server_time_seconds, completion_status, last_heartbeat_at
        FROM training_teacher_video_scores
-       WHERE teacher_code = $1 AND video_id = $2`,
+       WHERE LOWER(TRIM(teacher_code)) = $1 AND video_id = $2`,
       [teacherCode, videoId]
     );
 

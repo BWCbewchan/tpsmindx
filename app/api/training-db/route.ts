@@ -19,7 +19,7 @@ export const GET = withApiProtection(async (request: NextRequest) => {
     if (!auth.ok) return auth.response;
 
     const searchParams = request.nextUrl.searchParams;
-    const teacherCode = searchParams.get('code');
+    const teacherCode = (searchParams.get('code') || '').toLowerCase().trim();
 
     console.log('[Training DB API] Fetching data for teacher code:', teacherCode);
 
@@ -44,7 +44,7 @@ export const GET = withApiProtection(async (request: NextRequest) => {
         COALESCE(NULLIF(main_centre, ''), NULL) AS center,
         COALESCE(NULLIF(course_line, ''), NULL) AS teaching_block
       FROM teachers
-      WHERE code = $1
+      WHERE LOWER(TRIM(code)) = $1
       LIMIT 1
     `;
     const teacherInfoResult = await pool.query(teacherInfoQuery, [teacherCode]);
@@ -99,7 +99,7 @@ export const GET = withApiProtection(async (request: NextRequest) => {
       SELECT DISTINCT tva.video_id
       FROM training_assignment_submissions tas
       INNER JOIN training_video_assignments tva ON tva.id = tas.assignment_id
-      WHERE tas.teacher_code = $1
+      WHERE LOWER(TRIM(tas.teacher_code)) = $1
         AND tva.video_id IS NOT NULL
         AND (
           tas.status = 'graded'
@@ -120,7 +120,7 @@ export const GET = withApiProtection(async (request: NextRequest) => {
         COALESCE(server_time_seconds, 0) AS server_time_seconds,
         last_heartbeat_at
       FROM training_teacher_video_scores
-      WHERE teacher_code = $1
+      WHERE LOWER(TRIM(teacher_code)) = $1
     `,
         [teacherCode],
       ),

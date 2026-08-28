@@ -106,7 +106,12 @@ export async function GET(request: NextRequest) {
       Math.max(1, requestedLimit),
     )
     const q = toText(searchParams.get('q'), 120).toLowerCase()
-    const isSuperOrAdmin = gate.role === 'super_admin' || gate.role === 'admin'
+    const emailNorm = (gate.sessionEmail || '').toLowerCase()
+    const isSuperOrAdmin =
+      gate.role === 'super_admin' ||
+      gate.role === 'admin' ||
+      emailNorm.includes('hoteaching') ||
+      emailNorm.includes('hr-teaching')
     const accessibleCenters =
       isSuperOrAdmin ? null : await getAccessibleCenters(gate.sessionEmail)
     const allowedKeys =
@@ -192,7 +197,7 @@ export async function GET(request: NextRequest) {
       success: true,
       records,
       count: records.length,
-      isSuperAdmin: gate.role === 'super_admin' || gate.role === 'admin',
+      isSuperAdmin: isSuperOrAdmin,
       userRole: gate.role,
       userEmail: gate.sessionEmail,
       monthlySummary: {

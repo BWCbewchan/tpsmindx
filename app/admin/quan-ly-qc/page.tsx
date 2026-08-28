@@ -329,7 +329,7 @@ function buildDefaultAnswers(template: QCTemplate | null): AnswerState {
 }
 
 export default function QuanLyQCPage() {
-  const { token } = useAuth()
+  const { user, token } = useAuth()
   const [templates, setTemplates] = useState<QCTemplate[]>([])
   const [classes, setClasses] = useState<QCClass[]>([])
   const [records, setRecords] = useState<QCRecord[]>([])
@@ -367,6 +367,17 @@ export default function QuanLyQCPage() {
   const [recordPage, setRecordPage] = useState(1)
   const [selectedViewRecord, setSelectedViewRecord] = useState<QCRecord | null>(null)
   const [showDashboard, setShowDashboard] = useState(true)
+
+  const isSuperOrHOTeaching = useMemo(() => {
+    const emailNorm = (user?.email || '').toLowerCase()
+    return (
+      isSuperAdmin ||
+      user?.role === 'super_admin' ||
+      user?.role === 'admin' ||
+      emailNorm.includes('hoteaching') ||
+      emailNorm.includes('hr-teaching')
+    )
+  }, [isSuperAdmin, user?.email, user?.role])
 
   const activeTemplate = useMemo(
     () => templates.find((template) => template.key === activeTemplateKey) ?? null,
@@ -783,7 +794,7 @@ export default function QuanLyQCPage() {
         }
       }
 
-      if (recordLeader && recordLeader !== 'all') {
+      if (isSuperOrHOTeaching && recordLeader && recordLeader !== 'all') {
         if ((r.created_by_email || '').toLowerCase() !== recordLeader.toLowerCase()) {
           return false
         }
@@ -804,7 +815,7 @@ export default function QuanLyQCPage() {
 
       return true
     })
-  }, [records, recordSearch, recordCentre, recordLeader, recordLevel])
+  }, [records, recordSearch, recordCentre, recordLeader, recordLevel, isSuperOrHOTeaching])
 
   const totalRecordPages = Math.max(
     1,
@@ -1334,9 +1345,9 @@ export default function QuanLyQCPage() {
                   <h2 className="text-base font-bold text-gray-950">
                     Dashboard & Danh sách phiếu QC đã tạo ({records.length})
                   </h2>
-                  {isSuperAdmin ? (
+                  {isSuperOrHOTeaching ? (
                     <Badge variant="violet" size="xs" shape="pill" className="font-semibold">
-                      Super Admin (Xem toàn hệ thống)
+                      Super Admin / HO Teaching (Xem toàn hệ thống)
                     </Badge>
                   ) : (
                     <Badge variant="slate" size="xs" shape="pill">
@@ -1608,7 +1619,7 @@ export default function QuanLyQCPage() {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
                 {/* 1. Tìm kiếm text */}
-                <div className="sm:col-span-2 lg:col-span-4">
+                <div className={isSuperOrHOTeaching ? 'sm:col-span-2 lg:col-span-4' : 'sm:col-span-2 lg:col-span-5'}>
                   <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
                     Tìm kiếm phiếu
                   </label>
@@ -1617,14 +1628,14 @@ export default function QuanLyQCPage() {
                     <input
                       value={recordSearch}
                       onChange={(event) => setRecordSearch(event.target.value)}
-                      placeholder="Lớp, giáo viên, cơ sở, người tạo..."
+                      placeholder={isSuperOrHOTeaching ? 'Lớp, giáo viên, cơ sở, người tạo...' : 'Lớp, giáo viên, cơ sở...'}
                       className="h-10 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm text-gray-900 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
                     />
                   </div>
                 </div>
 
                 {/* 2. Lọc Cơ sở */}
-                <div className="sm:col-span-1 lg:col-span-3">
+                <div className={isSuperOrHOTeaching ? 'sm:col-span-1 lg:col-span-3' : 'sm:col-span-1 lg:col-span-4'}>
                   <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
                     Cơ sở
                   </label>
@@ -1645,7 +1656,7 @@ export default function QuanLyQCPage() {
                 </div>
 
                 {/* 3. Lọc Mức độ đánh giá */}
-                <div className="sm:col-span-1 lg:col-span-2">
+                <div className={isSuperOrHOTeaching ? 'sm:col-span-1 lg:col-span-2' : 'sm:col-span-1 lg:col-span-3'}>
                   <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
                     Mức độ đánh giá
                   </label>
@@ -1665,26 +1676,28 @@ export default function QuanLyQCPage() {
                   </div>
                 </div>
 
-                {/* 4. Lọc Leader tạo phiếu */}
-                <div className="sm:col-span-2 lg:col-span-3">
-                  <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                    Người tạo (Leader)
-                  </label>
-                  <div className="relative mt-1">
-                    <select
-                      value={recordLeader}
-                      onChange={(e) => setRecordLeader(e.target.value)}
-                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
-                    >
-                      <option value="all">Tất cả Leader</option>
-                      {leadersList.map((leader) => (
-                        <option key={leader.email} value={leader.email}>
-                          {leader.name} ({leader.count} phiếu · TB: {leader.avgScore}đ)
-                        </option>
-                      ))}
-                    </select>
+                {/* 4. Lọc Leader tạo phiếu - CHỈ HIỂN THỊ CHO SUPER ADMIN & HO TEACHING */}
+                {isSuperOrHOTeaching && (
+                  <div className="sm:col-span-2 lg:col-span-3">
+                    <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                      Người tạo (Leader)
+                    </label>
+                    <div className="relative mt-1">
+                      <select
+                        value={recordLeader}
+                        onChange={(e) => setRecordLeader(e.target.value)}
+                        className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                      >
+                        <option value="all">Tất cả Leader</option>
+                        {leadersList.map((leader) => (
+                          <option key={leader.email} value={leader.email}>
+                            {leader.name} ({leader.count} phiếu · TB: {leader.avgScore}đ)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 

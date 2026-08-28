@@ -100,9 +100,10 @@ export async function GET(request: NextRequest) {
     if (!gate.ok) return gate.response
 
     const { searchParams } = request.nextUrl
+    const requestedLimit = Number(searchParams.get('limit') || 200) || 200
     const limit = Math.min(
-      100,
-      Math.max(1, Number(searchParams.get('limit') || 30) || 30),
+      1000,
+      Math.max(1, requestedLimit),
     )
     const q = toText(searchParams.get('q'), 120).toLowerCase()
     const accessibleCenters =
@@ -117,6 +118,7 @@ export async function GET(request: NextRequest) {
         success: true,
         records: [],
         count: 0,
+        isSuperAdmin: gate.role === 'super_admin',
       })
     }
 
@@ -125,38 +127,45 @@ export async function GET(request: NextRequest) {
     if (q) {
       values.push(`%${q}%`)
       conditions.push(`(
-        LOWER(class_name) LIKE $${values.length}
-        OR LOWER(class_code) LIKE $${values.length}
-        OR LOWER(teacher_name) LIKE $${values.length}
-        OR LOWER(center_name) LIKE $${values.length}
+        LOWER(q.class_name) LIKE $${values.length}
+        OR LOWER(q.class_code) LIKE $${values.length}
+        OR LOWER(q.teacher_name) LIKE $${values.length}
+        OR LOWER(q.center_name) LIKE $${values.length}
+        OR LOWER(q.created_by_email) LIKE $${values.length}
+        OR LOWER(u.display_name) LIKE $${values.length}
       )`)
     }
-    const sqlLimit = gate.role === 'super_admin' ? limit : Math.min(500, limit * 10)
+    const sqlLimit = gate.role === 'super_admin' ? limit : Math.min(1000, limit * 5)
     values.push(sqlLimit)
 
     const result = await pool.query(
       `
       SELECT
-        id,
-        template_key,
-        template_title,
-        class_lms_id,
-        class_code,
-        class_name,
-        center_name,
-        teacher_name,
-        student_count,
-        session_index,
-        session_date,
-        total_score,
-        max_score,
-        result_label,
-        signed,
-        created_by_email,
-        created_at
-      FROM quan_ly_qc
+        q.id,
+        q.template_key,
+        q.template_title,
+        q.class_lms_id,
+        q.class_code,
+        q.class_name,
+        q.center_name,
+        q.teacher_name,
+        q.teacher_rank,
+        q.assistant_name,
+        q.student_count,
+        q.session_index,
+        q.session_date,
+        q.total_score,
+        q.max_score,
+        q.result_label,
+        q.general_note,
+        q.signed,
+        q.created_by_email,
+        COALESCE(u.display_name, q.created_by_email) AS created_by_name,
+        q.created_at
+      FROM quan_ly_qc q
+      LEFT JOIN app_users u ON LOWER(u.email) = LOWER(q.created_by_email)
       ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
-      ORDER BY created_at DESC
+      ORDER BY q.created_at DESC
       LIMIT $${values.length}
       `,
       values,
@@ -187,6 +196,9 @@ export async function GET(request: NextRequest) {
       success: true,
       records,
       count: records.length,
+      isSuperAdmin: gate.role === 'super_admin',
+      userRole: gate.role,
+      userEmail: gate.sessionEmail,
       monthlySummary: {
         target: monthlyTarget,
         completed: monthlyCompleted,

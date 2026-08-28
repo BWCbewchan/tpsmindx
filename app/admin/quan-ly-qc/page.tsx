@@ -961,6 +961,12 @@ export default function QuanLyQCPage() {
       }
       toast.success('Đã tạo phiếu QC')
       closeModal()
+      setActiveTab('records')
+      setRecordSearch('')
+      setRecordCentre('all')
+      setRecordLevel('all')
+      setRecordLeader('all')
+      setRecordPage(1)
       await loadAll()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Không thể lưu phiếu QC')

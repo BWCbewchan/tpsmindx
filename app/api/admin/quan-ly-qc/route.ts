@@ -106,21 +106,13 @@ export async function GET(request: NextRequest) {
       Math.max(1, requestedLimit),
     )
     const q = toText(searchParams.get('q'), 120).toLowerCase()
+    const isSuperOrAdmin = gate.role === 'super_admin' || gate.role === 'admin'
     const accessibleCenters =
-      gate.role === 'super_admin' ? null : await getAccessibleCenters(gate.sessionEmail)
+      isSuperOrAdmin ? null : await getAccessibleCenters(gate.sessionEmail)
     const allowedKeys =
-      gate.role === 'super_admin'
+      isSuperOrAdmin
         ? null
         : buildCenterKeys((accessibleCenters ?? []) as AccessibleCenter[])
-
-    if (gate.role !== 'super_admin' && (!allowedKeys || allowedKeys.size === 0)) {
-      return NextResponse.json({
-        success: true,
-        records: [],
-        count: 0,
-        isSuperAdmin: gate.role === 'super_admin',
-      })
-    }
 
     const values: unknown[] = []
     const conditions: string[] = []
@@ -135,7 +127,7 @@ export async function GET(request: NextRequest) {
         OR LOWER(u.display_name) LIKE $${values.length}
       )`)
     }
-    const sqlLimit = gate.role === 'super_admin' ? limit : Math.min(1000, limit * 5)
+    const sqlLimit = isSuperOrAdmin ? limit : Math.min(1000, limit * 5)
     values.push(sqlLimit)
 
     const result = await pool.query(
@@ -171,9 +163,11 @@ export async function GET(request: NextRequest) {
       values,
     )
     const rows =
-      gate.role === 'super_admin'
+      isSuperOrAdmin
         ? result.rows
         : result.rows.filter((row) =>
+            (row.created_by_email &&
+              row.created_by_email.toLowerCase() === gate.sessionEmail.toLowerCase()) ||
             centerIsAccessible([row.center_name], allowedKeys),
           )
     const records = rows.slice(0, limit)
@@ -196,7 +190,7 @@ export async function GET(request: NextRequest) {
       success: true,
       records,
       count: records.length,
-      isSuperAdmin: gate.role === 'super_admin',
+      isSuperAdmin: gate.role === 'super_admin' || gate.role === 'admin',
       userRole: gate.role,
       userEmail: gate.sessionEmail,
       monthlySummary: {

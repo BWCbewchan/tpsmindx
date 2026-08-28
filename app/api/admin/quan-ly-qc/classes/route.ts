@@ -348,15 +348,66 @@ export async function GET(request: NextRequest) {
     }
 
     const now = new Date()
-    const classes = allClasses
+    let classes = allClasses
       .filter((cls) => isClassInAccessibleCenter(cls, allowedKeys))
       .map((cls) => mapClass(cls, now))
+
+    // Thu thập danh sách Khối (Course Lines) có trong dữ liệu
+    const courseLineSet = new Set<string>()
+    classes.forEach((cls) => {
+      if (cls.courseLineName) {
+        courseLineSet.add(cls.courseLineName)
+      }
+    })
+    const availableCourseLines = Array.from(courseLineSet).sort((a, b) =>
+      a.localeCompare(b, 'vi'),
+    )
+
+    // Lọc theo Cơ sở nếu có param
+    const centreParam = searchParams.get('centre')?.trim()
+    if (centreParam && centreParam !== 'all') {
+      const norm = normalizeKey(centreParam)
+      classes = classes.filter((cls) => {
+        const c1 = normalizeKey(cls.centreName)
+        const c2 = normalizeKey(cls.centreShortName)
+        const c3 = normalizeKey(cls.centreId)
+        return (
+          c1.includes(norm) ||
+          c2.includes(norm) ||
+          c3 === norm ||
+          norm.includes(c1) ||
+          norm.includes(c2)
+        )
+      })
+    }
+
+    // Lọc theo Khối nếu có param
+    const courseLineParam =
+      searchParams.get('courseLine')?.trim() || searchParams.get('khoi')?.trim()
+    if (courseLineParam && courseLineParam !== 'all') {
+      const norm = normalizeKey(courseLineParam)
+      classes = classes.filter((cls) => {
+        const line = normalizeKey(cls.courseLineName)
+        const course = normalizeKey(cls.courseName)
+        return (
+          line.includes(norm) ||
+          course.includes(norm) ||
+          norm.includes(line)
+        )
+      })
+    }
 
     const response = NextResponse.json({
       success: true,
       classes,
       total: classes.length,
       lmsTotal: total,
+      accessibleCenters: (accessibleCenters || []).map((c: any) => ({
+        id: c.id,
+        full_name: c.full_name,
+        short_code: c.short_code,
+      })),
+      availableCourseLines,
       truncated: totalPages === maxPages && total > maxPages * itemsPerPage,
     })
 

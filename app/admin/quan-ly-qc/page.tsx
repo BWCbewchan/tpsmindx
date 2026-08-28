@@ -22,9 +22,11 @@ import {
   CheckCircle2,
   ClipboardCheck,
   FileSignature,
+  Filter,
   ListChecks,
   RefreshCcw,
   Search,
+  X,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
@@ -199,6 +201,12 @@ export default function QuanLyQCPage() {
   const [q, setQ] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
+  const [selectedCourseLine, setSelectedCourseLine] = useState('')
+  const [selectedCentre, setSelectedCentre] = useState('')
+  const [availableCourseLines, setAvailableCourseLines] = useState<string[]>([])
+  const [accessibleCenters, setAccessibleCenters] = useState<
+    Array<{ id: number; full_name: string; short_code: string | null }>
+  >([])
   const [selectedClass, setSelectedClass] = useState<QCClass | null>(null)
   const [activeTemplateKey, setActiveTemplateKey] = useState('')
   const [selectedSessionId, setSelectedSessionId] = useState('')
@@ -262,6 +270,72 @@ export default function QuanLyQCPage() {
     return Array.from(groups.entries())
   }, [activeTemplate])
 
+  // Danh sách Khối tổng hợp từ backend và dữ liệu lớp
+  const allCourseLines = useMemo(() => {
+    const set = new Set<string>(availableCourseLines)
+    classes.forEach((c) => {
+      if (c.courseLineName) set.add(c.courseLineName)
+    })
+    return Array.from(set)
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'vi'))
+  }, [availableCourseLines, classes])
+
+  // Danh sách Cơ sở tổng hợp từ phân quyền và dữ liệu lớp
+  const allCentres = useMemo(() => {
+    const map = new Map<string, string>()
+    accessibleCenters.forEach((c) => {
+      const code = c.short_code ? `${c.short_code} - ` : ''
+      map.set(c.full_name, `${code}${c.full_name}`)
+    })
+    classes.forEach((c) => {
+      const name = c.centreName || c.centreShortName
+      if (name && !map.has(name)) {
+        const label =
+          c.centreShortName && c.centreName && c.centreShortName !== c.centreName
+            ? `${c.centreShortName} - ${c.centreName}`
+            : name
+        map.set(name, label)
+      }
+    })
+    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
+  }, [accessibleCenters, classes])
+
+  // Lọc lớp theo từ khóa, Khối và Cơ sở tức thì trên giao diện
+  const filteredClasses = useMemo(() => {
+    return classes.filter((item) => {
+      if (selectedCourseLine && selectedCourseLine !== 'all') {
+        const normFilter = selectedCourseLine.toLowerCase()
+        const line = (item.courseLineName || '').toLowerCase()
+        const course = (item.courseName || '').toLowerCase()
+        if (!line.includes(normFilter) && !course.includes(normFilter)) {
+          return false
+        }
+      }
+      if (selectedCentre && selectedCentre !== 'all') {
+        const normFilter = selectedCentre.toLowerCase()
+        const cName = (item.centreName || '').toLowerCase()
+        const cShort = (item.centreShortName || '').toLowerCase()
+        if (!cName.includes(normFilter) && !cShort.includes(normFilter)) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [classes, selectedCourseLine, selectedCentre])
+
+  const hasActiveFilters = Boolean(
+    q.trim() || fromDate || toDate || selectedCourseLine || selectedCentre,
+  )
+
+  const handleClearFilters = useCallback(() => {
+    setQ('')
+    setFromDate('')
+    setToDate('')
+    setSelectedCourseLine('')
+    setSelectedCentre('')
+  }, [])
+
   const loadAll = useCallback(async (showToast = false) => {
     try {
       setRefreshing(true)
@@ -269,6 +343,8 @@ export default function QuanLyQCPage() {
       if (q.trim()) params.set('q', q.trim())
       if (fromDate) params.set('from', fromDate)
       if (toDate) params.set('to', toDate)
+      if (selectedCourseLine) params.set('courseLine', selectedCourseLine)
+      if (selectedCentre) params.set('centre', selectedCentre)
 
       const [templatesRes, classesRes, recordsRes] = await Promise.all([
         fetch('/api/admin/quan-ly-qc/templates', {
@@ -298,6 +374,12 @@ export default function QuanLyQCPage() {
 
       setTemplates(templatesData.templates || [])
       setClasses(classesData.classes || [])
+      if (Array.isArray(classesData.availableCourseLines) && classesData.availableCourseLines.length > 0) {
+        setAvailableCourseLines(classesData.availableCourseLines)
+      }
+      if (Array.isArray(classesData.accessibleCenters) && classesData.accessibleCenters.length > 0) {
+        setAccessibleCenters(classesData.accessibleCenters)
+      }
       setRecords(recordsData.records || [])
       if (recordsData.monthlySummary) {
         setMonthlySummary(recordsData.monthlySummary)
@@ -312,7 +394,7 @@ export default function QuanLyQCPage() {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [activeTemplateKey, fromDate, q, toDate, token])
+  }, [activeTemplateKey, fromDate, q, selectedCentre, selectedCourseLine, toDate, token])
 
   useEffect(() => {
     void loadAll()
@@ -447,7 +529,7 @@ export default function QuanLyQCPage() {
                 <p className="mt-1 text-3xl font-bold text-gray-950">
                   {loading
                     ? '-'
-                    : classes.reduce((sum, item) => sum + item.eligibleSessionCount, 0)}
+                    : filteredClasses.reduce((sum, item) => sum + item.eligibleSessionCount, 0)}
                 </p>
                 <p className="mt-1 text-xs text-gray-500">
                   Trong cửa sổ từ giờ học đến +24h
@@ -460,54 +542,145 @@ export default function QuanLyQCPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_180px_180px_auto] lg:items-end">
-            <div>
+        {/* Bộ lọc nâng cao: Tìm kiếm, Khối, Cơ sở, Ngày tháng */}
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+              <Filter className="h-4 w-4 text-[#a1001f]" />
+              Bộ lọc tìm kiếm lớp học
+            </div>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className="text-xs text-gray-500 hover:text-[#a1001f] flex items-center gap-1 transition-colors font-medium"
+              >
+                <X className="h-3.5 w-3.5" />
+                Xoá bộ lọc
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+            {/* 1. Tìm kiếm text */}
+            <div className="sm:col-span-2 lg:col-span-4">
               <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                Tìm lớp
+                Tìm lớp / Giáo viên
               </label>
               <div className="relative mt-1">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
                 <input
                   value={q}
                   onChange={(event) => setQ(event.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && loadAll(true)}
                   placeholder="Tên lớp, mã lớp, giáo viên..."
                   className="h-10 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
                 />
               </div>
             </div>
-            <div>
+
+            {/* 2. Lọc Khối */}
+            <div className="sm:col-span-1 lg:col-span-2">
               <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                Lớp kết thúc sau
+                Khối
               </label>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={(event) => setFromDate(event.target.value)}
-                className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
-              />
+              <div className="relative mt-1">
+                <select
+                  value={selectedCourseLine}
+                  onChange={(e) => setSelectedCourseLine(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                >
+                  <option value="">Tất cả khối</option>
+                  {allCourseLines.map((line) => (
+                    <option key={line} value={line}>
+                      {line}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div>
+
+            {/* 3. Lọc Cơ sở */}
+            <div className="sm:col-span-1 lg:col-span-3">
               <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                Lớp bắt đầu trước
+                Cơ sở
               </label>
-              <input
-                type="date"
-                value={toDate}
-                onChange={(event) => setToDate(event.target.value)}
-                className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
-              />
+              <div className="relative mt-1">
+                <select
+                  value={selectedCentre}
+                  onChange={(e) => setSelectedCentre(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15 truncate"
+                >
+                  <option value="">Tất cả cơ sở</option>
+                  {allCentres.map((c) => (
+                    <option key={c.value} value={c.value}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <Button type="button" variant="mindx" onClick={() => loadAll(true)}>
-              <Search className="h-4 w-4" />
-              Tìm
-            </Button>
+
+            {/* 4. Ngày tháng */}
+            <div className="sm:col-span-2 lg:col-span-2 grid grid-cols-2 gap-1.5">
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wide text-gray-500 truncate block">
+                  Kết thúc sau
+                </label>
+                <input
+                  type="date"
+                  value={fromDate}
+                  onChange={(event) => setFromDate(event.target.value)}
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-2 text-xs focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase tracking-wide text-gray-500 truncate block">
+                  Bắt đầu trước
+                </label>
+                <input
+                  type="date"
+                  value={toDate}
+                  onChange={(event) => setToDate(event.target.value)}
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-2 text-xs focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                />
+              </div>
+            </div>
+
+            {/* 5. Nút tìm kiếm */}
+            <div className="sm:col-span-2 lg:col-span-1">
+              <Button
+                type="button"
+                variant="mindx"
+                onClick={() => loadAll(true)}
+                className="h-10 w-full justify-center"
+              >
+                <Search className="h-4 w-4" />
+                Lọc
+              </Button>
+            </div>
           </div>
         </div>
 
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-100 px-4 py-3">
-            <h2 className="text-base font-bold text-gray-950">Danh sách lớp</h2>
+          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+            <h2 className="text-base font-bold text-gray-950">
+              Danh sách lớp ({filteredClasses.length})
+            </h2>
+            {(selectedCourseLine || selectedCentre) && (
+              <div className="flex items-center gap-1.5">
+                {selectedCourseLine && (
+                  <Badge variant="violet" size="xs" shape="pill">
+                    Khối: {selectedCourseLine}
+                  </Badge>
+                )}
+                {selectedCentre && (
+                  <Badge variant="slate" size="xs" shape="pill">
+                    Cơ sở: {selectedCentre}
+                  </Badge>
+                )}
+              </div>
+            )}
           </div>
           {loading ? (
             <div className="space-y-3 p-4">
@@ -520,7 +693,8 @@ export default function QuanLyQCPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Lớp</TableHead>
+                    <TableHead>Lớp / Khóa học</TableHead>
+                    <TableHead>Khối</TableHead>
                     <TableHead>Cơ sở</TableHead>
                     <TableHead>Giáo viên</TableHead>
                     <TableHead>Sĩ số</TableHead>
@@ -529,13 +703,22 @@ export default function QuanLyQCPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {classes.map((item) => (
+                  {filteredClasses.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell>
                         <p className="font-semibold text-gray-950">{item.name}</p>
                         <p className="text-xs text-gray-500">
                           {item.courseName || 'Chưa có khóa học'}
                         </p>
+                      </TableCell>
+                      <TableCell>
+                        {item.courseLineName ? (
+                          <Badge variant="violet" size="xs" shape="pill">
+                            {item.courseLineName}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-gray-400">-</span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant="slate" shape="pill">
@@ -586,7 +769,7 @@ export default function QuanLyQCPage() {
                   ))}
                 </TableBody>
               </Table>
-              {classes.length === 0 ? (
+              {filteredClasses.length === 0 ? (
                 <div className="p-8 text-center text-sm text-gray-500">
                   Không có lớp phù hợp với phạm vi cơ sở hoặc bộ lọc hiện tại.
                 </div>
@@ -730,7 +913,7 @@ export default function QuanLyQCPage() {
                 <select
                   value={activeTemplateKey}
                   onChange={(event) => setActiveTemplateKey(event.target.value)}
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
                 >
                   {templates.map((template) => (
                     <option key={template.key} value={template.key}>
@@ -746,7 +929,7 @@ export default function QuanLyQCPage() {
                 <select
                   value={selectedSessionId}
                   onChange={(event) => setSelectedSessionId(event.target.value)}
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
                 >
                   {selectedClass.slots.length === 0 ? (
                     <option value="">Chưa có buổi trong LMS</option>

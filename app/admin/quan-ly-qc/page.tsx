@@ -558,7 +558,6 @@ export default function QuanLyQCPage() {
   return (
     <PageContainer
       title="Quản Lý Kiểm Tra Chất Lượng"
-      description="Tạo phiếu QC cho lớp học và giáo viên theo bộ tiêu chí từ Google Sheet."
       headerActions={
         <Button
           type="button"

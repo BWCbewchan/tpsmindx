@@ -190,6 +190,48 @@ function teacherNamesFromAccounts(
     .filter(Boolean)
 }
 
+function isAssistantAssignment(item: any): boolean {
+  if (item?.isActive === false) return false
+  const roleValues = [
+    item?.role?.shortName,
+    item?.role?.name,
+    item?.role?.code,
+  ].map((value) => String(value ?? '').trim().toUpperCase())
+  return (
+    roleValues.includes('TA') ||
+    roleValues.some((r) => r.includes('TRỢ GIẢNG') || r.includes('ASSISTANT'))
+  )
+}
+
+function assistantAccounts(assignments: any[]): Array<{
+  id: string
+  fullName: string
+  email: string
+  username: string
+  code: string
+}> {
+  const seen = new Set<string>()
+  const accounts: Array<{
+    id: string
+    fullName: string
+    email: string
+    username: string
+    code: string
+  }> = []
+
+  assignments.forEach((item) => {
+    if (!isAssistantAssignment(item)) return
+    const account = teacherAccountFromAssignment(item)
+    if (!account) return
+    const key = account.id || account.email || account.username || account.code || account.fullName
+    if (seen.has(key)) return
+    seen.add(key)
+    accounts.push(account)
+  })
+
+  return accounts
+}
+
 function mapClass(cls: any, now: Date) {
   const activeStudents = (cls?.students ?? []).filter((item: any) => item?.activeInClass !== false)
   const slots = (cls?.slots ?? [])
@@ -201,6 +243,8 @@ function mapClass(cls: any, now: Date) {
     })
     .map((slot: any, index: number) => {
       const teacherAccounts = lecturerAccounts(slot?.teachers ?? [])
+      const taAccounts = assistantAccounts(slot?.teachers ?? [])
+      const slotTeacherRank = teacherAccounts[0]?.code || ''
       const session = {
         id: String(slot?._id ?? ''),
         date: slot?.date ?? null,
@@ -210,6 +254,9 @@ function mapClass(cls: any, now: Date) {
         sessionIndex: index + 1,
         teacherNames: teacherNamesFromAccounts(teacherAccounts),
         teacherAccounts,
+        assistantNames: teacherNamesFromAccounts(taAccounts),
+        assistantAccounts: taAccounts,
+        teacherRank: slotTeacherRank,
         studentAttendanceCount: Array.isArray(slot?.studentAttendance)
           ? slot.studentAttendance.length
           : 0,
@@ -223,6 +270,8 @@ function mapClass(cls: any, now: Date) {
   const eligibleSessionCount = slots.filter((slot: { canCreateQC: boolean }) => slot.canCreateQC).length
 
   const teacherAccounts = lecturerAccounts(cls?.teachers ?? [])
+  const taAccounts = assistantAccounts(cls?.teachers ?? [])
+  const classTeacherRank = teacherAccounts[0]?.code || ''
 
   return {
     id: String(cls?.id ?? ''),
@@ -238,6 +287,9 @@ function mapClass(cls: any, now: Date) {
     centreShortName: cls?.centre?.shortName ?? '',
     teacherNames: teacherNamesFromAccounts(teacherAccounts),
     teacherAccounts,
+    assistantNames: teacherNamesFromAccounts(taAccounts),
+    assistantAccounts: taAccounts,
+    teacherRank: classTeacherRank,
     studentCount: activeStudents.length,
     slots,
     eligibleSessionCount,

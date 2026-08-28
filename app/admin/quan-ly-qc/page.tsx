@@ -79,6 +79,9 @@ type QCClassSession = {
   sessionIndex: number
   teacherNames: string[]
   teacherAccounts: TeacherAccount[]
+  assistantNames?: string[]
+  assistantAccounts?: TeacherAccount[]
+  teacherRank?: string
   studentAttendanceCount: number
   canCreateQC: boolean
   qcWindowStatus: 'available' | 'upcoming' | 'expired' | 'missing-time'
@@ -100,6 +103,9 @@ type QCClass = {
   centreShortName: string
   teacherNames: string[]
   teacherAccounts: TeacherAccount[]
+  assistantNames?: string[]
+  assistantAccounts?: TeacherAccount[]
+  teacherRank?: string
   studentCount: number
   slots: QCClassSession[]
   eligibleSessionCount: number
@@ -496,13 +502,25 @@ export default function QuanLyQCPage() {
 
   function openCreateModal(item: QCClass) {
     const nextTemplate = activeTemplate ?? templates[0] ?? null
-    const firstAvailableSession = item.slots.find((session) => session.canCreateQC)
+    const firstAvailableSession =
+      item.slots.find((session) => session.canCreateQC) || item.slots[0]
     setSelectedClass(item)
     setActiveTemplateKey(nextTemplate?.key ?? '')
     setSelectedSessionId(firstAvailableSession?.id ?? '')
     setAnswers(buildDefaultAnswers(nextTemplate))
-    setTeacherRank('')
-    setAssistantName('')
+
+    // Tự động trích xuất Rank GV và Trợ giảng từ thông tin LMS
+    const initialRank =
+      firstAvailableSession?.teacherRank ||
+      item.teacherRank ||
+      item.teacherAccounts[0]?.code ||
+      ''
+    const initialAssistant =
+      firstAvailableSession?.assistantNames?.join(', ') ||
+      item.assistantNames?.join(', ') ||
+      ''
+    setTeacherRank(initialRank)
+    setAssistantName(initialAssistant)
     setGeneralNote('')
   }
 
@@ -958,7 +976,7 @@ export default function QuanLyQCPage() {
         maxWidth="7xl"
         disableBackdropClick
         footer={
-          <div className="flex flex-col gap-2 sm:flex-row sm:justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between w-full">
             <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
               <CheckCircle2 className="h-4 w-4 text-[#a1001f]" />
               {activeTemplate
@@ -967,10 +985,7 @@ export default function QuanLyQCPage() {
                   : `${formatScore(normalizedTotalScore)} / 10 · ${resultLabel}`
                 : 'Chưa có mẫu phiếu'}
             </div>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={closeModal} disabled={saving}>
-                Hủy
-              </Button>
+            <div>
               <Button
                 type="button"
                 variant="mindx"
@@ -981,6 +996,7 @@ export default function QuanLyQCPage() {
                   !selectedSession?.canCreateQC ||
                   missingSingleChoiceCount > 0
                 }
+                className="h-10 px-6 font-semibold"
               >
                 <FileSignature className="h-4 w-4" />
                 {saving ? 'Đang lưu...' : 'Lưu phiếu QC'}
@@ -990,44 +1006,75 @@ export default function QuanLyQCPage() {
         }
       >
         {selectedClass && activeTemplate ? (
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <p className="text-xs font-semibold text-gray-500">Tên lớp</p>
-                <p className="mt-1 text-sm font-bold text-gray-950">{selectedClass.name}</p>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <p className="text-xs font-semibold text-gray-500">Cơ sở</p>
-                <p className="mt-1 text-sm font-bold text-gray-950">
-                  {selectedClass.centreShortName || selectedClass.centreName}
-                </p>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <p className="text-xs font-semibold text-gray-500">Giáo viên</p>
-                <p className="mt-1 text-sm font-bold text-gray-950">
-                  {selectedClass.teacherNames.join(', ') || '-'}
-                </p>
-                <p className="mt-1 truncate text-xs text-gray-500">
-                  {teacherAccountLabel((selectedClass.teacherAccounts ?? [])[0]) || 'Chưa có tài khoản LEC'}
-                </p>
-              </div>
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <p className="text-xs font-semibold text-gray-500">Sĩ số</p>
-                <p className="mt-1 text-sm font-bold text-gray-950">
-                  {selectedClass.studentCount} học viên
-                </p>
+          <div className="space-y-4">
+            {/* 1. Component thông tin lớp học nhỏ gọn trong 1 box */}
+            <div className="rounded-xl border border-gray-200/80 bg-linear-to-r from-gray-50 via-white to-gray-50 p-3 shadow-2xs">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:divide-x sm:divide-gray-200">
+                <div className="sm:px-3 first:pl-0">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
+                    Tên lớp
+                  </span>
+                  <span className="text-sm font-bold text-gray-950 truncate block mt-0.5" title={selectedClass.name}>
+                    {selectedClass.name}
+                  </span>
+                  {selectedClass.courseName && (
+                    <span className="text-[11px] text-gray-500 truncate block mt-0.5" title={selectedClass.courseName}>
+                      {selectedClass.courseName}
+                    </span>
+                  )}
+                </div>
+
+                <div className="sm:px-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
+                    Cơ sở
+                  </span>
+                  <span className="text-sm font-bold text-gray-950 truncate block mt-0.5">
+                    {selectedClass.centreShortName || selectedClass.centreName || '-'}
+                  </span>
+                  {selectedClass.centreName && selectedClass.centreShortName !== selectedClass.centreName && (
+                    <span className="text-[11px] text-gray-500 truncate block mt-0.5" title={selectedClass.centreName}>
+                      {selectedClass.centreName}
+                    </span>
+                  )}
+                </div>
+
+                <div className="sm:px-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
+                    Giáo viên
+                  </span>
+                  <span className="text-sm font-bold text-gray-950 truncate block mt-0.5" title={selectedClass.teacherNames.join(', ')}>
+                    {selectedClass.teacherNames.join(', ') || '-'}
+                  </span>
+                  <span className="text-[11px] text-gray-500 truncate block mt-0.5">
+                    {teacherAccountLabel((selectedClass.teacherAccounts ?? [])[0]) || ''}
+                  </span>
+                </div>
+
+                <div className="sm:px-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block">
+                    Sĩ số
+                  </span>
+                  <span className="text-sm font-bold text-gray-950 block mt-0.5">
+                    {selectedClass.studentCount} học viên
+                  </span>
+                  <span className="text-[11px] text-emerald-600 font-semibold block mt-0.5">
+                    {selectedClass.eligibleSessionCount}/{selectedClass.slots.length} buổi mở QC
+                  </span>
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_1fr_180px_180px]">
-              <div>
+            {/* 2. Dòng thiết lập buổi học, Rank GV, Trợ giảng */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+              {/* Loại buổi học */}
+              <div className="sm:col-span-1 lg:col-span-3">
                 <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
                   Loại buổi học
                 </label>
                 <select
                   value={activeTemplateKey}
                   onChange={(event) => setActiveTemplateKey(event.target.value)}
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
                 >
                   {templates.map((template) => (
                     <option key={template.key} value={template.key}>
@@ -1036,14 +1083,26 @@ export default function QuanLyQCPage() {
                   ))}
                 </select>
               </div>
-              <div>
+
+              {/* Buổi học */}
+              <div className="sm:col-span-1 lg:col-span-5">
                 <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
                   Buổi học
                 </label>
                 <select
                   value={selectedSessionId}
-                  onChange={(event) => setSelectedSessionId(event.target.value)}
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                  onChange={(event) => {
+                    const nextId = event.target.value
+                    setSelectedSessionId(nextId)
+                    const nextSession = selectedClass.slots.find((s) => s.id === nextId)
+                    if (nextSession) {
+                      if (nextSession.teacherRank) setTeacherRank(nextSession.teacherRank)
+                      if (nextSession.assistantNames && nextSession.assistantNames.length > 0) {
+                        setAssistantName(nextSession.assistantNames.join(', '))
+                      }
+                    }
+                  }}
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15 truncate"
                 >
                   {selectedClass.slots.length === 0 ? (
                     <option value="">Chưa có buổi trong LMS</option>
@@ -1059,150 +1118,206 @@ export default function QuanLyQCPage() {
                     ))
                   )}
                 </select>
-                {selectedSession ? (
-                  <p className="mt-1 text-xs text-gray-500">
+                {selectedSession && (
+                  <p className="mt-1 text-[11px] text-gray-500">
                     {sessionWindowLabel(selectedSession)}
                   </p>
-                ) : null}
+                )}
               </div>
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                  Rank GV
-                </label>
+
+              {/* Rank GV */}
+              <div className="sm:col-span-1 lg:col-span-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                    Rank GV
+                  </label>
+                  {teacherRank && (
+                    <span className="text-[10px] font-semibold text-gray-400">LMS</span>
+                  )}
+                </div>
                 <input
                   value={teacherRank}
                   onChange={(event) => setTeacherRank(event.target.value)}
-                  placeholder="VD: Senior"
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                  placeholder="VD: Senior, GV1..."
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
                 />
               </div>
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                  Trợ giảng
-                </label>
+
+              {/* Trợ giảng */}
+              <div className="sm:col-span-1 lg:col-span-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                    Trợ giảng
+                  </label>
+                  {assistantName && (
+                    <span className="text-[10px] font-semibold text-gray-400">LMS</span>
+                  )}
+                </div>
                 <input
                   value={assistantName}
                   onChange={(event) => setAssistantName(event.target.value)}
-                  placeholder="Nếu có"
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                  placeholder="Tên trợ giảng"
+                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
                 />
               </div>
             </div>
 
-            <div className="rounded-xl border border-gray-200 bg-white">
-              <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            {/* 3. Bộ tiêu chí QC thoáng, dễ thao tác */}
+            <div className="rounded-xl border border-gray-200 bg-white shadow-2xs overflow-hidden">
+              {/* Header bộ tiêu chí với Score summary trực quan */}
+              <div className="flex flex-col gap-2 border-b border-gray-100 bg-gray-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-base font-bold text-gray-950">
-                    Bộ tiêu chí QC
-                  </h3>
-                  <p className="text-sm text-gray-500">{activeTemplate.title}</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-gray-950 uppercase tracking-wide">
+                      Bộ tiêu chí đánh giá QC
+                    </h3>
+                    <Badge variant="violet" size="xs" shape="pill">
+                      {activeTemplate.criteria.length} tiêu chí
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5">{activeTemplate.title}</p>
                 </div>
-                <Badge variant={resultLabel === 'ĐẠT' ? 'success' : 'danger'} shape="pill">
-                  {formatScore(normalizedTotalScore)} / 10 · {resultLabel}
-                </Badge>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500 font-medium">
+                    Điểm tạm tính:
+                  </span>
+                  <Badge
+                    variant={resultLabel === 'ĐẠT' ? 'success' : 'danger'}
+                    size="md"
+                    shape="pill"
+                    className="font-bold text-sm px-3 py-1"
+                  >
+                    {formatScore(normalizedTotalScore)} / 10 · {resultLabel}
+                  </Badge>
+                </div>
               </div>
-              <div className="max-h-[52vh] overflow-y-auto p-4">
-                <div className="space-y-5">
-                  {groupedCriteria.map(([category, criteria]) => (
-                    <section key={category} className="space-y-3">
-                      <div className="sticky top-0 z-10 flex items-center gap-2 rounded-lg border border-[#f3d5da] bg-[#fff7f8] px-3 py-2 text-sm font-bold text-[#a1001f]">
-                        <ListChecks className="h-4 w-4" />
-                        {category}
+
+              {/* Danh sách tiêu chí */}
+              <div className="p-4 sm:p-5 space-y-6">
+                {groupedCriteria.map(([category, criteria]) => (
+                  <section key={category} className="space-y-3.5">
+                    <div className="sticky top-0 z-10 flex items-center justify-between rounded-lg border border-[#f3d5da] bg-[#fff7f8] px-3.5 py-2 text-sm font-bold text-[#a1001f] shadow-2xs backdrop-blur-xs">
+                      <div className="flex items-center gap-2">
+                        <ListChecks className="h-4 w-4 shrink-0" />
+                        <span>{category}</span>
                       </div>
-                      {criteria.map((criterion) => {
+                      <span className="text-xs font-semibold text-[#a1001f]/80">
+                        {criteria.length} tiêu chí
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {criteria.map((criterion, cIdx) => {
                         const selectedIds = new Set(answers[criterion.id]?.optionIds ?? [])
                         const score = criterion.options.reduce(
-                          (sum, option) =>
-                            sum + (selectedIds.has(option.id) ? option.score : 0),
+                          (sum, option) => sum + (selectedIds.has(option.id) ? option.score : 0),
                           0,
                         )
                         const isMultiple = criterion.selectionMode === 'multiple'
+                        const isAnswered = selectedIds.size > 0
 
                         return (
                           <div
                             key={criterion.id}
-                            className="rounded-lg border border-gray-200 bg-white shadow-sm"
+                            className={`rounded-xl border transition-all duration-150 ${
+                              isAnswered
+                                ? 'border-gray-300 bg-white shadow-xs'
+                                : 'border-amber-200/80 bg-amber-50/20'
+                            }`}
                           >
-                            <div className="flex flex-col gap-2 border-b border-gray-100 bg-gray-50 px-4 py-3 lg:flex-row lg:items-start lg:justify-between">
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <h4 className="text-sm font-bold text-gray-950">
-                                    {criterion.criterion}
-                                  </h4>
-                                  <span
-                                    title={isMultiple ? 'Chọn nhiều' : 'Chọn 1'}
-                                    className={`h-2.5 w-2.5 rounded-full ${
-                                      isMultiple ? 'bg-[#4f81e8]' : 'bg-[#55a868]'
-                                    }`}
-                                  />
-                                </div>
-                                <p className="mt-1 text-xs text-gray-500">
-                                  {criterion.options.length} mục · tối đa {formatScore(criterion.maxScore)} điểm
-                                </p>
+                            {/* Tiêu đề tiêu chí */}
+                            <div className="flex flex-col gap-1.5 border-b border-gray-100 bg-gray-50/60 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between rounded-t-xl">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-200 text-[11px] font-bold text-gray-700">
+                                  {cIdx + 1}
+                                </span>
+                                <h4 className="text-sm font-semibold text-gray-900 leading-snug">
+                                  {criterion.criterion}
+                                </h4>
+                                <span
+                                  className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm ${
+                                    isMultiple
+                                      ? 'bg-blue-100 text-blue-700'
+                                      : 'bg-emerald-100 text-emerald-700'
+                                  }`}
+                                >
+                                  {isMultiple ? 'Chọn nhiều' : 'Chọn 1'}
+                                </span>
                               </div>
-                              <Badge variant="outline" shape="pill" className="shrink-0">
-                                {formatScore(score)} / {formatScore(criterion.maxScore)}
-                              </Badge>
+
+                              <div className="flex items-center gap-2 shrink-0">
+                                <span className="text-xs font-bold text-gray-700">
+                                  {formatScore(score)} / {formatScore(criterion.maxScore)} đ
+                                </span>
+                              </div>
                             </div>
-                            <div className="p-3">
-                              <div className="grid grid-cols-1 gap-2 xl:grid-cols-2">
+
+                            {/* Các lựa chọn (Tile options) */}
+                            <div className="p-3 sm:p-4 space-y-2.5">
+                              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                                 {criterion.options.map((option) => {
                                   const checked = selectedIds.has(option.id)
                                   return (
                                     <label
                                       key={option.id}
-                                      className={`group flex min-h-[52px] cursor-pointer items-start gap-3 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                                      className={`group relative flex min-h-[56px] cursor-pointer items-center justify-between gap-3 rounded-xl border p-3 text-sm transition-all duration-150 select-none ${
                                         checked
-                                          ? 'border-[#a1001f] bg-[#fff6f7] ring-1 ring-[#a1001f]/10'
-                                          : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                                          ? 'border-[#a1001f] bg-[#fff5f6] ring-1.5 ring-[#a1001f] shadow-xs text-gray-950 font-medium'
+                                          : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/70 text-gray-700'
                                       }`}
                                     >
-                                      <input
-                                        type={isMultiple ? 'checkbox' : 'radio'}
-                                        name={criterion.id}
-                                        checked={checked}
-                                        onChange={() =>
-                                          setAnswers((current) => {
-                                            const previous = current[criterion.id] ?? {
-                                              optionIds: [],
-                                              note: '',
-                                            }
-                                            const nextIds = isMultiple
-                                              ? checked
-                                                ? previous.optionIds.filter((id) => id !== option.id)
-                                                : [...previous.optionIds, option.id]
-                                              : [option.id]
+                                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                                        <input
+                                          type={isMultiple ? 'checkbox' : 'radio'}
+                                          name={criterion.id}
+                                          checked={checked}
+                                          onChange={() =>
+                                            setAnswers((current) => {
+                                              const previous = current[criterion.id] ?? {
+                                                optionIds: [],
+                                                note: '',
+                                              }
+                                              const nextIds = isMultiple
+                                                ? checked
+                                                  ? previous.optionIds.filter((id) => id !== option.id)
+                                                  : [...previous.optionIds, option.id]
+                                                : [option.id]
 
-                                            return {
-                                              ...current,
-                                              [criterion.id]: {
-                                                optionIds: nextIds,
-                                                note: previous.note,
-                                              },
-                                            }
-                                          })
-                                        }
-                                        className="mt-1 h-4 w-4 shrink-0 border-gray-300 text-[#a1001f] focus:ring-[#a1001f]"
-                                      />
-                                      <span className="min-w-0 flex-1 leading-5 text-gray-800">
-                                        {option.guide}
-                                      </span>
+                                              return {
+                                                ...current,
+                                                [criterion.id]: {
+                                                  optionIds: nextIds,
+                                                  note: previous.note,
+                                                },
+                                              }
+                                            })
+                                          }
+                                          className="mt-0.5 h-4 w-4 shrink-0 border-gray-300 text-[#a1001f] focus:ring-[#a1001f] accent-[#a1001f]"
+                                        />
+                                        <span className="leading-snug text-sm">
+                                          {option.guide}
+                                        </span>
+                                      </div>
+
                                       <span
-                                        className={`ml-2 shrink-0 rounded-md px-2 py-1 text-xs font-bold ${
+                                        className={`shrink-0 rounded-lg px-2 py-0.5 text-xs font-bold transition-colors ${
                                           checked
-                                            ? 'bg-[#a1001f] text-white'
-                                            : 'bg-gray-100 text-gray-700'
+                                            ? 'bg-[#a1001f] text-white shadow-2xs'
+                                            : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'
                                         }`}
                                       >
-                                        {formatScore(option.score)}
+                                        {option.score > 0 ? `+${formatScore(option.score)}` : formatScore(option.score)}
                                       </span>
                                     </label>
                                   )
                                 })}
                               </div>
-                              <details className="mt-2 rounded-lg border border-dashed border-gray-200 bg-gray-50 px-3 py-2">
-                                <summary className="cursor-pointer text-xs font-semibold text-gray-600">
-                                  Ghi chú tiêu chí
+
+                              {/* Ghi chú ngắn cho tiêu chí */}
+                              <details className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 px-3 py-1.5 group">
+                                <summary className="cursor-pointer text-[11px] font-semibold text-gray-500 hover:text-gray-800 transition-colors">
+                                  + Thêm nhận xét riêng cho tiêu chí này (tùy chọn)
                                 </summary>
                                 <Textarea
                                   value={answers[criterion.id]?.note ?? ''}
@@ -1215,20 +1330,21 @@ export default function QuanLyQCPage() {
                                       },
                                     }))
                                   }
-                                  placeholder="Nhận xét ngắn cho tiêu chí này..."
-                                  className="mt-2 min-h-[64px] bg-white"
+                                  placeholder="Nhận xét cụ thể cho tiêu chí này..."
+                                  className="mt-2 min-h-[50px] bg-white text-xs"
                                 />
                               </details>
                             </div>
                           </div>
                         )
                       })}
-                    </section>
-                  ))}
-                </div>
+                    </div>
+                  </section>
+                ))}
               </div>
             </div>
 
+            {/* 4. Ghi chú chung */}
             <div>
               <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
                 Ghi chú chung

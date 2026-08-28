@@ -233,8 +233,6 @@ export default function QuanLyQCPage() {
   const [activeTemplateKey, setActiveTemplateKey] = useState('')
   const [selectedSessionId, setSelectedSessionId] = useState('')
   const [answers, setAnswers] = useState<AnswerState>({})
-  const [teacherRank, setTeacherRank] = useState('')
-  const [assistantName, setAssistantName] = useState('')
   const [generalNote, setGeneralNote] = useState('')
 
   const activeTemplate = useMemo(
@@ -508,19 +506,6 @@ export default function QuanLyQCPage() {
     setActiveTemplateKey(nextTemplate?.key ?? '')
     setSelectedSessionId(firstAvailableSession?.id ?? '')
     setAnswers(buildDefaultAnswers(nextTemplate))
-
-    // Tự động trích xuất Rank GV và Trợ giảng từ thông tin LMS
-    const initialRank =
-      firstAvailableSession?.teacherRank ||
-      item.teacherRank ||
-      item.teacherAccounts[0]?.code ||
-      ''
-    const initialAssistant =
-      firstAvailableSession?.assistantNames?.join(', ') ||
-      item.assistantNames?.join(', ') ||
-      ''
-    setTeacherRank(initialRank)
-    setAssistantName(initialAssistant)
     setGeneralNote('')
   }
 
@@ -554,8 +539,15 @@ export default function QuanLyQCPage() {
           classInfo: selectedClass,
           sessionInfo: selectedSession,
           answers: payloadAnswers,
-          teacherRank,
-          assistantName,
+          teacherRank:
+            selectedSession?.teacherRank ||
+            selectedClass.teacherRank ||
+            selectedClass.teacherAccounts[0]?.code ||
+            '',
+          assistantName:
+            selectedSession?.assistantNames?.join(', ') ||
+            selectedClass.assistantNames?.join(', ') ||
+            '',
           generalNote,
         }),
       })
@@ -1064,10 +1056,10 @@ export default function QuanLyQCPage() {
               </div>
             </div>
 
-            {/* 2. Dòng thiết lập buổi học, Rank GV, Trợ giảng */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+            {/* 2. Dòng thiết lập loại buổi học và buổi học */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {/* Loại buổi học */}
-              <div className="sm:col-span-1 lg:col-span-3">
+              <div>
                 <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
                   Loại buổi học
                 </label>
@@ -1085,23 +1077,13 @@ export default function QuanLyQCPage() {
               </div>
 
               {/* Buổi học */}
-              <div className="sm:col-span-1 lg:col-span-5">
+              <div>
                 <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
                   Buổi học
                 </label>
                 <select
                   value={selectedSessionId}
-                  onChange={(event) => {
-                    const nextId = event.target.value
-                    setSelectedSessionId(nextId)
-                    const nextSession = selectedClass.slots.find((s) => s.id === nextId)
-                    if (nextSession) {
-                      if (nextSession.teacherRank) setTeacherRank(nextSession.teacherRank)
-                      if (nextSession.assistantNames && nextSession.assistantNames.length > 0) {
-                        setAssistantName(nextSession.assistantNames.join(', '))
-                      }
-                    }
-                  }}
+                  onChange={(event) => setSelectedSessionId(event.target.value)}
                   className="mt-1 h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15 truncate"
                 >
                   {selectedClass.slots.length === 0 ? (
@@ -1123,42 +1105,6 @@ export default function QuanLyQCPage() {
                     {sessionWindowLabel(selectedSession)}
                   </p>
                 )}
-              </div>
-
-              {/* Rank GV */}
-              <div className="sm:col-span-1 lg:col-span-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                    Rank GV
-                  </label>
-                  {teacherRank && (
-                    <span className="text-[10px] font-semibold text-gray-400">LMS</span>
-                  )}
-                </div>
-                <input
-                  value={teacherRank}
-                  onChange={(event) => setTeacherRank(event.target.value)}
-                  placeholder="VD: Senior, GV1..."
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
-                />
-              </div>
-
-              {/* Trợ giảng */}
-              <div className="sm:col-span-1 lg:col-span-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                    Trợ giảng
-                  </label>
-                  {assistantName && (
-                    <span className="text-[10px] font-semibold text-gray-400">LMS</span>
-                  )}
-                </div>
-                <input
-                  value={assistantName}
-                  onChange={(event) => setAssistantName(event.target.value)}
-                  placeholder="Tên trợ giảng"
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-3 text-sm text-gray-900 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
-                />
               </div>
             </div>
 

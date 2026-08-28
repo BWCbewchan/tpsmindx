@@ -151,6 +151,8 @@ export async function GET(request: NextRequest) {
         q.result_label,
         q.general_note,
         q.signed,
+        q.criteria_snapshot,
+        q.answers,
         q.created_by_email,
         COALESCE(u.display_name, q.created_by_email) AS created_by_name,
         q.created_at

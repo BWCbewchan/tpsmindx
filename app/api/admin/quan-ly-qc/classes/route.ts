@@ -366,18 +366,32 @@ export async function GET(request: NextRequest) {
     // Lọc theo Cơ sở nếu có param
     const centreParam = searchParams.get('centre')?.trim()
     if (centreParam && centreParam !== 'all') {
-      const norm = normalizeKey(centreParam)
+      const targetCenter = (accessibleCenters || []).find(
+        (c: any) =>
+          c.full_name === centreParam ||
+          c.short_code === centreParam ||
+          String(c.id) === centreParam,
+      )
+
+      const targetKeys = new Set<string>()
+      targetKeys.add(normalizeKey(centreParam))
+      if (targetCenter) {
+        if (targetCenter.full_name) targetKeys.add(normalizeKey(targetCenter.full_name))
+        if (targetCenter.short_code) targetKeys.add(normalizeKey(targetCenter.short_code))
+        if (targetCenter.id) targetKeys.add(normalizeKey(targetCenter.id))
+      }
+
       classes = classes.filter((cls) => {
         const c1 = normalizeKey(cls.centreName)
         const c2 = normalizeKey(cls.centreShortName)
         const c3 = normalizeKey(cls.centreId)
-        return (
-          c1.includes(norm) ||
-          c2.includes(norm) ||
-          c3 === norm ||
-          norm.includes(c1) ||
-          norm.includes(c2)
-        )
+        for (const k of targetKeys) {
+          if (!k) continue
+          if (c1 === k || c2 === k || c3 === k) return true
+          if (c1.includes(k) || k.includes(c1)) return true
+          if (c2.includes(k) || k.includes(c2)) return true
+        }
+        return false
       })
     }
 

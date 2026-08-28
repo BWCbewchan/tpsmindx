@@ -19,6 +19,8 @@ import { authHeaders } from '@/lib/auth-headers'
 import { useAuth } from '@/lib/auth-context'
 import {
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   FileSignature,
   Filter,
   ListChecks,
@@ -27,6 +29,20 @@ import {
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+
+const ITEMS_PER_PAGE = 20
+
+function normalizeSearchText(text: unknown): string {
+  return String(text ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/^(hcm|hn|tinh)\s*[-:]\s*/i, '')
+    .replace(/^(mindx|co\s*so)\s*/i, '')
+    .replace(/[^a-z0-9]+/g, '')
+}
 
 type QCTemplate = {
   key: string
@@ -197,6 +213,7 @@ export default function QuanLyQCPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<'classes' | 'records'>('classes')
+  const [currentPage, setCurrentPage] = useState(1)
   const [q, setQ] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
@@ -282,46 +299,111 @@ export default function QuanLyQCPage() {
 
   // Danh sách Cơ sở tổng hợp từ phân quyền và dữ liệu lớp
   const allCentres = useMemo(() => {
-    const map = new Map<string, string>()
+    const map = new Map<
+      string,
+      { value: string; label: string; searchKeys: string[] }
+    >()
+
     accessibleCenters.forEach((c) => {
       const code = c.short_code ? `${c.short_code} - ` : ''
-      map.set(c.full_name, `${code}${c.full_name}`)
+      const label = `${code}${c.full_name}`
+      const value = c.short_code || c.full_name
+      const searchKeys = [
+        c.full_name,
+        c.short_code || '',
+        String(c.id || ''),
+        normalizeSearchText(c.full_name),
+        normalizeSearchText(c.short_code || ''),
+      ].filter(Boolean)
+
+      map.set(value, { value, label, searchKeys })
     })
+
     classes.forEach((c) => {
       const name = c.centreName || c.centreShortName
-      if (name && !map.has(name)) {
+      if (!name) return
+      const value = c.centreShortName || c.centreName
+      if (!map.has(value)) {
         const label =
           c.centreShortName && c.centreName && c.centreShortName !== c.centreName
             ? `${c.centreShortName} - ${c.centreName}`
             : name
-        map.set(name, label)
+        const searchKeys = [
+          c.centreName,
+          c.centreShortName,
+          String(c.centreId || ''),
+          normalizeSearchText(c.centreName),
+          normalizeSearchText(c.centreShortName),
+        ].filter(Boolean)
+        map.set(value, { value, label, searchKeys })
       }
     })
-    return Array.from(map.entries()).map(([value, label]) => ({ value, label }))
+
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, 'vi'))
   }, [accessibleCenters, classes])
 
   // Lọc lớp theo từ khóa, Khối và Cơ sở tức thì trên giao diện
   const filteredClasses = useMemo(() => {
+    const centreEntry =
+      selectedCentre && selectedCentre !== 'all'
+        ? allCentres.find((c) => c.value === selectedCentre)
+        : null
+
     return classes.filter((item) => {
       if (selectedCourseLine && selectedCourseLine !== 'all') {
-        const normFilter = selectedCourseLine.toLowerCase()
-        const line = (item.courseLineName || '').toLowerCase()
-        const course = (item.courseName || '').toLowerCase()
-        if (!line.includes(normFilter) && !course.includes(normFilter)) {
+        const normFilter = normalizeSearchText(selectedCourseLine)
+        const line = normalizeSearchText(item.courseLineName)
+        const course = normalizeSearchText(item.courseName)
+        if (
+          !line.includes(normFilter) &&
+          !normFilter.includes(line) &&
+          !course.includes(normFilter)
+        ) {
           return false
         }
       }
-      if (selectedCentre && selectedCentre !== 'all') {
-        const normFilter = selectedCentre.toLowerCase()
-        const cName = (item.centreName || '').toLowerCase()
-        const cShort = (item.centreShortName || '').toLowerCase()
-        if (!cName.includes(normFilter) && !cShort.includes(normFilter)) {
+
+      if (centreEntry) {
+        const c1 = normalizeSearchText(item.centreName)
+        const c2 = normalizeSearchText(item.centreShortName)
+        const c3 = String(item.centreId || '')
+        const cRawName = (item.centreName || '').toLowerCase()
+        const cRawShort = (item.centreShortName || '').toLowerCase()
+
+        const matches = centreEntry.searchKeys.some((key) => {
+          if (!key) return false
+          const keyNorm = normalizeSearchText(key)
+          const keyRaw = key.toLowerCase()
+          if (item.centreShortName && item.centreShortName.toLowerCase() === keyRaw) return true
+          if (item.centreName && item.centreName.toLowerCase() === keyRaw) return true
+          if (c3 && c3 === key) return true
+          if (cRawName && (cRawName.includes(keyRaw) || keyRaw.includes(cRawName))) return true
+          if (cRawShort && (cRawShort.includes(keyRaw) || keyRaw.includes(cRawShort))) return true
+          if (c1 && keyNorm && (c1.includes(keyNorm) || keyNorm.includes(c1))) return true
+          if (c2 && keyNorm && (c2.includes(keyNorm) || keyNorm.includes(c2))) return true
           return false
-        }
+        })
+
+        if (!matches) return false
       }
+
       return true
     })
-  }, [classes, selectedCourseLine, selectedCentre])
+  }, [classes, selectedCourseLine, selectedCentre, allCentres])
+
+  const totalPages = Math.max(1, Math.ceil(filteredClasses.length / ITEMS_PER_PAGE))
+
+  // Đảm bảo trang hiện tại hợp lệ và tính toán danh sách lớp hiển thị trên trang (20 lớp/trang)
+  const paginatedClasses = useMemo(() => {
+    const safePage = Math.min(Math.max(1, currentPage), totalPages)
+    const start = (safePage - 1) * ITEMS_PER_PAGE
+    return filteredClasses.slice(start, start + ITEMS_PER_PAGE)
+  }, [filteredClasses, currentPage, totalPages])
+
+  // Tự động về trang 1 khi thay đổi bộ lọc
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [q, selectedCourseLine, selectedCentre, fromDate, toDate])
 
   const hasActiveFilters = Boolean(
     q.trim() || fromDate || toDate || selectedCourseLine || selectedCentre,
@@ -341,6 +423,7 @@ export default function QuanLyQCPage() {
     setToDate('')
     setSelectedCourseLine('')
     setSelectedCentre('')
+    setCurrentPage(1)
   }, [])
 
   const loadAll = useCallback(async (showToast = false) => {
@@ -661,7 +744,7 @@ export default function QuanLyQCPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredClasses.map((item) => (
+                      {paginatedClasses.map((item) => (
                         <TableRow key={item.id}>
                           <TableCell>
                             <p className="font-semibold text-gray-950">{item.name}</p>
@@ -732,6 +815,74 @@ export default function QuanLyQCPage() {
                       Không có lớp phù hợp với phạm vi cơ sở hoặc bộ lọc hiện tại.
                     </div>
                   ) : null}
+
+                  {/* Thanh phân trang 20 lớp / page */}
+                  {filteredClasses.length > 0 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-100 bg-gray-50/60">
+                      <div className="text-xs text-gray-500 font-medium">
+                        Hiển thị <span className="font-semibold text-gray-900">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span>–
+                        <span className="font-semibold text-gray-900">{Math.min(currentPage * ITEMS_PER_PAGE, filteredClasses.length)}</span> trong tổng số{' '}
+                        <span className="font-semibold text-gray-900">{filteredClasses.length}</span> lớp ({ITEMS_PER_PAGE} lớp/trang)
+                      </div>
+
+                      {totalPages > 1 && (
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="h-8 px-2.5 text-xs gap-1 cursor-pointer"
+                          >
+                            <ChevronLeft className="h-3.5 w-3.5" />
+                            Trước
+                          </Button>
+
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                              .filter((page) => {
+                                if (totalPages <= 7) return true
+                                if (page === 1 || page === totalPages) return true
+                                return Math.abs(page - currentPage) <= 1
+                              })
+                              .map((page, idx, arr) => {
+                                const prev = arr[idx - 1]
+                                const hasGap = prev && page - prev > 1
+                                return (
+                                  <div key={page} className="flex items-center gap-1">
+                                    {hasGap && <span className="text-xs text-gray-400 px-1">...</span>}
+                                    <button
+                                      type="button"
+                                      onClick={() => setCurrentPage(page)}
+                                      className={`h-8 min-w-[32px] px-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                                        currentPage === page
+                                          ? 'bg-[#a1001f] text-white shadow-xs'
+                                          : 'text-gray-700 hover:bg-gray-200/80 bg-white border border-gray-200'
+                                      }`}
+                                    >
+                                      {page}
+                                    </button>
+                                  </div>
+                                )
+                              })}
+                          </div>
+
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={currentPage === totalPages}
+                            className="h-8 px-2.5 text-xs gap-1 cursor-pointer"
+                          >
+                            Sau
+                            <ChevronRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
             </div>

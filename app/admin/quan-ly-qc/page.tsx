@@ -1,6 +1,7 @@
 'use client'
 
 import { PageContainer } from '@/components/PageContainer'
+import { Tabs } from '@/components/Tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
@@ -17,10 +18,7 @@ import { toast } from '@/lib/app-toast'
 import { authHeaders } from '@/lib/auth-headers'
 import { useAuth } from '@/lib/auth-context'
 import {
-  AlertCircle,
-  CalendarDays,
   CheckCircle2,
-  ClipboardCheck,
   FileSignature,
   Filter,
   ListChecks,
@@ -198,6 +196,7 @@ export default function QuanLyQCPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState<'classes' | 'records'>('classes')
   const [q, setQ] = useState('')
   const [fromDate, setFromDate] = useState('')
   const [toDate, setToDate] = useState('')
@@ -326,6 +325,14 @@ export default function QuanLyQCPage() {
 
   const hasActiveFilters = Boolean(
     q.trim() || fromDate || toDate || selectedCourseLine || selectedCentre,
+  )
+
+  const mainTabs = useMemo(
+    () => [
+      { id: 'classes', label: 'Danh sách lớp', count: filteredClasses.length },
+      { id: 'records', label: 'Phiếu QC đã tạo', count: records.length },
+    ],
+    [filteredClasses.length, records.length],
   )
 
   const handleClearFilters = useCallback(() => {
@@ -482,358 +489,315 @@ export default function QuanLyQCPage() {
         </Button>
       }
     >
-      <div className="space-y-5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  SL Lớp cần QC
-                </p>
-                <p className="mt-1 text-3xl font-bold text-gray-950">
-                  {loading ? '-' : monthlySummary.remaining}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Mục tiêu {monthlySummary.target} lớp/tháng
-                </p>
-              </div>
-              <div className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-amber-600">
-                <AlertCircle className="h-6 w-6" />
-              </div>
-            </div>
-          </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Số lượng lớp đã QC
-                </p>
-                <p className="mt-1 text-3xl font-bold text-gray-950">
-                  {loading ? '-' : monthlySummary.completed}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Tính theo phiếu đã tạo trong tháng
-                </p>
-              </div>
-              <div className="rounded-lg border border-emerald-100 bg-emerald-50 p-3 text-emerald-600">
-                <ClipboardCheck className="h-6 w-6" />
-              </div>
-            </div>
-          </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                  Buổi đang mở QC
-                </p>
-                <p className="mt-1 text-3xl font-bold text-gray-950">
-                  {loading
-                    ? '-'
-                    : filteredClasses.reduce((sum, item) => sum + item.eligibleSessionCount, 0)}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Trong cửa sổ từ giờ học đến +24h
-                </p>
-              </div>
-              <div className="rounded-lg border border-red-100 bg-red-50 p-3 text-[#a1001f]">
-                <CalendarDays className="h-6 w-6" />
-              </div>
-            </div>
-          </div>
-        </div>
+      <div className="space-y-4">
+        {/* Tab chuyển đổi giữa Danh sách lớp và Phiếu QC đã tạo */}
+        <Tabs
+          tabs={mainTabs}
+          activeTab={activeTab}
+          onChange={(tabId) => setActiveTab(tabId as 'classes' | 'records')}
+        />
 
-        {/* Bộ lọc nâng cao: Tìm kiếm, Khối, Cơ sở, Ngày tháng */}
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-2">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-              <Filter className="h-4 w-4 text-[#a1001f]" />
-              Bộ lọc tìm kiếm lớp học
-            </div>
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={handleClearFilters}
-                className="text-xs text-gray-500 hover:text-[#a1001f] flex items-center gap-1 transition-colors font-medium"
-              >
-                <X className="h-3.5 w-3.5" />
-                Xoá bộ lọc
-              </button>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
-            {/* 1. Tìm kiếm text */}
-            <div className="sm:col-span-2 lg:col-span-4">
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                Tìm lớp / Giáo viên
-              </label>
-              <div className="relative mt-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  value={q}
-                  onChange={(event) => setQ(event.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && loadAll(true)}
-                  placeholder="Tên lớp, mã lớp, giáo viên..."
-                  className="h-10 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
-                />
-              </div>
-            </div>
-
-            {/* 2. Lọc Khối */}
-            <div className="sm:col-span-1 lg:col-span-2">
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                Khối
-              </label>
-              <div className="relative mt-1">
-                <select
-                  value={selectedCourseLine}
-                  onChange={(e) => setSelectedCourseLine(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
-                >
-                  <option value="">Tất cả khối</option>
-                  {allCourseLines.map((line) => (
-                    <option key={line} value={line}>
-                      {line}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* 3. Lọc Cơ sở */}
-            <div className="sm:col-span-1 lg:col-span-3">
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                Cơ sở
-              </label>
-              <div className="relative mt-1">
-                <select
-                  value={selectedCentre}
-                  onChange={(e) => setSelectedCentre(e.target.value)}
-                  className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15 truncate"
-                >
-                  <option value="">Tất cả cơ sở</option>
-                  {allCentres.map((c) => (
-                    <option key={c.value} value={c.value}>
-                      {c.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* 4. Ngày tháng */}
-            <div className="sm:col-span-2 lg:col-span-2 grid grid-cols-2 gap-1.5">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wide text-gray-500 truncate block">
-                  Kết thúc sau
-                </label>
-                <input
-                  type="date"
-                  value={fromDate}
-                  onChange={(event) => setFromDate(event.target.value)}
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-2 text-xs focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-wide text-gray-500 truncate block">
-                  Bắt đầu trước
-                </label>
-                <input
-                  type="date"
-                  value={toDate}
-                  onChange={(event) => setToDate(event.target.value)}
-                  className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-2 text-xs focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
-                />
-              </div>
-            </div>
-
-            {/* 5. Nút tìm kiếm */}
-            <div className="sm:col-span-2 lg:col-span-1">
-              <Button
-                type="button"
-                variant="mindx"
-                onClick={() => loadAll(true)}
-                className="h-10 w-full justify-center"
-              >
-                <Search className="h-4 w-4" />
-                Lọc
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-            <h2 className="text-base font-bold text-gray-950">
-              Danh sách lớp ({filteredClasses.length})
-            </h2>
-            {(selectedCourseLine || selectedCentre) && (
-              <div className="flex items-center gap-1.5">
-                {selectedCourseLine && (
-                  <Badge variant="violet" size="xs" shape="pill">
-                    Khối: {selectedCourseLine}
-                  </Badge>
-                )}
-                {selectedCentre && (
-                  <Badge variant="slate" size="xs" shape="pill">
-                    Cơ sở: {selectedCentre}
-                  </Badge>
+        {activeTab === 'classes' && (
+          <div className="space-y-4">
+            {/* Bộ lọc nâng cao: Tìm kiếm, Khối, Cơ sở, Ngày tháng */}
+            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <Filter className="h-4 w-4 text-[#a1001f]" />
+                  Bộ lọc tìm kiếm lớp học
+                </div>
+                {hasActiveFilters && (
+                  <button
+                    type="button"
+                    onClick={handleClearFilters}
+                    className="text-xs text-gray-500 hover:text-[#a1001f] flex items-center gap-1 transition-colors font-medium cursor-pointer"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Xoá bộ lọc
+                  </button>
                 )}
               </div>
-            )}
-          </div>
-          {loading ? (
-            <div className="space-y-3 p-4">
-              {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="h-16 animate-pulse rounded-lg bg-gray-100" />
-              ))}
+
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+                {/* 1. Tìm kiếm text */}
+                <div className="sm:col-span-2 lg:col-span-4">
+                  <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                    Tìm lớp / Giáo viên
+                  </label>
+                  <div className="relative mt-1">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <input
+                      value={q}
+                      onChange={(event) => setQ(event.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && loadAll(true)}
+                      placeholder="Tên lớp, mã lớp, giáo viên..."
+                      className="h-10 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                    />
+                  </div>
+                </div>
+
+                {/* 2. Lọc Khối */}
+                <div className="sm:col-span-1 lg:col-span-2">
+                  <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                    Khối
+                  </label>
+                  <div className="relative mt-1">
+                    <select
+                      value={selectedCourseLine}
+                      onChange={(e) => setSelectedCourseLine(e.target.value)}
+                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                    >
+                      <option value="">Tất cả khối</option>
+                      {allCourseLines.map((line) => (
+                        <option key={line} value={line}>
+                          {line}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* 3. Lọc Cơ sở */}
+                <div className="sm:col-span-1 lg:col-span-3">
+                  <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                    Cơ sở
+                  </label>
+                  <div className="relative mt-1">
+                    <select
+                      value={selectedCentre}
+                      onChange={(e) => setSelectedCentre(e.target.value)}
+                      className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15 truncate"
+                    >
+                      <option value="">Tất cả cơ sở</option>
+                      {allCentres.map((c) => (
+                        <option key={c.value} value={c.value}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* 4. Ngày tháng */}
+                <div className="sm:col-span-2 lg:col-span-2 grid grid-cols-2 gap-1.5">
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wide text-gray-500 truncate block">
+                      Kết thúc sau
+                    </label>
+                    <input
+                      type="date"
+                      value={fromDate}
+                      onChange={(event) => setFromDate(event.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-2 text-xs focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold uppercase tracking-wide text-gray-500 truncate block">
+                      Bắt đầu trước
+                    </label>
+                    <input
+                      type="date"
+                      value={toDate}
+                      onChange={(event) => setToDate(event.target.value)}
+                      className="mt-1 h-10 w-full rounded-lg border border-gray-300 px-2 text-xs focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
+                    />
+                  </div>
+                </div>
+
+                {/* 5. Nút tìm kiếm */}
+                <div className="sm:col-span-2 lg:col-span-1">
+                  <Button
+                    type="button"
+                    variant="mindx"
+                    onClick={() => loadAll(true)}
+                    className="h-10 w-full justify-center"
+                  >
+                    <Search className="h-4 w-4" />
+                    Lọc
+                  </Button>
+                </div>
+              </div>
             </div>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Lớp / Khóa học</TableHead>
-                    <TableHead>Khối</TableHead>
-                    <TableHead>Cơ sở</TableHead>
-                    <TableHead>Giáo viên</TableHead>
-                    <TableHead>Sĩ số</TableHead>
-                    <TableHead>Thời gian</TableHead>
-                    <TableHead className="text-right">Thao tác</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredClasses.map((item) => (
-                    <TableRow key={item.id}>
+
+            {/* Bảng danh sách lớp */}
+            <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+              <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                <h2 className="text-base font-bold text-gray-950">
+                  Danh sách lớp ({filteredClasses.length})
+                </h2>
+                {(selectedCourseLine || selectedCentre) && (
+                  <div className="flex items-center gap-1.5">
+                    {selectedCourseLine && (
+                      <Badge variant="violet" size="xs" shape="pill">
+                        Khối: {selectedCourseLine}
+                      </Badge>
+                    )}
+                    {selectedCentre && (
+                      <Badge variant="slate" size="xs" shape="pill">
+                        Cơ sở: {selectedCentre}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
+              {loading ? (
+                <div className="space-y-3 p-4">
+                  {Array.from({ length: 6 }).map((_, index) => (
+                    <div key={index} className="h-16 animate-pulse rounded-lg bg-gray-100" />
+                  ))}
+                </div>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Lớp / Khóa học</TableHead>
+                        <TableHead>Khối</TableHead>
+                        <TableHead>Cơ sở</TableHead>
+                        <TableHead>Giáo viên</TableHead>
+                        <TableHead>Sĩ số</TableHead>
+                        <TableHead>Thời gian</TableHead>
+                        <TableHead className="text-right">Thao tác</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredClasses.map((item) => (
+                        <TableRow key={item.id}>
+                          <TableCell>
+                            <p className="font-semibold text-gray-950">{item.name}</p>
+                            <p className="text-xs text-gray-500">
+                              {item.courseName || 'Chưa có khóa học'}
+                            </p>
+                          </TableCell>
+                          <TableCell>
+                            {item.courseLineName ? (
+                              <Badge variant="violet" size="xs" shape="pill">
+                                {item.courseLineName}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-gray-400">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="slate" shape="pill">
+                              {item.centreShortName || item.centreName || '-'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-[260px]">
+                            <p className="truncate text-sm text-gray-800">
+                              {item.teacherNames.join(', ') || '-'}
+                            </p>
+                            <p className="truncate text-[11px] text-gray-400">
+                              {teacherAccountLabel((item.teacherAccounts ?? [])[0]) || 'Chưa có tài khoản LEC'}
+                            </p>
+                          </TableCell>
+                          <TableCell>{item.studentCount}</TableCell>
+                          <TableCell>
+                            <p className="text-xs text-gray-600">
+                              {formatDate(item.startDate)} - {formatDate(item.endDate)}
+                            </p>
+                            <div className="mt-1 flex flex-wrap gap-1">
+                              <Badge
+                                variant={item.canCreateQC ? 'success' : 'slate'}
+                                size="xs"
+                                shape="pill"
+                              >
+                                {item.eligibleSessionCount}/{item.slots.length} buổi mở QC
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="mindx"
+                              onClick={() => openCreateModal(item)}
+                              disabled={templates.length === 0 || !item.canCreateQC}
+                              title={
+                                item.canCreateQC
+                                  ? 'Tạo phiếu QC'
+                                  : 'Chưa có buổi học nào trong cửa sổ tạo QC'
+                              }
+                            >
+                              <FileSignature className="h-4 w-4" />
+                              Tạo phiếu QC
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  {filteredClasses.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-gray-500">
+                      Không có lớp phù hợp với phạm vi cơ sở hoặc bộ lọc hiện tại.
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'records' && (
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-100 px-4 py-3">
+              <h2 className="text-base font-bold text-gray-950">
+                Phiếu QC đã tạo gần đây ({records.length})
+              </h2>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Ngày tạo</TableHead>
+                  <TableHead>Loại phiếu</TableHead>
+                  <TableHead>Lớp</TableHead>
+                  <TableHead>Điểm</TableHead>
+                  <TableHead>Trạng thái ký</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {records.map((record) => {
+                  const total = Number(record.total_score)
+                  const max = Number(record.max_score)
+                  const displayTotal = max > 0 && max !== 10 ? (total / max) * 10 : total
+                  return (
+                    <TableRow key={record.id}>
+                      <TableCell>{formatDateTime(record.created_at)}</TableCell>
                       <TableCell>
-                        <p className="font-semibold text-gray-950">{item.name}</p>
+                        <p className="font-medium text-gray-900">{record.template_title}</p>
                         <p className="text-xs text-gray-500">
-                          {item.courseName || 'Chưa có khóa học'}
+                          {record.result_label || '-'}
                         </p>
                       </TableCell>
                       <TableCell>
-                        {item.courseLineName ? (
-                          <Badge variant="violet" size="xs" shape="pill">
-                            {item.courseLineName}
-                          </Badge>
-                        ) : (
-                          <span className="text-xs text-gray-400">-</span>
-                        )}
+                        <p className="font-medium text-gray-900">{record.class_name}</p>
+                        <p className="text-xs text-gray-500">
+                          {record.center_name} · {record.teacher_name || '-'}
+                        </p>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="slate" shape="pill">
-                          {item.centreShortName || item.centreName || '-'}
+                        {formatScore(displayTotal)} / 10
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={record.signed ? 'success' : 'warning'}
+                          shape="pill"
+                        >
+                          {record.signed ? 'Đã ký' : 'Chưa ký'}
                         </Badge>
                       </TableCell>
-                      <TableCell className="max-w-[260px]">
-                        <p className="truncate text-sm text-gray-800">
-                          {item.teacherNames.join(', ') || '-'}
-                        </p>
-                        <p className="truncate text-[11px] text-gray-400">
-                          {teacherAccountLabel((item.teacherAccounts ?? [])[0]) || 'Chưa có tài khoản LEC'}
-                        </p>
-                      </TableCell>
-                      <TableCell>{item.studentCount}</TableCell>
-                      <TableCell>
-                        <p className="text-xs text-gray-600">
-                          {formatDate(item.startDate)} - {formatDate(item.endDate)}
-                        </p>
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          <Badge
-                            variant={item.canCreateQC ? 'success' : 'slate'}
-                            size="xs"
-                            shape="pill"
-                          >
-                            {item.eligibleSessionCount}/{item.slots.length} buổi mở QC
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="mindx"
-                          onClick={() => openCreateModal(item)}
-                          disabled={templates.length === 0 || !item.canCreateQC}
-                          title={
-                            item.canCreateQC
-                              ? 'Tạo phiếu QC'
-                              : 'Chưa có buổi học nào trong cửa sổ tạo QC'
-                          }
-                        >
-                          <FileSignature className="h-4 w-4" />
-                          Tạo phiếu QC
-                        </Button>
-                      </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {filteredClasses.length === 0 ? (
-                <div className="p-8 text-center text-sm text-gray-500">
-                  Không có lớp phù hợp với phạm vi cơ sở hoặc bộ lọc hiện tại.
-                </div>
-              ) : null}
-            </>
-          )}
-        </div>
-
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-100 px-4 py-3">
-            <h2 className="text-base font-bold text-gray-950">Phiếu QC đã tạo gần đây</h2>
+                  )
+                })}
+              </TableBody>
+            </Table>
+            {!loading && records.length === 0 ? (
+              <div className="p-8 text-center text-sm text-gray-500">
+                Chưa có phiếu QC nào được tạo.
+              </div>
+            ) : null}
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Ngày tạo</TableHead>
-                <TableHead>Loại phiếu</TableHead>
-                <TableHead>Lớp</TableHead>
-                <TableHead>Điểm</TableHead>
-                <TableHead>Trạng thái ký</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {records.map((record) => {
-                const total = Number(record.total_score)
-                const max = Number(record.max_score)
-                const displayTotal = max > 0 && max !== 10 ? (total / max) * 10 : total
-                return (
-                  <TableRow key={record.id}>
-                    <TableCell>{formatDateTime(record.created_at)}</TableCell>
-                    <TableCell>
-                      <p className="font-medium text-gray-900">{record.template_title}</p>
-                      <p className="text-xs text-gray-500">
-                        {record.result_label || '-'}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <p className="font-medium text-gray-900">{record.class_name}</p>
-                      <p className="text-xs text-gray-500">
-                        {record.center_name} · {record.teacher_name || '-'}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      {formatScore(displayTotal)} / 10
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={record.signed ? 'success' : 'warning'}
-                        shape="pill"
-                      >
-                        {record.signed ? 'Đã ký' : 'Chưa ký'}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-          {!loading && records.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-500">
-              Chưa có phiếu QC nào được tạo.
-            </div>
-          ) : null}
-        </div>
+        )}
       </div>
 
       <Modal

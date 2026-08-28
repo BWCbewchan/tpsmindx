@@ -52,16 +52,14 @@ export default function ClassFilterToolbar({
 
   const toggleCentre = useCallback(
     (centreName: string) => {
-      setFilters((prev) => {
-        const selected = prev.selectedCentres.includes(centreName)
-          ? prev.selectedCentres.filter((c) => c !== centreName)
-          : [...prev.selectedCentres, centreName];
-        const next = { ...prev, selectedCentres: selected };
-        onFilter(next);
-        return next;
-      });
+      const selected = filters.selectedCentres.includes(centreName)
+        ? filters.selectedCentres.filter((c) => c !== centreName)
+        : [...filters.selectedCentres, centreName];
+      const next = { ...filters, selectedCentres: selected };
+      setFilters(next);
+      onFilter(next);
     },
-    [onFilter],
+    [filters, onFilter],
   );
 
   const handleSearch = useCallback(() => {
@@ -204,8 +202,9 @@ export default function ClassFilterToolbar({
           value={filters.qcStatus}
           onChange={(e) => {
             const val = e.target.value;
-            updateFilter('qcStatus', val);
-            onFilter({ ...filters, qcStatus: val });
+            const next = { ...filters, qcStatus: val };
+            setFilters(next);
+            onFilter(next);
           }}
           className="h-9 px-3 border border-neutral-300 rounded-lg text-sm bg-white text-neutral-700
                      hover:border-mindx-red/50 focus:outline-none focus:ring-2 focus:ring-mindx-red/20
@@ -303,7 +302,11 @@ export default function ClassFilterToolbar({
                   ? 'Đang xử lý'
                   : 'Chưa nộp SP'}
               <button
-                onClick={() => updateFilter('qcStatus', '')}
+                onClick={() => {
+                  const next = { ...filters, qcStatus: '' };
+                  setFilters(next);
+                  onFilter(next);
+                }}
                 className="hover:bg-blue-100 rounded-full p-0.5"
               >
                 <X size={10} />

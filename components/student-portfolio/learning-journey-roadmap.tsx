@@ -55,8 +55,29 @@ function awardTone(level?: string, title?: string) {
 
 function sameText(a?: string, b?: string) {
   if (!a || !b) return false;
-  const clean = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const clean = (s: string) => normalizeStatus(s).replace(/[^a-z0-9]/g, '');
   return clean(a).includes(clean(b)) || clean(b).includes(clean(a));
+}
+
+function sameClassCode(a?: string, b?: string) {
+  if (!a || !b) return false;
+  return normalizeStatus(a).replace(/[^a-z0-9]/g, '') === normalizeStatus(b).replace(/[^a-z0-9]/g, '');
+}
+
+function projectAnchorId(index: number) {
+  return `portfolio-project-${index + 1}`;
+}
+
+function projectHasContent(project?: StudentPortfolioData['projects'][number]) {
+  if (!project) return false;
+  return Boolean(
+    project.link ||
+      project.imageUrl ||
+      project.imageUrls?.length ||
+      project.videoUrls?.length ||
+      project.attachmentUrls?.length ||
+      project.relatedUrls?.length
+  );
 }
 
 export function LearningJourneyRoadmap({
@@ -68,7 +89,7 @@ export function LearningJourneyRoadmap({
   if (!journey || journey.length === 0) return null;
 
   const scrollToProject = (index: number) => {
-    const el = document.getElementById(`project-${index}`);
+    const el = document.getElementById(projectAnchorId(index));
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } else {
@@ -78,9 +99,9 @@ export function LearningJourneyRoadmap({
   };
 
   return (
-    <section id="journey" className="mx-auto max-w-6xl px-5 py-20 scroll-mt-12">
+    <section id="journey" className="mx-auto max-w-6xl px-5 py-10 scroll-mt-12 sm:py-20">
       {/* Section Header */}
-      <div className="mb-12">
+      <div className="mb-8 sm:mb-12">
         <p className="text-xs font-extrabold uppercase tracking-wide" style={{ color: theme.ink }}>
           {sectionNo} · LỘ TRÌNH HỌC TẬP
         </p>
@@ -104,22 +125,28 @@ export function LearningJourneyRoadmap({
           const award = item.awardTitle ? awardTone(item.awardLevel, item.awardTitle) : null;
           const displayDate = item.period || (item.code ? `Mã môn: ${item.code}` : '');
 
-          // Find matching project index in projects array (strict matching only)
-          const projectIndex = projects.findIndex(
-            (proj) =>
-              sameText(proj.course, item.title) ||
-              sameText(proj.course, item.code) ||
-              sameText(proj.title, item.title) ||
-              sameText(proj.title, item.code)
+          const projectIndexByClass = projects.findIndex(
+            (proj) => projectHasContent(proj) && sameClassCode(proj.classCode, item.code)
           );
-          const matchedProject = projectIndex >= 0 ? projects[projectIndex] : null;
+          const projectIndex = projectIndexByClass >= 0
+            ? projectIndexByClass
+            : projects.findIndex(
+                (proj) =>
+                  projectHasContent(proj) &&
+                  (sameText(proj.course, item.title) ||
+                    sameText(proj.course, item.code) ||
+                    sameText(proj.title, item.title) ||
+                    sameText(proj.title, item.code))
+              );
+          const hasMatchedProject = projectIndex >= 0;
+          const matchedProject = hasMatchedProject ? projects[projectIndex] : null;
           const projectImage = matchedProject?.imageUrl || matchedProject?.imageUrls?.[0];
 
           return (
             <div key={`${item.title}-${index}`} className="relative grid gap-6 md:grid-cols-[220px_1fr]">
               {/* Green / Accent Node Dot on Line */}
               <span
-                className="absolute -left-[31px] top-7 h-5 w-5 rounded-full border-4 border-white shadow-xs md:-left-[39px]"
+                className="absolute -left-[34px] top-7 h-5 w-5 rounded-full border-4 border-white shadow-xs md:-left-[43px]"
                 style={{ backgroundColor: isCompleted ? '#16a34a' : theme.ink }}
               />
 
@@ -135,8 +162,12 @@ export function LearningJourneyRoadmap({
 
               {/* Right Column: Clean White Card (Clickable to scroll to project) */}
               <div
-                onClick={() => scrollToProject(projectIndex >= 0 ? projectIndex : 0)}
-                className="group relative cursor-pointer overflow-hidden rounded-2xl border border-[#e4ded6] bg-white p-6 sm:p-7 shadow-[0_8px_24px_rgba(23,21,18,0.04)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(23,21,18,0.09)] hover:border-[#cbd5e1]"
+                onClick={hasMatchedProject ? () => scrollToProject(projectIndex) : undefined}
+                className={`group relative overflow-hidden rounded-2xl border border-[#e4ded6] bg-white p-6 shadow-[0_8px_24px_rgba(23,21,18,0.04)] transition-all duration-300 sm:p-7 ${
+                  hasMatchedProject
+                    ? 'cursor-pointer hover:-translate-y-1 hover:border-[#cbd5e1] hover:shadow-[0_16px_36px_rgba(23,21,18,0.09)]'
+                    : ''
+                }`}
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
@@ -237,11 +268,7 @@ export function LearningJourneyRoadmap({
                         <p className="mt-1 text-xs font-medium text-[#666057] line-clamp-2">
                           {matchedProject.description}
                         </p>
-                      ) : (
-                        <p className="mt-1 text-xs font-medium text-[#888075]">
-                          Bấm để xem thông tin chi tiết và bản demo sản phẩm dự án.
-                        </p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 ) : null}

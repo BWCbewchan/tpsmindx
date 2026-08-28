@@ -1490,6 +1490,9 @@ function PopupUI({ cardRef, showCard, contentPhase, podium, onClose, activeConfe
           .podium-copy p {
             font-size: clamp(8px, 1.1vw, 10px) !important;
           }
+          .card-podium-1 { height: clamp(185px, 32dvh, 235px); }
+          .card-podium-2 { height: clamp(155px, 26dvh, 195px); }
+          .card-podium-3 { height: clamp(150px, 25dvh, 190px); }
         }
 
         @media (min-width: 900px) and (max-height: 580px) {
@@ -1734,7 +1737,6 @@ function PopupUI({ cardRef, showCard, contentPhase, podium, onClose, activeConfe
 
         {/* Close Button */}
         <button
-          type="button"
           onClick={onClose}
           className="honors-close-button absolute top-2.5 right-2.5 sm:top-3.5 sm:right-3.5 z-40 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center group transition-all duration-200 hover:scale-110"
           style={{

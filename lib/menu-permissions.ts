@@ -47,12 +47,12 @@ export function checkHrefPermission(href: string, user: any): boolean {
     return true
   }
 
-  if (targetPath === '/admin/portfolio-qc') {
+  if (targetPath === '/admin/portfolio-qc' || targetPath === '/admin/portfolio') {
     return true
   }
 
   // Base permissions, deal-luong and portfolio-qc
-  const MANAGER_DEFAULT_ROUTES = ['/admin/deal-luong', '/admin/tao-deal-luong', '/admin/portfolio-qc']
+  const MANAGER_DEFAULT_ROUTES = ['/admin/deal-luong', '/admin/tao-deal-luong', '/admin/portfolio-qc', '/admin/portfolio']
   const basePermissions = filterManagementPermissions(user.permissions || [])
   const permissions = Array.from(new Set([...basePermissions, ...MANAGER_DEFAULT_ROUTES]))
 
@@ -106,7 +106,7 @@ export function getFilteredAdminMenuItems(adminMenuItems: any[], user: any, path
 
   if (isSuperAdmin) return adminMenuItems
 
-  const MANAGER_DEFAULT_ROUTES = ['/admin/deal-luong', '/admin/tao-deal-luong', '/admin/portfolio-qc']
+  const MANAGER_DEFAULT_ROUTES = ['/admin/deal-luong', '/admin/tao-deal-luong', '/admin/portfolio-qc', '/admin/portfolio']
   const basePermissions = filterManagementPermissions(user.permissions || [])
   const permissions = Array.from(new Set([...basePermissions, ...MANAGER_DEFAULT_ROUTES]))
 

@@ -28,6 +28,7 @@ export interface PortfolioLearningItem {
 export interface PortfolioProject {
   title: string;
   course?: string;
+  classCode?: string;
   imageUrl?: string;
   imageUrls?: string[];
   videoUrls?: string[];
@@ -112,6 +113,21 @@ export interface StudentPortfolioRecord {
   public_slug: string | null;
   status: PortfolioStatus;
   data: StudentPortfolioData;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StudentPortfolioListItem {
+  id: string | number;
+  student_lms_id: string;
+  class_lms_id: string;
+  student_name: string;
+  class_name: string | null;
+  centre_name: string | null;
+  course_name: string | null;
+  public_slug: string | null;
+  status: PortfolioStatus;
   created_by: string | null;
   created_at: string;
   updated_at: string;

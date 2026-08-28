@@ -366,8 +366,13 @@ export function Sidebar() {
     },
     {
       href: '/admin/portfolio-qc',
-      label: 'Kiểm Soát Portfolio (QC)',
+      label: 'Quản lý nộp SPCK',
       icon: Sparkles,
+    },
+    {
+      href: '/admin/portfolio',
+      label: 'Quản lý Portfolio',
+      icon: FileText,
     },
     {
       label: 'Cấu Hình Hệ Thống',

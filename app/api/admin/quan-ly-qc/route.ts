@@ -354,7 +354,16 @@ export async function POST(request: NextRequest) {
     const totalScore = answers.reduce((sum, answer) => sum + answer.score, 0)
     const maxScore = template.maxScore
     const normalizedScore = maxScore > 0 ? (totalScore / maxScore) * 10 : 0
-    const resultLabel = normalizedScore >= 8 ? 'ĐẠT' : 'KHÔNG ĐẠT'
+    const resultLabel =
+      normalizedScore >= 9.5
+        ? 'Tốt'
+        : normalizedScore >= 8.0
+          ? 'Đạt'
+          : normalizedScore >= 7.0
+            ? 'Khá'
+            : normalizedScore >= 5.0
+              ? 'Rủi ro vừa'
+              : 'Rủi ro cao'
     const sessionIndexRaw = Number(sessionInfo?.sessionIndex)
     const sessionIndex = Number.isInteger(sessionIndexRaw) && sessionIndexRaw > 0
       ? sessionIndexRaw
@@ -401,9 +410,9 @@ export async function POST(request: NextRequest) {
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10, $11, $12,
         $13, $14, $15, $16, $17, $18,
-        $19, $20, $21, $22, $23, $24,
-        $25::jsonb, $26::jsonb, $27, $28,
-        $29, $30, $31, $32::jsonb, $33, FALSE
+        $19, $20, $21, $22, $23,
+        $24::jsonb, $25::jsonb, $26, $27,
+        $28, $29, $30, $31, $32::jsonb, $33, FALSE
       )
       RETURNING *
       `,

@@ -1,6 +1,7 @@
 import { requireSameOriginMutation } from '@/lib/api-security';
 import { requireBearerSession } from '@/lib/datasource-api-auth';
 import pool from '@/lib/db';
+import { canAdministerTruyenThongPosts } from '@/lib/truyenthong-posts';
 import { NextRequest, NextResponse } from 'next/server';
 
 export type CommunicationActorResult =
@@ -64,7 +65,6 @@ export async function requireCommunicationActor(
     userId: userEmail,
     userEmail,
     userName,
-    isAdmin: Boolean(auth.resolvedAccess.isAdmin),
+    isAdmin: canAdministerTruyenThongPosts(auth.resolvedAccess),
   };
 }
-

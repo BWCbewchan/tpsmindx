@@ -1,8 +1,10 @@
 import pool from '@/lib/db';
 import { requireSameOriginMutation } from '@/lib/api-security';
 import { clientIpFromRequest, rateLimitOr429Async } from '@/lib/rate-limit-memory';
-import { verifySessionCookieValue } from '@/lib/session-cookie';
-import { findCommunicationPostByIdentifier } from '@/lib/truyenthong-posts';
+import {
+    findCommunicationPostByIdentifier,
+    resolveTruyenThongPostAdmin,
+} from '@/lib/truyenthong-posts';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
@@ -16,6 +18,7 @@ export async function POST(
         if (limited) return limited;
 
         const { id } = await params;
+        const adminAuth = await resolveTruyenThongPostAdmin(request);
         const client = await pool.connect();
         try {
             const lookup = await findCommunicationPostByIdentifier(client, id, {
@@ -29,12 +32,8 @@ export async function POST(
             }
 
             const post = lookup.post;
-            if (post.status !== 'published') {
-                const rawSession = request.cookies.get('tps_session')?.value;
-                const session = rawSession ? await verifySessionCookieValue(rawSession) : null;
-                if (!session?.canAdminPortal) {
-                    return NextResponse.json({ error: 'Post not found' }, { status: 404 });
-                }
+            if (post.status !== 'published' && !adminAuth) {
+                return NextResponse.json({ error: 'Post not found' }, { status: 404 });
             }
 
             const postId = post.id;

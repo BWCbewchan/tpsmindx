@@ -13,6 +13,8 @@ import { useParams, useRouter } from 'next/navigation'
 import React, { useEffect, useState } from "react"
 import { toast } from '@/lib/app-toast'
 import useSWR from 'swr'
+import { authHeaders } from '@/lib/auth-headers'
+import { useAuth } from '@/lib/auth-context'
 
 // Dynamic import for RichTextEditor to avoid SSR issues
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), {
@@ -20,13 +22,22 @@ const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), {
     loading: () => <div className="border rounded-xl p-4 min-h-75 animate-pulse bg-muted/20">Đang tải editor...</div>
 })
 
-// Fetcher for SWR
-const fetcher = (url: string) => fetch(url).then(r => r.json())
-
 export default function EditPostPage() {
     const router = useRouter()
     const params = useParams()
     const slug = params?.slug
+    const { token } = useAuth()
+    const fetcher = React.useCallback(async (url: string) => {
+        const response = await fetch(url, {
+            headers: authHeaders(token),
+            cache: 'no-store',
+        })
+        const data = await response.json().catch(() => ({}))
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to fetch post')
+        }
+        return data
+    }, [token])
 
     // Using SWR for initial data fetch
     const { data: postData, error, isLoading: isFetching } = useSWR(
@@ -111,15 +122,17 @@ export default function EditPostPage() {
     }, [thumbnailPreview, previousThumbnail, previousThumbnailFile])
 
     const handleImageFile = (file: File) => {
+        const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+
         // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
+        if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
             toast.error('Kích thước ảnh không được vượt quá 5MB')
             return
         }
 
         // Validate file type
-        if (!file.type.startsWith('image/')) {
-            toast.error('Vui lòng chọn file ảnh')
+        if (!allowedImageTypes.includes(file.type.trim().toLowerCase())) {
+            toast.error('Vui lòng chọn ảnh JPG, PNG, WEBP hoặc GIF')
             return
         }
 
@@ -158,14 +171,17 @@ export default function EditPostPage() {
         const formData = new FormData()
         formData.append('image', file)
 
-        const res = await fetch('/api/upload-thumbnail', {
+        const res = await fetch('/api/truyenthong/upload-thumbnail', {
             method: 'POST',
+            headers: authHeaders(token),
             body: formData
         })
 
-        if (!res.ok) throw new Error('Failed to upload image')
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.success || !data.url) {
+            throw new Error(data.error || 'Failed to upload image')
+        }
 
-        const data = await res.json()
         return data.url
     }
 
@@ -215,18 +231,20 @@ export default function EditPostPage() {
             const res = await fetch(`/api/truyenthong/posts/${slug}`, {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...authHeaders(token),
                 },
                 body: JSON.stringify(payload)
             })
 
-            if (!res.ok) throw new Error('Failed to update post')
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data.error || 'Failed to update post')
 
             toast.success('Bài viết đã được cập nhật thành công!')
             router.push('/admin/truyenthong')
         } catch (error) {
             console.error(error)
-            toast.error('Có lỗi xảy ra khi cập nhật bài viết')
+            toast.error(error instanceof Error ? error.message : 'Có lỗi xảy ra khi cập nhật bài viết')
         } finally {
             setLoading(false)
         }
@@ -336,6 +354,7 @@ export default function EditPostPage() {
                                             if (errors.content) setErrors({ ...errors, content: '' })
                                         }}
                                         error={errors.content}
+                                        imageUploadEndpoint="/api/truyenthong/upload-image"
                                     />
                                     {errors.content && (
                                         <div className="flex items-center gap-1.5 text-red-500 mt-1">
@@ -424,14 +443,14 @@ export default function EditPostPage() {
                                                         <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">V</kbd>
                                                         {' để dán ảnh'}
                                                     </p>
-                                                    <p className="text-xs text-gray-400">JPG, PNG, GIF (tối đa 5MB)</p>
+                                                    <p className="text-xs text-gray-400">JPG, PNG, WEBP, GIF (tối đa 5MB)</p>
                                                 </div>
                                             </div>
                                         )}
                                         <Input
                                             id="thumbnail"
                                             type="file"
-                                            accept="image/*"
+                                            accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
                                             onChange={e => {
                                                 const file = e.target.files?.[0]
                                                 if (file) handleImageFile(file)

@@ -1,4 +1,6 @@
 import { requireCandidateSession } from '@/lib/candidate-session';
+import pool from '@/lib/db';
+import { isDatabaseUnavailableError } from '@/lib/db-helpers';
 import { requireBearerSession } from '@/lib/datasource-api-auth';
 import { clientIpFromRequest, rateLimitOr429Async } from '@/lib/rate-limit-memory';
 import {
@@ -7,12 +9,24 @@ import {
   getSignedObjectUrl,
   isSupabaseS3Configured,
 } from '@/lib/supabase-s3';
+import {
+  isSafeTeacherCertificateKey,
+  makeTeacherCertificateProxyUrl,
+  TEACHER_CERTIFICATES_BUCKET,
+} from '@/lib/teacher-certificate-storage';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { NextRequest, NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 
 const ANONYMOUS_READ_BUCKETS = new Set([
   'mindx-posts-content',
   'mindx-thumbnails',
+]);
+const AUTHENTICATED_READ_BUCKETS = new Set([
+  'mindx-avatars',
+  'mindx-question-images',
+  'mindx-videos',
 ]);
 const ANONYMOUS_READ_PREFIXES = new Map<string, string[]>([
   ['mindx-avatars', ['avatars/honors-top', 'honors-monthly/']],
@@ -55,6 +69,10 @@ function isSafeObjectKey(key: string): boolean {
   return Boolean(key) && !key.includes('..') && !key.startsWith('/');
 }
 
+function isSafeBucketName(bucket: string): boolean {
+  return /^[a-z0-9][a-z0-9.-]{1,62}[a-z0-9]$/.test(bucket);
+}
+
 function isImageObjectKey(key: string): boolean {
   return /\.(avif|gif|jpe?g|png|svg|webp)$/i.test(key);
 }
@@ -83,12 +101,53 @@ function redirectToObjectUrl(url: string, bucket: string, key: string, ttlSecond
   return response;
 }
 
+async function hasTeacherCertificateDbAccess(email: string, key: string): Promise<boolean> {
+  const canonicalUrl = makeTeacherCertificateProxyUrl(key);
+  const result = await pool.query(
+    `SELECT 1
+     FROM teacher_certificates
+     WHERE lower(trim(teacher_email)) = $1
+       AND (
+         cloudinary_public_id = $2
+         OR certificate_url = $3
+       )
+     LIMIT 1`,
+    [email.trim().toLowerCase(), key, canonicalUrl],
+  );
+  return result.rows.length > 0;
+}
+
 async function requireReadAccess(
   request: NextRequest,
   bucket: string,
   key: string,
 ): Promise<NextResponse | null> {
   if (isAnonymousReadObject(bucket, key)) return null;
+
+  if (bucket === TEACHER_CERTIFICATES_BUCKET) {
+    if (!isSafeTeacherCertificateKey(key)) {
+      return new NextResponse('Forbidden', { status: 403 });
+    }
+
+    const auth = await requireBearerSession(request);
+    if (!auth.ok) return auth.response;
+    if (auth.privileged) {
+      return null;
+    }
+
+    try {
+      if (await hasTeacherCertificateDbAccess(auth.sessionEmail, key)) {
+        return null;
+      }
+    } catch (error) {
+      if (isDatabaseUnavailableError(error)) {
+        return new NextResponse('Storage temporarily unavailable', { status: 503 });
+      }
+      throw error;
+    }
+
+    return new NextResponse('Forbidden', { status: 403 });
+  }
 
   if (bucket === 'mindx-candidate-harvest') {
     const candidateAuth = await requireCandidateSession(request);
@@ -99,9 +158,38 @@ async function requireReadAccess(
     return null;
   }
 
+  if (!AUTHENTICATED_READ_BUCKETS.has(bucket)) {
+    return new NextResponse('Not found', { status: 404 });
+  }
+
   const auth = await requireBearerSession(request);
   if (!auth.ok) return auth.response;
   return null;
+}
+
+function teacherCertificateContentTypeForKey(key: string): string {
+  const ext = key.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'pdf':
+      return 'application/pdf';
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg';
+    case 'png':
+      return 'image/png';
+    case 'webp':
+      return 'image/webp';
+    default:
+      return 'application/octet-stream';
+  }
+}
+
+function teacherCertificateFilenameForKey(key: string): string {
+  const ext = key.split('.').pop()?.toLowerCase();
+  if (ext === 'pdf' || ext === 'jpg' || ext === 'jpeg' || ext === 'png' || ext === 'webp') {
+    return `certificate.${ext === 'jpeg' ? 'jpg' : ext}`;
+  }
+  return 'certificate.bin';
 }
 
 export async function GET(request: NextRequest) {
@@ -125,7 +213,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    if (!bucket || !key || !isSafeObjectKey(key)) {
+    if (!bucket || !key || !isSafeBucketName(bucket) || !isSafeObjectKey(key)) {
       return new NextResponse('Missing or invalid bucket/key', { status: 400 });
     }
 
@@ -146,6 +234,7 @@ export async function GET(request: NextRequest) {
     // Force proxy streaming for videos to avoid Range request/seeking issues over 307 redirects.
     const forceStream =
       searchParams.get('stream') === '1' ||
+      bucket === TEACHER_CERTIFICATES_BUCKET ||
       isVideo ||
       (searchParams.get('redirect') !== '1' && shouldStreamObjectByDefault(bucket, key));
     if (!forceStream) {
@@ -177,14 +266,26 @@ export async function GET(request: NextRequest) {
     }
 
     const stream = result.Body.transformToWebStream();
+    const isTeacherCertificate = bucket === TEACHER_CERTIFICATES_BUCKET;
     const headers: Record<string, string> = {
-      'Content-Type': result.ContentType || (isVideo ? 'video/mp4' : 'application/octet-stream'),
+      'Content-Type': isTeacherCertificate
+        ? teacherCertificateContentTypeForKey(key)
+        : result.ContentType || (isVideo ? 'video/mp4' : 'application/octet-stream'),
       'Accept-Ranges': 'bytes',
-      'Cache-Control': isAnonymousReadObject(bucket, key)
+      'Cache-Control': isTeacherCertificate
+        ? 'private, no-store'
+        : isAnonymousReadObject(bucket, key)
         ? 'public, max-age=604800, s-maxage=86400'
         : 'private, max-age=3600',
       'X-Content-Type-Options': 'nosniff',
     };
+    if (isTeacherCertificate) {
+      headers['Content-Disposition'] = `inline; filename="${teacherCertificateFilenameForKey(key)}"`;
+      headers['Content-Security-Policy'] = 'sandbox';
+      headers['Cross-Origin-Resource-Policy'] = 'same-origin';
+      headers['Referrer-Policy'] = 'no-referrer';
+      headers.Vary = 'Authorization, Cookie';
+    }
 
     if (result.ContentLength != null) {
       headers['Content-Length'] = String(result.ContentLength);

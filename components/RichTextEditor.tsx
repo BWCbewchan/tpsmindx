@@ -62,6 +62,35 @@ interface RichTextEditorProps {
   textColor?: string
   showToolbar?: boolean
   minHeight?: string
+  imageUploadEndpoint?: string
+}
+
+const DEFAULT_IMAGE_UPLOAD_ENDPOINT = '/api/upload-question-image'
+const MIN_IMAGE_WIDTH = 60
+const MAX_IMAGE_WIDTH = 1400
+const IMAGE_WIDTH_STEP = 40
+
+function clampImageWidth(width: number): number {
+  return Math.max(MIN_IMAGE_WIDTH, Math.min(MAX_IMAGE_WIDTH, Math.round(width)))
+}
+
+function readSelectedImageRenderedWidth(editor: TiptapEditor): number | null {
+  const selection = editor.state.selection
+  if (!(selection instanceof NodeSelection) || selection.node.type.name !== 'image') return null
+
+  const attrWidth = Number(selection.node.attrs.width)
+  if (Number.isFinite(attrWidth) && attrWidth > 0) return clampImageWidth(attrWidth)
+
+  const nodeDom = editor.view.nodeDOM(selection.from)
+  const element = nodeDom instanceof HTMLElement ? nodeDom : null
+  const img =
+    element instanceof HTMLImageElement
+      ? element
+      : element?.querySelector('img') ?? null
+  const renderedWidth = img?.getBoundingClientRect().width
+  return renderedWidth && Number.isFinite(renderedWidth)
+    ? clampImageWidth(renderedWidth)
+    : null
 }
 
 // ─── ResizableImage ──────────────────────────────────────────────────────────
@@ -101,7 +130,7 @@ function ResizableImageNodeView(props: NodeViewProps) {
 
   const selectNode = useCallback(() => {
     const pos = getNodePos()
-    if (pos !== null) editor?.commands?.setNodeSelection?.(pos)
+    if (pos !== null) editor?.chain().focus().setNodeSelection(pos).run()
   }, [editor, getNodePos])
 
   // ── Disable Tiptap's native drag trên parent element ──
@@ -121,7 +150,13 @@ function ResizableImageNodeView(props: NodeViewProps) {
   // ── Resize bằng pointer events ──
   const onPointerDownHandle = (corner: 'nw' | 'ne' | 'sw' | 'se') => (e: React.PointerEvent) => {
     e.preventDefault(); e.stopPropagation()
-    const img = wrapperRef.current?.querySelector('img') as HTMLImageElement | null
+    const handle = e.currentTarget
+    try {
+      handle.setPointerCapture(e.pointerId)
+    } catch {
+      // Pointer capture is a best-effort guard for resize drags.
+    }
+    const img = handle.parentElement?.querySelector('img') as HTMLImageElement | null
     if (!img) return
     const rect = img.getBoundingClientRect()
     const startX = e.clientX
@@ -132,29 +167,51 @@ function ResizableImageNodeView(props: NodeViewProps) {
     let rafId: number | null = null
     let pendingWidth: number | null = null
 
-    const commit = (w: number) => updateAttributes({ width: Math.max(60, Math.min(1400, Math.round(w))) })
+    const applyVisualWidth = (w: number) => {
+      const nextWidth = clampImageWidth(w)
+      img.style.width = `${nextWidth}px`
+      img.setAttribute('width', String(nextWidth))
+      img.setAttribute('data-width', String(nextWidth))
+    }
+    const commit = (w: number) => {
+      const nextWidth = clampImageWidth(w)
+      applyVisualWidth(nextWidth)
+      updateAttributes({ width: nextWidth })
+    }
     const onMove = (ev: PointerEvent) => {
+      ev.preventDefault()
       const deltaX = ev.clientX - startX
       const deltaY = ev.clientY - startY
       const nextX = (corner === 'se' || corner === 'ne') ? startWidth + deltaX : startWidth - deltaX
       const nextY = ((corner === 'se' || corner === 'sw') ? startHeight + deltaY : startHeight - deltaY) * aspectRatio
       const next = Math.abs(deltaX) > Math.abs(deltaY) ? nextX : nextY
-      if (next < 60 || next > 1400) return
-      pendingWidth = next
+      pendingWidth = clampImageWidth(next)
       if (rafId != null) return
-      rafId = window.requestAnimationFrame(() => { rafId = null; if (pendingWidth != null) commit(pendingWidth) })
+      rafId = window.requestAnimationFrame(() => {
+        rafId = null
+        if (pendingWidth != null) applyVisualWidth(pendingWidth)
+      })
     }
     const onUp = () => {
       window.removeEventListener('pointermove', onMove)
       window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onUp)
       document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+      try {
+        handle.releasePointerCapture(e.pointerId)
+      } catch {
+        // The pointer may already be released by the browser.
+      }
       if (rafId != null) window.cancelAnimationFrame(rafId)
       if (pendingWidth != null) commit(pendingWidth)
     }
     selectNode()
     document.body.style.cursor = (corner === 'nw' || corner === 'se') ? 'nwse-resize' : 'nesw-resize'
+    document.body.style.userSelect = 'none'
     window.addEventListener('pointermove', onMove, { passive: false })
     window.addEventListener('pointerup', onUp, { passive: true })
+    window.addEventListener('pointercancel', onUp, { passive: true })
   }
 
   // ── Drag-to-move bằng native pointer events ──
@@ -166,6 +223,8 @@ function ResizableImageNodeView(props: NodeViewProps) {
     if (target.closest('.resize-handle') || target.closest('.img-float-controls')) return
 
     // Chọn node ngay khi nhấn (onMouseDown) để người dùng thấy phản hồi nhanh
+    e.preventDefault()
+    e.stopPropagation()
     selectNode()
 
     const startX = e.clientX
@@ -344,6 +403,8 @@ const ResizableImage = Image.extend({
         parseHTML: (el) => {
           const d = el.getAttribute('data-width')
           if (d) { const n = Number(d); return Number.isFinite(n) ? n : null }
+          const aw = el.getAttribute('width')
+          if (aw) { const n = Number(aw); return Number.isFinite(n) ? n : null }
           const sw = (el as HTMLElement).style?.width
           if (sw?.endsWith('px')) { const n = Number(sw.replace('px', '')); return Number.isFinite(n) ? n : null }
           return null
@@ -352,7 +413,8 @@ const ResizableImage = Image.extend({
           if (!attrs.width) return {}
           const w = Number(attrs.width)
           if (!Number.isFinite(w)) return {}
-          return { 'data-width': String(Math.round(w)), style: `width:${Math.round(w)}px;height:auto;` }
+          const rounded = String(Math.round(w))
+          return { 'data-width': rounded, width: rounded, style: `width:${rounded}px;height:auto;` }
         },
       },
     }
@@ -360,13 +422,12 @@ const ResizableImage = Image.extend({
   addNodeView() {
     return ReactNodeViewRenderer(ResizableImageNodeView, {
       as: 'span',
-      update: ({ oldNode, newNode }) => oldNode.eq(newNode),
     })
   },
   renderHTML({ HTMLAttributes }) {
     // Render wrapper span + img để user view hiển thị đúng như trong editor
     const float = HTMLAttributes['data-float'] || ''
-    const width = HTMLAttributes['data-width'] || ''
+    const width = HTMLAttributes['data-width'] || HTMLAttributes.width || ''
     const verticalAlign = HTMLAttributes['data-vertical-align'] || 'top'
 
     const isFloating = float === 'left' || float === 'right'
@@ -489,7 +550,7 @@ function ImageGalleryNodeView(props: NodeViewProps) {
     try {
       toast.loading('Dang tai anh len...', { id: 'gallery-upload' })
       for (const file of imageFiles) {
-        const src = await uploadQuestionImageFile(file)
+        const src = await uploadEditorImageFile(file, getEditorImageUploadEndpoint(editor))
         newImgs.push({ src, alt: file.name })
       }
       updateAttributes({ images: [...images, ...newImgs] })
@@ -787,14 +848,25 @@ function editorHtmlMatches(a: string, b: string): boolean {
   return normalizeEditorHtml(a) === normalizeEditorHtml(b)
 }
 
-async function uploadQuestionImageFile(file: File): Promise<string> {
+function getEditorImageUploadEndpoint(editor?: TiptapEditor | null): string {
+  const storage = editor?.storage as { richTextEditorImageUploadEndpoint?: unknown } | undefined
+  const endpoint = storage?.richTextEditorImageUploadEndpoint
+  return typeof endpoint === 'string' && endpoint.trim()
+    ? endpoint.trim()
+    : DEFAULT_IMAGE_UPLOAD_ENDPOINT
+}
+
+async function uploadEditorImageFile(
+  file: File,
+  endpoint = DEFAULT_IMAGE_UPLOAD_ENDPOINT,
+): Promise<string> {
   if (!file.type.startsWith('image/')) throw new Error('Chi ho tro dinh dang anh')
   if (file.size > 10 * 1024 * 1024) throw new Error('Kich thuoc anh toi da 10MB')
 
   const formData = new FormData()
   formData.append('image', file)
 
-  const response = await fetch('/api/upload-question-image', {
+  const response = await fetch(endpoint, {
     method: 'POST',
     body: formData,
   })
@@ -814,8 +886,10 @@ function RichTextEditor({
   textColor = '#000000',
   showToolbar = true,
   minHeight = 'min-h-[300px]',
+  imageUploadEndpoint = DEFAULT_IMAGE_UPLOAD_ENDPOINT,
 }: RichTextEditorProps) {
   const [selectedImageWidth, setSelectedImageWidth] = useState<string>('auto')
+  const [selectedImageWidthValue, setSelectedImageWidthValue] = useState<number>(320)
   const [selectedImageAlign, setSelectedImageAlign] = useState<string>('text-bottom')
   const [selectedImageFloat, setSelectedImageFloat] = useState<string>('none')
   const [showImageControls, setShowImageControls] = useState(false)
@@ -823,6 +897,7 @@ function RichTextEditor({
   const isComposingRef = useRef(false)
   const onChangeRef = useRef(onChange)
   const editorRef = useRef<TiptapEditor | null>(null)
+  const imageUploadEndpointRef = useRef(imageUploadEndpoint)
   const initialContentRef = useRef(content || '')
   const hasHydratedInitialContentRef = useRef(false)
 
@@ -830,22 +905,15 @@ function RichTextEditor({
     onChangeRef.current = onChange
   }, [onChange])
 
+  useEffect(() => {
+    imageUploadEndpointRef.current = imageUploadEndpoint
+    if (!editorRef.current) return
+    const storage = editorRef.current.storage as { richTextEditorImageUploadEndpoint?: string }
+    storage.richTextEditorImageUploadEndpoint = imageUploadEndpoint
+  }, [imageUploadEndpoint])
+
   const uploadImageFile = useCallback(async (file: File): Promise<string> => {
-    if (!file.type.startsWith('image/')) throw new Error('Chỉ hỗ trợ định dạng ảnh')
-    if (file.size > 10 * 1024 * 1024) throw new Error('Kích thước ảnh tối đa 10MB')
-
-    const formData = new FormData()
-    formData.append('image', file)
-
-    const response = await fetch('/api/upload-question-image', {
-      method: 'POST',
-      body: formData,
-    })
-    const data = await response.json()
-    if (!response.ok || !data.success) {
-      throw new Error(data.error || 'Upload ảnh thất bại')
-    }
-    return data.url as string
+    return uploadEditorImageFile(file, imageUploadEndpointRef.current)
   }, [])
 
   const editor = useEditor(
@@ -854,6 +922,10 @@ function RichTextEditor({
       shouldRerenderOnTransaction: false,
       extensions: EDITOR_EXTENSIONS,
       content: '',
+      onCreate: ({ editor }) => {
+        const storage = editor.storage as { richTextEditorImageUploadEndpoint?: string }
+        storage.richTextEditorImageUploadEndpoint = imageUploadEndpointRef.current
+      },
       editorProps: {
         attributes: {
           class: `prose prose-xs sm:prose-sm max-w-none focus:outline-none ${minHeight} px-4 py-3 ${error ? 'border-red-500' : ''}`,
@@ -1029,6 +1101,7 @@ function RichTextEditor({
       if (isImage) {
         const w = sel.node.attrs.width
         const width = typeof w === 'number' && Number.isFinite(w) ? `${Math.round(w)}px` : 'auto'
+        const widthValue = readSelectedImageRenderedWidth(editor) ?? 320
         const align = sel.node.attrs.verticalAlign
         const alignVal = typeof align === 'string' && align ? align : 'top'
         const f = sel.node.attrs.float
@@ -1036,6 +1109,7 @@ function RichTextEditor({
 
         setShowImageControls(true)
         setSelectedImageWidth(width)
+        setSelectedImageWidthValue(widthValue)
         setSelectedImageAlign(alignVal)
         setSelectedImageFloat(floatVal)
       } else {
@@ -1155,6 +1229,28 @@ function RichTextEditor({
     setSelectedImageAlign(align)
   }, [editor])
 
+  const setSelectedImageSize = useCallback((width: number) => {
+    if (!editor) return
+    const nextWidth = clampImageWidth(width)
+    editor.chain().focus().updateAttributes('image', { width: nextWidth }).run()
+    setSelectedImageWidth(`${nextWidth}px`)
+    setSelectedImageWidthValue(nextWidth)
+  }, [editor])
+
+  const resizeSelectedImageBy = useCallback((delta: number) => {
+    if (!editor) return
+    const currentWidth = readSelectedImageRenderedWidth(editor) ?? selectedImageWidthValue
+    setSelectedImageSize(currentWidth + delta)
+  }, [editor, selectedImageWidthValue, setSelectedImageSize])
+
+  const resetSelectedImageSize = useCallback(() => {
+    if (!editor) return
+    editor.chain().focus().updateAttributes('image', { width: null }).run()
+    const fallbackWidth = readSelectedImageRenderedWidth(editor) ?? 320
+    setSelectedImageWidth('auto')
+    setSelectedImageWidthValue(fallbackWidth)
+  }, [editor])
+
   const applyAlignToAllSelectedImages = useCallback((align: string) => {
     if (!editor || !align) return
     const { state } = editor
@@ -1180,6 +1276,40 @@ function RichTextEditor({
         <div className="image-controls-panel bg-blue-50 border-b border-blue-200 p-2 flex flex-wrap items-center gap-2">
           <span className="text-xs font-medium text-blue-900">📐 Resize góc · Kéo để di chuyển</span>
           <span className="text-xs text-blue-600 bg-blue-100 px-1.5 py-0.5 rounded">{selectedImageWidth}</span>
+
+          {/* Image size */}
+          <div className="flex items-center gap-1 border-l border-blue-200 pl-2">
+            <Button type="button" size="sm" variant="ghost"
+              onClick={() => resizeSelectedImageBy(-IMAGE_WIDTH_STEP)}
+              className="h-7 w-7 p-0 cursor-pointer text-blue-700 hover:bg-blue-100"
+              title="Thu nhỏ ảnh">
+              <Minus className="h-3.5 w-3.5" />
+            </Button>
+            <input
+              type="range"
+              min={MIN_IMAGE_WIDTH}
+              max={MAX_IMAGE_WIDTH}
+              step={10}
+              value={selectedImageWidthValue}
+              onChange={(event) => setSelectedImageSize(Number(event.target.value))}
+              className="h-7 w-28 accent-blue-600"
+              title="Kích thước ảnh"
+            />
+            <Button type="button" size="sm" variant="ghost"
+              onClick={() => resizeSelectedImageBy(IMAGE_WIDTH_STEP)}
+              className="h-7 w-7 p-0 cursor-pointer text-blue-700 hover:bg-blue-100"
+              title="Phóng to ảnh">
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+            <button
+              type="button"
+              onClick={resetSelectedImageSize}
+              className="h-7 rounded border border-blue-200 bg-white/90 px-2 text-xs font-medium text-blue-700 hover:bg-blue-50"
+              title="Khôi phục kích thước tự động"
+            >
+              Auto
+            </button>
+          </div>
 
           {/* Float layout */}
           <div className="flex items-center gap-1 border-l border-blue-200 pl-2">

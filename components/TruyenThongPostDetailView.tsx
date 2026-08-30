@@ -51,6 +51,15 @@ interface TruyenThongPostDetailViewProps {
     mode: TruyenThongPostDetailMode
 }
 
+type ReactionUser = {
+    user_id: string
+    user_name: string | null
+    reaction: string
+}
+
+const MAX_TOOLTIP_REACTION_USERS = 5
+const VALID_REACTION_TYPES = new Set(['like', 'love', 'haha', 'sad', 'angry'])
+
 export function TruyenThongPostDetailView({ mode }: TruyenThongPostDetailViewProps) {
     const params = useParams()
     const pathname = usePathname()
@@ -75,7 +84,7 @@ export function TruyenThongPostDetailView({ mode }: TruyenThongPostDetailViewPro
     const [showReactions, setShowReactions] = useState(false)
     const [currentReaction, setCurrentReaction] = useState<string | null>(null)
     const [visibleCommentsSlug, setVisibleCommentsSlug] = useState<string | null>(null)
-    const [reactionUsers, setReactionUsers] = useState<Array<{user_id: string, user_name: string | null, reaction: string}>>([])
+    const [reactionUsers, setReactionUsers] = useState<ReactionUser[]>([])
     const [reactionUsersLoaded, setReactionUsersLoaded] = useState(false)
     const [loadingReactionUsers, setLoadingReactionUsers] = useState(false)
     const [showReactionPopup, setShowReactionPopup] = useState(false)
@@ -175,10 +184,12 @@ export function TruyenThongPostDetailView({ mode }: TruyenThongPostDetailViewPro
     useEffect(() => {
         setReactionUsers([])
         setReactionUsersLoaded(false)
+        setActiveReactionFilter(null)
+        setShowReactionPopup(false)
     }, [slug])
 
-    const loadReactionUsers = useCallback(async () => {
-        if (!slug || reactionUsersLoaded || loadingReactionUsers) return
+    const loadReactionUsers = useCallback(async (force = false) => {
+        if (!slug || loadingReactionUsers || (!force && reactionUsersLoaded)) return
 
         setLoadingReactionUsers(true)
         try {
@@ -188,7 +199,16 @@ export function TruyenThongPostDetailView({ mode }: TruyenThongPostDetailViewPro
             if (!response.ok) return
 
             const data = await response.json()
-            setReactionUsers(Array.isArray(data.users) ? data.users : [])
+            const users = Array.isArray(data.users)
+                ? data.users
+                    .map((item: Partial<ReactionUser>) => ({
+                        user_id: typeof item.user_id === 'string' ? item.user_id : '',
+                        user_name: typeof item.user_name === 'string' ? item.user_name.trim() || null : null,
+                        reaction: typeof item.reaction === 'string' ? item.reaction : 'like',
+                    }))
+                    .filter((item: ReactionUser) => item.user_name && VALID_REACTION_TYPES.has(item.reaction))
+                : []
+            setReactionUsers(users)
             setReactionUsersLoaded(true)
             void mutatePost(
                 (current) => current
@@ -342,6 +362,7 @@ export function TruyenThongPostDetailView({ mode }: TruyenThongPostDetailViewPro
                     reaction_counts: data.reaction_counts ?? current.reaction_counts,
                 }))
                 setReactionUsersLoaded(false)
+                void loadReactionUsers(true)
                 if (data.isLiked && data.reaction) {
                     setCurrentReaction(data.reaction)
                 } else {
@@ -399,6 +420,11 @@ export function TruyenThongPostDetailView({ mode }: TruyenThongPostDetailViewPro
         'báo-cáo': 'Báo cáo',
         'thông-báo': 'Thông báo',
     }
+
+    const tooltipNamesForReaction = (reactionType: string) => reactionUsers
+        .filter((u) => u.reaction === reactionType && u.user_name)
+        .map((u) => u.user_name as string)
+        .slice(0, MAX_TOOLTIP_REACTION_USERS)
 
     return (
         <PageLayout maxWidth="7xl" padding="md">
@@ -541,7 +567,11 @@ export function TruyenThongPostDetailView({ mode }: TruyenThongPostDetailViewPro
                                         {post.like_count > 0 && (
                                             <div ref={reactionPopupRef} className="relative flex items-center gap-1.5">
                                                 {/* Top 3 icons — mỗi icon có tooltip riêng hiện tên người thả */}
-                                                <div className="flex -space-x-2" onClick={toggleReactionPopup}>
+                                                <div
+                                                    className="flex -space-x-2"
+                                                    onMouseEnter={() => void loadReactionUsers()}
+                                                    onClick={toggleReactionPopup}
+                                                >
                                                     {(() => {
                                                         const counts = post.reaction_counts || {}
                                                         const sorted = reactions
@@ -551,7 +581,9 @@ export function TruyenThongPostDetailView({ mode }: TruyenThongPostDetailViewPro
                                                         const display = sorted.length > 0 ? sorted : [reactions[0]]
                                                         return display.map((r, i) => {
                                                             const Icon = r.icon
-                                                            const usersOfType = reactionUsers.filter(u => u.reaction === r.type && u.user_name)
+                                                            const namesOfType = tooltipNamesForReaction(r.type)
+                                                            const totalOfType = counts[r.type] || reactionUsers.filter(u => u.reaction === r.type).length
+                                                            const remainingCount = Math.max(0, totalOfType - namesOfType.length)
                                                             return (
                                                                 <div key={r.type} className="relative group/icon cursor-pointer w-7 h-7 rounded-full bg-white border-2 border-white flex items-center justify-center shadow-md ring-1 ring-gray-100 hover:scale-125 hover:z-10 transition-transform duration-200" style={{ zIndex: 3 - i }}>
                                                                     <Icon className={`w-4 h-4 ${r.color}`} />
@@ -560,16 +592,22 @@ export function TruyenThongPostDetailView({ mode }: TruyenThongPostDetailViewPro
                                                                         opacity-0 group-hover/icon:opacity-100
                                                                         translate-y-1 group-hover/icon:translate-y-0
                                                                         transition-all duration-150 ease-out">
-                                                                        <div className="bg-gray-900 text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-xl whitespace-nowrap">
-                                                                            {usersOfType.length > 0 ? (
-                                                                                <div className="text-white/90">
-                                                                                    {usersOfType.length <= 2
-                                                                                        ? usersOfType.map(u => u.user_name).join(', ')
-                                                                                        : `${usersOfType[0].user_name} +${usersOfType.length - 1}`
-                                                                                    }
+                                                                        <div className="bg-gray-900 text-white text-[11px] font-medium px-2.5 py-1.5 rounded-lg shadow-xl">
+                                                                            {namesOfType.length > 0 ? (
+                                                                                <div className="max-w-56 space-y-0.5 text-left text-white/90">
+                                                                                    {namesOfType.map((name, nameIndex) => (
+                                                                                        <div key={`${name}-${nameIndex}`} className="truncate">
+                                                                                            {name}
+                                                                                        </div>
+                                                                                    ))}
+                                                                                    {remainingCount > 0 && (
+                                                                                        <div className="text-white/60">+{remainingCount} người khác</div>
+                                                                                    )}
                                                                                 </div>
+                                                                            ) : loadingReactionUsers ? (
+                                                                                <div className="whitespace-nowrap text-white/60">Đang tải...</div>
                                                                             ) : (
-                                                                                <div className="text-white/60">Chưa có ai</div>
+                                                                                <div className="whitespace-nowrap text-white/60">Chưa có ai</div>
                                                                             )}
                                                                         </div>
                                                                         <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900" />

@@ -22,8 +22,7 @@ import {
   User,
   X,
 } from 'lucide-react'
-import Image from 'next/image'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from '@/lib/app-toast'
 import { authHeaders } from '@/lib/auth-headers'
 import { parseLegacyTeacherFromInfoJson } from '@/lib/teacher-db-mapper'
@@ -54,6 +53,14 @@ interface PrivacySettings {
 }
 
 const BIRTHDAY_PRIVACY_SYNC_KEY = 'birthday-privacy-updated-at'
+
+function isCertificatePdfUrl(url: string): boolean {
+  try {
+    return /\.pdf(?:[?#]|$)/i.test(decodeURIComponent(url))
+  } catch {
+    return /\.pdf(?:[?#]|$)/i.test(url)
+  }
+}
 
 export default function TeacherProfilePage() {
   const { user, token } = useAuth()
@@ -106,29 +113,9 @@ export default function TeacherProfilePage() {
     return () => document.removeEventListener('mousedown', handleOutsideClick)
   }, [isCertTypeOpen])
 
-  useEffect(() => {
-    if (!showAvatarModal) {
-      stopCamera()
-      resetAvatarSelection()
-      return
-    }
-
-    if (avatarSource === 'camera') {
-      void startCamera()
-    } else {
-      stopCamera()
-    }
-  }, [showAvatarModal, avatarSource])
-
-  useEffect(() => {
-    return () => {
-      stopCamera()
-    }
-  }, [])
-
   // Fetch certificates
   const { data: certificatesData, mutate: mutateCertificates } = useSWR(
-    user?.email ? `/api/teacher-certificates?email=${user.email}` : null,
+    user?.email ? `/api/teacher-certificates?email=${encodeURIComponent(user.email)}` : null,
     fetcher,
   )
 
@@ -217,11 +204,11 @@ export default function TeacherProfilePage() {
       'image/webp',
       'application/pdf',
     ]
-    if (!validTypes.includes(file.type)) {
+    if (!validTypes.includes(file.type.trim().toLowerCase())) {
       return 'Chỉ hỗ trợ file ảnh (JPG, PNG, WEBP) hoặc PDF'
     }
 
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size <= 0 || file.size > 10 * 1024 * 1024) {
       return 'Kích thước file tối đa 10MB'
     }
 
@@ -240,22 +227,22 @@ export default function TeacherProfilePage() {
     return null
   }
 
-  const resetAvatarSelection = () => {
+  const resetAvatarSelection = useCallback(() => {
     if (avatarPreviewUrl) {
       URL.revokeObjectURL(avatarPreviewUrl)
     }
     setAvatarPreviewUrl(null)
     setSelectedAvatarFile(null)
-  }
+  }, [avatarPreviewUrl])
 
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     if (cameraStreamRef.current) {
       cameraStreamRef.current.getTracks().forEach((track) => track.stop())
       cameraStreamRef.current = null
     }
-  }
+  }, [])
 
-  const startCamera = async () => {
+  const startCamera = useCallback(async () => {
     try {
       stopCamera()
       setCameraError(null)
@@ -285,7 +272,27 @@ export default function TeacherProfilePage() {
       setCameraError(message)
       toast.error(message)
     }
-  }
+  }, [stopCamera])
+
+  useEffect(() => {
+    if (!showAvatarModal) {
+      stopCamera()
+      resetAvatarSelection()
+      return
+    }
+
+    if (avatarSource === 'camera') {
+      void startCamera()
+    } else {
+      stopCamera()
+    }
+  }, [showAvatarModal, avatarSource, resetAvatarSelection, startCamera, stopCamera])
+
+  useEffect(() => {
+    return () => {
+      stopCamera()
+    }
+  }, [stopCamera])
 
   const handleAvatarFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -387,6 +394,11 @@ export default function TeacherProfilePage() {
 
   const handleSubmitCertificate = async () => {
     const file = selectedCertFile
+    if (!user?.email) {
+      toast.error('Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại')
+      return
+    }
+
     if (!file) {
       toast.error('Vui lòng chọn file chứng chỉ trước khi gửi')
       return
@@ -402,55 +414,40 @@ export default function TeacherProfilePage() {
     const toastId = toast.loading('Đang tải lên chứng chỉ...')
 
     try {
-      // Get Cloudinary signature
-      const signatureResponse = await fetch('/api/cloudinary-signature', {
+      const uploadFormData = new FormData()
+      uploadFormData.append('certificate', file)
+
+      const uploadResponse = await fetch('/api/teacher-certificates/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folder: 'teacher_certificates' }),
+        headers: authHeaders(token),
+        body: uploadFormData,
       })
 
-      if (!signatureResponse.ok) throw new Error('Failed to get signature')
-
-      const { signature, timestamp, cloudName, apiKey, folder } =
-        await signatureResponse.json()
-
-      // Upload to Cloudinary
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('signature', signature)
-      formData.append('timestamp', timestamp.toString())
-      formData.append('api_key', apiKey)
-      formData.append('folder', folder)
-
-      const uploadResponse = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
-        {
-          method: 'POST',
-          body: formData,
-        },
-      )
-
-      if (!uploadResponse.ok) throw new Error('Failed to upload to Cloudinary')
-
-      const uploadData = await uploadResponse.json()
+      const uploadData = await uploadResponse.json().catch(() => ({}))
+      if (!uploadResponse.ok || !uploadData.success || !uploadData.url) {
+        throw new Error(uploadData.error || 'Failed to upload certificate')
+      }
 
       // Save certificate to database
       const saveResponse = await fetch('/api/teacher-certificates', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
         body: JSON.stringify({
-          teacher_email: user?.email,
+          teacher_email: user.email,
           certificate_name: certForm.name || file.name,
-          certificate_url: uploadData.secure_url,
+          certificate_url: uploadData.url,
           certificate_type: certForm.type || 'Other',
           issue_date: certForm.issueDate || null,
           expiry_date: certForm.expiryDate || null,
           description: certForm.description || null,
-          cloudinary_public_id: uploadData.public_id,
+          cloudinary_public_id: uploadData.key,
         }),
       })
 
-      if (!saveResponse.ok) throw new Error('Failed to save certificate')
+      const saveData = await saveResponse.json().catch(() => ({}))
+      if (!saveResponse.ok || !saveData.success) {
+        throw new Error(saveData.error || 'Failed to save certificate')
+      }
 
       toast.success('Tải lên chứng chỉ thành công!', { id: toastId })
       mutateCertificates()
@@ -470,20 +467,27 @@ export default function TeacherProfilePage() {
       setIsUploadingCert(false)
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
-      }    }
+      }
+    }
   }
 
   // Handle delete certificate
   const handleDeleteCertificate = async (certId: number) => {
+    if (!user?.email) {
+      toast.error('Phiên đăng nhập không hợp lệ, vui lòng đăng nhập lại')
+      return
+    }
+
     if (!confirm('Bạn có chắc muốn xóa chứng chỉ này?')) return
 
     const toastId = toast.loading('Đang xóa...')
 
     try {
       const response = await fetch(
-        `/api/teacher-certificates?id=${certId}&email=${user?.email}`,
+        `/api/teacher-certificates?id=${certId}&email=${encodeURIComponent(user.email)}`,
         {
           method: 'DELETE',
+          headers: authHeaders(token),
         },
       )
 
@@ -891,14 +895,14 @@ export default function TeacherProfilePage() {
                       className="h-48 bg-linear-to-br from-gray-100 to-gray-200 flex items-center justify-center cursor-pointer relative overflow-hidden"
                       onClick={() => setSelectedCertImage(cert.certificate_url)}
                     >
-                      {cert.certificate_url.includes('.pdf') ? (
+                      {isCertificatePdfUrl(cert.certificate_url) ? (
                         <FileText className="w-16 h-16 text-gray-400" />
                       ) : (
-                        <Image
+                        <img
                           src={cert.certificate_url}
                           alt={cert.certificate_name}
-                          fill
-                          className="object-cover group-hover:scale-110 transition-transform duration-300"
+                          referrerPolicy="no-referrer"
+                          className="h-full w-full object-cover group-hover:scale-110 transition-transform duration-300"
                         />
                       )}
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
@@ -1244,7 +1248,7 @@ export default function TeacherProfilePage() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept="image/*,.pdf"
+                  accept="image/jpeg,image/png,image/webp,application/pdf,.jpg,.jpeg,.png,.webp,.pdf"
                   onChange={handleCertificateUpload}
                   disabled={isUploadingCert}
                   className="hidden"
@@ -1297,13 +1301,22 @@ export default function TeacherProfilePage() {
             >
               <X className="w-6 h-6 text-white" />
             </button>
-            <Image
-              src={selectedCertImage}
-              alt="Certificate preview"
-              width={1200}
-              height={900}
-              className="max-h-[90vh] w-auto object-contain rounded-2xl"
-            />
+            {isCertificatePdfUrl(selectedCertImage) ? (
+              <iframe
+                src={selectedCertImage}
+                title="Certificate preview"
+                sandbox="allow-same-origin"
+                referrerPolicy="no-referrer"
+                className="h-[90vh] w-full rounded-2xl bg-white"
+              />
+            ) : (
+              <img
+                src={selectedCertImage}
+                alt="Certificate preview"
+                referrerPolicy="no-referrer"
+                className="max-h-[90vh] w-auto object-contain rounded-2xl"
+              />
+            )}
           </div>
         </div>
       )}

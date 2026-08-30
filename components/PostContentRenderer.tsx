@@ -67,7 +67,7 @@ function processHTML(html: string): Segment[] {
       if (!img) return
       const src = img.getAttribute('src') || ''
       if (!src) return
-      const dw = img.getAttribute('data-width') || ''
+      const dw = img.getAttribute('data-width') || img.getAttribute('width') || ''
       const w = dw ? parseInt(dw, 10) : null
       result.push({ src, alt: img.getAttribute('alt') || '', width: Number.isFinite(w) ? w : null })
     })
@@ -142,14 +142,17 @@ function SmartImageGroup({ images, globalOffset, onOpenLightbox }: SmartImageGro
   // ── Single image: hiển thị tối ưu, giữ tỷ lệ gốc, max-height hợp lý ──
   if (n === 1) {
     const img = visible[0]
+    const widthStyle = img.width
+      ? { width: `${img.width}px`, maxWidth: '100%' }
+      : { width: '100%' }
     return (
       <div
         className="smart-img-group"
-        style={{ margin: '12px 0', borderRadius: '10px', overflow: 'hidden', lineHeight: 0 }}
+        style={{ margin: '12px 0', borderRadius: '10px', overflow: 'visible', lineHeight: 0 }}
       >
         <div
           className="smart-img-item"
-          style={{ position: 'relative', cursor: 'pointer', display: 'inline-block', width: '100%' }}
+          style={{ position: 'relative', cursor: 'pointer', display: 'inline-block', ...widthStyle }}
           onClick={() => onOpenLightbox(globalOffset)}
         >
           { }

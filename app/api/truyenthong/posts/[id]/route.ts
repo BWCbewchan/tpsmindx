@@ -1,33 +1,38 @@
 import pool from '@/lib/db';
 import { sanitizeHtml, sanitizeText } from '@/lib/server-sanitize-html';
-import { TPS_SESSION_COOKIE, verifySessionCookieValue } from '@/lib/session-cookie';
 import {
-    createSupabaseS3Client,
     deleteObject,
     isSupabaseS3Configured,
     parsePublicUrl,
 } from '@/lib/supabase-s3';
-import { findCommunicationPostByIdentifier, requireTruyenThongPostAdmin } from '@/lib/truyenthong-posts';
+import {
+  MAX_TRUYENTHONG_IMAGE_BYTES,
+  TRUYENTHONG_CONTENT_IMAGE_BUCKET,
+  hasAllowedTruyenThongImageSignature,
+  isAllowedTruyenThongImageContentType,
+  uploadTruyenThongImageBuffer,
+} from '@/lib/truyenthong-image-upload';
+import {
+  DEFAULT_TRUYENTHONG_POST_IMAGE,
+  MAX_TRUYENTHONG_CONTENT_LENGTH,
+  MAX_TRUYENTHONG_DESCRIPTION_LENGTH,
+  MAX_TRUYENTHONG_TITLE_LENGTH,
+  canAdministerTruyenThongPosts,
+  ensureTruyenThongThumbnailPositionSchema,
+  findCommunicationPostByIdentifier,
+  normalizeTruyenThongAudience,
+  normalizeTruyenThongMediaUrl,
+  normalizeTruyenThongPostStatus,
+  normalizeTruyenThongPostType,
+  normalizeTruyenThongThumbnailPosition,
+  requireTruyenThongPostAdminMutation,
+} from '@/lib/truyenthong-posts';
+import { requireBearerSession } from '@/lib/datasource-api-auth';
 import { generateSlug } from '@/lib/utils';
 import { createNotificationForEveryone } from '@/lib/notification-service';
-import { CreateBucketCommand, HeadBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { NextRequest, NextResponse } from 'next/server';
 
-const BUCKET_NAME = 'mindx-posts-content';
-
-async function ensureBucket() {
-  if (!isSupabaseS3Configured()) return;
-  const client = createSupabaseS3Client();
-  try {
-    await client.send(new HeadBucketCommand({ Bucket: BUCKET_NAME }));
-  } catch {
-    await client.send(new CreateBucketCommand({ Bucket: BUCKET_NAME }));
-  }
-}
-
-function makeProxyUrl(bucket: string, key: string): string {
-  return `/api/storage-image?bucket=${encodeURIComponent(bucket)}&key=${encodeURIComponent(key)}`;
-}
+const MAX_BASE64_IMAGE_CHARS = Math.ceil((MAX_TRUYENTHONG_IMAGE_BYTES * 4) / 3) + 1024;
 
 async function uploadBase64ToS3(base64Data: string): Promise<string> {
   if (!isSupabaseS3Configured()) return base64Data;
@@ -35,23 +40,31 @@ async function uploadBase64ToS3(base64Data: string): Promise<string> {
   const match = base64Data.match(/^data:([^;]+);base64,(.+)$/);
   if (!match) return base64Data;
 
-  const mimeType = match[1];
-  const buffer = Buffer.from(match[2], 'base64');
-  const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg') || 'png';
+  const mimeType = match[1].trim().toLowerCase();
+  const base64Payload = match[2].replace(/\s/g, '');
+  if (
+    !isAllowedTruyenThongImageContentType(mimeType) ||
+    base64Payload.length > MAX_BASE64_IMAGE_CHARS
+  ) {
+    return base64Data;
+  }
 
-  const client = createSupabaseS3Client();
-  const key = `post-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const buffer = Buffer.from(base64Payload, 'base64');
+  if (
+    buffer.length <= 0 ||
+    buffer.length > MAX_TRUYENTHONG_IMAGE_BYTES ||
+    !hasAllowedTruyenThongImageSignature(buffer, mimeType)
+  ) {
+    return base64Data;
+  }
 
-  await client.send(
-    new PutObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: key,
-      Body: buffer,
-      ContentType: mimeType,
-    })
-  );
-
-  return makeProxyUrl(BUCKET_NAME, key);
+  const uploaded = await uploadTruyenThongImageBuffer({
+    bucket: TRUYENTHONG_CONTENT_IMAGE_BUCKET,
+    keyPrefix: 'post-images',
+    buffer,
+    contentType: mimeType,
+  });
+  return uploaded.url;
 }
 
 async function processBase64Images(htmlContent: string): Promise<string> {
@@ -80,6 +93,17 @@ async function processBase64Images(htmlContent: string): Promise<string> {
     newContent = newContent.replace(originalStr, newStr);
   }
   return newContent;
+}
+
+function normalizePublishedAt(value: unknown): Date | null {
+  const raw = String(value ?? '').trim();
+  if (!raw) return new Date();
+  const date = new Date(raw);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function hasInlineDataImage(htmlContent: string): boolean {
+  return /\bsrc\s*=\s*["']data:image\//i.test(htmlContent);
 }
 
 /**
@@ -131,6 +155,9 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const viewerAuth = await requireBearerSession(request);
+    const userId = viewerAuth.ok ? viewerAuth.sessionEmail.trim().toLowerCase() : null;
+    const canReadDrafts = viewerAuth.ok && canAdministerTruyenThongPosts(viewerAuth.resolvedAccess);
     const client = await pool.connect();
 
     try {
@@ -144,20 +171,13 @@ export async function GET(
 
       const post = lookup.post;
 
-      if (post.status !== 'published') {
-        const rawSession = request.cookies.get(TPS_SESSION_COOKIE)?.value;
-        const session = rawSession ? await verifySessionCookieValue(rawSession) : null;
-        if (!session?.canAdminPortal) {
-          return NextResponse.json({ error: 'Post not found' }, { status: 404 });
-        }
+      if (post.status !== 'published' && !canReadDrafts) {
+        return NextResponse.json({ error: 'Post not found' }, { status: 404 });
       }
 
       let isLiked = false;
       let reaction: string | null = null;
       const reaction_counts: Record<string, number> = {};
-      const rawSession = request.cookies.get(TPS_SESSION_COOKIE)?.value;
-      const session = rawSession ? await verifySessionCookieValue(rawSession) : null;
-      const userId = session?.email?.trim().toLowerCase();
 
       if (userId) {
         const likeCheck = await client.query(
@@ -227,9 +247,12 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const denied = await requireTruyenThongPostAdmin(request as NextRequest);
+    const denied = await requireTruyenThongPostAdminMutation(request as NextRequest);
     if (denied) return denied;
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Request body không hợp lệ' }, { status: 400 });
+    }
     const {
       title,
       description,
@@ -243,9 +266,13 @@ export async function PUT(
       thumbnail_position,
     } = body;
 
-    const normalizedTitle = typeof title === 'string' ? title.trim() : '';
+    const normalizedTitle = typeof title === 'string'
+      ? title.trim().slice(0, MAX_TRUYENTHONG_TITLE_LENGTH)
+      : '';
     const normalizedDescription =
-      typeof description === 'string' ? description.trim() : '';
+      typeof description === 'string'
+        ? description.trim().slice(0, MAX_TRUYENTHONG_DESCRIPTION_LENGTH)
+        : '';
     const rawContent = typeof content === 'string' ? content : '';
 
     if (!normalizedTitle || !normalizedDescription || !rawContent) {
@@ -254,8 +281,42 @@ export async function PUT(
         { status: 400 },
       );
     }
+    if (rawContent.length > MAX_TRUYENTHONG_CONTENT_LENGTH) {
+      return NextResponse.json(
+        { error: 'Nội dung bài viết vượt quá dung lượng cho phép' },
+        { status: 413 },
+      );
+    }
 
-    await ensureBucket();
+    const safePostType = normalizeTruyenThongPostType(post_type);
+    const safeAudience = normalizeTruyenThongAudience(audience);
+    const safeStatus = normalizeTruyenThongPostStatus(status || 'draft');
+    const safePublishedAt = normalizePublishedAt(published_at);
+    const safeThumbnailPosition = normalizeTruyenThongThumbnailPosition(thumbnail_position);
+
+    if (!safePostType || !safeAudience || !safeStatus) {
+      return NextResponse.json(
+        { error: 'Loại bài viết, đối tượng xem hoặc trạng thái không hợp lệ' },
+        { status: 400 },
+      );
+    }
+    if (!safePublishedAt) {
+      return NextResponse.json({ error: 'Ngày đăng không hợp lệ' }, { status: 400 });
+    }
+    if (!safeThumbnailPosition) {
+      return NextResponse.json({ error: 'Cấu hình thumbnail không hợp lệ' }, { status: 400 });
+    }
+
+    const safeFeaturedImage = normalizeTruyenThongMediaUrl(featured_image);
+    const safeBannerImage = normalizeTruyenThongMediaUrl(banner_image);
+    if (String(featured_image ?? '').trim() && !safeFeaturedImage) {
+      return NextResponse.json({ error: 'featured_image không hợp lệ' }, { status: 400 });
+    }
+    if (String(banner_image ?? '').trim() && !safeBannerImage) {
+      return NextResponse.json({ error: 'banner_image không hợp lệ' }, { status: 400 });
+    }
+    const finalFeaturedImage = safeFeaturedImage || DEFAULT_TRUYENTHONG_POST_IMAGE;
+    const finalBannerImage = safeBannerImage || finalFeaturedImage;
 
     let processedContent = rawContent;
     try {
@@ -274,9 +335,17 @@ export async function PUT(
         { status: 400 },
       );
     }
+    if (hasInlineDataImage(safeContent)) {
+      return NextResponse.json(
+        { error: 'Ảnh nhúng trực tiếp không được phép. Vui lòng upload ảnh qua editor.' },
+        { status: 400 },
+      );
+    }
 
     const client = await pool.connect();
     try {
+      await ensureTruyenThongThumbnailPositionSchema(client);
+
       const lookup = await findCommunicationPostByIdentifier(client, id);
       if (lookup.invalid) {
         return NextResponse.json({ error: 'Post identifier is invalid' }, { status: 400 });
@@ -288,8 +357,8 @@ export async function PUT(
       const currentPost = lookup.post;
 
       // Lưu URL cũ để xóa sau khi update thành công (chỉ xóa nếu URL thực sự thay đổi)
-      const oldFeaturedImage = (featured_image !== currentPost.featured_image) ? currentPost.featured_image : null;
-      const oldBannerImage = (banner_image !== currentPost.banner_image) ? currentPost.banner_image : null;
+      const oldFeaturedImage = (finalFeaturedImage !== currentPost.featured_image) ? currentPost.featured_image : null;
+      const oldBannerImage = (finalBannerImage !== currentPost.banner_image) ? currentPost.banner_image : null;
 
       let newSlug = currentPost.slug;
       if (safeTitle !== currentPost.title) {
@@ -317,13 +386,13 @@ export async function PUT(
           thumbnail_position = $11, updated_at = NOW()
         WHERE id = $12 RETURNING *`,
         [
-          safeTitle, newSlug, safeDescription, safeContent, featured_image, banner_image,
-          post_type, audience, status, published_at,
-          thumbnail_position || '50% 50%', currentPost.id,
+          safeTitle, newSlug, safeDescription, safeContent, finalFeaturedImage, finalBannerImage,
+          safePostType, safeAudience, safeStatus, safePublishedAt,
+          safeThumbnailPosition, currentPost.id,
         ]
       );
 
-      if (status === 'published' && currentPost.status !== 'published') {
+      if (safeStatus === 'published' && currentPost.status !== 'published') {
         await createNotificationForEveryone({
           title: `Bài viết mới: ${safeTitle}`,
           content: safeDescription,
@@ -337,7 +406,7 @@ export async function PUT(
       // Xóa ảnh cũ trên S3 (chỉ xóa S3, bỏ qua Cloudinary cũ)
       // 1. Xóa thumbnail/banner cũ nếu thay đổi
       if (oldFeaturedImage) deleteImageSilently(oldFeaturedImage);
-      if (oldBannerImage && oldBannerImage !== oldFeaturedImage && oldBannerImage !== banner_image) {
+      if (oldBannerImage && oldBannerImage !== oldFeaturedImage && oldBannerImage !== finalBannerImage) {
         deleteImageSilently(oldBannerImage);
       }
 
@@ -360,7 +429,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const denied = await requireTruyenThongPostAdmin(request as NextRequest);
+    const denied = await requireTruyenThongPostAdminMutation(request as NextRequest);
     if (denied) return denied;
     const client = await pool.connect();
     try {

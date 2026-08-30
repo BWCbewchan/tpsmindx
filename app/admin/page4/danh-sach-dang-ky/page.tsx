@@ -47,6 +47,8 @@ import {
 } from "react";
 import { toast } from "@/lib/app-toast";
 
+const MAX_REGISTRATION_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
+
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -269,14 +271,20 @@ export default function ExamRegistrationListPage() {
   const importAbortRef = useRef<AbortController | null>(null);
   /** Dùng trong beforeunload — closure luôn có % và log mới nhất */
   const importHudRef = useRef({ progress: 0, log: [] as string[] });
-  importHudRef.current = { progress: importProgress, log: importActivityLog };
   const pageRef = useRef(1);
-  pageRef.current = page;
   /** So khớp poll nhẹ với GET đầy đủ — đổi DB thì tự làm mới danh sách */
   const listSyncKeyRef = useRef<string | null>(null);
 
   const teacherDebounced = useDebouncedValue(searchTeacherCode, 380);
   /** Khối / môn: chọn từ danh sách — áp dụng ngay */
+
+  useEffect(() => {
+    importHudRef.current = { progress: importProgress, log: importActivityLog };
+  }, [importProgress, importActivityLog]);
+
+  useEffect(() => {
+    pageRef.current = page;
+  }, [page]);
 
   useEffect(() => {
     let cancelled = false;
@@ -661,6 +669,10 @@ export default function ExamRegistrationListPage() {
     }
     if (file.size === 0) {
       toast.error("File rỗng — không có dữ liệu để import.");
+      return;
+    }
+    if (file.size > MAX_REGISTRATION_IMPORT_FILE_BYTES) {
+      toast.error("File import tối đa 5MB.");
       return;
     }
 

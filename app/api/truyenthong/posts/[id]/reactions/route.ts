@@ -1,6 +1,8 @@
 import pool from '@/lib/db';
-import { verifySessionCookieValue } from '@/lib/session-cookie';
-import { findCommunicationPostByIdentifier } from '@/lib/truyenthong-posts';
+import {
+    findCommunicationPostByIdentifier,
+    resolveTruyenThongPostAdmin,
+} from '@/lib/truyenthong-posts';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(
@@ -9,6 +11,7 @@ export async function GET(
 ) {
     try {
         const { id } = await params;
+        const adminAuth = await resolveTruyenThongPostAdmin(request);
 
         const client = await pool.connect();
         try {
@@ -23,12 +26,8 @@ export async function GET(
             }
 
             const post = lookup.post;
-            if (post.status !== 'published') {
-                const rawSession = request.cookies.get('tps_session')?.value;
-                const session = rawSession ? await verifySessionCookieValue(rawSession) : null;
-                if (!session?.canAdminPortal) {
-                    return NextResponse.json({ error: 'Not found' }, { status: 404 });
-                }
+            if (post.status !== 'published' && !adminAuth) {
+                return NextResponse.json({ error: 'Not found' }, { status: 404 });
             }
 
             const postId = post.id;
@@ -49,24 +48,27 @@ export async function GET(
                 reaction_counts[r.reaction] = parseInt(r.count);
             });
 
-            // Danh sách tất cả người dùng — enrich tên từ nhiều nguồn
+            // Danh sách người thả cảm xúc, enrich tên từ nhiều nguồn cũ/mới.
             const usersResult = await client.query(
                 `SELECT cl.user_id,
                     COALESCE(cl.reaction, 'like') AS reaction,
                     COALESCE(
-                        cl.user_name,
+                        NULLIF(TRIM(cl.user_name), ''),
+                        (SELECT NULLIF(TRIM(au.display_name), '')
+                         FROM app_users au
+                         WHERE LOWER(TRIM(au.email)) = LOWER(TRIM(cl.user_id))
+                           AND au.is_active = true
+                         LIMIT 1),
+                        (SELECT NULLIF(TRIM(COALESCE(t.full_name, t."Full name")), '')
+                         FROM teachers t
+                         WHERE LOWER(TRIM(COALESCE(t.work_email, t."Work email", ''))) = LOWER(TRIM(cl.user_id))
+                         LIMIT 1),
                         (SELECT tc.user_name FROM truyenthong_comments tc
-                         WHERE tc.user_id = cl.user_id AND tc.user_name IS NOT NULL LIMIT 1),
+                         WHERE tc.user_id = cl.user_id AND NULLIF(TRIM(tc.user_name), '') IS NOT NULL LIMIT 1),
                         (SELECT pc.user_name FROM post_comments pc
-                         WHERE pc.user_id = cl.user_id AND pc.user_name IS NOT NULL LIMIT 1)
-                    ) AS user_name,
-                    -- Lấy email để lookup teachers
-                    COALESCE(
-                        (SELECT tc.user_email FROM truyenthong_comments tc
-                         WHERE tc.user_id = cl.user_id AND tc.user_email IS NOT NULL LIMIT 1),
-                        (SELECT pc.user_email FROM post_comments pc
-                         WHERE pc.user_id = cl.user_id AND pc.user_email IS NOT NULL LIMIT 1)
-                    ) AS user_email
+                         WHERE pc.user_id = cl.user_id AND NULLIF(TRIM(pc.user_name), '') IS NOT NULL LIMIT 1),
+                        NULLIF(split_part(cl.user_id, '@', 1), '')
+                    ) AS user_name
                  FROM communication_likes cl
                  WHERE cl.post_id = $1
                  ORDER BY cl.created_at DESC
@@ -75,42 +77,38 @@ export async function GET(
             );
 
             let users = usersResult.rows as Array<{
-                user_id: string; reaction: string;
-                user_name: string | null; user_email: string | null
+                user_id: string;
+                reaction: string;
+                user_name: string | null;
             }>;
 
-            // Enrich từ teachers table qua email
-            const nullUsers = users.filter(u => !u.user_name && u.user_email);
-            if (nullUsers.length > 0) {
-                const emails = nullUsers.map(u => u.user_email!);
-                const teacherResult = await client.query(
-                    `SELECT work_email, full_name FROM teachers
-                     WHERE work_email = ANY($1) AND full_name IS NOT NULL`,
-                    [emails]
-                );
-                const teacherMap: Record<string, string> = {};
-                teacherResult.rows.forEach((t: any) => {
-                    teacherMap[t.work_email] = t.full_name;
-                });
+            users = users.map((u) => ({
+                ...u,
+                user_name: typeof u.user_name === 'string' ? u.user_name.trim() || null : null,
+            }));
 
-                users = users.map(u => ({
-                    ...u,
-                    user_name: u.user_name || (u.user_email ? teacherMap[u.user_email] || null : null),
-                }));
-
-                // Backfill vào DB
-                for (const u of users) {
-                    if (u.user_name && !usersResult.rows.find((r: any) => r.user_id === u.user_id && r.user_name)) {
-                        client.query(
-                            'UPDATE communication_likes SET user_name = $1 WHERE user_id = $2 AND user_name IS NULL',
-                            [u.user_name, u.user_id]
-                        ).catch(() => {});
-                    }
+            // Backfill tên để các lần sau không phải enrich lại quá nhiều.
+            for (const u of users) {
+                if (u.user_name) {
+                    client.query(
+                        `UPDATE communication_likes
+                         SET user_name = $1
+                         WHERE post_id = $2
+                           AND user_id = $3
+                           AND NULLIF(TRIM(user_name), '') IS NULL`,
+                        [u.user_name, postId, u.user_id],
+                    ).catch(() => {});
                 }
             }
 
+            const publicUsers = users.map((user, index) => ({
+                user_id: `reaction-user-${index + 1}`,
+                user_name: user.user_name,
+                reaction: user.reaction,
+            }));
+
             return NextResponse.json(
-                { like_count, reaction_counts, users },
+                { like_count, reaction_counts, users: publicUsers },
                 { headers: { 'Cache-Control': 'no-store' } }
             );
         } finally {

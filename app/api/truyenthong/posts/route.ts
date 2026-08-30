@@ -1,29 +1,33 @@
 import pool from '@/lib/db';
 import { isDegradedDatabaseQueryError } from '@/lib/db-unavailable';
 import { sanitizeHtml, sanitizeText } from '@/lib/server-sanitize-html';
-import { TPS_SESSION_COOKIE, verifySessionCookieValue } from '@/lib/session-cookie';
-import { createSupabaseS3Client, isSupabaseS3Configured } from '@/lib/supabase-s3';
-import { requireTruyenThongPostAdmin } from '@/lib/truyenthong-posts';
+import { isSupabaseS3Configured } from '@/lib/supabase-s3';
+import {
+  MAX_TRUYENTHONG_IMAGE_BYTES,
+  TRUYENTHONG_CONTENT_IMAGE_BUCKET,
+  hasAllowedTruyenThongImageSignature,
+  isAllowedTruyenThongImageContentType,
+  uploadTruyenThongImageBuffer,
+} from '@/lib/truyenthong-image-upload';
+import {
+  DEFAULT_TRUYENTHONG_POST_IMAGE,
+  MAX_TRUYENTHONG_CONTENT_LENGTH,
+  MAX_TRUYENTHONG_DESCRIPTION_LENGTH,
+  MAX_TRUYENTHONG_TITLE_LENGTH,
+  ensureTruyenThongThumbnailPositionSchema,
+  normalizeTruyenThongAudience,
+  normalizeTruyenThongMediaUrl,
+  normalizeTruyenThongPostStatus,
+  normalizeTruyenThongPostType,
+  normalizeTruyenThongThumbnailPosition,
+  requireTruyenThongPostAdminMutation,
+  resolveTruyenThongPostAdmin,
+} from '@/lib/truyenthong-posts';
 import { generateSlug } from '@/lib/utils';
 import { createNotificationForEveryone } from '@/lib/notification-service';
-import { CreateBucketCommand, HeadBucketCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { NextRequest, NextResponse } from 'next/server';
 
-const BUCKET_NAME = 'mindx-posts-content';
-
-async function ensureBucket() {
-  if (!isSupabaseS3Configured()) return;
-  const client = createSupabaseS3Client();
-  try {
-    await client.send(new HeadBucketCommand({ Bucket: BUCKET_NAME }));
-  } catch {
-    await client.send(new CreateBucketCommand({ Bucket: BUCKET_NAME }));
-  }
-}
-
-function makeProxyUrl(bucket: string, key: string): string {
-  return `/api/storage-image?bucket=${encodeURIComponent(bucket)}&key=${encodeURIComponent(key)}`;
-}
+const MAX_BASE64_IMAGE_CHARS = Math.ceil((MAX_TRUYENTHONG_IMAGE_BYTES * 4) / 3) + 1024;
 
 /**
  * Upload base64 image lên Supabase S3 và trả về proxy URL.
@@ -35,23 +39,31 @@ async function uploadBase64ToS3(base64Data: string): Promise<string> {
   const match = base64Data.match(/^data:([^;]+);base64,(.+)$/);
   if (!match) return base64Data;
 
-  const mimeType = match[1];
-  const buffer = Buffer.from(match[2], 'base64');
-  const ext = mimeType.split('/')[1]?.replace('jpeg', 'jpg') || 'png';
+  const mimeType = match[1].trim().toLowerCase();
+  const base64Payload = match[2].replace(/\s/g, '');
+  if (
+    !isAllowedTruyenThongImageContentType(mimeType) ||
+    base64Payload.length > MAX_BASE64_IMAGE_CHARS
+  ) {
+    return base64Data;
+  }
 
-  const client = createSupabaseS3Client();
-  const key = `post-images/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  const buffer = Buffer.from(base64Payload, 'base64');
+  if (
+    buffer.length <= 0 ||
+    buffer.length > MAX_TRUYENTHONG_IMAGE_BYTES ||
+    !hasAllowedTruyenThongImageSignature(buffer, mimeType)
+  ) {
+    return base64Data;
+  }
 
-  await client.send(
-    new PutObjectCommand({
-      Bucket: BUCKET_NAME,
-      Key: key,
-      Body: buffer,
-      ContentType: mimeType,
-    })
-  );
-
-  return makeProxyUrl(BUCKET_NAME, key);
+  const uploaded = await uploadTruyenThongImageBuffer({
+    bucket: TRUYENTHONG_CONTENT_IMAGE_BUCKET,
+    keyPrefix: 'post-images',
+    buffer,
+    contentType: mimeType,
+  });
+  return uploaded.url;
 }
 
 async function processBase64Images(htmlContent: string): Promise<string> {
@@ -85,23 +97,43 @@ async function processBase64Images(htmlContent: string): Promise<string> {
   return newContent;
 }
 
+function normalizePublishedAt(value: unknown): Date | null {
+  const raw = String(value ?? '').trim();
+  if (!raw) return new Date();
+  const date = new Date(raw);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function hasInlineDataImage(htmlContent: string): boolean {
+  return /\bsrc\s*=\s*["']data:image\//i.test(htmlContent);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const type = searchParams.get('type');
-    const status = searchParams.get('status');
-    const search = searchParams.get('search');
+    const type = (searchParams.get('type') || '').trim();
+    const status = (searchParams.get('status') || '').trim();
+    const search = (searchParams.get('search') || '').trim().slice(0, 120);
     const sort = searchParams.get('sort');
     const requestedLimit = Number.parseInt(searchParams.get('limit') || '', 10);
     const limit = Number.isFinite(requestedLimit)
       ? Math.min(Math.max(requestedLimit, 1), 100)
       : null;
-    const sessionToken = request.cookies.get(TPS_SESSION_COOKIE)?.value;
-    const session = sessionToken
-      ? await verifySessionCookieValue(sessionToken)
-      : null;
-    const canSeeDrafts = session?.canAdminPortal === true;
-    const effectiveStatus = canSeeDrafts ? status : 'published';
+    const canSeeDrafts = Boolean(await resolveTruyenThongPostAdmin(request));
+    let effectiveStatus: string | null = 'published';
+    if (canSeeDrafts) {
+      if (!status) {
+        effectiveStatus = null;
+      } else if (status === 'all') {
+        effectiveStatus = 'all';
+      } else {
+        const normalizedStatus = normalizeTruyenThongPostStatus(status);
+        if (!normalizedStatus) {
+          return NextResponse.json({ error: 'Post status is invalid' }, { status: 400 });
+        }
+        effectiveStatus = normalizedStatus;
+      }
+    }
     const includeCommentCounts =
       canSeeDrafts && searchParams.get('include') === 'comment_counts';
 
@@ -151,8 +183,12 @@ WHERE 1=1`;
     let paramIndex = 1;
 
     if (type && type !== 'all') {
+      const normalizedType = normalizeTruyenThongPostType(type);
+      if (!normalizedType) {
+        return NextResponse.json({ error: 'Post type is invalid' }, { status: 400 });
+      }
       queryText += ` AND c.post_type = $${paramIndex}`;
-      queryParams.push(type);
+      queryParams.push(normalizedType);
       paramIndex++;
     }
 
@@ -212,10 +248,13 @@ WHERE 1=1`;
 
 export async function POST(request: NextRequest) {
   try {
-    const denied = await requireTruyenThongPostAdmin(request);
+    const denied = await requireTruyenThongPostAdminMutation(request);
     if (denied) return denied;
 
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Request body không hợp lệ' }, { status: 400 });
+    }
     const {
       title,
       description,
@@ -229,9 +268,13 @@ export async function POST(request: NextRequest) {
       thumbnail_position,
     } = body;
 
-    const normalizedTitle = typeof title === 'string' ? title.trim() : '';
+    const normalizedTitle = typeof title === 'string'
+      ? title.trim().slice(0, MAX_TRUYENTHONG_TITLE_LENGTH)
+      : '';
     const normalizedDescription =
-      typeof description === 'string' ? description.trim() : '';
+      typeof description === 'string'
+        ? description.trim().slice(0, MAX_TRUYENTHONG_DESCRIPTION_LENGTH)
+        : '';
     const rawContent = typeof content === 'string' ? content : '';
 
     if (!normalizedTitle || !normalizedDescription || !rawContent) {
@@ -240,9 +283,42 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+    if (rawContent.length > MAX_TRUYENTHONG_CONTENT_LENGTH) {
+      return NextResponse.json(
+        { error: 'Nội dung bài viết vượt quá dung lượng cho phép' },
+        { status: 413 },
+      );
+    }
 
-    // Đảm bảo bucket tồn tại trước khi xử lý ảnh
-    await ensureBucket();
+    const safePostType = normalizeTruyenThongPostType(post_type);
+    const safeAudience = normalizeTruyenThongAudience(audience);
+    const safeStatus = normalizeTruyenThongPostStatus(status || 'draft');
+    const safePublishedAt = normalizePublishedAt(published_at);
+    const safeThumbnailPosition = normalizeTruyenThongThumbnailPosition(thumbnail_position);
+
+    if (!safePostType || !safeAudience || !safeStatus) {
+      return NextResponse.json(
+        { error: 'Loại bài viết, đối tượng xem hoặc trạng thái không hợp lệ' },
+        { status: 400 },
+      );
+    }
+    if (!safePublishedAt) {
+      return NextResponse.json({ error: 'Ngày đăng không hợp lệ' }, { status: 400 });
+    }
+    if (!safeThumbnailPosition) {
+      return NextResponse.json({ error: 'Cấu hình thumbnail không hợp lệ' }, { status: 400 });
+    }
+
+    const safeFeaturedImage = normalizeTruyenThongMediaUrl(featured_image);
+    const safeBannerImage = normalizeTruyenThongMediaUrl(banner_image);
+    if (String(featured_image ?? '').trim() && !safeFeaturedImage) {
+      return NextResponse.json({ error: 'featured_image không hợp lệ' }, { status: 400 });
+    }
+    if (String(banner_image ?? '').trim() && !safeBannerImage) {
+      return NextResponse.json({ error: 'banner_image không hợp lệ' }, { status: 400 });
+    }
+    const finalFeaturedImage = safeFeaturedImage || DEFAULT_TRUYENTHONG_POST_IMAGE;
+    const finalBannerImage = safeBannerImage || finalFeaturedImage;
 
     let processedContent = rawContent;
     try {
@@ -261,9 +337,17 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
+    if (hasInlineDataImage(safeContent)) {
+      return NextResponse.json(
+        { error: 'Ảnh nhúng trực tiếp không được phép. Vui lòng upload ảnh qua editor.' },
+        { status: 400 },
+      );
+    }
 
     const client = await pool.connect();
     try {
+      await ensureTruyenThongThumbnailPositionSchema(client);
+
       const duplicateCheck = await client.query('SELECT 1 FROM communications WHERE title = $1', [safeTitle]);
       if (duplicateCheck.rows.length > 0) {
         return NextResponse.json({ error: 'Tiêu đề bài viết đã tồn tại' }, { status: 409 });
@@ -284,13 +368,13 @@ export async function POST(request: NextRequest) {
           post_type, audience, status, published_at, thumbnail_position
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
         [
-          safeTitle, slug, safeDescription, safeContent, featured_image, banner_image,
-          post_type, audience, status, published_at || new Date(),
-          thumbnail_position || '50% 50%',
+          safeTitle, slug, safeDescription, safeContent, finalFeaturedImage, finalBannerImage,
+          safePostType, safeAudience, safeStatus, safePublishedAt,
+          safeThumbnailPosition,
         ]
       );
 
-      if (status === 'published') {
+      if (safeStatus === 'published') {
         await createNotificationForEveryone({
           title: `Bài viết mới: ${safeTitle}`,
           content: safeDescription,

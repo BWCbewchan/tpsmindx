@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import pool from '@/lib/db'
 import { requireCommunicationActor } from '@/lib/communication-actor'
+import { sanitizeText } from '@/lib/server-sanitize-html'
+
+const MAX_COMMENT_CONTENT_LENGTH = 2000
+
+function normalizeCommentId(value: string): number | null {
+    if (!/^\d+$/.test(value.trim())) return null
+    const parsed = Number.parseInt(value.trim(), 10)
+    return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null
+}
+
+function normalizeCommentContent(value: unknown): string {
+    return sanitizeText(String(value ?? '')).slice(0, MAX_COMMENT_CONTENT_LENGTH)
+}
 
 // Edit comment
 export async function PUT(
@@ -9,12 +22,16 @@ export async function PUT(
 ) {
     try {
         const { commentId } = await params
+        const safeCommentId = normalizeCommentId(commentId)
+        if (!safeCommentId) return NextResponse.json({ error: 'Comment id is invalid' }, { status: 400 })
+
         const actor = await requireCommunicationActor(request)
         if (!actor.ok) return actor.response
 
-        const { content } = await request.json()
+        const { content } = await request.json().catch(() => ({}))
+        const safeContent = normalizeCommentContent(content)
 
-        if (!content?.trim()) {
+        if (!safeContent) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
         }
 
@@ -26,7 +43,7 @@ export async function PUT(
              RETURNING 
                 id, content,
                 to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') as updated_at`,
-            [content.trim(), commentId, actor.userId]
+            [safeContent, safeCommentId, actor.userId]
         )
 
         if (result.rows.length === 0) {
@@ -40,8 +57,7 @@ export async function PUT(
     } catch (error) {
         console.error('Edit comment error:', error)
         return NextResponse.json({ 
-            error: 'Failed to edit comment',
-            details: error instanceof Error ? error.message : 'Unknown error'
+            error: 'Failed to edit comment'
         }, { status: 500 })
     }
 }
@@ -53,6 +69,9 @@ export async function DELETE(
 ) {
     try {
         const { commentId } = await params
+        const safeCommentId = normalizeCommentId(commentId)
+        if (!safeCommentId) return NextResponse.json({ error: 'Comment id is invalid' }, { status: 400 })
+
         const actor = await requireCommunicationActor(request)
         if (!actor.ok) return actor.response
         
@@ -61,13 +80,13 @@ export async function DELETE(
             // Admin can delete any comment from truyenthong_comments
             result = await pool.query(
                 `DELETE FROM truyenthong_comments WHERE id = $1 RETURNING id`,
-                [commentId]
+                [safeCommentId]
             )
         } else {
             // Regular user can only delete their own comments
             result = await pool.query(
                 `DELETE FROM truyenthong_comments WHERE id = $1 AND user_id = $2 RETURNING id`,
-                [commentId, actor.userId]
+                [safeCommentId, actor.userId]
             )
         }
 
@@ -79,8 +98,7 @@ export async function DELETE(
     } catch (error) {
         console.error('Delete comment error:', error)
         return NextResponse.json({ 
-            error: 'Failed to delete comment',
-            details: error instanceof Error ? error.message : 'Unknown error'
+            error: 'Failed to delete comment'
         }, { status: 500 })
     }
 }
@@ -92,6 +110,9 @@ export async function PATCH(
 ) {
     try {
         const { commentId } = await params
+        const safeCommentId = normalizeCommentId(commentId)
+        if (!safeCommentId) return NextResponse.json({ error: 'Comment id is invalid' }, { status: 400 })
+
         const actor = await requireCommunicationActor(request)
         if (!actor.ok) return actor.response
         if (!actor.isAdmin) {
@@ -108,7 +129,7 @@ export async function PATCH(
              SET hidden = $1 
              WHERE id = $2
              RETURNING id, hidden`,
-            [hiddenFlag, commentId]
+            [hiddenFlag, safeCommentId]
         )
 
         if (result.rows.length === 0) {
@@ -122,8 +143,7 @@ export async function PATCH(
     } catch (error) {
         console.error('Toggle hide comment error:', error)
         return NextResponse.json({ 
-            error: 'Failed to toggle hide comment',
-            details: error instanceof Error ? error.message : 'Unknown error'
+            error: 'Failed to toggle hide comment'
         }, { status: 500 })
     }
 }

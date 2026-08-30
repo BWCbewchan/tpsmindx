@@ -23,17 +23,26 @@ const LMS_EXCEL_HEADERS = [
   'Correct Answer',
 ];
 
+const MAX_IMPORT_FILE_BYTES = 10 * 1024 * 1024;
+
 export async function POST(request: NextRequest) {
   try {
     const authGate = await requireBearerAdminOrSuperMutation(request);
     if (!authGate.ok) return authGate.response;
 
     const formData = await request.formData();
-    const file = formData.get('file') as File;
+    const uploadedFile = formData.get('file');
     const assignmentId = formData.get('assignment_id') as string;
 
-    if (!file) {
+    if (!uploadedFile || typeof uploadedFile === 'string') {
       return NextResponse.json({ success: false, error: 'KhÃ´ng tÃ¬m tháº¥y file' }, { status: 400 });
+    }
+    const file = uploadedFile;
+    if (file.size <= 0 || file.size > MAX_IMPORT_FILE_BYTES) {
+      return NextResponse.json({ success: false, error: 'File import tá»‘i Ä‘a 10MB' }, { status: 400 });
+    }
+    if (!isSupportedImportFile(file)) {
+      return NextResponse.json({ success: false, error: 'Chá»‰ há»— trá»£ file CSV, XLS hoáº·c XLSX' }, { status: 400 });
     }
     if (!assignmentId) {
       return NextResponse.json({ success: false, error: 'Thiáº¿u assignment_id' }, { status: 400 });
@@ -69,8 +78,11 @@ export async function POST(request: NextRequest) {
         const values = rows[i];
         if (values.length === 0 || values.every(v => !v.trim())) continue;
 
-        const row: Record<string, string> = {};
-        headers.forEach((header, index) => { row[header] = values[index] || ''; });
+        const row = Object.create(null) as Record<string, string>;
+        EXPECTED_HEADERS.forEach((header) => {
+          const index = headers.indexOf(header);
+          row[header] = index >= 0 ? values[index] || '' : '';
+        });
 
         if (!row.question_text?.trim()) {
           errors.push(`DÃ²ng ${i + 2}: Thiáº¿u ná»™i dung cÃ¢u há»i`);
@@ -345,6 +357,11 @@ async function parseImportDocument(file: File): Promise<{ headers: string[]; row
 function isExcelFile(file: File): boolean {
   const fileName = file.name.toLowerCase();
   return fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
+}
+
+function isSupportedImportFile(file: File): boolean {
+  const fileName = file.name.toLowerCase();
+  return fileName.endsWith('.csv') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls');
 }
 
 function matchesLmsExcelTemplate(headers: string[]): boolean {

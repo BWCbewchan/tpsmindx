@@ -24,10 +24,11 @@ export async function GET(request: NextRequest) {
           status TEXT DEFAULT 'draft',
           published_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           view_count INTEGER DEFAULT 0,
-          like_count INTEGER DEFAULT 0,
-          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-        );
+	          like_count INTEGER DEFAULT 0,
+	          thumbnail_position TEXT DEFAULT '50% 50%',
+	          created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+	          updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+	        );
 
         -- Add slug column if it doesn't exist (for existing tables)
         DO $$
@@ -40,14 +41,20 @@ export async function GET(request: NextRequest) {
         END $$;
 
         -- Add like_count column if it doesn't exist (for existing tables)
-        DO $$
-        BEGIN
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'communications' AND column_name = 'like_count') THEN
-                ALTER TABLE communications ADD COLUMN like_count INTEGER DEFAULT 0;
-            END IF;
-        END $$;
+	        DO $$
+	        BEGIN
+	            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'communications' AND column_name = 'like_count') THEN
+	                ALTER TABLE communications ADD COLUMN like_count INTEGER DEFAULT 0;
+	            END IF;
+	        END $$;
 
-        -- Create likes tracking table
+	        -- Ensure thumbnail_position can store crop JSON, not only old "50% 50%" values
+	        ALTER TABLE communications
+	          ADD COLUMN IF NOT EXISTS thumbnail_position TEXT DEFAULT '50% 50%';
+	        ALTER TABLE communications
+	          ALTER COLUMN thumbnail_position TYPE TEXT;
+	
+	        -- Create likes tracking table
         CREATE TABLE IF NOT EXISTS communication_likes (
           id SERIAL PRIMARY KEY,
           post_id INTEGER REFERENCES communications(id) ON DELETE CASCADE,

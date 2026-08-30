@@ -11,6 +11,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from "react"
 import { toast } from '@/lib/app-toast'
+import { authHeaders } from '@/lib/auth-headers'
+import { useAuth } from '@/lib/auth-context'
 
 // Dynamic import for RichTextEditor to avoid SSR issues
 const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), {
@@ -20,6 +22,7 @@ const RichTextEditor = dynamic(() => import('@/components/RichTextEditor'), {
 
 export default function CreatePostPage() {
     const router = useRouter()
+    const { token } = useAuth()
     
     const [loading, setLoading] = useState(false)
     const [formData, setFormData] = useState({
@@ -73,15 +76,17 @@ export default function CreatePostPage() {
     }, [thumbnailPreview, previousThumbnail, previousThumbnailFile])
 
     const handleImageFile = (file: File) => {
+        const allowedImageTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+
         // Validate file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
+        if (file.size <= 0 || file.size > 5 * 1024 * 1024) {
             toast.error('Kích thước ảnh không được vượt quá 5MB')
             return
         }
 
         // Validate file type
-        if (!file.type.startsWith('image/')) {
-            toast.error('Vui lòng chọn file ảnh')
+        if (!allowedImageTypes.includes(file.type.trim().toLowerCase())) {
+            toast.error('Vui lòng chọn ảnh JPG, PNG, WEBP hoặc GIF')
             return
         }
 
@@ -120,14 +125,17 @@ export default function CreatePostPage() {
         const formData = new FormData()
         formData.append('image', file)
 
-        const res = await fetch('/api/upload-thumbnail', {
+        const res = await fetch('/api/truyenthong/upload-thumbnail', {
             method: 'POST',
+            headers: authHeaders(token),
             body: formData
         })
 
-        if (!res.ok) throw new Error('Failed to upload image')
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data.success || !data.url) {
+            throw new Error(data.error || 'Failed to upload image')
+        }
 
-        const data = await res.json()
         return data.url
     }
 
@@ -174,18 +182,20 @@ export default function CreatePostPage() {
             const res = await fetch('/api/truyenthong/posts', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...authHeaders(token),
                 },
                 body: JSON.stringify(payload)
             })
 
+            const data = await res.json().catch(() => ({}))
+
             if (res.status === 409) {
-                const data = await res.json()
                 toast.error(data.error || 'Tiêu đề bài viết đã tồn tại')
                 return
             }
 
-            if (!res.ok) throw new Error('Failed to create post')
+            if (!res.ok) throw new Error(data.error || 'Failed to create post')
 
             toast.success('Bài viết đã được tạo thành công!')
             router.push('/admin/truyenthong')
@@ -282,6 +292,7 @@ export default function CreatePostPage() {
                                             if (errors.content) setErrors({ ...errors, content: '' })
                                         }}
                                         error={errors.content}
+                                        imageUploadEndpoint="/api/truyenthong/upload-image"
                                     />
                                     {errors.content && (
                                         <div className="flex items-center gap-1.5 text-red-500 mt-1">
@@ -370,14 +381,14 @@ export default function CreatePostPage() {
                                                         <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono shadow-sm">V</kbd>
                                                         {' để dán ảnh'}
                                                     </p>
-                                                    <p className="text-xs text-gray-400">JPG, PNG, GIF (tối đa 5MB)</p>
+                                                    <p className="text-xs text-gray-400">JPG, PNG, WEBP, GIF (tối đa 5MB)</p>
                                                 </div>
                                             </div>
                                         )}
                                         <Input
                                             id="thumbnail"
                                             type="file"
-                                            accept="image/*"
+                                            accept="image/jpeg,image/png,image/webp,image/gif,.jpg,.jpeg,.png,.webp,.gif"
                                             onChange={e => {
                                                 const file = e.target.files?.[0]
                                                 if (file) handleImageFile(file)

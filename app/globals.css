@@ -1086,12 +1086,13 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
   transition: all 0.15s;
   pointer-events: all !important;
+  touch-action: none;
+  user-select: none;
 }
 
 .ProseMirror .image-wrapper .resize-handle:hover {
   background: #2563eb;
   transform: scale(1.25);
-  cursor: crosshair;
 }
 
 /* Consistent pointer cursor for interactive elements (excluding text inputs) */

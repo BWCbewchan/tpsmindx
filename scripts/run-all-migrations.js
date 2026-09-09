@@ -308,8 +308,10 @@ async function main() {
                 { name: 'V103_hr_candidate_pedagogy_certificate_url', file: '../migrations/add_hr_candidate_pedagogy_certificate_url.sql' },
                 { name: 'V104_k12_leader_documents', file: '../migrations/V104_k12_leader_documents.sql' },
                 { name: 'V105_quan_ly_qc', file: '../migrations/create_quan_ly_qc.sql' },
-                { name: 'V106_quan_ly_qc_teacher_account_and_scaled_score', file: '../migrations/update_quan_ly_qc_teacher_account_and_scaled_score.sql' }
-        ];
+                { name: 'V106_quan_ly_qc_teacher_account_and_scaled_score', file: '../migrations/update_quan_ly_qc_teacher_account_and_scaled_score.sql' },
+                { name: 'V107_trial_checkout_raw', file: '../migrations/V107_trial_checkout_raw.sql' },
+                { name: 'V108_trial_checkout_excel_view', file: '../migrations/V108_trial_checkout_excel_view.sql' }
+            ];
 
 
     let appliedCount = 0;

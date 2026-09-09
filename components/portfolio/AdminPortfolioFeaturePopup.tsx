@@ -48,7 +48,7 @@ const featureHighlights = [
   },
   {
     title: 'Hồ sơ năng lực',
-    description: 'Áp dụng dữ liệu từ LMS, chỉnh sửa và xuất bản Portfolio cá nhân của học viên',
+    description: 'Áp dụng dữ liệu từ LMS để tạo và xuất bản Portfolio cá nhân của học viên',
     icon: LayoutTemplate,
     detailIcon: IdCard,
     accent: 'text-mindx-red bg-rose-50 border-rose-100',
@@ -58,7 +58,7 @@ const featureHighlights = [
   },
   {
     title: 'Quản lý & Theo dõi',
-    description: 'Lưu trữ, xuất bản công khai, chỉnh sửa, xóa các Portfolio',
+    description: 'Theo dõi trạng thái, mở bản public và quản lý hồ sơ theo quyền tài khoản',
     icon: FileStack,
     detailIcon: ShieldCheck,
     accent: 'text-emerald-700 bg-emerald-50 border-emerald-100',
@@ -407,7 +407,7 @@ export function AdminPortfolioFeaturePopup() {
               <div>
                 <h4 className="text-sm font-black text-slate-950">Các tính năng mới</h4>
                 <p className="mt-1 text-xs font-medium leading-5 text-slate-500">
-                  Admin có thể kiểm tra, bổ sung nội dung và chọn trạng thái nháp hoặc xuất bản trước khi chia sẻ.
+                  Người phụ trách có thể kiểm tra nội dung và chọn trạng thái phù hợp trước khi chia sẻ.
                 </p>
               </div>
             </div>

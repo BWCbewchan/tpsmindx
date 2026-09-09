@@ -1,5 +1,5 @@
 import { requireBearerSession } from '@/lib/datasource-api-auth';
-import { isPortfolioAllowedUser } from '@/lib/menu-permissions';
+import { isPortfolioEditorUser } from '@/lib/menu-permissions';
 import {
   buildPortfolioDataFromLms,
   getPortfolioById,
@@ -22,9 +22,9 @@ export async function GET(
     const auth = await requireBearerSession(req);
     if (auth.ok === false) return auth.response;
 
-    if (!isPortfolioAllowedUser(auth.resolvedAccess)) {
+    if (!isPortfolioEditorUser(auth.resolvedAccess)) {
       return NextResponse.json(
-        { success: false, error: 'Chỉ tài khoản TEGL, TEGL+, TM, CL, RL, AL, LEAD, TE, TC hoặc super_admin mới có quyền truy cập.' },
+        { success: false, error: 'Tài khoản này chỉ có quyền xem portfolio, không có quyền lưu chỉnh sửa.' },
         { status: 403 },
       );
     }
@@ -90,9 +90,9 @@ export async function PUT(
     const auth = await requireBearerSession(req);
     if (auth.ok === false) return auth.response;
 
-    if (!isPortfolioAllowedUser(auth.resolvedAccess)) {
+    if (!isPortfolioEditorUser(auth.resolvedAccess)) {
       return NextResponse.json(
-        { success: false, error: 'Chỉ tài khoản TEGL, TEGL+, TM, CL, RL, AL, LEAD, TE, TC hoặc super_admin mới có quyền truy cập.' },
+        { success: false, error: 'Tài khoản này chỉ có quyền xem portfolio, không có quyền lưu chỉnh sửa.' },
         { status: 403 },
       );
     }

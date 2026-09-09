@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
 
     const result = await listPortfolios({
       search: params.get('search') || undefined,
+      track: params.get('track') || undefined,
       pageIndex: Number(params.get('pageIndex') || 0),
       itemsPerPage: Number(params.get('itemsPerPage') || 25),
       centreNames,

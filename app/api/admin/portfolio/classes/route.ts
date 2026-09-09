@@ -1,6 +1,6 @@
 import { requireBearerSession } from '@/lib/datasource-api-auth';
 import { getAccessibleCenters } from '@/lib/center-access';
-import { isPortfolioAllowedUser } from '@/lib/menu-permissions';
+import { isPortfolioEditorUser } from '@/lib/menu-permissions';
 import { fetchClassesForQC } from '@/lib/portfolio/service';
 import {
   getOrRefreshLmsToken,
@@ -22,9 +22,9 @@ export async function GET(req: NextRequest) {
     const auth = await requireBearerSession(req);
     if (auth.ok === false) return auth.response;
 
-    if (!isPortfolioAllowedUser(auth.resolvedAccess)) {
+    if (!isPortfolioEditorUser(auth.resolvedAccess)) {
       return NextResponse.json(
-        { success: false, error: 'Chỉ tài khoản TEGL, TEGL+, TM, CL, RL, AL, LEAD, TE, TC hoặc super_admin mới có quyền truy cập.' },
+        { success: false, error: 'Tài khoản này chỉ có quyền xem portfolio, không có quyền quản lý nộp SPCK.' },
         { status: 403 },
       );
     }

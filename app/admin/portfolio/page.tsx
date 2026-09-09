@@ -3,6 +3,7 @@
 import type { StudentPortfolioListItem } from '@/lib/student-portfolio/types';
 import { authHeaders } from '@/lib/auth-headers';
 import { useAuth } from '@/lib/auth-context';
+import { isPortfolioReadOnlyLeaderUser } from '@/lib/menu-permissions';
 import { Edit3, Eye, Loader2, Search, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
@@ -17,6 +18,15 @@ type PortfolioListResponse = {
     itemsPerPage?: number;
   };
 };
+
+type TrackFilter = 'all' | 'coding' | 'robotics' | 'art';
+
+const trackOptions: Array<{ value: TrackFilter; label: string }> = [
+  { value: 'all', label: 'Tất cả khối' },
+  { value: 'coding', label: 'Coding' },
+  { value: 'robotics', label: 'Robotics' },
+  { value: 'art', label: 'Art' },
+];
 
 function formatDate(value?: string) {
   if (!value) return '';
@@ -39,10 +49,11 @@ function builderHref(item: StudentPortfolioListItem) {
 }
 
 export default function PortfolioManagementPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [items, setItems] = useState<StudentPortfolioListItem[]>([]);
   const [searchText, setSearchText] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
+  const [trackFilter, setTrackFilter] = useState<TrackFilter>('all');
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | number | null>(null);
   const [error, setError] = useState('');
@@ -51,9 +62,10 @@ export default function PortfolioManagementPage() {
     pageIndex: 0,
     itemsPerPage: 25,
   });
+  const isReadOnlyLeader = useMemo(() => isPortfolioReadOnlyLeaderUser(user), [user]);
 
   const fetchPortfolios = useCallback(
-    async (pageIndex = 0, search = appliedSearch) => {
+    async (pageIndex = 0, search = appliedSearch, track = trackFilter) => {
       setLoading(true);
       setError('');
       try {
@@ -62,6 +74,7 @@ export default function PortfolioManagementPage() {
           itemsPerPage: String(pagination.itemsPerPage),
         });
         if (search.trim()) params.set('search', search.trim());
+        if (track !== 'all') params.set('track', track);
 
         const res = await fetch(`/api/admin/portfolio?${params.toString()}`, {
           cache: 'no-store',
@@ -85,12 +98,12 @@ export default function PortfolioManagementPage() {
         setLoading(false);
       }
     },
-    [appliedSearch, pagination.itemsPerPage, token],
+    [appliedSearch, pagination.itemsPerPage, token, trackFilter],
   );
 
   useEffect(() => {
-    void fetchPortfolios(0, appliedSearch);
-  }, [fetchPortfolios, appliedSearch]);
+    void fetchPortfolios(0, appliedSearch, trackFilter);
+  }, [fetchPortfolios, appliedSearch, trackFilter]);
 
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -98,6 +111,11 @@ export default function PortfolioManagementPage() {
   };
 
   const handleDelete = async (item: StudentPortfolioListItem) => {
+    if (isReadOnlyLeader) {
+      setError('Tài khoản leader chỉ có quyền xem portfolio.');
+      return;
+    }
+
     const confirmed = window.confirm(`Xóa portfolio của ${item.student_name}?`);
     if (!confirmed) return;
 
@@ -133,11 +151,16 @@ export default function PortfolioManagementPage() {
             <p className="text-xs font-bold uppercase tracking-wide text-[#bd0026]">Portfolio</p>
             <h1 className="mt-1 text-2xl font-bold text-slate-950">Quản lý portfolio</h1>
             <p className="mt-1 text-sm text-slate-500">
-              Theo dõi các portfolio đã tạo và thao tác nhanh với từng học viên.
+              Theo dõi các portfolio đã tạo và thao tác nhanh theo quyền tài khoản.
             </p>
+            {isReadOnlyLeader ? (
+              <p className="mt-2 inline-flex rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700">
+                Chế độ chỉ xem dành cho leader
+              </p>
+            ) : null}
           </div>
 
-          <form onSubmit={handleSearchSubmit} className="flex w-full gap-2 lg:max-w-md">
+          <form onSubmit={handleSearchSubmit} className="flex w-full flex-col gap-2 sm:flex-row lg:max-w-2xl">
             <label className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -147,6 +170,21 @@ export default function PortfolioManagementPage() {
                 className="h-11 w-full rounded-xl border border-slate-200 bg-slate-50 pl-9 pr-3 text-sm font-medium text-slate-900 outline-none transition focus:border-[#bd0026] focus:bg-white focus:ring-4 focus:ring-[#bd0026]/10"
               />
             </label>
+            <label className="sr-only" htmlFor="portfolio-track-filter">
+              Lọc theo khối
+            </label>
+            <select
+              id="portfolio-track-filter"
+              value={trackFilter}
+              onChange={(event) => setTrackFilter(event.target.value as TrackFilter)}
+              className="h-11 rounded-xl border border-slate-200 bg-slate-50 px-3 text-sm font-bold text-slate-700 outline-none transition focus:border-[#bd0026] focus:bg-white focus:ring-4 focus:ring-[#bd0026]/10 sm:w-36"
+            >
+              {trackOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
             <button
               type="submit"
               className="h-11 rounded-xl bg-[#bd0026] px-4 text-sm font-bold text-white shadow-sm transition hover:bg-[#a80022]"
@@ -247,22 +285,26 @@ export default function PortfolioManagementPage() {
                         <Eye className="h-4 w-4" />
                       </span>
                     )}
-                    <Link
-                      href={builderHref(item)}
-                      className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-[#bd0026]/40 hover:text-[#bd0026]"
-                      title="Sửa portfolio"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </Link>
-                    <button
-                      type="button"
-                      onClick={() => void handleDelete(item)}
-                      disabled={deletingId === item.id}
-                      className="grid h-9 w-9 place-items-center rounded-lg border border-red-100 bg-red-50 text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
-                      title="Xóa portfolio"
-                    >
-                      {deletingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                    </button>
+                    {!isReadOnlyLeader ? (
+                      <>
+                        <Link
+                          href={builderHref(item)}
+                          className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:border-[#bd0026]/40 hover:text-[#bd0026]"
+                          title="Sửa portfolio"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => void handleDelete(item)}
+                          disabled={deletingId === item.id}
+                          className="grid h-9 w-9 place-items-center rounded-lg border border-red-100 bg-red-50 text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          title="Xóa portfolio"
+                        >
+                          {deletingId === item.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </button>
+                      </>
+                    ) : null}
                   </div>
                 </article>
               );
@@ -279,7 +321,7 @@ export default function PortfolioManagementPage() {
           <button
             type="button"
             disabled={loading || pagination.pageIndex <= 0}
-            onClick={() => void fetchPortfolios(pagination.pageIndex - 1)}
+            onClick={() => void fetchPortfolios(pagination.pageIndex - 1, appliedSearch, trackFilter)}
             className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Trước
@@ -287,7 +329,7 @@ export default function PortfolioManagementPage() {
           <button
             type="button"
             disabled={loading || pagination.pageIndex + 1 >= totalPages}
-            onClick={() => void fetchPortfolios(pagination.pageIndex + 1)}
+            onClick={() => void fetchPortfolios(pagination.pageIndex + 1, appliedSearch, trackFilter)}
             className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Sau

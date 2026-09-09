@@ -2034,6 +2034,7 @@ export async function getPublishedPortfolioBySlug(
 
 export async function listPortfolios(input: {
   search?: string;
+  track?: string;
   pageIndex?: number;
   itemsPerPage?: number;
   centreNames?: string[];
@@ -2048,6 +2049,11 @@ export async function listPortfolios(input: {
   const offset = pageIndex * itemsPerPage;
   const params: unknown[] = [];
   const where: string[] = [];
+  const trackPatterns: Record<string, string> = {
+    coding: String.raw`(^|[^a-z0-9])(c4k[a-z0-9]*|c4t[a-z0-9]*|pt[a-z0-9]*|scratch|coding|code|js[a-z0-9]*|web|cs[a-z0-9]*|computer scientist|app producer|python)([^a-z0-9]|$)`,
+    robotics: String.raw`(^|[^a-z0-9])(rob[a-z0-9]*|robot[a-z0-9]*|robotics)([^a-z0-9]|$)`,
+    art: String.raw`(^|[^a-z0-9])(xart[a-z0-9]*|art|fine art|creative art|mỹ thuật|my thuat|vẽ|ve thuat)([^a-z0-9]|$)`,
+  };
 
   const search = cleanText(input.search);
   if (search) {
@@ -2062,6 +2068,20 @@ export async function listPortfolios(input: {
       OR data->'profile'->>'studentName' ILIKE ${param}
       OR data->'profile'->>'className' ILIKE ${param}
     )`);
+  }
+
+  const track = cleanText(input.track).toLowerCase();
+  if (track && trackPatterns[track]) {
+    params.push(trackPatterns[track]);
+    const param = `$${params.length}`;
+    where.push(`CONCAT_WS(
+      ' ',
+      class_name,
+      course_name,
+      data->'profile'->>'className',
+      data->'profile'->>'courseName',
+      data->'profile'->>'courseLine'
+    ) ~* ${param}`);
   }
 
   const centreNames = (input.centreNames || []).map(cleanText).filter(Boolean);

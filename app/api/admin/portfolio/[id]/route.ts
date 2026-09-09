@@ -1,10 +1,10 @@
 import { requireBearerSession } from '@/lib/datasource-api-auth';
-import { isPortfolioAllowedUser } from '@/lib/menu-permissions';
+import { isPortfolioEditorUser } from '@/lib/menu-permissions';
 import { deletePortfolioById } from '@/lib/student-portfolio/service';
 import { NextRequest, NextResponse } from 'next/server';
 
 const PORTFOLIO_ACCESS_ERROR =
-  'Chỉ tài khoản TEGL, TEGL+, TM, CL, RL, AL, LEAD, TE, TC hoặc super_admin mới có quyền truy cập portfolio';
+  'Tài khoản này chỉ có quyền xem portfolio, không có quyền xóa.';
 
 export async function DELETE(
   req: NextRequest,
@@ -14,7 +14,7 @@ export async function DELETE(
     const auth = await requireBearerSession(req);
     if (auth.ok === false) return auth.response;
 
-    if (!isPortfolioAllowedUser(auth.resolvedAccess)) {
+    if (!isPortfolioEditorUser(auth.resolvedAccess)) {
       return NextResponse.json(
         { success: false, error: PORTFOLIO_ACCESS_ERROR },
         { status: 403 },

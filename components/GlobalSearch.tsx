@@ -4,7 +4,10 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Search, X, Home, Bell, Megaphone, GraduationCap, FileText, BookOpen, CalendarDays, BarChart3, Users, Settings, DollarSign, Mail, Video, ClipboardCheck } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
-import { checkHrefPermission } from '@/lib/menu-permissions'
+import {
+  checkHrefPermission,
+  isPortfolioAllowedUser,
+} from '@/lib/menu-permissions'
 import { cn } from '@/lib/utils'
 import { usePathname } from 'next/navigation'
 
@@ -48,6 +51,8 @@ const adminSearchItems: SearchItem[] = [
   { label: 'Thỏa thuận lương', href: '/admin/deal-luong?type=salary_deal', icon: DollarSign, group: 'Giáo viên & Vận hành' },
   { label: 'Hạ lương', href: '/admin/deal-luong?type=salary_reduction', icon: DollarSign, group: 'Giáo viên & Vận hành' },
   { label: 'Nâng lương', href: '/admin/deal-luong?type=bonus', icon: DollarSign, group: 'Giáo viên & Vận hành' },
+  { label: 'Kiểm soát Sản phẩm cuối khóa', href: '/admin/kiem-soat-spck', icon: FileText, group: 'Quản lý học viên', keywords: ['spck', 'san pham cuoi khoa', 'portfolio qc'] },
+  { label: 'Quản lý Portfolio', href: '/admin/portfolio', icon: FileText, group: 'Quản lý học viên', keywords: ['portfolio', 'ho so hoc vien'] },
   { label: 'Thư viện video nâng cao', href: '/admin/page5', icon: GraduationCap, group: 'Đào tạo & Khảo thí' },
   { label: 'Thư viện đề nâng cao', href: '/admin/assignments', icon: GraduationCap, group: 'Đào tạo & Khảo thí' },
   { label: 'Thống kê đào tạo', href: '/admin/training-dashboard', icon: BarChart3, group: 'Đào tạo & Khảo thí' },
@@ -96,7 +101,8 @@ function GlobalSearch({ isOpen, onClose }: GlobalSearchProps) {
   const listRef = useRef<HTMLDivElement>(null)
 
   const isUserArea = pathname.startsWith('/user')
-  const rawSearchItems = isUserArea || !user?.isAdmin ? userSearchItems : adminSearchItems
+  const canUseAdminSearch = Boolean(user?.isAdmin || isPortfolioAllowedUser(user))
+  const rawSearchItems = isUserArea || !canUseAdminSearch ? userSearchItems : adminSearchItems
   const searchItems = rawSearchItems.filter(item => checkHrefPermission(item.href, user))
 
   const filteredItems = query.trim()

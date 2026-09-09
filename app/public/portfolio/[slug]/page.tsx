@@ -65,9 +65,9 @@ function DnaRadarChart({ scores, accent = '#bd0026' }: { scores: Array<{ label: 
     { label: 'Tự học & Sáng tạo', value: 4.4 },
   ];
 
-  const size = 300;
+  const size = 320;
   const center = size / 2;
-  const radius = 95;
+  const radius = 80;
   const total = items.length;
 
   const getCoordinates = (index: number, val: number) => {
@@ -88,8 +88,11 @@ function DnaRadarChart({ scores, accent = '#bd0026' }: { scores: Array<{ label: 
   const gridLevels = [0.2, 0.4, 0.6, 0.8, 1.0];
 
   return (
-    <div className="relative flex flex-col items-center justify-center p-2">
-      <svg width={size} height={size} className="overflow-visible">
+    <div className="relative flex flex-col items-center justify-center p-1 sm:p-2 w-full overflow-hidden">
+      <svg
+        viewBox="0 0 320 310"
+        className="w-full max-w-[310px] h-auto overflow-hidden select-none"
+      >
         {gridLevels.map((lvl, idx) => {
           const levelPoints = items
             .map((_, i) => {
@@ -134,26 +137,56 @@ function DnaRadarChart({ scores, accent = '#bd0026' }: { scores: Array<{ label: 
 
         {items.map((item, i) => {
           const { x, y, angle } = getCoordinates(i, item.value);
-          const labelDist = radius + 32;
+          const labelDist = radius + 24;
           const lx = center + labelDist * Math.cos(angle);
           const ly = center + labelDist * Math.sin(angle);
+          const textAnchor =
+            Math.abs(lx - center) < 15
+              ? 'middle'
+              : lx > center
+              ? 'start'
+              : 'end';
+
+          // Short label for chart display
+          const shortLabel = item.label
+            .replace('Tư duy Logic & Thuật toán', 'Logic & Thuật toán')
+            .replace('Kỹ thuật Lập trình', 'Lập trình')
+            .replace('Giải quyết Vấn đề', 'Giải quyết VĐ')
+            .replace('Hoàn thiện Sản phẩm', 'Hoàn thiện SP')
+            .replace('Tự học & Sáng tạo', 'Sáng tạo');
+
           return (
             <g key={i}>
-              <circle cx={x} cy={y} r="5" fill={accent} />
-              <circle cx={x} cy={y} r="9" fill={accent} opacity="0.22" />
+              <circle cx={x} cy={y} r="4.5" fill={accent} />
+              <circle cx={x} cy={y} r="8" fill={accent} opacity="0.22" />
               <text
                 x={lx}
                 y={ly}
-                textAnchor="middle"
+                textAnchor={textAnchor}
                 dominantBaseline="central"
-                className="fill-[#171512] text-[11px] font-black"
+                className="fill-[#171512] text-[10.5px] font-black"
               >
-                {item.label} ({item.value})
+                {shortLabel} ({item.value})
               </text>
             </g>
           );
         })}
       </svg>
+
+      {/* Responsive breakdown list below chart */}
+      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5 w-full text-xs">
+        {items.map((item, idx) => (
+          <div
+            key={idx}
+            className="flex items-center justify-between rounded-lg bg-[#faf8f5] px-2.5 py-1.5 border border-[#ece5db]"
+          >
+            <span className="font-bold text-[#423d37] truncate">{item.label}</span>
+            <span className="font-black ml-2 shrink-0" style={{ color: accent }}>
+              {item.value} / 5
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -347,6 +380,12 @@ const trackTheme = {
   },
 } as const;
 
+const defaultTrackQuotes: Record<PortfolioTrack, string> = {
+  coding: 'Mỗi lần chương trình bị lỗi là một lần mình hiểu nó rõ hơn.',
+  robotics: 'Mỗi lần mô hình chuyển động tốt hơn là một lần ý tưởng được kiểm chứng rõ hơn.',
+  art: 'Mỗi tác phẩm là một cách em kể câu chuyện của mình bằng màu sắc và trí tưởng tượng.',
+};
+
 function sanitizeIntroText(text?: string, studentName: string = '') {
   if (!text) return '';
   const clean = text
@@ -405,6 +444,7 @@ export default async function PublicPortfolioPage({
   const track = portfolioTrack(data);
   const theme = trackTheme[track];
   const TrackIcon = theme.Icon;
+  const studentQuote = data.quote || defaultTrackQuotes[track];
   const allScores = [...(data.dnaScores || []), ...(data.mindsetScores || []), ...(data.orientationScores || [])];
   const dnaAverage = allScores.length
     ? Math.round((allScores.reduce((sum, score) => sum + Number(score.value || 0), 0) / allScores.length) * 10) / 10
@@ -462,7 +502,7 @@ export default async function PublicPortfolioPage({
     `Hồ sơ tổng hợp quá trình học tập, các sản phẩm sáng tạo và đánh giá năng lực của học viên ${profile.studentName} tại Trường học Công nghệ MindX.`;
 
   return (
-    <main className={`scroll-smooth min-h-screen ${theme.surface} text-[#171512] antialiased portfolio-theme relative bg-[#faf8f5]`}>
+    <main className={`scroll-smooth min-h-screen ${theme.surface} text-[#171512] antialiased portfolio-theme relative bg-[#faf8f5] overflow-x-clip w-full max-w-full`}>
       <div className="portfolio-pdf-brand hidden" style={{ display: 'none' }}>
         <img src={logoTechAi.src} alt="MindX Tech & AI School" />
       </div>
@@ -474,9 +514,9 @@ export default async function PublicPortfolioPage({
 
       {/* Header Bar */}
       <header className="portfolio-print-hidden sticky top-0 z-50 border-b border-[#e8e2d8] bg-white/92 backdrop-blur-md transition-all duration-300 print:hidden">
-        <nav className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-5 py-4 text-xs font-bold uppercase">
-          <div className="flex min-w-0 shrink-0 items-center gap-3">
-            <img src={logoTechAi.src} alt="MindX Technology School" className="h-10 w-auto max-w-[170px] object-contain sm:h-12" />
+        <nav className="mx-auto flex max-w-7xl items-center justify-between gap-4 sm:gap-6 px-4 sm:px-5 py-3.5 sm:py-4 text-xs font-bold uppercase">
+          <div className="flex min-w-0 shrink-0 items-center gap-2.5 sm:gap-3">
+            <img src={logoTechAi.src} alt="MindX Technology School" className="h-9 w-auto max-w-[140px] sm:max-w-[170px] object-contain sm:h-12" />
             <span className="h-4 w-px bg-[#d8d0c2]" />
             <span className="hidden whitespace-nowrap font-extrabold text-[#423d37] lg:inline">Hồ sơ Học viên MindX</span>
           </div>
@@ -488,11 +528,11 @@ export default async function PublicPortfolioPage({
             {hasAchievements ? <a href="#awards" className={`${theme.accent} whitespace-nowrap transition-colors duration-200`}>Thành tích</a> : null}
             {hasRewards ? <a href="#rewards" className={`${theme.accent} whitespace-nowrap transition-colors duration-200`}>Điểm thưởng</a> : null}
           </div>
-          <div className="flex shrink-0 items-center gap-2.5">
+          <div className="flex shrink-0 items-center gap-2">
             {hasProjects ? (
               <a
                 href="#projects"
-                className="hidden whitespace-nowrap rounded-full px-5 py-2.5 text-xs font-bold text-white shadow-xs transition-all duration-200 hover:shadow-md sm:inline-flex"
+                className="hidden whitespace-nowrap rounded-full px-4 sm:px-5 py-2 sm:py-2.5 text-xs font-bold text-white shadow-xs transition-all duration-200 hover:shadow-md sm:inline-flex"
                 style={{ backgroundColor: theme.ink }}
               >
                 Khám phá Sản phẩm
@@ -506,15 +546,15 @@ export default async function PublicPortfolioPage({
 
       {/* Hero Section */}
       <section className="portfolio-print-section-hero relative overflow-hidden border-b border-[#e8e2d8]/80 bg-gradient-to-b from-white via-[#faf8f5] to-[#fff5f7]">
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-10 sm:px-5 sm:py-16 md:min-h-[620px] md:grid-cols-[minmax(0,1fr)_430px] md:gap-14 lg:grid-cols-[minmax(0,1fr)_460px]">
+        <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 py-8 sm:px-5 sm:py-16 md:min-h-[600px] md:grid-cols-[minmax(0,1fr)_430px] md:gap-12 lg:grid-cols-[minmax(0,1fr)_460px]">
         <div className="min-w-0">
-          <div className="mb-7 inline-flex max-w-full items-center gap-2 rounded-full border border-[#ded6c9] bg-white/80 px-4 py-1.5 text-xs font-extrabold shadow-2xs" style={{ color: theme.ink }}>
+          <div className="mb-5 sm:mb-7 inline-flex max-w-full items-center gap-2 rounded-full border border-[#ded6c9] bg-white/80 px-3.5 sm:px-4 py-1.5 text-xs font-extrabold shadow-2xs" style={{ color: theme.ink }}>
             <TrackIcon className="h-3.5 w-3.5 shrink-0" />
             <span>{theme.label}</span>
             <span className="h-3 w-px bg-[#ded6c9]" />
             <span>Hồ sơ Học viên MindX</span>
           </div>
-          <h1 className="max-w-[620px] text-[clamp(42px,5.5vw,72px)] font-extrabold leading-[1.08] tracking-tight text-[#171512]">
+          <h1 className="max-w-[620px] text-[clamp(32px,6.5vw,68px)] font-extrabold leading-[1.12] tracking-tight text-[#171512]">
             {heroLeadName ? (
               <>
                 <span className="block text-balance">{heroLeadName}</span>
@@ -525,23 +565,23 @@ export default async function PublicPortfolioPage({
             )}
           </h1>
           {heroSubtitle ? (
-            <p className="mt-7 max-w-xl text-lg sm:text-xl font-medium leading-relaxed text-[#4a443e]">
+            <p className="mt-5 sm:mt-7 max-w-xl text-base sm:text-xl font-medium leading-relaxed text-[#4a443e]">
               {isPublicMode ? heroSubtitle : theme.promise}
             </p>
           ) : null}
 
-          <div className="mt-8 flex flex-wrap items-center gap-3">
+          <div className="mt-6 sm:mt-8 flex flex-wrap items-center gap-3">
             {hasProjects ? (
               <a
                 href="#projects"
-                className="portfolio-print-hidden inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg print:hidden"
+                className="portfolio-print-hidden inline-flex items-center gap-2 rounded-full px-6 sm:px-7 py-3 sm:py-3.5 text-xs sm:text-sm font-bold text-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg print:hidden"
                 style={{ backgroundColor: theme.ink }}
               >
                 Khám phá sản phẩm <ExternalLink className="h-4 w-4" />
               </a>
             ) : null}
             {profile.className ? (
-              <span className="rounded-full border border-[#ded6c9] bg-white px-5 py-3.5 text-sm font-bold text-[#423d37] shadow-xs">
+              <span className="rounded-full border border-[#ded6c9] bg-white px-4 sm:px-5 py-2.5 sm:py-3.5 text-xs sm:text-sm font-bold text-[#423d37] shadow-xs">
                 Lớp: {profile.className}
               </span>
             ) : null}
@@ -549,13 +589,13 @@ export default async function PublicPortfolioPage({
         </div>
 
         <div className="relative min-w-0">
-          <div className="absolute -inset-x-8 inset-y-10 rounded-[36px] bg-[#bd0026]/10 blur-xl" />
-          <div className={`relative rotate-1 overflow-hidden rounded-[32px] bg-gradient-to-br ${theme.hero} p-7 text-white ${theme.cardShadow} transition-all duration-500 ease-out hover:rotate-0 sm:rotate-2 sm:p-10`}>
-            <TrackIcon className="absolute right-6 top-24 h-44 w-44 text-white/10" />
+          <div className="absolute -inset-x-2 sm:-inset-x-6 inset-y-8 rounded-[36px] bg-[#bd0026]/10 blur-xl pointer-events-none" />
+          <div className={`relative rotate-0 sm:rotate-1 md:rotate-2 overflow-hidden rounded-[26px] sm:rounded-[32px] bg-gradient-to-br ${theme.hero} p-6 sm:p-10 text-white ${theme.cardShadow} transition-all duration-500 ease-out hover:rotate-0`}>
+            <TrackIcon className="absolute right-6 top-24 h-44 w-44 text-white/10 pointer-events-none" />
             <div className="relative">
             <div className="flex items-center justify-between">
               {/* Larger Avatar Image Container with Crisp Resolution & Initials Fallback */}
-              <div className="grid h-20 w-20 sm:h-24 sm:w-24 place-items-center rounded-2xl bg-white/20 text-2xl sm:text-3xl font-extrabold border-2 border-white/30 backdrop-blur-md shadow-xl overflow-hidden shrink-0 aspect-square">
+              <div className="grid h-18 w-18 sm:h-24 sm:w-24 place-items-center rounded-2xl bg-white/20 text-xl sm:text-3xl font-extrabold border-2 border-white/30 backdrop-blur-md shadow-xl overflow-hidden shrink-0 aspect-square">
                 {profile.avatarUrl ? (
                   <img
                     src={profile.avatarUrl}
@@ -573,20 +613,20 @@ export default async function PublicPortfolioPage({
               </div>
             </div>
 
-            <div className="mt-10 max-w-[300px]">
+            <div className="mt-8 sm:mt-10 max-w-[300px]">
               <p className="text-xs font-bold uppercase text-white/60">HỒ SƠ HỌC VIÊN</p>
-              <h2 className="mt-2 text-2xl font-black leading-tight sm:text-[28px]">{profile.studentName}</h2>
-              <p className="mt-2 text-sm font-semibold leading-6 text-white/82">{profile.courseName || profile.className}</p>
+              <h2 className="mt-1.5 text-xl sm:text-[28px] font-black leading-tight">{profile.studentName}</h2>
+              <p className="mt-1.5 text-xs sm:text-sm font-semibold leading-6 text-white/82">{profile.courseName || profile.className}</p>
               {profile.centreName ? (
-                <p className="mt-1 text-xs leading-5 text-white/62">Cơ sở: {profile.centreName}</p>
+                <p className="mt-0.5 text-xs leading-5 text-white/62">Cơ sở: {profile.centreName}</p>
               ) : null}
             </div>
 
-            <div className="mt-10 grid grid-cols-3 gap-3 rounded-2xl bg-black/20 p-4 text-center border border-white/10 backdrop-blur-md">
+            <div className="mt-8 sm:mt-10 grid grid-cols-3 gap-2 sm:gap-3 rounded-2xl bg-black/20 p-3 sm:p-4 text-center border border-white/10 backdrop-blur-md">
               {heroStats.map((stat) => (
                 <div key={stat.label}>
-                  <p className="truncate text-2xl font-black">{stat.value}</p>
-                  <p className="text-[10px] font-bold uppercase text-white/60">{stat.label}</p>
+                  <p className="truncate text-xl sm:text-2xl font-black">{stat.value}</p>
+                  <p className="text-[10px] font-bold uppercase text-white/60 truncate">{stat.label}</p>
                 </div>
               ))}
             </div>
@@ -598,22 +638,22 @@ export default async function PublicPortfolioPage({
 
       {/* Dark Contrast Intro & Skills Bar */}
       {hasIntroSection ? (
-      <section className="portfolio-print-section-intro bg-[#171512] py-10 text-white sm:py-16">
-        <div className="mx-auto grid max-w-6xl gap-8 px-5 md:grid-cols-[240px_1fr]">
+      <section className="portfolio-print-section-intro bg-[#171512] py-8 sm:py-16 text-white">
+        <div className="mx-auto grid max-w-6xl gap-6 sm:gap-8 px-4 sm:px-5 md:grid-cols-[240px_1fr]">
           <div>
             <p className="text-xs font-black uppercase" style={{ color: theme.ink }}>{sectionNo('intro')} · Giới thiệu</p>
-            <h3 className="mt-2 text-2xl font-black leading-snug">Hành trình & Kỹ năng nổi bật.</h3>
+            <h3 className="mt-2 text-xl sm:text-2xl font-black leading-snug">Hành trình & Kỹ năng nổi bật.</h3>
           </div>
           <div>
-            <p className="text-xl font-medium leading-relaxed text-white/90">
+            <p className="text-base sm:text-xl font-medium leading-relaxed text-white/90">
               {displayIntro}
             </p>
             {allSkills.length > 0 ? (
-              <div className="mt-6 flex flex-wrap gap-2.5">
+              <div className="mt-5 sm:mt-6 flex flex-wrap gap-2">
                 {allSkills.map((skill, index) => (
                   <span
                     key={`${skill.name}-${index}`}
-                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold text-white/90 backdrop-blur-sm hover:bg-white/20 transition-all duration-200"
+                    className="rounded-full border border-white/20 bg-white/10 px-3.5 sm:px-4 py-1.5 sm:py-2 text-xs font-bold text-white/90 backdrop-blur-sm hover:bg-white/20 transition-all duration-200"
                   >
                     {skill.name}
                   </span>
@@ -626,12 +666,12 @@ export default async function PublicPortfolioPage({
       ) : null}
 
       {/* Red Stat Banner */}
-      <section className="border-y border-[#e8e2d8] bg-white py-8 shadow-[0_12px_30px_rgba(23,21,18,0.04)]">
-        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-4 px-5 text-center md:grid-cols-4">
+      <section className="border-y border-[#e8e2d8] bg-white py-6 sm:py-8 shadow-[0_12px_30px_rgba(23,21,18,0.04)]">
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-3 sm:gap-4 px-4 sm:px-5 text-center md:grid-cols-4">
           {bannerStats.map((stat) => (
-            <div key={stat.label} className="rounded-2xl border border-[#ece5dc] bg-[#fbfaf7] px-4 py-5">
-              <p className="truncate text-3xl font-black text-[#171512]">{stat.value}</p>
-              <p className="mt-1.5 text-[11px] font-black uppercase text-[#777067]">{stat.label}</p>
+            <div key={stat.label} className="rounded-2xl border border-[#ece5dc] bg-[#fbfaf7] px-3 sm:px-4 py-3.5 sm:py-5">
+              <p className="truncate text-2xl sm:text-3xl font-black text-[#171512]">{stat.value}</p>
+              <p className="mt-1 text-[10px] sm:text-[11px] font-black uppercase text-[#777067] leading-tight">{stat.label}</p>
             </div>
           ))}
         </div>
@@ -691,21 +731,29 @@ export default async function PublicPortfolioPage({
               ? (data.mindsetScores.reduce((acc, curr) => acc + Number(curr.value || 0), 0) / data.mindsetScores.length).toFixed(1)
               : '4.5';
             return (
-              <div className="grid gap-8 md:grid-cols-2">
+              <div className="grid gap-5 sm:gap-8 md:grid-cols-2">
                 {/* Nhóm 1: Radar Chart */}
-                <div className="rounded-2xl border border-[#e4dcd0] bg-white p-8 shadow-sm hover:shadow-xl transition-all duration-300">
-                  <div className="mb-6 flex items-center justify-between border-b border-[#e4dcd0] pb-4">
-                    <h3 className="font-extrabold text-xl text-[#171512]">1. Tư duy & Năng lực Cốt lõi</h3>
-                    <span className="rounded-full bg-emerald-50 px-3.5 py-1 text-xs font-extrabold text-emerald-700">{dnaAvg} / 5.0</span>
+                <div className="rounded-2xl border border-[#e4dcd0] bg-white p-4 sm:p-6 md:p-8 shadow-sm hover:shadow-xl transition-all duration-300">
+                  <div className="mb-5 sm:mb-6 flex items-center justify-between gap-2 border-b border-[#e4dcd0] pb-3 sm:pb-4">
+                    <h3 className="font-extrabold text-sm sm:text-base md:text-lg lg:text-xl text-[#171512] min-w-0 truncate">
+                      1. Tư duy & Năng lực Cốt lõi
+                    </h3>
+                    <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-black text-emerald-700 whitespace-nowrap border border-emerald-200/60">
+                      {dnaAvg} / 5.0
+                    </span>
                   </div>
                   <DnaRadarChart scores={data.dnaScores || []} accent={theme.ink} />
                 </div>
 
                 {/* Nhóm 2: Bar Chart */}
-                <div className="rounded-2xl border border-[#e4dcd0] bg-white p-8 shadow-sm hover:shadow-xl transition-all duration-300">
-                  <div className="mb-6 flex items-center justify-between border-b border-[#e4dcd0] pb-4">
-                    <h3 className="font-extrabold text-xl text-[#171512]">2. Kỹ thuật & Thực hành Dự án</h3>
-                    <span className="rounded-full bg-blue-50 px-3.5 py-1 text-xs font-extrabold text-blue-700">{mindsetAvg} / 5.0</span>
+                <div className="rounded-2xl border border-[#e4dcd0] bg-white p-4 sm:p-6 md:p-8 shadow-sm hover:shadow-xl transition-all duration-300">
+                  <div className="mb-5 sm:mb-6 flex items-center justify-between gap-2 border-b border-[#e4dcd0] pb-3 sm:pb-4">
+                    <h3 className="font-extrabold text-sm sm:text-base md:text-lg lg:text-xl text-[#171512] min-w-0 truncate">
+                      2. Kỹ thuật & Thực hành Dự án
+                    </h3>
+                    <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-black text-blue-700 whitespace-nowrap border border-blue-200/60">
+                      {mindsetAvg} / 5.0
+                    </span>
                   </div>
                   <DnaBarChart scores={data.mindsetScores || []} accent={theme.ink} />
                 </div>
@@ -874,7 +922,7 @@ export default async function PublicPortfolioPage({
       <section className="bg-[#171512] px-5 py-10 text-center text-white sm:py-24">
         <Star className="mx-auto mb-6 h-9 w-9" style={{ color: theme.ink }} />
         <blockquote className="mx-auto max-w-5xl text-balance text-[clamp(22px,4vw,34px)] font-black leading-[1.35] tracking-tight">
-          "{data.quote || 'Mỗi lần chương trình bị lỗi là một lần mình hiểu nó rõ hơn.'}"
+          "{studentQuote}"
         </blockquote>
       </section>
 

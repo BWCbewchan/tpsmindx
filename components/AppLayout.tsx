@@ -8,7 +8,9 @@ import {
 } from '@/lib/auth-redirect'
 import { filterManagementPermissions } from '@/lib/admin-permission-routes'
 import {
+  canAccessPortfolioPath,
   isPortfolioAllowedUser,
+  isPortfolioEditorUser,
   isPortfolioRoutePath,
 } from '@/lib/menu-permissions'
 import { authHeaders } from '@/lib/auth-headers'
@@ -351,11 +353,16 @@ export default function AppLayout({
     // Check admin access
     if (requireAdmin && user) {
       const isSuperAdmin = user.role === 'super_admin'
-      const isAdminUser =
-        user.isAdmin || ['super_admin', 'admin', 'manager'].includes(user.role)
       const canAccessPortfolio = isPortfolioAllowedUser(user)
+      const canEditPortfolio = isPortfolioEditorUser(user)
+      const isAdminUser =
+        user.isAdmin ||
+        ['super_admin', 'admin', 'manager'].includes(user.role) ||
+        canAccessPortfolio
       const permissions = filterManagementPermissions(user.permissions || []).filter(
-        (permission) => canAccessPortfolio || !isPortfolioRoutePath(permission),
+        (permission) =>
+          !isPortfolioRoutePath(permission) ||
+          canAccessPortfolioPath(user, permission),
       )
 
       if (!isAdminUser) {
@@ -371,7 +378,10 @@ export default function AppLayout({
       if (!isSuperAdmin) {
         const PORTFOLIO_QC_ROUTES = ['/admin/deal-luong', '/admin/tao-deal-luong']
         if (canAccessPortfolio) {
-          PORTFOLIO_QC_ROUTES.push('/admin/kiem-soat-spck', '/admin/portfolio')
+          PORTFOLIO_QC_ROUTES.push('/admin/portfolio')
+        }
+        if (canEditPortfolio) {
+          PORTFOLIO_QC_ROUTES.push('/admin/kiem-soat-spck')
         }
 
         const hasManagementRole =
@@ -415,12 +425,14 @@ export default function AppLayout({
         ) {
           const hasPermission =
             (hasTrainingInputRole && isTrainingInputRoute) ||
-            effectivePermissions.some(
-              (p) =>
-                pathname === p ||
-                pathname.startsWith(`${p}/`) ||
-                p.startsWith(`${pathname}/`),
-            )
+            (isPortfolioRoutePath(pathname)
+              ? canAccessPortfolioPath(user, pathname)
+              : effectivePermissions.some(
+                  (p) =>
+                    pathname === p ||
+                    pathname.startsWith(`${p}/`) ||
+                    p.startsWith(`${pathname}/`),
+                ))
 
           if (!hasPermission) {
             if (hasTrainingInputRole) {

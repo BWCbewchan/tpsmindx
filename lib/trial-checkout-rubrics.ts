@@ -70,21 +70,21 @@ export const TRACKS: Array<{
   label: string
   description: string
 }> = [
-  { value: 'Coding', label: 'Coding', description: 'SB, GB, Web, JSB, PTB' },
+  { value: 'Coding', label: 'Coding', description: 'SB, GB, PTB, Web' },
   { value: 'Robotics', label: 'Robotics', description: 'ROB4B, PreB, Lego 6+, ArmB, SemiB' },
   { value: 'Art', label: 'Art', description: 'Digital Art & Design' },
 ]
 
 export const SUBJECT_OPTIONS: Record<TrialTrack, string[]> = {
-  Coding: ['SB', 'GB', 'Web', 'JSB', 'PTB'],
+  Coding: ['SB', 'GB', 'PTB', 'Web'],
   Robotics: ['ROB4B', 'PreB', 'Lego 6+', 'ArmB', 'SemiB'],
   Art: [
-    'LITTLE ARTIST',
-    'DIGITAL ART FOUNDATIONS',
-    'VISUAL THINKING',
-    'GAME ART',
+    'Little Artist',
+    'Digital Art Foundations',
+    'Visual Thinking',
+    'Game Art',
     'Character & Mascot Design',
-    'VISUAL COMMUNICATION',
+    'Visual Communication',
   ],
 }
 
@@ -92,7 +92,20 @@ export const ALL_SUBJECT_OPTIONS = Array.from(
   new Set(Object.values(SUBJECT_OPTIONS).flat()),
 )
 
-export const LEGACY_ART_SUBJECT_OPTIONS = ['VA', 'VC', 'KA', 'GD', 'ART4B', 'AI']
+export const LEGACY_CODING_SUBJECT_OPTIONS = ['JSB', 'JBS']
+export const LEGACY_ART_SUBJECT_OPTIONS = [
+  'VA',
+  'VC',
+  'KA',
+  'GD',
+  'ART4B',
+  'AI',
+  'LITTLE ARTIST',
+  'DIGITAL ART FOUNDATIONS',
+  'VISUAL THINKING',
+  'GAME ART',
+  'VISUAL COMMUNICATION',
+]
 
 export const MANAGE_SUBJECT_OPTIONS: Record<TrialTrack, string[]> = {
   Coding: SUBJECT_OPTIONS.Coding,
@@ -104,7 +117,7 @@ export const ALL_MANAGE_SUBJECT_OPTIONS = Array.from(
   new Set(Object.values(MANAGE_SUBJECT_OPTIONS).flat()),
 )
 
-export const CASE_RESULT_OPTIONS = [
+export const ACTIVE_CASE_RESULT_OPTIONS = [
   {
     value: 'Pass',
     label: 'Pass',
@@ -117,6 +130,10 @@ export const CASE_RESULT_OPTIONS = [
     className: 'text-red-700',
     description: 'Học viên không đáp ứng được các tiêu chí đánh giá năng lực đầu vào.',
   },
+] as const
+
+export const CASE_RESULT_OPTIONS = [
+  ...ACTIVE_CASE_RESULT_OPTIONS,
   {
     value: '4 tháng',
     label: '4 tháng',
@@ -133,9 +150,76 @@ export const CASE_RESULT_OPTIONS = [
 
 export type CaseResult = (typeof CASE_RESULT_OPTIONS)[number]['value']
 
+export type ProficiencyLevel = {
+  key: 'xuat_sac' | 'tiem_nang' | 'trung_binh' | 'co_ban' | 'han_che'
+  title: string
+  scoreRangeLabel: string
+  minScore: number
+  maxScore: number
+  description: string
+}
+
+export const PROFICIENCY_LEVELS: ProficiencyLevel[] = [
+  {
+    key: 'xuat_sac',
+    title: 'Mức xuất sắc',
+    scoreRangeLabel: 'Điểm trung bình từ 4 - 5 điểm',
+    minScore: 4.0,
+    maxScore: 5.0,
+    description:
+      'Ở mức độ cao nhất, học viên không những tự chủ trong học tập, ứng dụng công nghệ mà còn biết cách sáng tạo để tạo ra những sản phẩm độc đáo. Với khả năng giao tiếp tự tin, tư duy logic và sáng tạo cân bằng, Học viên có nhiều cơ hội để phát triển trong tương lai số, có thể đóng góp tích cực vào việc phát triển và áp dụng công nghệ trong cộng đồng hoặc môi trường học tập của mình.',
+  },
+  {
+    key: 'tiem_nang',
+    title: 'Mức tiềm năng',
+    scoreRangeLabel: 'Điểm trung bình từ 3,5 - 4 điểm',
+    minScore: 3.5,
+    maxScore: 4.0,
+    description:
+      'Học viên có năng khiếu thẩm mỹ, sáng tạo và khả năng ứng dụng công nghệ tương đối linh hoạt. Tiếp thu kiến thức nhanh, tương đối chủ động và tự tin khi giao tiếp. Có tiềm năng để phát triển trong tương lai khi có người hướng dẫn và lộ trình phù hợp.',
+  },
+  {
+    key: 'trung_binh',
+    title: 'Mức trung bình',
+    scoreRangeLabel: 'Điểm trung bình từ 2,5 - 3,5 điểm',
+    minScore: 2.5,
+    maxScore: 3.5,
+    description:
+      'Ở mức độ này, học viên bắt đầu khám phá và thử nghiệm với công nghệ một cách tự giác và có ý thức hơn. Có thể thực hiện các nhiệm vụ đơn giản như sử dụng phần mềm hoặc tìm kiếm thông tin trực tuyến, nhưng còn hạn chế trong việc áp dụng công nghệ để sáng tạo hoặc giải quyết vấn đề. Cần môi trường để kích thích phát triển.',
+  },
+  {
+    key: 'co_ban',
+    title: 'Mức cơ bản',
+    scoreRangeLabel: 'Điểm trung bình từ 1,5 - 2,5 điểm',
+    minScore: 1.5,
+    maxScore: 2.5,
+    description:
+      'Học viên mới bắt đầu tiếp xúc với công nghệ. Tư duy thẩm mỹ và sáng tạo ở mức độ cơ bản. Biết cách ứng dụng công nghệ để tạo ra sản phẩm sáng tạo nhưng vẫn cần hướng dẫn và hỗ trợ sát sao. Cần tìm kiếm môi trường học tập phù hợp, lộ trình và người hướng dẫn để truyền cảm hứng, động lực cho trẻ.',
+  },
+  {
+    key: 'han_che',
+    title: 'Mức hạn chế',
+    scoreRangeLabel: 'Điểm trung bình từ 1 - 1,5 điểm',
+    minScore: 1.0,
+    maxScore: 1.5,
+    description:
+      'Học viên chưa có nhiều trải nghiệm với công nghệ. Biết cách ứng dụng công nghệ để tạo ra sản phẩm sáng tạo, nhưng chưa tự tin và chủ động trong giao tiếp. Cần tìm kiếm môi trường học tập phù hợp, lộ trình và người hướng dẫn để truyền cảm hứng, động lực cho trẻ.',
+  },
+]
+
+export function getProficiencyLevel(score: number | null | undefined): ProficiencyLevel | null {
+  if (score == null || !Number.isFinite(score)) return null
+  const rounded = Math.round(score * 100) / 100
+  if (rounded >= 4.0) return PROFICIENCY_LEVELS[0]
+  if (rounded >= 3.5) return PROFICIENCY_LEVELS[1]
+  if (rounded >= 2.5) return PROFICIENCY_LEVELS[2]
+  if (rounded >= 1.5) return PROFICIENCY_LEVELS[3]
+  return PROFICIENCY_LEVELS[4]
+}
+
 export const COMMON_RUBRIC: RubricConfig = {
   type: 'common',
-  title: 'Tiêu chí đánh giá cho các bộ môn: PreB, ArmB, SemiB, SB, GB, Web, JSB, PTB',
+  title: 'Tiêu chí đánh giá cho các bộ môn Coding: SB, GB, PTB, Web',
   note: 'Chấm từng tiêu chí theo thang 1-5, 1 là thấp nhất và 5 là cao nhất.',
   mode: 'matrix',
   sections: [
@@ -207,7 +291,7 @@ export const COMMON_RUBRIC: RubricConfig = {
 
 export const ROBOTICS4_RUBRIC: RubricConfig = {
   type: 'robotics4',
-  title: 'Tiêu chí đánh giá cho Robotics 4+',
+  title: 'Tiêu chí đánh giá cho các bộ môn Robotics: ROB4B, PreB, Lego 6+, ArmB, SemiB',
   note: 'Mỗi nhóm năng lực chọn một mức mô tả phù hợp nhất.',
   mode: 'level-list',
   sections: [
@@ -382,29 +466,30 @@ export const RUBRICS: Record<RubricType, RubricConfig> = {
   art: ART_RUBRIC,
 }
 
-const COMMON_SUBJECTS = new Set([
+const CODING_SUBJECTS = new Set([
   'sb',
   'gb',
   'web',
   'jsb',
   'jbs',
   'ptb',
+])
+
+const ROBOTICS_SUBJECTS = new Set([
+  'rob4b',
+  'lego 6+',
   'preb',
   'armb',
   'semib',
 ])
-
-const ROBOTICS4_SUBJECTS = new Set(['rob4b', 'lego 6+'])
 
 export function resolveRubricType(track: string, subject: string): RubricType {
   const normalizedTrack = track.trim().toLowerCase()
   const normalizedSubject = subject.trim().toLowerCase()
 
   if (normalizedTrack === 'art') return 'art'
-  if (ROBOTICS4_SUBJECTS.has(normalizedSubject)) return 'robotics4'
-  if (COMMON_SUBJECTS.has(normalizedSubject)) return 'common'
-  if (normalizedTrack === 'coding') return 'common'
-  if (normalizedTrack === 'robotics') return 'common'
+  if (normalizedTrack === 'robotics' || ROBOTICS_SUBJECTS.has(normalizedSubject)) return 'robotics4'
+  if (normalizedTrack === 'coding' || CODING_SUBJECTS.has(normalizedSubject)) return 'common'
   return 'art'
 }
 

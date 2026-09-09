@@ -6,6 +6,7 @@ import { authHeaders } from '@/lib/auth-headers'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
+  ACTIVE_CASE_RESULT_OPTIONS,
   ALL_SUBJECT_OPTIONS,
   CASE_RESULT_OPTIONS,
   RUBRICS,
@@ -23,12 +24,13 @@ import {
 import {
   ArrowLeft,
   BookOpenCheck,
+  Calendar,
   CheckCircle2,
   CircleDot,
   ClipboardCheck,
+  ExternalLink,
   FileText,
   Layers3,
-  LinkIcon,
   ListChecks,
   Loader2,
   MapPin,
@@ -39,6 +41,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
+import { toast } from '@/lib/app-toast'
 
 type CenterOption = {
   id: number
@@ -65,8 +68,20 @@ type FormState = {
   track: TrialTrack | ''
   subject: string
   generalComment: string
-  evidenceLink: string
   caseResult: CaseResult | ''
+  note: string
+}
+
+type SubmittedInfo = {
+  id: number
+  publicUrl: string
+  studentName: string
+  track: string
+  subject: string
+  center: string
+  totalScore: string
+  caseResult: string
+  note?: string
 }
 
 const INITIAL_FORM: FormState = {
@@ -79,8 +94,8 @@ const INITIAL_FORM: FormState = {
   track: '',
   subject: '',
   generalComment: '',
-  evidenceLink: '',
   caseResult: '',
+  note: '',
 }
 
 const REQUIRED_LABELS: Record<keyof FormState, string> = {
@@ -93,8 +108,44 @@ const REQUIRED_LABELS: Record<keyof FormState, string> = {
   track: 'Khối trải nghiệm',
   subject: 'Môn trải nghiệm',
   generalComment: 'Nhận xét chung',
-  evidenceLink: 'Link minh chứng nội bộ',
-  caseResult: 'Chốt case',
+  caseResult: 'Thông tin chốt case',
+  note: 'Định hướng thêm',
+}
+
+function toDdMmYyyy(isoString: string): string {
+  if (!isoString) return ''
+  const parts = isoString.split('-')
+  if (parts.length === 3) {
+    const [y, m, d] = parts
+    return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`
+  }
+  return isoString
+}
+
+function toIsoDate(ddMmYyyy: string): string {
+  if (!ddMmYyyy) return ''
+  const parts = ddMmYyyy.split('/')
+  if (parts.length === 3) {
+    const [d, m, y] = parts
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
+  }
+  return ''
+}
+
+function isValidDdMmYyyy(dateStr: string): boolean {
+  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(dateStr.trim())
+  if (!match) return false
+  const day = Number.parseInt(match[1], 10)
+  const month = Number.parseInt(match[2], 10)
+  const year = Number.parseInt(match[3], 10)
+  if (year < 2000 || year > 2100) return false
+  if (month < 1 || month > 12) return false
+  const date = new Date(year, month - 1, day)
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  )
 }
 
 const SCORE_VALUES = [1, 2, 3, 4, 5]
@@ -213,16 +264,18 @@ function ScoreDot({
   return (
     <button
       type="button"
+      role="radio"
+      aria-checked={selected}
       aria-label={`Chọn điểm ${value}`}
       onClick={onSelect}
       className={cn(
-        'mx-auto flex h-6 w-6 items-center justify-center rounded-full border text-xs font-semibold transition-colors',
+        'mx-auto flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-bold transition-all',
         selected
-          ? 'border-[#087f80] bg-[#087f80] text-white'
-          : 'border-gray-300 bg-white text-transparent hover:border-[#087f80]',
+          ? 'border-[#087f80] bg-[#087f80] text-white shadow-sm ring-4 ring-[#087f80]/25 scale-105'
+          : 'border-gray-300 bg-white text-gray-400 hover:border-[#087f80] hover:bg-[#087f80]/10 hover:text-[#087f80]',
       )}
     >
-      {selected ? value : ''}
+      {value}
     </button>
   )
 }
@@ -239,29 +292,29 @@ function MatrixRubric({
   return (
     <div className="space-y-5">
       {rubric.sections.map((section, index) => (
-        <section key={section.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+        <section key={section.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
             <div className="inline-flex h-7 min-w-7 items-center justify-center rounded bg-[#087f80] px-2 text-xs font-bold text-white">
-              {index + 9}
+              {index + 1}
             </div>
             <h3 className="mt-2 text-sm font-bold uppercase text-gray-950">{section.title}</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-[760px] w-full table-fixed border-separate border-spacing-0 text-sm">
               <thead>
-                <tr className="bg-white text-xs font-semibold text-gray-500">
+                <tr className="bg-white text-xs font-bold text-gray-600">
                   <th className="w-[46%] px-4 py-3 text-left">Năng lực</th>
                   {SCORE_VALUES.map((score) => (
-                    <th key={score} className="px-3 py-3 text-center">
-                      {score}
+                    <th key={score} className="px-3 py-3 text-center font-bold text-gray-700">
+                      Điểm {score}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {section.criteria.map((criterion) => (
-                  <tr key={criterion.key} className="odd:bg-gray-50 even:bg-white">
-                    <td className="px-4 py-3 text-xs font-medium leading-relaxed text-gray-700">
+                  <tr key={criterion.key} className="odd:bg-gray-50/60 even:bg-white transition-colors hover:bg-teal-50/20">
+                    <td className="px-4 py-3 text-xs font-medium leading-relaxed text-gray-800">
                       {criterion.label}
                     </td>
                     {SCORE_VALUES.map((score) => (
@@ -299,15 +352,15 @@ function LevelListRubric({
         const criterion = section.criteria[0]
 
         return (
-          <section key={section.id} className="rounded-lg border border-gray-200 bg-white">
+          <section key={section.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
             <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
               <div className="inline-flex h-7 min-w-7 items-center justify-center rounded bg-[#087f80] px-2 text-xs font-bold text-white">
-                {index + 9}
+                {index + 1}
               </div>
               <h3 className="mt-2 text-sm font-bold uppercase text-gray-950">{section.title}</h3>
-              <p className="mt-1 text-xs text-gray-500">{criterion.label}</p>
+              <p className="mt-1 text-xs text-gray-600">{criterion.label}</p>
             </div>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100" role="radiogroup" aria-label={section.title}>
               {criterion.levels?.map((level, levelIndex) => {
                 const score = levelIndex + 1
                 const checked = scores[criterion.key] === score
@@ -316,23 +369,29 @@ function LevelListRubric({
                   <button
                     key={level}
                     type="button"
+                    role="radio"
+                    aria-checked={checked}
                     onClick={() => onScore(criterion.key, score)}
                     className={cn(
-                      'grid w-full grid-cols-[48px_minmax(0,1fr)] items-center gap-3 px-4 py-3 text-left transition-colors',
-                      checked ? 'bg-[#eefafa]' : 'hover:bg-gray-50',
+                      'grid w-full grid-cols-[48px_minmax(0,1fr)] items-center gap-3 px-4 py-3.5 text-left transition-all border-l-4',
+                      checked
+                        ? 'border-l-[#087f80] bg-[#eef8f8]'
+                        : 'border-l-transparent hover:bg-gray-50',
                     )}
                   >
                     <span
                       className={cn(
-                        'flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold',
+                        'flex h-8 w-8 items-center justify-center rounded-full border-2 text-xs font-bold transition-all',
                         checked
-                          ? 'border-[#087f80] bg-[#087f80] text-white'
+                          ? 'border-[#087f80] bg-[#087f80] text-white shadow-sm ring-4 ring-[#087f80]/20'
                           : 'border-gray-300 bg-white text-gray-500',
                       )}
                     >
                       {score}
                     </span>
-                    <span className="text-sm leading-relaxed text-gray-700">{level}</span>
+                    <span className={cn('text-sm leading-relaxed', checked ? 'font-semibold text-gray-950' : 'text-gray-700')}>
+                      {level}
+                    </span>
                   </button>
                 )
               })}
@@ -349,7 +408,7 @@ function CaseResultTile({
   checked,
   onSelect,
 }: {
-  option: (typeof CASE_RESULT_OPTIONS)[number]
+  option: (typeof ACTIVE_CASE_RESULT_OPTIONS)[number]
   checked: boolean
   onSelect: () => void
 }) {
@@ -394,6 +453,7 @@ export default function UserCheckoutCreatePage() {
   const [contextError, setContextError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [submittedData, setSubmittedData] = useState<SubmittedInfo | null>(null)
 
   useEffect(() => {
     const fallbackTeacherName = user?.displayName || normalizeEmailName(user?.email)
@@ -485,7 +545,6 @@ export default function UserCheckoutCreatePage() {
         'salesOwner',
         'studentName',
         'studentAge',
-        'trialDate',
         'track',
         'subject',
       ] as Array<keyof FormState>
@@ -494,6 +553,12 @@ export default function UserCheckoutCreatePage() {
         nextErrors[key] = `Vui lòng nhập ${REQUIRED_LABELS[key].toLowerCase()}`
       }
     })
+
+    if (!form.trialDate.trim()) {
+      nextErrors.trialDate = 'Vui lòng nhập ngày trải nghiệm (dd/mm/yyyy)'
+    } else if (!isValidDdMmYyyy(form.trialDate)) {
+      nextErrors.trialDate = 'Ngày trải nghiệm không hợp lệ (định dạng đúng: dd/mm/yyyy)'
+    }
 
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
@@ -518,9 +583,6 @@ export default function UserCheckoutCreatePage() {
     const nextErrors: Record<string, string> = {}
     if (!form.caseResult) {
       nextErrors.caseResult = 'Vui lòng chọn thông tin chốt case'
-    }
-    if (form.evidenceLink && !/^https?:\/\//i.test(form.evidenceLink.trim())) {
-      nextErrors.evidenceLink = 'Link minh chứng nội bộ nên bắt đầu bằng http:// hoặc https://'
     }
     setErrors(nextErrors)
     return Object.keys(nextErrors).length === 0
@@ -554,7 +616,18 @@ export default function UserCheckoutCreatePage() {
       if (!response.ok || !payload?.success) {
         throw new Error(payload?.error || 'Không thể gửi form checkout')
       }
-      router.push('/user/checkout/manage')
+      toast.success('Gửi phiếu thành công!', { message: 'Dữ liệu đã được lưu vào cơ sở dữ liệu' })
+      setSubmittedData({
+        id: Number(payload.data?.id || payload.data?.raw_id || 0),
+        publicUrl: String(payload.data?.public_url || ''),
+        studentName: form.studentName,
+        track: form.track,
+        subject: form.subject,
+        center: form.center,
+        totalScore: payload.data?.total_score != null ? `${Number(payload.data.total_score).toFixed(2)}/5.00` : (averageScore != null ? `${averageScore.toFixed(2)}/5.00` : '-'),
+        caseResult: form.caseResult,
+        note: form.note,
+      })
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : 'Không thể gửi form checkout')
     } finally {
@@ -665,13 +738,42 @@ export default function UserCheckoutCreatePage() {
 
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <FieldLabel>Ngày trải nghiệm</FieldLabel>
-                  <input
-                    type="date"
-                    value={form.trialDate}
-                    onChange={(event) => updateField('trialDate', event.target.value)}
-                    className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10"
-                  />
+                  <FieldLabel>Ngày trải nghiệm (dd/mm/yyyy)</FieldLabel>
+                  <div className="relative">
+                    <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="dd/mm/yyyy"
+                      value={form.trialDate}
+                      onChange={(event) => {
+                        updateField('trialDate', event.target.value)
+                      }}
+                      className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-12 text-sm text-gray-900 outline-none transition-colors focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10"
+                    />
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <input
+                        type="date"
+                        aria-label="Chọn ngày từ lịch"
+                        tabIndex={-1}
+                        className="absolute inset-0 cursor-pointer opacity-0"
+                        value={toIsoDate(form.trialDate)}
+                        onChange={(event) => {
+                          if (event.target.value) {
+                            updateField('trialDate', toDdMmYyyy(event.target.value))
+                          }
+                        }}
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        aria-hidden="true"
+                        className="flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                      >
+                        <Calendar className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
                   <FieldError message={errors.trialDate} />
                 </div>
 
@@ -681,7 +783,7 @@ export default function UserCheckoutCreatePage() {
                     value={form.salesOwner}
                     onChange={(event) => updateField('salesOwner', event.target.value)}
                     className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10"
-                    placeholder="Nhập tên sale phụ trách case trial"
+                    placeholder="Nhập tên tư vấn phụ trách case trial"
                   />
                   <p className="text-xs text-[#b00020]">GV chủ động hỏi tên tư vấn phụ trách case trial của mình</p>
                   <FieldError message={errors.salesOwner} />
@@ -762,7 +864,7 @@ export default function UserCheckoutCreatePage() {
                     </p>
                   </div>
                   <div className="rounded-lg bg-[#fff7f8] px-4 py-2 text-sm font-semibold text-[#b00020]">
-                    Điểm TB: {averageScore == null ? 'N/A' : averageScore.toFixed(2)}
+                    Điểm TB: {averageScore == null ? 'N/A' : `${averageScore.toFixed(2)}/5.00`}
                   </div>
                 </div>
                 <textarea
@@ -785,17 +887,16 @@ export default function UserCheckoutCreatePage() {
                 </p>
               </div>
 
-              <div className="rounded-lg border border-gray-200 bg-white px-5 py-5">
-                <div className="inline-flex h-8 min-w-8 items-center justify-center rounded bg-[#087f80] px-2 text-sm font-bold text-white">
-                  14
+              <div className="rounded-lg border border-gray-200 bg-white px-5 py-5 shadow-sm">
+                <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#087f80] text-white shadow-sm">
+                  <CheckCircle2 className="h-5 w-5" />
                 </div>
                 <h4 className="mt-4 text-lg font-semibold text-gray-950">
                   Học viên có phù hợp với lộ trình học không?
                   <span className="ml-1 text-[#b00020]">*</span>
                 </h4>
                 <div className="mt-5 space-y-2 text-sm text-gray-600">
-                  <p>Note: Confirm trước đến Leader đối với các trường hợp đặc biệt như <span className="font-bold text-orange-600">4 tháng</span> và <span className="font-bold text-amber-500">1:1</span>.</p>
-                  {CASE_RESULT_OPTIONS.map((option) => (
+                  {ACTIVE_CASE_RESULT_OPTIONS.map((option) => (
                     <p key={option.value}>
                       <span className={cn('font-bold', option.className)}>{option.label}</span>: {option.description}
                     </p>
@@ -804,7 +905,7 @@ export default function UserCheckoutCreatePage() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Thông tin chốt case">
-                {CASE_RESULT_OPTIONS.map((option) => (
+                {ACTIVE_CASE_RESULT_OPTIONS.map((option) => (
                   <CaseResultTile
                     key={option.value}
                     option={option}
@@ -815,18 +916,18 @@ export default function UserCheckoutCreatePage() {
               </div>
               <FieldError message={errors.caseResult} />
 
-              <div className="space-y-2 rounded-lg border border-gray-200 bg-white p-4">
-                <FieldLabel required={false}>Link minh chứng nội bộ</FieldLabel>
-                <div className="relative">
-                  <LinkIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                  <input
-                    value={form.evidenceLink}
-                    onChange={(event) => updateField('evidenceLink', event.target.value)}
-                    className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-sm text-gray-900 outline-none transition-colors focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10"
-                    placeholder="https://..."
-                  />
-                </div>
-                <FieldError message={errors.evidenceLink} />
+              <div className="rounded-lg border border-gray-200 bg-white px-5 py-4 shadow-sm space-y-2">
+                <label htmlFor="checkout-note" className="block text-sm font-semibold text-gray-900">
+                  Định hướng thêm <span className="text-xs font-normal text-gray-500">(Không bắt buộc)</span>
+                </label>
+                <textarea
+                  id="checkout-note"
+                  rows={3}
+                  value={form.note}
+                  onChange={(e) => updateField('note', e.target.value)}
+                  placeholder="Ghi chú định hướng thêm đối với các trường hợp như 4 tháng, 1:1, học bù, bảo lưu hoặc định hướng riêng từ GV/Sale..."
+                  className="w-full rounded-lg border border-gray-300 p-3 text-sm placeholder:text-gray-400 focus:border-[#087f80] focus:outline-none focus:ring-1 focus:ring-[#087f80]"
+                />
               </div>
 
               {submitError && (
@@ -845,7 +946,7 @@ export default function UserCheckoutCreatePage() {
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ArrowLeft className="h-4 w-4" />
-              Back
+              Quay lại
             </button>
 
             {phase < 3 ? (
@@ -854,7 +955,7 @@ export default function UserCheckoutCreatePage() {
                 onClick={handleNext}
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#b00020] px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#90001a]"
               >
-                Next
+                Tiếp tục
                 <Send className="h-4 w-4" />
               </button>
             ) : (
@@ -865,11 +966,90 @@ export default function UserCheckoutCreatePage() {
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#087f80] px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#066b6c] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-                Submit
+                {isSubmitting ? 'Đang gửi...' : 'Gửi phiếu'}
               </button>
             )}
           </div>
         </section>
+
+        {submittedData && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-lg rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="flex flex-col items-center text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-inner">
+                  <CheckCircle2 className="h-10 w-10" />
+                </div>
+                <h3 className="mt-4 text-xl font-bold text-gray-900">Gửi phiếu đánh giá thành công!</h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  Dữ liệu phiếu checkout đã được lưu thành công vào cơ sở dữ liệu Supabase.
+                </p>
+              </div>
+
+              <div className="mt-6 rounded-xl border border-gray-100 bg-gray-50/80 p-4 text-sm space-y-2.5">
+                <div className="flex justify-between items-center py-1 border-b border-gray-200/60">
+                  <span className="text-gray-500 font-medium">Học viên</span>
+                  <span className="font-bold text-gray-900">{submittedData.studentName}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-gray-200/60">
+                  <span className="text-gray-500 font-medium">Khối / Môn</span>
+                  <span className="font-semibold text-gray-800">{submittedData.track} - {submittedData.subject}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-gray-200/60">
+                  <span className="text-gray-500 font-medium">Cơ sở</span>
+                  <span className="font-semibold text-gray-800">{submittedData.center}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-gray-200/60">
+                  <span className="text-gray-500 font-medium">Điểm TB</span>
+                  <span className="font-bold text-[#087f80] text-base">{submittedData.totalScore}</span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-gray-500 font-medium">Kết quả chốt case</span>
+                  <span className={cn('font-bold',
+                    submittedData.caseResult === 'Pass' && 'text-green-700',
+                    submittedData.caseResult === 'Fail' && 'text-red-700',
+                    submittedData.caseResult === '4 tháng' && 'text-orange-600',
+                    submittedData.caseResult === '1:1' && 'text-amber-500'
+                  )}>
+                    {submittedData.caseResult}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => router.push('/user/checkout/manage')}
+                  className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#b00020] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#90001a]"
+                >
+                  <ListChecks className="h-4 w-4" />
+                  Đi đến danh sách quản lý
+                </button>
+                {submittedData.publicUrl && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(submittedData.publicUrl, '_blank')}
+                    className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+                  >
+                    <ExternalLink className="h-4 w-4 text-[#087f80]" />
+                    Xem phiếu đánh giá vừa gửi
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForm(INITIAL_FORM)
+                    setScores({})
+                    setPhase(1)
+                    setSubmittedData(null)
+                  }}
+                  className="mt-1 py-1.5 text-center text-xs font-semibold text-gray-500 hover:text-gray-800 transition-colors"
+                >
+                  Tạo phiếu đánh giá mới cho học viên khác
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </PageLayoutContent>
     </PageLayout>
   )

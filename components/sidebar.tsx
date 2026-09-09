@@ -432,6 +432,14 @@ export function Sidebar() {
       label: 'Thông tin của tôi',
       icon: Home,
     },
+    {
+      label: 'Checkout',
+      icon: ClipboardCheck,
+      submenu: [
+        { href: '/user/checkout/create', label: 'Tạo form' },
+        { href: '/user/checkout/manage', label: 'Quản lý form đã tạo' },
+      ],
+    },
     { href: '/user/thong-bao', label: 'Thông báo', icon: Bell },
     {
       label: 'Lịch & Hoạt động',

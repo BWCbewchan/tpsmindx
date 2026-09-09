@@ -16,6 +16,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const isCandidatePortal = pathname.startsWith('/candidate-portal');
   const isPublicPortfolio = pathname.startsWith('/public/portfolio');
+  const isPublicCheckout = pathname.startsWith('/public/checkout');
   const isStandaloneLesson =
     pathname.startsWith('/admin/hr-onboarding/videos/lesson') ||
     pathname.startsWith('/candidate-portal/videos/lesson');
@@ -30,6 +31,7 @@ function Layout({ children }: { children: React.ReactNode }) {
     pathname === '/' ||
     pathname.startsWith('/checkdatasource') ||
     pathname.startsWith('/public/portfolio') ||
+    pathname.startsWith('/public/checkout') ||
     pathname.startsWith('/bao-tri') ||
     pathname.startsWith('/hr-candidate-application') ||
     isCandidatePortal ||
@@ -98,7 +100,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           <div id="main-scroll-container" className={`min-h-screen lg:h-full custom-scrollbar ${isStandaloneLesson ? 'overflow-y-auto' : 'lg:overflow-y-auto'}`}>
             <div
               className={
-                isStandaloneLesson || isPublicPortfolio
+                isStandaloneLesson || isPublicPortfolio || isPublicCheckout
                   ? 'w-full p-0'
                   : `w-full px-0 py-1.25 sm:px-[1.5%] sm:py-2 lg:px-[2%] lg:py-3 xl:px-[2.5%] xl:py-3 ${
                       mounted && shouldShowSidebar && !isDockMode && !isOpen ? 'pt-14 sm:pt-16 lg:pt-3' : ''
@@ -113,7 +115,7 @@ function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </main>
-      {!pathname.startsWith('/bao-tri') && !isCandidatePortal && !isStandaloneLesson && <UserFirstLoginOnboarding />}
+      {!pathname.startsWith('/bao-tri') && !isCandidatePortal && !isStandaloneLesson && !isPublicCheckout && <UserFirstLoginOnboarding />}
     </div>
   );
 }

@@ -1,4 +1,8 @@
 import { requireBearerSession } from '@/lib/datasource-api-auth'
+import {
+  checkoutCenterSqlExpression,
+  normalizeCheckoutCenter,
+} from '@/lib/checkout-center'
 import pool from '@/lib/db'
 import {
   ALL_SUBJECT_OPTIONS,
@@ -131,46 +135,6 @@ function publicCheckoutUrl(request: NextRequest, token: string): string {
   return new URL(`/public/checkout/${token}`, request.nextUrl.origin).toString()
 }
 
-const CANONICAL_CENTERS = [
-  '3 tháng 2',
-  'Hải Thượng Lãn Ông',
-  'Him Lam ( Nguyễn Thị Thập )',
-  'Lê Văn Việt',
-  'Lũy Bán Bích',
-  'Mizuki',
-  'Nguyễn Duy Trinh',
-  'Nguyễn Xí',
-  'Phạm Ngũ Lão',
-  'Phạm Văn Đồng',
-  'Phan Văn Trị',
-  'Phan Xích Long',
-  'Phú Mỹ Hưng',
-  'Quang Trung',
-  'Song Hành',
-  'Tây Thạnh',
-  'Tên Lửa',
-  'Tô Ký',
-  'Trường Chinh',
-  'Vinhome Central Park (Bình Thạnh)',
-  'Vinhome Grand Park (Q9-Thủ Đức)',
-]
-
-function normalizeCenter(name: unknown): string {
-  const raw = String(name ?? '').trim()
-  if (!raw) return ''
-  for (const c of CANONICAL_CENTERS) {
-    if (raw.toLowerCase() === c.toLowerCase()) return c
-  }
-  for (const c of CANONICAL_CENTERS) {
-    if (raw.toLowerCase().includes(c.toLowerCase())) return c
-  }
-  if (/3\s*tháng\s*2|3\/2/i.test(raw)) return '3 tháng 2'
-  if (/nguyễn\s*thị\s*thập|him\s*lam/i.test(raw)) return 'Him Lam ( Nguyễn Thị Thập )'
-  if (/grand\s*park/i.test(raw)) return 'Vinhome Grand Park (Q9-Thủ Đức)'
-  if (/central\s*park/i.test(raw)) return 'Vinhome Central Park (Bình Thạnh)'
-  return raw.replace(/^(HCM|HN|ĐN|BD)\s*-\s*(\d+[A-Z]*\s*)?/i, '').trim() || raw
-}
-
 function formatTimestampRaw(date: Date): string {
   const gmt7 = new Date(date.getTime() + 7 * 60 * 60 * 1000)
   const m = gmt7.getUTCMonth() + 1
@@ -226,9 +190,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const center = textValue(searchParams.get('center'), 160)
+    const center = normalizeCheckoutCenter(textValue(searchParams.get('center'), 160))
     if (center) {
-      addWhere(clauses, values, 'LOWER(TRIM(center_name)) = LOWER(TRIM(?))', center)
+      addWhere(clauses, values, `${checkoutCenterSqlExpression('center_name')} = ?`, center)
     }
 
     const track = textValue(searchParams.get('track'), 40)
@@ -383,7 +347,7 @@ export async function POST(request: NextRequest) {
 
     const scoreValues = SCORE_COLUMNS.map((column) => scorePayload[column] ?? null)
     const submittedAt = new Date()
-    const normalizedCenter = normalizeCenter(center)
+    const normalizedCenter = normalizeCheckoutCenter(center)
     const timestampRaw = formatTimestampRaw(submittedAt)
     const trialDateRawFormatted = formatTrialDateRaw(trialDate, trialDateRaw)
     const sourceFile = 'Data_trial_raw.xlsx'

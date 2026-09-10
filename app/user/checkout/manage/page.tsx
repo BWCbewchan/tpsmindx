@@ -15,6 +15,7 @@ import {
   ArrowUpDown,
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Eraser,
   ExternalLink,
@@ -181,6 +182,124 @@ function FilterLabel({
   )
 }
 
+type SearchableFilterOption = {
+  value: string
+  label: string
+}
+
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .trim()
+}
+
+function SearchableFilterSelect({
+  value,
+  options,
+  placeholder,
+  disabled,
+  onChange,
+}: {
+  value: string
+  options: SearchableFilterOption[]
+  placeholder: string
+  disabled?: boolean
+  onChange: (value: string) => void
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const selectedLabel = options.find((option) => option.value === value)?.label || placeholder
+  const normalizedQuery = normalizeSearchText(query)
+  const visibleOptions = useMemo(() => {
+    if (!normalizedQuery) return options
+    return options.filter((option) =>
+      normalizeSearchText(option.label).includes(normalizedQuery),
+    )
+  }, [normalizedQuery, options])
+
+  function selectValue(nextValue: string) {
+    onChange(nextValue)
+    setQuery('')
+    setIsOpen(false)
+  }
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          value={isOpen ? query : selectedLabel}
+          disabled={disabled}
+          onFocus={() => {
+            setIsOpen(true)
+            setQuery('')
+          }}
+          onChange={(event) => {
+            setQuery(event.target.value)
+            setIsOpen(true)
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              setIsOpen(false)
+              setQuery('')
+            }
+            if (event.key === 'Enter' && visibleOptions[0]) {
+              event.preventDefault()
+              selectValue(visibleOptions[0].value)
+            }
+          }}
+          onBlur={() => {
+            window.setTimeout(() => {
+              setIsOpen(false)
+              setQuery('')
+            }, 120)
+          }}
+          className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-9 text-sm text-gray-900 outline-none transition-colors placeholder:text-gray-400 focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10 disabled:bg-gray-50"
+          placeholder={placeholder}
+          role="combobox"
+          aria-expanded={isOpen}
+        />
+        <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+      </div>
+
+      {isOpen && !disabled && (
+        <div className="absolute left-0 right-0 z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-xl">
+          {visibleOptions.length > 0 ? (
+            visibleOptions.map((option) => {
+              const isSelected = option.value === value
+              return (
+                <button
+                  key={`${option.value || 'all'}-${option.label}`}
+                  type="button"
+                  onMouseDown={(event) => {
+                    event.preventDefault()
+                    selectValue(option.value)
+                  }}
+                  className={cn(
+                    'flex min-h-9 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors',
+                    isSelected
+                      ? 'bg-[#fff1f3] font-semibold text-[#b00020]'
+                      : 'text-gray-700 hover:bg-gray-50 hover:text-gray-950',
+                  )}
+                >
+                  <span className="truncate">{option.label}</span>
+                  {isSelected && <CheckCircle2 className="h-4 w-4 shrink-0" />}
+                </button>
+              )
+            })
+          ) : (
+            <div className="px-3 py-3 text-sm text-gray-500">Không tìm thấy lựa chọn phù hợp</div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function UserCheckoutManagePage() {
   const { token, user } = useAuth()
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS)
@@ -242,6 +361,28 @@ export default function UserCheckoutManagePage() {
     if (!filters.track) return ALL_MANAGE_SUBJECT_OPTIONS
     return MANAGE_SUBJECT_OPTIONS[filters.track]
   }, [filters.track])
+
+  const centerFilterOptions = useMemo<SearchableFilterOption[]>(() => {
+    const centers = context?.centers || []
+    return [
+      { value: '', label: 'Tất cả cơ sở' },
+      ...centers.map((center) => ({
+        value: center.full_name,
+        label: center.full_name,
+      })),
+    ]
+  }, [context?.centers])
+
+  const subjectFilterOptions = useMemo<SearchableFilterOption[]>(
+    () => [
+      { value: '', label: 'Tất cả môn' },
+      ...subjectOptions.map((subject) => ({
+        value: subject,
+        label: subject,
+      })),
+    ],
+    [subjectOptions],
+  )
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams()
@@ -465,19 +606,13 @@ export default function UserCheckoutManagePage() {
             {/* Cột 3: Cơ sở */}
             <div className="space-y-1.5">
               <FilterLabel icon={MapPin}>Cơ sở</FilterLabel>
-              <select
+              <SearchableFilterSelect
                 value={filters.center}
                 disabled={isLoadingContext}
-                onChange={(event) => updateFilter('center', event.target.value)}
-                className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10 disabled:bg-gray-50"
-              >
-                <option value="">Tất cả cơ sở</option>
-                {context?.centers.map((center) => (
-                  <option key={`${center.id}-${center.full_name}`} value={center.full_name}>
-                    {center.full_name}
-                  </option>
-                ))}
-              </select>
+                options={centerFilterOptions}
+                placeholder="Tất cả cơ sở"
+                onChange={(value) => updateFilter('center', value)}
+              />
             </div>
 
             {/* Cột 4: Khối */}
@@ -500,18 +635,12 @@ export default function UserCheckoutManagePage() {
             {/* Cột 5: Môn */}
             <div className="space-y-1.5">
               <FilterLabel icon={Search}>Môn trải nghiệm</FilterLabel>
-              <select
+              <SearchableFilterSelect
                 value={filters.subject}
-                onChange={(event) => updateFilter('subject', event.target.value)}
-                className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10"
-              >
-                <option value="">Tất cả môn</option>
-                {subjectOptions.map((subject) => (
-                  <option key={subject} value={subject}>
-                    {subject}
-                  </option>
-                ))}
-              </select>
+                options={subjectFilterOptions}
+                placeholder="Tất cả môn"
+                onChange={(value) => updateFilter('subject', value)}
+              />
             </div>
 
             {/* Cột 6: Từ ngày */}

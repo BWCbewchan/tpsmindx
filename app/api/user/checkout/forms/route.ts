@@ -171,6 +171,12 @@ function normalizeCenter(name: unknown): string {
   return raw.replace(/^(HCM|HN|ĐN|BD)\s*-\s*(\d+[A-Z]*\s*)?/i, '').trim() || raw
 }
 
+function centerFilterVariants(name: unknown): string[] {
+  const raw = textValue(name, 160)
+  const normalized = normalizeCenter(raw)
+  return Array.from(new Set([raw, normalized].map((value) => value.trim()).filter(Boolean)))
+}
+
 function formatTimestampRaw(date: Date): string {
   const gmt7 = new Date(date.getTime() + 7 * 60 * 60 * 1000)
   const m = gmt7.getUTCMonth() + 1
@@ -228,7 +234,22 @@ export async function GET(request: NextRequest) {
 
     const center = textValue(searchParams.get('center'), 160)
     if (center) {
-      addWhere(clauses, values, 'LOWER(TRIM(center_name)) = LOWER(TRIM(?))', center)
+      const variants = centerFilterVariants(center)
+      values.push(variants)
+      const centerParam = `$${values.length}`
+      clauses.push(`(
+        NULLIF(TRIM(COALESCE(center_name, '')), '') IS NOT NULL
+        AND EXISTS (
+          SELECT 1
+          FROM unnest(${centerParam}::text[]) AS selected_center(value)
+          WHERE NULLIF(TRIM(selected_center.value), '') IS NOT NULL
+            AND (
+              LOWER(TRIM(center_name)) = LOWER(TRIM(selected_center.value))
+              OR LOWER(TRIM(selected_center.value)) LIKE '%' || LOWER(TRIM(center_name)) || '%'
+              OR LOWER(TRIM(center_name)) LIKE '%' || LOWER(TRIM(selected_center.value)) || '%'
+            )
+        )
+      )`)
     }
 
     const track = textValue(searchParams.get('track'), 40)

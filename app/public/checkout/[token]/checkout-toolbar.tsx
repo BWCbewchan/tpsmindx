@@ -52,18 +52,6 @@ function sanitizeForFilename(str: string): string {
     .replace(/\s+/g, ' ')
 }
 
-const COLOR_STYLE_PROPS = [
-  'color',
-  'backgroundColor',
-  'borderColor',
-  'borderTopColor',
-  'borderBottomColor',
-  'borderLeftColor',
-  'borderRightColor',
-  'outlineColor',
-  'textDecorationColor',
-] as const
-
 export function CheckoutToolbar({
   recordId,
   studentName,
@@ -93,151 +81,20 @@ export function CheckoutToolbar({
   const handleDownloadPdf = async () => {
     if (typeof window === 'undefined' || isExporting) return
 
-    const page1El = document.getElementById('evaluation-page-1')
-    const page2El = document.getElementById('evaluation-page-2')
-    const sheetEl = document.getElementById('evaluation-sheet')
-
-    if (!page1El && !sheetEl) {
-      window.print()
-      return
-    }
-
     setIsExporting(true)
 
     try {
-      const html2canvasModule = await import('html2canvas')
-      const html2canvas = html2canvasModule.default || html2canvasModule
-      // @ts-expect-error - import self-contained UMD bundle to avoid Turbopack core-js subpath issues
-      const jspdfModule = await import('jspdf/dist/jspdf.umd.min.js')
-      const jsPDF = jspdfModule.jsPDF || jspdfModule.default?.jsPDF || jspdfModule.default
-
-      // Helper canvas for converting any modern CSS colors (lab, oklch, oklab) into standard rgba
-      const helperCanvas = document.createElement('canvas')
-      helperCanvas.width = 1
-      helperCanvas.height = 1
-      const helperCtx = helperCanvas.getContext('2d', { willReadFrequently: true })
-
-      const toRgba = (colorStr: string): string => {
-        if (
-          !colorStr ||
-          (!colorStr.includes('lab(') &&
-            !colorStr.includes('oklch(') &&
-            !colorStr.includes('oklab(') &&
-            !colorStr.includes('color('))
-        ) {
-          return colorStr
-        }
-        if (!helperCtx) return '#000000'
-        try {
-          helperCtx.clearRect(0, 0, 1, 1)
-          helperCtx.fillStyle = colorStr
-          helperCtx.fillRect(0, 0, 1, 1)
-          const [r, g, b, a] = helperCtx.getImageData(0, 0, 1, 1).data
-          return `rgba(${r}, ${g}, ${b}, ${(a / 255).toFixed(3)})`
-        } catch {
-          return '#000000'
-        }
-      }
-
-      // Pre-clean cloned DOM before html2canvas parses styles
-      const cleanClonedDoc = (clonedDoc: Document) => {
-        const win = clonedDoc.defaultView || window
-        const allElements = clonedDoc.querySelectorAll('*')
-        for (let i = 0; i < allElements.length; i++) {
-          const el = allElements[i] as HTMLElement
-          if (!el.style) continue
-
-          // Remove box shadows and text shadows which trigger lab/oklch parser crashes in html2canvas
-          el.style.boxShadow = 'none'
-          el.style.textShadow = 'none'
-
-          // Sanitize computed colors
-          const cs = win.getComputedStyle(el)
-          for (const prop of COLOR_STYLE_PROPS) {
-            const val = cs[prop as any]
-            if (
-              val &&
-              (val.includes('lab(') ||
-                val.includes('oklch(') ||
-                val.includes('oklab(') ||
-                val.includes('color('))
-            ) {
-              ;(el.style as any)[prop] = toRgba(val)
-            }
-          }
-        }
-      }
-
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      })
-
-      const pdfWidth = 210
-      const pdfHeight = 297
-      const margin = 8 // 8mm margin
-      const printWidth = pdfWidth - margin * 2 // 194mm
-      const printHeight = pdfHeight - margin * 2 // 281mm
-
-      const renderPageToPdf = async (element: HTMLElement, isFirstPage: boolean) => {
-        const canvas = await html2canvas(element, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-          onclone: cleanClonedDoc,
-        })
-
-        if (!isFirstPage) {
-          pdf.addPage()
-        }
-
-        const imgData = canvas.toDataURL('image/jpeg', 0.98)
-        const ratio = canvas.height / canvas.width
-        let finalWidth = printWidth
-        let finalHeight = printWidth * ratio
-
-        // If height exceeds printable height, scale down proportionately
-        if (finalHeight > printHeight) {
-          const scale = printHeight / finalHeight
-          finalHeight = printHeight
-          finalWidth = finalWidth * scale
-        }
-
-        // Center horizontally
-        const xOffset = margin + (printWidth - finalWidth) / 2
-        const yOffset = margin
-
-        pdf.addImage(imgData, 'JPEG', xOffset, yOffset, finalWidth, finalHeight, undefined, 'FAST')
-      }
-
-      if (page1El && page2El) {
-        await renderPageToPdf(page1El, true)
-        await renderPageToPdf(page2El, false)
-      } else if (sheetEl) {
-        await renderPageToPdf(sheetEl, true)
-      }
-
-      // Filename format: [TenHocVien]-[BoMon]-[NgayThangNam].pdf
+      const originalTitle = document.title
       const cleanStudent = sanitizeForFilename(studentName || `HocVien_${recordId}`)
       const cleanSubject = sanitizeForFilename(subject || 'MindX')
       const compactDate = formatDdMmYyyyCompact(trialDate)
-      const fileName = `${cleanStudent}-${cleanSubject}-${compactDate}.pdf`
-
-      // Auto download with blob link for guaranteed browser download
-      const blob = pdf.output('blob')
-      const blobUrl = URL.createObjectURL(blob)
-      const downloadLink = document.createElement('a')
-      downloadLink.href = blobUrl
-      downloadLink.download = fileName
-      document.body.appendChild(downloadLink)
-      downloadLink.click()
-      document.body.removeChild(downloadLink)
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000)
+      document.title = `${cleanStudent}-${cleanSubject}-${compactDate}`
+      window.print()
+      window.setTimeout(() => {
+        document.title = originalTitle
+      }, 500)
     } catch (err) {
       console.error('Lỗi khi xuất file PDF:', err)
-      // Fallback to browser print dialog
       window.print()
     } finally {
       setIsExporting(false)
@@ -247,7 +104,7 @@ export function CheckoutToolbar({
   return (
     <aside
       aria-label="Thanh công cụ phiếu đánh giá"
-      className="print:hidden sticky top-4 z-40 mx-auto mb-6 max-w-[960px] rounded-xl border border-gray-200/80 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-sm transition-all"
+      className="print:hidden sticky top-0 z-40 mx-auto mb-6 max-w-[960px] rounded-b-xl border border-t-0 border-gray-200/80 bg-white/95 px-4 py-3 shadow-lg backdrop-blur-sm transition-all"
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {/* Left: Info */}

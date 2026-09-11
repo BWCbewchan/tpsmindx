@@ -3,6 +3,7 @@ import { requireBearerSession } from "@/lib/datasource-api-auth";
 import pool from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { clearK12LeaderDocsCache } from "@/lib/k12-leader-docs";
+import { effectiveLeaderParent, planLeaderMove, planLeaderReorder, type LeaderTreeRow } from '@/lib/k12-leader-tree';
 
 let k12LeaderSchemaEnsured = false;
 
@@ -17,7 +18,7 @@ interface K12LeaderDocPayload {
   excerpt?: string;
   coverImageUrl?: string;
   sectionSlug?: string;
-  parentSlug?: string;
+  parentSlug?: string | null;
   status?: "draft" | "published";
   sortOrder?: number;
   originalSlug?: string;
@@ -452,6 +453,64 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error?.message || "Lỗi server" }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const payload = (await request.clone().json()) as K12LeaderDocPayload;
+  if (payload.action === 'publish_all') return POST(request);
+  const auth = await ensureAdminOrSuperAdmin(request);
+  if (!auth.ok) return auth.response;
+  await ensureK12LeaderSchema();
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Serialize tree changes so a concurrent move cannot invalidate sibling/slug checks.
+    await client.query('LOCK TABLE k12_leader_documents IN SHARE ROW EXCLUSIVE MODE');
+    const result = await client.query('SELECT * FROM k12_leader_documents ORDER BY sort_order, id');
+    const rows = result.rows as LeaderTreeRow[];
+    let data;
+    if (payload.action === 'reorder_siblings') {
+      const updates = planLeaderReorder(rows, payload.parentSlug || null, payload.orderedSlugs || []);
+      for (const row of updates) {
+        await client.query('UPDATE k12_leader_documents SET sort_order = $1, updated_by_email = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+          [row.sort_order, auth.email, row.id]);
+      }
+    } else {
+      if (payload.action) throw new Error('Thao tác không được hỗ trợ');
+      const originalSlug = payload.originalSlug || payload.slug || '';
+      const current = rows.find(row => row.slug === originalSlug);
+      if (!current) throw new Error('Không tìm thấy tài liệu');
+      const nextSlug = payload.slug ? normalizeSlugPath(payload.slug) : originalSlug;
+      const parentId = effectiveLeaderParent(rows, current);
+      const parentSlug = payload.parentSlug !== undefined ? payload.parentSlug :
+        nextSlug !== originalSlug ? (nextSlug.includes('/') ? nextSlug.slice(0, nextSlug.lastIndexOf('/')) : null) :
+          rows.find(row => row.id === parentId)?.slug ?? null;
+      const hierarchyChanged = nextSlug !== originalSlug || parentSlug !== (rows.find(row => row.id === parentId)?.slug ?? null);
+      const updates = hierarchyChanged ? planLeaderMove(rows, originalSlug, nextSlug, parentSlug, payload.sortOrder) :
+        [{ ...current, sort_order: payload.sortOrder ?? current.sort_order }];
+      for (const row of updates) {
+        await client.query(`UPDATE k12_leader_documents SET slug = $1, relative_path = $2, parent_id = $3,
+          section_id = $4, sort_order = $5, updated_by_email = $6, updated_at = CURRENT_TIMESTAMP WHERE id = $7`,
+        [row.slug, row.relative_path, row.parent_id, row.section_id, row.sort_order, auth.email, row.id]);
+      }
+      const fields = { title: payload.title, content: payload.content, topic: payload.topic,
+        excerpt: payload.excerpt, cover_image_url: payload.coverImageUrl, status: payload.status, type: payload.type };
+      for (const [column, value] of Object.entries(fields)) {
+        if (value !== undefined) await client.query(`UPDATE k12_leader_documents SET ${column} = $1 WHERE id = $2`, [value, current.id]);
+      }
+      const saved = (await client.query('SELECT * FROM k12_leader_documents WHERE id = $1', [current.id])).rows[0];
+      data = { ...saved, relativePath: saved.relative_path, parentId: saved.parent_id, sectionId: saved.section_id,
+        sortOrder: saved.sort_order, coverImageUrl: saved.cover_image_url, updatedAt: saved.updated_at };
+    }
+    await client.query('COMMIT');
+    clearK12LeaderDocsCache();
+    return NextResponse.json({ success: true, message: 'Đã cập nhật tài liệu', data });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Không thể cập nhật tài liệu' }, { status: 400 });
+  } finally {
+    client.release();
   }
 }
 

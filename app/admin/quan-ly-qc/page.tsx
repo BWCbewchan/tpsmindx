@@ -950,7 +950,7 @@ export default function QuanLyQCPage() {
   async function submitQC() {
     if (!selectedClass || !activeTemplate) return
     if (!selectedSession?.canCreateQC) {
-      toast.error('Buổi học này chưa mở hoặc đã quá hạn tạo phiếu QC')
+      toast.error('Buổi học này chưa nằm trong khung 24h trước/sau để tạo phiếu QC')
       return
     }
     setSaving(true)
@@ -1052,7 +1052,7 @@ export default function QuanLyQCPage() {
                 {/* 1. Tìm kiếm text */}
                 <div className="sm:col-span-2 lg:col-span-4">
                   <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                    Tìm lớp / Giáo viên
+                    Tìm lớp / Giáo viên / Mã GV
                   </label>
                   <div className="relative mt-1">
                     <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -1060,7 +1060,7 @@ export default function QuanLyQCPage() {
                       value={q}
                       onChange={(event) => setQ(event.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && loadAll(true)}
-                      placeholder="Tên lớp, mã lớp, giáo viên..."
+                      placeholder="Tên lớp, mã lớp, tên hoặc mã GV..."
                       className="h-10 w-full rounded-lg border border-gray-300 pl-9 pr-3 text-sm focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
                     />
                   </div>

@@ -363,12 +363,7 @@ export default function AppLayout({
       // Super admin bypasses all permission checks
       if (!isSuperAdmin) {
         // manager và admin luôn được phép vào deal-luong routes và portfolio-qc routes
-        const PORTFOLIO_QC_ROUTES = [
-          '/admin/portfolio-qc',
-          '/admin/portfolio',
-          '/admin/deal-luong',
-          '/admin/tao-deal-luong',
-        ]
+        const PORTFOLIO_QC_ROUTES = ['/admin/portfolio-qc', '/admin/deal-luong', '/admin/tao-deal-luong']
         const hasManagementRole =
           ['manager', 'admin', 'super_admin'].includes(user.role) ||
           roleCodes.some((code) => ['LEADER', 'TE', 'TC', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(code))

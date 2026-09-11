@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>Biên bản QC cần xác nhận</title>
+  <style type="text/css">
+{{email_styles}}
+  </style>
+</head>
+<body style="margin:0;padding:0;background:#f6f7f9;font-family:Arial,Helvetica,sans-serif;color:#1f2937;-webkit-font-smoothing:antialiased;">
+  <div class="email-preheader">Biên bản QC của {{class_name}} cần giáo viên xác nhận hoặc gửi phúc khảo.</div>
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" class="email-outer-pad" style="background:#f6f7f9;">
+    <tr>
+      <td align="center" style="padding:20px 12px;">
+        <table role="presentation" border="0" cellspacing="0" cellpadding="0" width="600" class="email-container" style="max-width:600px;width:100%;">
+          <tr>
+            <td class="email-shell" style="background:#ffffff;padding:24px 22px;border-radius:14px;border:1px solid #ececec;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="center" style="padding:0 0 16px 0;line-height:0;font-size:0;mso-line-height-rule:exactly;">
+                    <img class="email-logo" src="cid:mindxlogo" width="160" height="54" alt="MindX" border="0" style="display:block;width:160px;height:54px;max-width:160px;margin:0 auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;" />
+                  </td>
+                </tr>
+                <tr>
+                  <td align="center" style="padding-bottom:4px;">
+                    <div class="email-title" style="font-size:18px;font-weight:bold;color:{{brand_primary}};text-transform:uppercase;letter-spacing:0.6px;text-align:center;line-height:1.35;">BIÊN BẢN QC CẦN XÁC NHẬN</div>
+                    <div class="email-subtitle" style="font-size:14px;color:#555;text-align:center;margin-top:8px;line-height:1.5;max-width:480px;margin-left:auto;margin-right:auto;">Giáo viên vui lòng kiểm tra nội dung, ký xác nhận điện tử hoặc gửi phúc khảo nếu cần Leader/TE xử lý.</div>
+                  </td>
+                </tr>
+              </table>
+
+              <p class="email-p" style="margin:0 0 10px;font-size:15px;line-height:1.6;">Kính gửi <strong>{{teacher_name}}</strong>,</p>
+              <p class="email-p" style="margin:0 0 18px;font-size:15px;line-height:1.6;">
+                Leader/TE đã tạo biên bản QC trên hệ thống TPS. Thầy/Cô vui lòng mở biên bản để ký xác nhận hoặc gửi phúc khảo.
+              </p>
+
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="border-left:4px solid {{brand_primary}};border-radius:10px;overflow:hidden;background:#fafafa;">
+                <tr>
+                  <td style="padding:0;">
+                    <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" class="info-table" style="border-collapse:collapse;">
+                      <tr class="field-row">
+                        <td class="field-label" width="38%" valign="top" style="padding:12px 14px;font-size:12px;font-weight:bold;color:#4b5563;border-bottom:1px solid #e5e7eb;">Lớp học</td>
+                        <td class="field-value" valign="top" style="padding:12px 14px;font-size:15px;line-height:1.5;word-break:break-word;overflow-wrap:anywhere;border-bottom:1px solid #e5e7eb;">{{class_name}}</td>
+                      </tr>
+                      <tr class="field-row">
+                        <td class="field-label" width="38%" valign="top" style="padding:12px 14px;font-size:12px;font-weight:bold;color:#4b5563;border-bottom:1px solid #e5e7eb;">Cơ sở</td>
+                        <td class="field-value" valign="top" style="padding:12px 14px;font-size:15px;line-height:1.5;word-break:break-word;overflow-wrap:anywhere;border-bottom:1px solid #e5e7eb;">{{center_name}}</td>
+                      </tr>
+                      <tr class="field-row">
+                        <td class="field-label" width="38%" valign="top" style="padding:12px 14px;font-size:12px;font-weight:bold;color:#4b5563;border-bottom:1px solid #e5e7eb;">Buổi QC</td>
+                        <td class="field-value" valign="top" style="padding:12px 14px;font-size:15px;line-height:1.5;word-break:break-word;overflow-wrap:anywhere;border-bottom:1px solid #e5e7eb;">{{session_label}} · {{session_date}}</td>
+                      </tr>
+                      <tr class="field-row">
+                        <td class="field-label" width="38%" valign="top" style="padding:12px 14px;font-size:12px;font-weight:bold;color:#4b5563;border-bottom:1px solid #e5e7eb;">Loại phiếu</td>
+                        <td class="field-value" valign="top" style="padding:12px 14px;font-size:15px;line-height:1.5;word-break:break-word;overflow-wrap:anywhere;border-bottom:1px solid #e5e7eb;">{{template_title}}</td>
+                      </tr>
+                      <tr class="field-row">
+                        <td class="field-label" width="38%" valign="top" style="padding:12px 14px;font-size:12px;font-weight:bold;color:#4b5563;border-bottom:1px solid #e5e7eb;">Kết quả</td>
+                        <td class="field-value" valign="top" style="padding:12px 14px;font-size:15px;line-height:1.5;word-break:break-word;overflow-wrap:anywhere;border-bottom:1px solid #e5e7eb;"><strong>{{score}}</strong> · {{result_label}}</td>
+                      </tr>
+                      <tr class="field-row">
+                        <td class="field-label" width="38%" valign="top" style="padding:12px 14px;font-size:12px;font-weight:bold;color:#4b5563;">Người tạo</td>
+                        <td class="field-value" valign="top" style="padding:12px 14px;font-size:15px;line-height:1.5;word-break:break-word;overflow-wrap:anywhere;">{{leader_name}} ({{leader_email}})</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <div class="note-box" style="margin-top:14px;background:#f9fafb;padding:12px 14px;border-radius:10px;border:1px solid #e5e7eb;font-size:14px;line-height:1.55;">
+                <strong style="color:#374151;">Nhận xét chung:</strong>
+                <div style="margin-top:6px;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;">{{general_note}}</div>
+              </div>
+
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0" align="center" style="margin:20px auto 10px;">
+                <tr>
+                  <td align="center" bgcolor="{{brand_primary}}" style="border-radius:10px;">
+                    <a href="{{signature_url}}" target="_blank" rel="noopener" style="display:inline-block;padding:12px 22px;color:#ffffff;text-decoration:none;font-weight:bold;font-size:14px;border-radius:10px;">Mở biên bản QC</a>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="margin-top:14px;background:#fff7ed;padding:12px 14px;border-radius:10px;border:1px solid #fed7aa;font-size:13px;line-height:1.55;color:#7c2d12;">
+                Link này dùng để xác nhận biên bản QC cho đúng email giáo viên {{teacher_email}}. Nếu cần trao đổi lại kết quả, chọn “Gửi phúc khảo” trong trang biên bản.
+              </div>
+
+              <div style="border-top:1px solid #eee;padding-top:14px;font-size:13px;color:#555;margin-top:18px;line-height:1.5;text-align:center;">
+                <p style="margin:0 0 4px 0;"><strong>{{brand_name}}</strong></p>
+                <p style="margin:0;">{{brand_tagline}}</p>
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

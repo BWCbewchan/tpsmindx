@@ -2847,16 +2847,6 @@ const migrations: Migration[] = [
         ON k12_leader_publish_snapshots(created_at DESC);
     `,
   },
-  {
-    name: 'V110_communications_thumbnail_position_text',
-    version: 110,
-    sql: `
-      ALTER TABLE communications
-        ADD COLUMN IF NOT EXISTS thumbnail_position TEXT DEFAULT '50% 50%';
-      ALTER TABLE communications
-        ALTER COLUMN thumbnail_position TYPE TEXT;
-    `,
-  },
 ]
 
 // ========== HÀM CHẠY MIGRATIONS ==========

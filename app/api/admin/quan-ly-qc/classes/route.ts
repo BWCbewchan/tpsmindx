@@ -98,6 +98,69 @@ function buildCenterKeys(centers: AccessibleCenter[]): Set<string> {
   return keys
 }
 
+function matchesSearchValue(value: unknown, queryKey: string): boolean {
+  const valueKey = normalizeKey(value)
+  return Boolean(valueKey && queryKey && valueKey.includes(queryKey))
+}
+
+function teacherAssignmentMatchesSearch(item: any, queryKey: string): boolean {
+  if (item?.isActive === false) return false
+
+  const teacher = item?.teacher ?? {}
+  return [
+    teacher?.id,
+    teacher?.username,
+    teacher?.code,
+    teacher?.fullName,
+    teacher?.email,
+    item?.role?.id,
+    item?.role?.name,
+    item?.role?.shortName,
+    item?.role?.code,
+  ].some((value) => matchesSearchValue(value, queryKey))
+}
+
+function rawClassMatchesSearch(cls: any, q?: string): boolean {
+  const queryKey = normalizeKey(q)
+  if (!queryKey) return true
+
+  const directFields = [
+    cls?.id,
+    cls?.name,
+    cls?.status,
+    cls?.numberOfSessions,
+    cls?.course?.id,
+    cls?.course?.name,
+    cls?.course?.shortName,
+    cls?.course?.courseLine?.id,
+    cls?.course?.courseLine?.name,
+    cls?.centre?.id,
+    cls?.centre?.name,
+    cls?.centre?.shortName,
+  ]
+
+  if (directFields.some((value) => matchesSearchValue(value, queryKey))) return true
+
+  if ((cls?.teachers ?? []).some((item: any) => teacherAssignmentMatchesSearch(item, queryKey))) {
+    return true
+  }
+
+  return (cls?.slots ?? []).some((slot: any) => {
+    const slotFields = [
+      slot?._id,
+      slot?.date,
+      slot?.startTime,
+      slot?.endTime,
+      slot?.sessionHour,
+    ]
+
+    return (
+      slotFields.some((value) => matchesSearchValue(value, queryKey)) ||
+      (slot?.teachers ?? []).some((item: any) => teacherAssignmentMatchesSearch(item, queryKey))
+    )
+  })
+}
+
 function isClassInAccessibleCenter(cls: any, allowedKeys: Set<string> | null) {
   if (!allowedKeys) return true
   const candidates = [
@@ -330,35 +393,23 @@ export async function GET(request: NextRequest) {
     let authHeader = tokenSession.token ? `Bearer ${tokenSession.token}` : undefined
     const itemsPerPage = 100
     const maxPages = 20
-    const variables = {
-      search: q,
+    const baseVariables = {
       statusIn: ['RUNNING', 'PREPARING'],
       startDateTo,
       endDateFrom,
-      pageIndex: 0,
       itemsPerPage,
       orderBy: 'startDate_asc',
     }
 
-    let firstResult: any
-    try {
-      firstResult = await callLmsApi<any>(
-        {
-          query: GET_QC_CLASSES_QUERY,
-          operationName: 'GetClasses',
-          variables,
-        },
-        authHeader,
-      )
-    } catch (err: any) {
-      console.warn(
-        '[quan-ly-qc/classes] LMS token call failed:',
-        err?.message,
-        '- Retrying with fallback account...',
-      )
-      tokenSession = await loginFallbackLmsAccount()
-      if (tokenSession.token) {
-        authHeader = `Bearer ${tokenSession.token}`
+    const fetchLmsClassPages = async (search: string | undefined) => {
+      const variables = {
+        ...baseVariables,
+        search,
+        pageIndex: 0,
+      }
+
+      let firstResult: any
+      try {
         firstResult = await callLmsApi<any>(
           {
             query: GET_QC_CLASSES_QUERY,
@@ -367,41 +418,85 @@ export async function GET(request: NextRequest) {
           },
           authHeader,
         )
-      } else {
-        throw err
+      } catch (err: any) {
+        console.warn(
+          '[quan-ly-qc/classes] LMS token call failed:',
+          err?.message,
+          '- Retrying with fallback account...',
+        )
+        tokenSession = await loginFallbackLmsAccount()
+        if (tokenSession.token) {
+          authHeader = `Bearer ${tokenSession.token}`
+          firstResult = await callLmsApi<any>(
+            {
+              query: GET_QC_CLASSES_QUERY,
+              operationName: 'GetClasses',
+              variables,
+            },
+            authHeader,
+          )
+        } else {
+          throw err
+        }
       }
+
+      const firstPage = firstResult?.data?.classes
+      const allClasses = Array.isArray(firstPage?.data) ? [...firstPage.data] : []
+      const total = Number(firstPage?.pagination?.total ?? allClasses.length)
+      const totalPages = Math.min(Math.ceil(total / itemsPerPage), maxPages)
+
+      for (let pageIndex = 1; pageIndex < totalPages; pageIndex += 1) {
+        try {
+          const pageResult = await callLmsApi<any>(
+            {
+              query: GET_QC_CLASSES_QUERY,
+              operationName: 'GetClasses',
+              variables: { ...variables, pageIndex },
+            },
+            authHeader,
+          )
+          const pageRows = pageResult?.data?.classes?.data
+          if (!Array.isArray(pageRows) || pageRows.length === 0) break
+          allClasses.push(...pageRows)
+        } catch (pageErr) {
+          console.warn(
+            `[quan-ly-qc/classes] Error fetching page ${pageIndex}:`,
+            pageErr,
+          )
+          break
+        }
+      }
+
+      return { allClasses, total, totalPages }
     }
 
-    const firstPage = firstResult?.data?.classes
-    const allClasses = Array.isArray(firstPage?.data) ? [...firstPage.data] : []
-    const total = Number(firstPage?.pagination?.total ?? allClasses.length)
-    const totalPages = Math.min(Math.ceil(total / itemsPerPage), maxPages)
+    const searchedClasses = await fetchLmsClassPages(q)
+    let allClasses = searchedClasses.allClasses
+    let lmsTotal = searchedClasses.total
+    let truncated =
+      searchedClasses.totalPages === maxPages &&
+      searchedClasses.total > maxPages * itemsPerPage
 
-    for (let pageIndex = 1; pageIndex < totalPages; pageIndex += 1) {
-      try {
-        const pageResult = await callLmsApi<any>(
-          {
-            query: GET_QC_CLASSES_QUERY,
-            operationName: 'GetClasses',
-            variables: { ...variables, pageIndex },
-          },
-          authHeader,
-        )
-        const pageRows = pageResult?.data?.classes?.data
-        if (!Array.isArray(pageRows) || pageRows.length === 0) break
-        allClasses.push(...pageRows)
-      } catch (pageErr) {
-        console.warn(
-          `[quan-ly-qc/classes] Error fetching page ${pageIndex}:`,
-          pageErr,
-        )
-        break
-      }
+    if (q) {
+      const unsearchedClasses = await fetchLmsClassPages(undefined)
+      const merged = new Map<string, any>()
+      ;[...allClasses, ...unsearchedClasses.allClasses].forEach((cls, index) => {
+        const key = String(cls?.id ?? cls?._id ?? cls?.name ?? index)
+        if (!merged.has(key)) merged.set(key, cls)
+      })
+
+      allClasses = Array.from(merged.values())
+      lmsTotal = unsearchedClasses.total
+      truncated =
+        truncated ||
+        (unsearchedClasses.totalPages === maxPages &&
+          unsearchedClasses.total > maxPages * itemsPerPage)
     }
 
     const now = new Date()
     let classes = allClasses
       .filter((cls) => isClassInAccessibleCenter(cls, allowedKeys))
+      .filter((cls) => rawClassMatchesSearch(cls, q))
       .map((cls) => mapClass(cls, now))
 
     // Thu thập danh sách Khối (Course Lines) có trong dữ liệu
@@ -467,14 +562,14 @@ export async function GET(request: NextRequest) {
       success: true,
       classes,
       total: classes.length,
-      lmsTotal: total,
+      lmsTotal,
       accessibleCenters: (accessibleCenters || []).map((c: any) => ({
         id: c.id,
         full_name: c.full_name,
         short_code: c.short_code,
       })),
       availableCourseLines,
-      truncated: totalPages === maxPages && total > maxPages * itemsPerPage,
+      truncated,
     })
 
     applyRefreshedCookies(response, tokenSession)

@@ -308,10 +308,10 @@ export async function POST(request: NextRequest) {
           success: false,
           error:
             sessionWindow.qcWindowStatus === 'upcoming'
-              ? 'Buổi học này chưa đến giờ tạo phiếu QC'
+              ? 'Buổi học này chưa nằm trong khung 24h trước giờ học để tạo phiếu QC'
               : sessionWindow.qcWindowStatus === 'missing-time'
                 ? 'Buổi học thiếu giờ bắt đầu hoặc giờ kết thúc trên LMS'
-                : 'Buổi học này đã quá hạn tạo phiếu QC',
+                : 'Buổi học này đã quá khung 24h sau giờ học để tạo phiếu QC',
         },
         { status: 400 },
       )

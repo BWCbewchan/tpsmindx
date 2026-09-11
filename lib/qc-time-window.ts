@@ -43,16 +43,17 @@ export function getQCWindowInfo(
     }
   }
 
+  const availableFrom = new Date(start.getTime() - DAY_MS)
   const availableUntil = new Date(end.getTime() + DAY_MS)
   const nowTime = now.getTime()
-  const startTime = start.getTime()
+  const fromTime = availableFrom.getTime()
   const untilTime = availableUntil.getTime()
 
   return {
-    canCreateQC: nowTime >= startTime && nowTime <= untilTime,
+    canCreateQC: nowTime >= fromTime && nowTime <= untilTime,
     qcWindowStatus:
-      nowTime < startTime ? 'upcoming' : nowTime > untilTime ? 'expired' : 'available',
-    availableFrom: start.toISOString(),
+      nowTime < fromTime ? 'upcoming' : nowTime > untilTime ? 'expired' : 'available',
+    availableFrom: availableFrom.toISOString(),
     availableUntil: availableUntil.toISOString(),
   }
 }

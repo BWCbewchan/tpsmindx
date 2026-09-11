@@ -5,7 +5,6 @@ import {
 import { getAccessibleCenters } from '@/lib/center-access'
 import pool from '@/lib/db'
 import { fetchQCTemplates, findQCTemplate } from '@/lib/qc-templates'
-import { getQCWindowInfo } from '@/lib/qc-time-window'
 import { NextRequest, NextResponse } from 'next/server'
 
 type AccessibleCenter = {
@@ -277,10 +276,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const emailNorm = (gate.sessionEmail || '').toLowerCase()
+    const isSuperOrTeachingHo =
+      gate.role === 'super_admin' ||
+      gate.role === 'admin' ||
+      emailNorm.includes('hoteaching') ||
+      emailNorm.includes('hr-teaching')
+
     const accessibleCenters =
-      gate.role === 'super_admin' ? null : await getAccessibleCenters(gate.sessionEmail)
+      isSuperOrTeachingHo ? null : await getAccessibleCenters(gate.sessionEmail)
     const allowedKeys =
-      gate.role === 'super_admin'
+      isSuperOrTeachingHo
         ? null
         : buildCenterKeys((accessibleCenters ?? []) as AccessibleCenter[])
 
@@ -295,28 +301,6 @@ export async function POST(request: NextRequest) {
         { status: 403 },
       )
     }
-
-    const sessionWindow = getQCWindowInfo({
-      date: sessionInfo?.date,
-      startTime: sessionInfo?.startTime,
-      endTime: sessionInfo?.endTime,
-      sessionHour: sessionInfo?.sessionHour,
-    })
-    if (!sessionWindow.canCreateQC) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            sessionWindow.qcWindowStatus === 'upcoming'
-              ? 'Buổi học này chưa nằm trong khung 24h trước giờ học để tạo phiếu QC'
-              : sessionWindow.qcWindowStatus === 'missing-time'
-                ? 'Buổi học thiếu giờ bắt đầu hoặc giờ kết thúc trên LMS'
-                : 'Buổi học này đã quá khung 24h sau giờ học để tạo phiếu QC',
-        },
-        { status: 400 },
-      )
-    }
-
     const answerByCriterion = new Map<string, QCAnswerInput>()
     answersInput.forEach((answer) => {
       const criterionId = toText(answer?.criterionId, 300)

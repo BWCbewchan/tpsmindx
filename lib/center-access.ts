@@ -112,22 +112,20 @@ async function _getAccessibleCenters(normalized: string): Promise<
 
     const appUser = userResult.rows[0] as { id: number; role: string } | undefined
 
+    const isSuperOrTeachingHo =
+      appUser?.role === 'super_admin' ||
+      normalized.includes('hoteaching') ||
+      normalized.includes('hr-teaching')
+
+    if (isSuperOrTeachingHo) {
+      return await getAllActiveCenters()
+    }
+
     if (!appUser) {
       const leaderCenters = await queryLeaderCenters(normalized)
       return dedupeCenters(leaderCenters).sort((a, b) =>
         a.full_name.localeCompare(b.full_name),
       )
-    }
-
-    if (appUser.role === 'super_admin') {
-      const allCenters = await pool.query(
-        `SELECT id, full_name, short_code, region, email
-         FROM centers
-         WHERE status = 'Active'
-         ORDER BY full_name`,
-      )
-
-      return allCenters.rows as CenterRow[]
     }
 
     const [managerCenters, leaderCenters] = await Promise.all([
@@ -173,4 +171,22 @@ export async function getAccessibleCenterIds(
 ): Promise<number[]> {
   const centers = await getAccessibleCenters(email)
   return centers.map((c) => c.id)
+}
+
+/**
+ * Get all active centers in the system (for super_admin / Teaching HO)
+ */
+export async function getAllActiveCenters(): Promise<CenterRow[]> {
+  try {
+    const allCenters = await pool.query(
+      `SELECT id, full_name, short_code, region, email
+       FROM centers
+       WHERE status = 'Active'
+       ORDER BY full_name`,
+    )
+    return allCenters.rows as CenterRow[]
+  } catch (e) {
+    console.error('getAllActiveCenters error:', e)
+    return []
+  }
 }

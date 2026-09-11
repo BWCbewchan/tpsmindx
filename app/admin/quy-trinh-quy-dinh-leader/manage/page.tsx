@@ -7,6 +7,7 @@ import { toast } from "@/lib/app-toast";
 import { useAuth } from "@/lib/auth-context";
 import { authHeaders } from "@/lib/auth-headers";
 import { cn } from "@/lib/utils";
+import { reorderLeaderSlugs } from '@/lib/k12-leader-tree';
 import {
     AlertTriangle,
     BookOpenText,
@@ -111,7 +112,7 @@ function getSlugLeaf(slug: string) {
 }
 
 function getPathWithoutExt(input: string) {
-  return normalizeRelativePath(input).replace(/\.md$/i, "");
+  return normalizeRelativePath(input).replace(/\.md$/i, "").replace(/\/index$/i, "");
 }
 
 function normalizeGitBookMarkdown(input: string) {
@@ -410,6 +411,12 @@ function buildSidebarTreeByRelativePath(documents: K12DocRow[]): SidebarTreeNode
 
   const sortNodes = (nodes: SidebarTreeNode[]) => {
     nodes.sort((a, b) => {
+      const sortA = a.slug ? docBySlug.get(a.slug)?.sortOrder : undefined;
+      const sortB = b.slug ? docBySlug.get(b.slug)?.sortOrder : undefined;
+
+      if (sortA != null && sortB != null && sortA !== sortB) {
+        return sortA - sortB;
+      }
       const orderA = getSegmentOrder(a);
       const orderB = getSegmentOrder(b);
 
@@ -419,13 +426,6 @@ function buildSidebarTreeByRelativePath(documents: K12DocRow[]): SidebarTreeNode
 
       if (orderA != null && orderB == null) return -1;
       if (orderA == null && orderB != null) return 1;
-
-      const sortA = a.slug ? docBySlug.get(a.slug)?.sortOrder : undefined;
-      const sortB = b.slug ? docBySlug.get(b.slug)?.sortOrder : undefined;
-
-      if (sortA != null && sortB != null && sortA !== sortB) {
-        return sortA - sortB;
-      }
 
       return a.title.localeCompare(b.title, "vi");
     });
@@ -464,12 +464,12 @@ function buildSidebarTreeByRelativePath(documents: K12DocRow[]): SidebarTreeNode
     docBySlug.set(doc.slug, doc);
     const normalizedPath = normalizePath(doc.relativePath || `${doc.slug}.md`);
     normalizedPathBySlug.set(doc.slug, normalizedPath);
-    docByPathWithoutExt.set(normalizedPath.replace(/\.md$/i, ""), doc);
+    docByPathWithoutExt.set(normalizedPath.replace(/\.md$/i, "").replace(/\/index$/i, ""), doc);
   }
 
   for (const doc of documents) {
     const normalizedPath = normalizedPathBySlug.get(doc.slug) || normalizePath(doc.relativePath || `${doc.slug}.md`);
-    const pathWithoutExt = normalizedPath.replace(/\.md$/i, "");
+    const pathWithoutExt = normalizedPath.replace(/\.md$/i, "").replace(/\/index$/i, "");
     const segments = pathWithoutExt.split("/").filter(Boolean);
     if (segments.length <= 1) continue;
 
@@ -492,7 +492,7 @@ function buildSidebarTreeByRelativePath(documents: K12DocRow[]): SidebarTreeNode
     if (consumedAsFolderLanding.has(doc.slug)) continue;
 
     const normalizedPath = normalizedPathBySlug.get(doc.slug) || normalizePath(doc.relativePath || `${doc.slug}.md`);
-    const pathWithoutExt = normalizedPath.replace(/\.md$/i, "");
+    const pathWithoutExt = normalizedPath.replace(/\.md$/i, "").replace(/\/index$/i, "");
     const segments = pathWithoutExt.split("/").filter(Boolean);
     const parentPath = segments.length > 1 ? segments.slice(0, -1).join("/") : "";
 
@@ -532,16 +532,15 @@ function buildSidebarTreeByRelativePath(documents: K12DocRow[]): SidebarTreeNode
       links.forEach((slug, index) => indexMap.set(slug, index));
 
       node.children.sort((a, b) => {
-        const orderA = getSegmentOrder(a);
-        const orderB = getSegmentOrder(b);
-        if (orderA != null && orderB != null && orderA !== orderB) {
-          return orderA - orderB;
-        }
-
         const sortA = a.slug ? docBySlug.get(a.slug)?.sortOrder : undefined;
         const sortB = b.slug ? docBySlug.get(b.slug)?.sortOrder : undefined;
         if (sortA != null && sortB != null && sortA !== sortB) {
           return sortA - sortB;
+        }
+        const orderA = getSegmentOrder(a);
+        const orderB = getSegmentOrder(b);
+        if (orderA != null && orderB != null && orderA !== orderB) {
+          return orderA - orderB;
         }
 
         const keyA = a.slug || "";
@@ -774,7 +773,8 @@ export default function ManageK12DocsPage() {
     const query = new URLSearchParams();
     if (includeDraft) query.set("includeDraft", "1");
 
-    const response = await fetch(`/api/k12-leader-docs?${query.toString()}`, {
+    try {
+      const response = await fetch(`/api/k12-leader-docs?${query.toString()}`, {
       method,
       headers: {
         "Content-Type": "application/json",
@@ -783,7 +783,10 @@ export default function ManageK12DocsPage() {
       body: body ? JSON.stringify(body) : undefined,
     });
 
-    return (await response.json()) as ApiResponse;
+      return (await response.json()) as ApiResponse;
+    } catch {
+      return { success: false, error: 'Không thể kết nối hoặc đọc phản hồi từ máy chủ. Vui lòng thử lại.' };
+    }
   };
 
   const resetForm = () => {
@@ -862,7 +865,7 @@ export default function ManageK12DocsPage() {
     query.set("includeDraft", "1");
     query.set("action", "history");
 
-    const response = await fetch(`/api/k12-leader-docs?${query.toString()}`, {
+      const response = await fetch(`/api/k12-leader-docs?${query.toString()}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -910,6 +913,7 @@ export default function ManageK12DocsPage() {
   };
 
   const moveDocumentToParent = async (sourceSlug: string, targetSlug: string | null) => {
+    if (isBusy) return;
     const sourceDoc = docsBySlug.get(sourceSlug);
     if (!sourceDoc) return;
 
@@ -936,24 +940,17 @@ export default function ManageK12DocsPage() {
         return;
       }
 
-      const reordered = [...siblingDocs];
-      const [movedDoc] = reordered.splice(sourceIndex, 1);
-      const insertAt = sourceIndex < targetIndex ? targetIndex - 1 : targetIndex;
-      if (insertAt === sourceIndex) {
-        return;
-      }
-      reordered.splice(insertAt, 0, movedDoc);
+      const reordered = reorderLeaderSlugs(siblingDocs.map(doc => doc.slug), sourceSlug, targetDoc.slug)
+        .map(slug => docsBySlug.get(slug)!);
 
       const orderBySlug = new Map(reordered.map((doc, index) => [doc.slug, index]));
       setDocuments((prev) =>
         prev.map((doc) => {
           const nextOrder = orderBySlug.get(doc.slug);
           if (nextOrder == null) return doc;
-          const isMovedSubtree = doc.slug === sourceDoc.slug || doc.slug.startsWith(`${sourceDoc.slug}/`);
           return {
             ...doc,
             sortOrder: nextOrder,
-            status: isMovedSubtree ? "draft" : doc.status,
           };
         })
       );
@@ -1007,7 +1004,6 @@ export default function ManageK12DocsPage() {
             relativePath: replaceSlugPrefix(doc.relativePath, sourceDoc.slug, nextSlug),
             parentId: doc.slug === sourceDoc.slug ? (targetDoc?.id || null) : doc.parentId,
             sortOrder: doc.slug === sourceDoc.slug ? nextSortOrder : doc.sortOrder,
-            status: "draft",
           };
         }
         return doc;
@@ -1021,7 +1017,6 @@ export default function ManageK12DocsPage() {
         ...prev,
         originalSlug: prev.originalSlug ? replaceSlugPrefix(prev.originalSlug, sourceDoc.slug, nextSlug) : prev.originalSlug,
         slug: prev.slug ? replaceSlugPrefix(prev.slug, sourceDoc.slug, nextSlug) : prev.slug,
-        status: "draft",
       }));
     }
 
@@ -1029,7 +1024,7 @@ export default function ManageK12DocsPage() {
     const result = await callApi("PATCH", {
       originalSlug: sourceDoc.slug,
       slug: nextSlug,
-      parentSlug: targetDoc?.slug,
+      parentSlug: targetDoc?.slug ?? null,
       sortOrder: nextSortOrder,
     }, true);
     setIsBusy(false);
@@ -1492,8 +1487,9 @@ export default function ManageK12DocsPage() {
             />
           ) : null}
           <div
-            draggable
+            draggable={!isBusy}
             onDragStart={(event) => {
+              event.stopPropagation();
               event.dataTransfer.effectAllowed = "move";
               event.dataTransfer.setData("text/plain", doc.slug);
               setDraggingSlug(doc.slug);
@@ -1511,7 +1507,8 @@ export default function ManageK12DocsPage() {
             }}
             onDrop={async (event) => {
               event.preventDefault();
-              await handleDropToNode(doc.slug);
+              event.stopPropagation();
+              await handleDropToNode(doc.slug, event);
             }}
             className={cn(
               "group flex items-center gap-1.5 rounded-md border px-2 py-1.5 transition-colors",
@@ -1629,6 +1626,19 @@ export default function ManageK12DocsPage() {
               />
             ) : null}
             <div
+              draggable={Boolean(ownerDoc) && !isBusy}
+              onDragStart={(event) => {
+                if (!ownerDoc) return;
+                event.stopPropagation();
+                event.dataTransfer.setData('text/plain', ownerDoc.slug);
+                event.dataTransfer.effectAllowed = 'move';
+                setDraggingSlug(ownerDoc.slug);
+              }}
+              onDragEnd={() => {
+                setDraggingSlug('');
+                setDropTargetSlug(null);
+                setIsRootDropActive(false);
+              }}
               onDragOver={(event) => {
                 if (!ownerDoc || !draggingSlug || draggingSlug === ownerDoc.slug) return;
                 event.preventDefault();
@@ -1645,11 +1655,14 @@ export default function ManageK12DocsPage() {
               onDrop={async (event) => {
                 if (!ownerDoc) return;
                 event.preventDefault();
+                event.stopPropagation();
                 await handleDropToNode(ownerDoc.slug, event);
               }}
               className={cn(
                 "group flex items-center gap-1 rounded-md px-2 py-1.5",
                 ownerIsActive ? "bg-[#a1001f]/8" : "",
+                ownerDoc ? "cursor-grab active:cursor-grabbing" : "",
+                ownerDoc?.slug === draggingSlug ? "opacity-40" : "",
                 isOwnerDropTargetCrossParent ? "border border-[#a1001f]/45 bg-[#a1001f]/10 ring-1 ring-[#a1001f]/45" : ""
               )}
               style={{ marginLeft: `${getTreeIndent(depth)}px` }}
@@ -1726,8 +1739,9 @@ export default function ManageK12DocsPage() {
             />
           ) : null}
           <div
-            draggable
+            draggable={!isBusy}
             onDragStart={(event) => {
+              event.stopPropagation();
               event.dataTransfer.effectAllowed = "move";
               event.dataTransfer.setData("text/plain", doc.slug);
               setDraggingSlug(doc.slug);
@@ -1746,6 +1760,7 @@ export default function ManageK12DocsPage() {
             }}
             onDrop={async (event) => {
               event.preventDefault();
+              event.stopPropagation();
               await handleDropToNode(doc.slug, event);
             }}
             className={cn(

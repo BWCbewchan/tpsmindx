@@ -8,24 +8,16 @@ const session = {
   endTime: '2026-08-30T12:00:00.000Z',
 }
 
-test('QC window opens 24 hours before class start', () => {
-  const beforeWindow = getQCWindowInfo(
+test('QC creation is available without 24h restrictions (before, during, and after class)', () => {
+  // Days before class
+  const daysBefore = getQCWindowInfo(
     session,
-    new Date('2026-08-29T09:59:59.999Z'),
+    new Date('2026-08-01T00:00:00.000Z'),
   )
-  assert.equal(beforeWindow.canCreateQC, false)
-  assert.equal(beforeWindow.qcWindowStatus, 'upcoming')
+  assert.equal(daysBefore.canCreateQC, true)
+  assert.equal(daysBefore.qcWindowStatus, 'available')
 
-  const atWindowStart = getQCWindowInfo(
-    session,
-    new Date('2026-08-29T10:00:00.000Z'),
-  )
-  assert.equal(atWindowStart.canCreateQC, true)
-  assert.equal(atWindowStart.qcWindowStatus, 'available')
-  assert.equal(atWindowStart.availableFrom, '2026-08-29T10:00:00.000Z')
-})
-
-test('QC window stays open through 24 hours after class end', () => {
+  // During class
   const duringClass = getQCWindowInfo(
     session,
     new Date('2026-08-30T11:00:00.000Z'),
@@ -33,18 +25,12 @@ test('QC window stays open through 24 hours after class end', () => {
   assert.equal(duringClass.canCreateQC, true)
   assert.equal(duringClass.qcWindowStatus, 'available')
 
-  const atWindowEnd = getQCWindowInfo(
+  // Days after class
+  const daysAfter = getQCWindowInfo(
     session,
-    new Date('2026-08-31T12:00:00.000Z'),
+    new Date('2026-09-10T00:00:00.000Z'),
   )
-  assert.equal(atWindowEnd.canCreateQC, true)
-  assert.equal(atWindowEnd.availableUntil, '2026-08-31T12:00:00.000Z')
-
-  const afterWindow = getQCWindowInfo(
-    session,
-    new Date('2026-08-31T12:00:00.001Z'),
-  )
-  assert.equal(afterWindow.canCreateQC, false)
-  assert.equal(afterWindow.qcWindowStatus, 'expired')
+  assert.equal(daysAfter.canCreateQC, true)
+  assert.equal(daysAfter.qcWindowStatus, 'available')
 })
 

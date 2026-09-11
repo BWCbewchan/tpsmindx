@@ -142,6 +142,75 @@ function normalizeSearchText(text: unknown): string {
     .replace(/[^a-z0-9]+/g, '')
 }
 
+const MAIN_COURSE_LINES = [
+  { value: 'coding', label: 'Coding (C4K/C4T)' },
+  { value: 'robotics', label: 'Robotics (ROB, KIND)' },
+  { value: 'art', label: 'Art (XArt)' },
+] as const
+
+function matchesCourseLine(
+  item: { courseLineName?: string | null; courseName?: string | null; name?: string | null },
+  filterKey: string,
+): boolean {
+  if (!filterKey || filterKey === 'all') return true
+
+  const text = [
+    item.courseLineName,
+    item.courseName,
+    item.name,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
+  const norm = normalizeSearchText(text)
+  const f = normalizeSearchText(filterKey)
+
+  if (f === 'coding' || f.includes('cod') || f.includes('c4k') || f.includes('c4t')) {
+    if (
+      norm.includes('c4k') ||
+      norm.includes('c4t') ||
+      norm.includes('coding') ||
+      norm.includes('cod') ||
+      norm.includes('scratch') ||
+      norm.includes('python') ||
+      norm.includes('laptrinh')
+    ) {
+      return true
+    }
+    return /\b(jsa|jsi|jsb|pta|pti|ptb|csa|csb|csi|web|game|pro)\b/i.test(text) ||
+      norm.includes('jsa') || norm.includes('jsi') || norm.includes('python')
+  }
+
+  if (f === 'robotics' || f.includes('rob') || f.includes('kind')) {
+    if (
+      norm.includes('robot') ||
+      norm.includes('kindergarten') ||
+      norm.includes('vex') ||
+      norm.includes('lego') ||
+      norm.includes('steam')
+    ) {
+      return true
+    }
+    return norm.includes('rob') || norm.includes('kind')
+  }
+
+  if (f === 'art' || f.includes('art') || f.includes('xart')) {
+    if (
+      norm.includes('xart') ||
+      norm.includes('mythuat') ||
+      norm.includes('dohoa') ||
+      norm.includes('graphic') ||
+      norm.includes('painting') ||
+      norm.includes('drawing')
+    ) {
+      return true
+    }
+    return norm.includes('art')
+  }
+
+  return norm.includes(f)
+}
+
 type QCTemplate = {
   key: string
   title: string
@@ -306,19 +375,6 @@ function sessionLabel(session: QCClassSession) {
   return `Buổi ${session.sessionIndex} - ${start}${end ? ` đến ${end}` : ''}`
 }
 
-function sessionWindowLabel(session: QCClassSession) {
-  if (session.qcWindowStatus === 'available') {
-    return `Mở đến ${formatDateTime(session.availableUntil)}`
-  }
-  if (session.qcWindowStatus === 'upcoming') {
-    return `Mở từ ${formatDateTime(session.availableFrom)}`
-  }
-  if (session.qcWindowStatus === 'expired') {
-    return `Đã hết hạn ${formatDateTime(session.availableUntil)}`
-  }
-  return 'Thiếu thời gian buổi học'
-}
-
 function buildDefaultAnswers(template: QCTemplate | null): AnswerState {
   if (!template) return {}
   const entries: Array<[string, { optionIds: string[]; note: string }]> = []
@@ -388,7 +444,7 @@ export default function QuanLyQCPage() {
     if (!selectedClass) return null
     return (
       selectedClass.slots.find((session) => session.id === selectedSessionId) ??
-      selectedClass.slots.find((session) => session.canCreateQC) ??
+      selectedClass.slots[0] ??
       null
     )
   }, [selectedClass, selectedSessionId])
@@ -435,17 +491,6 @@ export default function QuanLyQCPage() {
     })
     return Array.from(groups.entries())
   }, [activeTemplate])
-
-  // Danh sách Khối tổng hợp từ backend và dữ liệu lớp
-  const allCourseLines = useMemo(() => {
-    const set = new Set<string>(availableCourseLines)
-    classes.forEach((c) => {
-      if (c.courseLineName) set.add(c.courseLineName)
-    })
-    return Array.from(set)
-      .filter(Boolean)
-      .sort((a, b) => a.localeCompare(b, 'vi'))
-  }, [availableCourseLines, classes])
 
   // Danh sách Cơ sở tổng hợp từ phân quyền và dữ liệu lớp
   const allCentres = useMemo(() => {
@@ -513,14 +558,7 @@ export default function QuanLyQCPage() {
 
     return classes.filter((item) => {
       if (selectedCourseLine && selectedCourseLine !== 'all') {
-        const normFilter = normalizeSearchText(selectedCourseLine)
-        const line = normalizeSearchText(item.courseLineName)
-        const course = normalizeSearchText(item.courseName)
-        if (
-          !line.includes(normFilter) &&
-          !normFilter.includes(line) &&
-          !course.includes(normFilter)
-        ) {
+        if (!matchesCourseLine(item, selectedCourseLine)) {
           return false
         }
       }
@@ -834,9 +872,13 @@ export default function QuanLyQCPage() {
   const mainTabs = useMemo(
     () => [
       { id: 'classes', label: 'Danh sách lớp', count: filteredClasses.length },
-      { id: 'records', label: 'Phiếu QC đã tạo', count: records.length },
+      {
+        id: 'records',
+        label: isSuperOrHOTeaching ? 'Phiếu QC đã tạo' : 'Phiếu QC đã tạo gần đây',
+        count: records.length,
+      },
     ],
-    [filteredClasses.length, records.length],
+    [filteredClasses.length, records.length, isSuperOrHOTeaching],
   )
 
   const handleClearFilters = useCallback(() => {
@@ -900,7 +942,9 @@ export default function QuanLyQCPage() {
           setAccessibleCenters(classesData.accessibleCenters)
         }
         setRecords(recordsData.records || [])
-        if (typeof recordsData.isSuperAdmin === 'boolean') {
+        if (typeof classesData.isSuperAdmin === 'boolean') {
+          setIsSuperAdmin(classesData.isSuperAdmin)
+        } else if (typeof recordsData.isSuperAdmin === 'boolean') {
           setIsSuperAdmin(recordsData.isSuperAdmin)
         }
         if (recordsData.monthlySummary) {
@@ -932,11 +976,10 @@ export default function QuanLyQCPage() {
 
   function openCreateModal(item: QCClass) {
     const nextTemplate = activeTemplate ?? templates[0] ?? null
-    const firstAvailableSession =
-      item.slots.find((session) => session.canCreateQC) || item.slots[0]
+    const firstSession = item.slots[0] ?? null
     setSelectedClass(item)
     setActiveTemplateKey(nextTemplate?.key ?? '')
-    setSelectedSessionId(firstAvailableSession?.id ?? '')
+    setSelectedSessionId(firstSession?.id ?? '')
     setAnswers(buildDefaultAnswers(nextTemplate))
     setGeneralNote('')
   }
@@ -949,8 +992,8 @@ export default function QuanLyQCPage() {
 
   async function submitQC() {
     if (!selectedClass || !activeTemplate) return
-    if (!selectedSession?.canCreateQC) {
-      toast.error('Buổi học này chưa nằm trong khung 24h trước/sau để tạo phiếu QC')
+    if (!selectedSession) {
+      toast.error('Vui lòng chọn buổi học để tạo phiếu QC')
       return
     }
     setSaving(true)
@@ -1078,9 +1121,9 @@ export default function QuanLyQCPage() {
                       className="h-10 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-800 focus:border-[#a1001f] focus:outline-none focus:ring-2 focus:ring-[#a1001f]/15"
                     >
                       <option value="">Tất cả khối</option>
-                      {allCourseLines.map((line) => (
-                        <option key={line} value={line}>
-                          {line}
+                      {MAIN_COURSE_LINES.map((line) => (
+                        <option key={line.value} value={line.value}>
+                          {line.label}
                         </option>
                       ))}
                     </select>
@@ -1226,15 +1269,6 @@ export default function QuanLyQCPage() {
                             <p className="text-xs text-gray-600">
                               {formatDate(item.startDate)} - {formatDate(item.endDate)}
                             </p>
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              <Badge
-                                variant={item.canCreateQC ? 'success' : 'slate'}
-                                size="xs"
-                                shape="pill"
-                              >
-                                {item.eligibleSessionCount}/{item.slots.length} buổi mở QC
-                              </Badge>
-                            </div>
                           </TableCell>
                           <TableCell className="text-right">
                             <Button
@@ -1242,11 +1276,11 @@ export default function QuanLyQCPage() {
                               size="sm"
                               variant="mindx"
                               onClick={() => openCreateModal(item)}
-                              disabled={templates.length === 0 || !item.canCreateQC}
+                              disabled={templates.length === 0 || item.slots.length === 0}
                               title={
-                                item.canCreateQC
+                                item.slots.length > 0
                                   ? 'Tạo phiếu QC'
-                                  : 'Chưa có buổi học nào trong cửa sổ tạo QC'
+                                  : 'Lớp chưa có buổi học nào trên LMS'
                               }
                             >
                               <FileSignature className="h-4 w-4" />
@@ -1343,7 +1377,9 @@ export default function QuanLyQCPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-base font-bold text-gray-950">
-                    Dashboard & Danh sách phiếu QC đã tạo ({records.length})
+                    {isSuperOrHOTeaching
+                      ? `Dashboard & Danh sách phiếu QC đã tạo (${records.length})`
+                      : `Phiếu QC đã tạo gần đây (${records.length})`}
                   </h2>
                   {isSuperOrHOTeaching ? (
                     <Badge variant="violet" size="xs" shape="pill" className="font-semibold">
@@ -1356,7 +1392,9 @@ export default function QuanLyQCPage() {
                   )}
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Theo dõi đánh giá chất lượng từ các Leader, tỷ lệ hoàn thành tại từng cơ sở và các ca cần xử lý.
+                  {isSuperOrHOTeaching
+                    ? 'Theo dõi đánh giá chất lượng từ các Leader, tỷ lệ hoàn thành tại từng cơ sở và các ca cần xử lý.'
+                    : 'Theo dõi các phiếu đánh giá chất lượng lớp học đã thực hiện gần đây.'}
                 </p>
               </div>
 
@@ -1391,7 +1429,9 @@ export default function QuanLyQCPage() {
                       {recordOverallStats.total}
                     </p>
                     <p className="mt-0.5 text-[11px] text-gray-500">
-                      {centreQCStats.length} cơ sở đã triển khai
+                      {isSuperOrHOTeaching
+                        ? `${centreQCStats.length} cơ sở đã triển khai`
+                        : `${recordOverallStats.total} phiếu đã thực hiện`}
                     </p>
                   </div>
 
@@ -1399,7 +1439,7 @@ export default function QuanLyQCPage() {
                   <div className="rounded-xl border border-gray-200 bg-white p-3.5 shadow-2xs">
                     <div className="flex items-center justify-between">
                       <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                        Điểm TB hệ thống
+                        {isSuperOrHOTeaching ? 'Điểm TB hệ thống' : 'Điểm TB đánh giá'}
                       </span>
                       <TrendingUp className="h-4 w-4 text-emerald-600" />
                     </div>
@@ -1705,7 +1745,9 @@ export default function QuanLyQCPage() {
             <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
               <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 bg-gray-50/70">
                 <h3 className="text-sm font-bold text-gray-950 uppercase tracking-wide">
-                  Danh sách Phiếu QC ({filteredRecords.length} phiếu phù hợp)
+                  {isSuperOrHOTeaching
+                    ? `Danh sách Phiếu QC (${filteredRecords.length} phiếu phù hợp)`
+                    : `Phiếu QC đã tạo gần đây (${filteredRecords.length} phiếu)`}
                 </h3>
                 <span className="text-xs text-gray-500">
                   Trang {recordPage} / {totalRecordPages}
@@ -2167,7 +2209,7 @@ export default function QuanLyQCPage() {
                 disabled={
                   saving ||
                   !activeTemplate ||
-                  !selectedSession?.canCreateQC ||
+                  !selectedSession ||
                   missingSingleChoiceCount > 0
                 }
                 className="h-10 px-6 font-semibold"
@@ -2232,7 +2274,7 @@ export default function QuanLyQCPage() {
                     {selectedClass.studentCount} học viên
                   </span>
                   <span className="text-[11px] text-emerald-600 font-semibold block mt-0.5">
-                    {selectedClass.eligibleSessionCount}/{selectedClass.slots.length} buổi mở QC
+                    {selectedClass.slots.length} buổi học
                   </span>
                 </div>
               </div>
@@ -2275,16 +2317,16 @@ export default function QuanLyQCPage() {
                       <option
                         key={session.id}
                         value={session.id}
-                        disabled={!session.canCreateQC}
                       >
-                        {sessionLabel(session)} · {sessionWindowLabel(session)}
+                        {sessionLabel(session)}
                       </option>
                     ))
                   )}
                 </select>
                 {selectedSession && (
                   <p className="mt-1 text-[11px] text-gray-500">
-                    {sessionWindowLabel(selectedSession)}
+                    {sessionLabel(selectedSession)}
+                    {selectedSession.teacherNames?.length ? ` · GV: ${selectedSession.teacherNames.join(', ')}` : ''}
                   </p>
                 )}
               </div>

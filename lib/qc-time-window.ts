@@ -7,7 +7,6 @@ export type QCWindowInfo = {
   availableUntil: string | null
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000
 const HOUR_MS = 60 * 60 * 1000
 
 function parseDate(value: unknown): Date | null {
@@ -24,7 +23,7 @@ export function getQCWindowInfo(
     endTime?: unknown
     sessionHour?: unknown
   },
-  now = new Date(),
+  _now = new Date(),
 ): QCWindowInfo {
   const start = parseDate(session.startTime) ?? parseDate(session.date)
   let end = parseDate(session.endTime)
@@ -34,26 +33,10 @@ export function getQCWindowInfo(
     end = new Date(start.getTime() + sessionHour * HOUR_MS)
   }
 
-  if (!start || !end) {
-    return {
-      canCreateQC: false,
-      qcWindowStatus: 'missing-time',
-      availableFrom: start?.toISOString() ?? null,
-      availableUntil: null,
-    }
-  }
-
-  const availableFrom = new Date(start.getTime() - DAY_MS)
-  const availableUntil = new Date(end.getTime() + DAY_MS)
-  const nowTime = now.getTime()
-  const fromTime = availableFrom.getTime()
-  const untilTime = availableUntil.getTime()
-
   return {
-    canCreateQC: nowTime >= fromTime && nowTime <= untilTime,
-    qcWindowStatus:
-      nowTime < fromTime ? 'upcoming' : nowTime > untilTime ? 'expired' : 'available',
-    availableFrom: availableFrom.toISOString(),
-    availableUntil: availableUntil.toISOString(),
+    canCreateQC: true,
+    qcWindowStatus: 'available',
+    availableFrom: start?.toISOString() ?? null,
+    availableUntil: end?.toISOString() ?? null,
   }
 }

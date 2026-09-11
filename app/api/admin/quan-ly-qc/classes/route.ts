@@ -1,5 +1,5 @@
 import { requireBearerDbRoles } from '@/lib/auth-server'
-import { getAccessibleCenters } from '@/lib/center-access'
+import { getAccessibleCenters, getAllActiveCenters } from '@/lib/center-access'
 import { callLmsApi } from '@/lib/lms-api'
 import {
   getOrRefreshLmsToken,
@@ -180,6 +180,67 @@ function isClassInAccessibleCenter(cls: any, allowedKeys: Set<string> | null) {
   })
 }
 
+function matchesCourseLine(cls: any, filterKey: string): boolean {
+  if (!filterKey || filterKey === 'all') return true
+
+  const text = [
+    cls?.courseLineName,
+    cls?.courseName,
+    cls?.name,
+    cls?.course?.courseLine?.name,
+    cls?.course?.name,
+    cls?.course?.shortName,
+  ]
+    .filter(Boolean)
+    .join(' ')
+  const norm = normalizeKey(text)
+  const f = normalizeKey(filterKey)
+
+  if (f === 'coding' || f.includes('cod') || f.includes('c4k') || f.includes('c4t')) {
+    if (
+      norm.includes('c4k') ||
+      norm.includes('c4t') ||
+      norm.includes('coding') ||
+      norm.includes('cod') ||
+      norm.includes('scratch') ||
+      norm.includes('python') ||
+      norm.includes('laptrinh')
+    ) {
+      return true
+    }
+    return /\b(jsa|jsi|jsb|pta|pti|ptb|csa|csb|csi|web|game|pro)\b/i.test(norm)
+  }
+
+  if (f === 'robotics' || f.includes('rob') || f.includes('kind')) {
+    if (
+      norm.includes('robot') ||
+      norm.includes('kindergarten') ||
+      norm.includes('vex') ||
+      norm.includes('lego') ||
+      norm.includes('steam')
+    ) {
+      return true
+    }
+    return /\b(rob|kind)\b/i.test(norm) || norm.includes('rob') || norm.includes('kind')
+  }
+
+  if (f === 'art' || f.includes('art') || f.includes('xart')) {
+    if (
+      norm.includes('xart') ||
+      norm.includes('mythuat') ||
+      norm.includes('dohoa') ||
+      norm.includes('graphic') ||
+      norm.includes('painting') ||
+      norm.includes('drawing')
+    ) {
+      return true
+    }
+    return /\b(art|xart)\b/i.test(norm)
+  }
+
+  return norm.includes(f)
+}
+
 function toIsoBoundary(dateText: string | null, fallback: Date, endOfDay = false) {
   const raw = dateText?.trim()
   if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return fallback.toISOString()
@@ -330,7 +391,7 @@ function mapClass(cls: any, now: Date) {
         ...getQCWindowInfo(session, now),
       }
     })
-  const eligibleSessionCount = slots.filter((slot: { canCreateQC: boolean }) => slot.canCreateQC).length
+  const eligibleSessionCount = slots.length
 
   const teacherAccounts = lecturerAccounts(cls?.teachers ?? [])
   const taAccounts = assistantAccounts(cls?.teachers ?? [])
@@ -377,15 +438,26 @@ export async function GET(request: NextRequest) {
     const endDateFrom = toIsoBoundary(searchParams.get('from'), startFallback)
     const startDateTo = toIsoBoundary(searchParams.get('to'), endFallback, true)
 
-    const accessibleCenters =
-      gate.role === 'super_admin' ? null : await getAccessibleCenters(gate.sessionEmail)
-    const allowedKeys =
-      gate.role === 'super_admin'
-        ? null
-        : buildCenterKeys((accessibleCenters ?? []) as AccessibleCenter[])
+    const emailNorm = (gate.sessionEmail || '').toLowerCase()
+    const isSuperOrTeachingHo =
+      gate.role === 'super_admin' ||
+      gate.role === 'admin' ||
+      emailNorm.includes('hoteaching') ||
+      emailNorm.includes('hr-teaching')
 
-    if (allowedKeys && allowedKeys.size === 0) {
-      return NextResponse.json({ success: true, classes: [], total: 0 })
+    let accessibleCenters: AccessibleCenter[] = []
+    let allowedKeys: Set<string> | null = null
+
+    if (isSuperOrTeachingHo) {
+      // Super admin / Teaching HO: xem được tất cả các lớp ở tất cả cơ sở
+      allowedKeys = null
+      accessibleCenters = (await getAllActiveCenters()) as AccessibleCenter[]
+    } else {
+      accessibleCenters = (await getAccessibleCenters(gate.sessionEmail)) as AccessibleCenter[]
+      allowedKeys = buildCenterKeys(accessibleCenters ?? [])
+      if (allowedKeys.size === 0) {
+        return NextResponse.json({ success: true, classes: [], total: 0 })
+      }
     }
 
     // Tự động làm mới token LMS hoặc sử dụng fallback service account
@@ -499,16 +571,12 @@ export async function GET(request: NextRequest) {
       .filter((cls) => rawClassMatchesSearch(cls, q))
       .map((cls) => mapClass(cls, now))
 
-    // Thu thập danh sách Khối (Course Lines) có trong dữ liệu
-    const courseLineSet = new Set<string>()
-    classes.forEach((cls) => {
-      if (cls.courseLineName) {
-        courseLineSet.add(cls.courseLineName)
-      }
-    })
-    const availableCourseLines = Array.from(courseLineSet).sort((a, b) =>
-      a.localeCompare(b, 'vi'),
-    )
+    // 3 Khối chính theo yêu cầu: Coding(C4K/C4T), Robotics(ROB, KIND), Art(XArt)
+    const availableCourseLines = [
+      'Coding (C4K/C4T)',
+      'Robotics (ROB, KIND)',
+      'Art (XArt)',
+    ]
 
     // Lọc theo Cơ sở nếu có param
     const centreParam = searchParams.get('centre')?.trim()
@@ -546,16 +614,7 @@ export async function GET(request: NextRequest) {
     const courseLineParam =
       searchParams.get('courseLine')?.trim() || searchParams.get('khoi')?.trim()
     if (courseLineParam && courseLineParam !== 'all') {
-      const norm = normalizeKey(courseLineParam)
-      classes = classes.filter((cls) => {
-        const line = normalizeKey(cls.courseLineName)
-        const course = normalizeKey(cls.courseName)
-        return (
-          line.includes(norm) ||
-          course.includes(norm) ||
-          norm.includes(line)
-        )
-      })
+      classes = classes.filter((cls) => matchesCourseLine(cls, courseLineParam))
     }
 
     const response = NextResponse.json({
@@ -563,6 +622,7 @@ export async function GET(request: NextRequest) {
       classes,
       total: classes.length,
       lmsTotal,
+      isSuperAdmin: isSuperOrTeachingHo,
       accessibleCenters: (accessibleCenters || []).map((c: any) => ({
         id: c.id,
         full_name: c.full_name,

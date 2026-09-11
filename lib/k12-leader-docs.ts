@@ -302,6 +302,11 @@ function buildTreeFromRelativePaths(documents: K12LeaderDocItem[]): K12LeaderDoc
 
 	const sortNodes = (nodes: K12LeaderDocNode[]) => {
 		nodes.sort((a, b) => {
+			const sortA = a.slug ? docBySlug.get(a.slug)?.sortOrder : undefined;
+			const sortB = b.slug ? docBySlug.get(b.slug)?.sortOrder : undefined;
+			if (sortA != null && sortB != null && sortA !== sortB) {
+				return sortA - sortB;
+			}
 			const orderA = getSegmentOrder(a);
 			const orderB = getSegmentOrder(b);
 
@@ -310,12 +315,6 @@ function buildTreeFromRelativePaths(documents: K12LeaderDocItem[]): K12LeaderDoc
 			}
 			if (orderA != null && orderB == null) return -1;
 			if (orderA == null && orderB != null) return 1;
-
-			const sortA = a.slug ? docBySlug.get(a.slug)?.sortOrder : undefined;
-			const sortB = b.slug ? docBySlug.get(b.slug)?.sortOrder : undefined;
-			if (sortA != null && sortB != null && sortA !== sortB) {
-				return sortA - sortB;
-			}
 
 			return a.title.localeCompare(b.title, "vi");
 		});
@@ -350,12 +349,12 @@ function buildTreeFromRelativePaths(documents: K12LeaderDocItem[]): K12LeaderDoc
 		docBySlug.set(doc.slug, doc);
 		const normalizedPath = normalizePath(doc.relativePath);
 		normalizedPathBySlug.set(doc.slug, normalizedPath);
-		docByPathWithoutExt.set(normalizedPath.replace(/\.md$/i, ""), doc);
+		docByPathWithoutExt.set(normalizedPath.replace(/\.md$/i, "").replace(/\/index$/i, ""), doc);
 	}
 
 	for (const doc of documents) {
 		const normalizedPath = normalizedPathBySlug.get(doc.slug) || normalizePath(doc.relativePath);
-		const pathWithoutExt = normalizedPath.replace(/\.md$/i, "");
+		const pathWithoutExt = normalizedPath.replace(/\.md$/i, "").replace(/\/index$/i, "");
 		const segments = pathWithoutExt.split("/").filter(Boolean);
 		if (segments.length <= 1) continue;
 
@@ -378,7 +377,7 @@ function buildTreeFromRelativePaths(documents: K12LeaderDocItem[]): K12LeaderDoc
 		if (consumedAsFolderLanding.has(doc.slug)) continue;
 
 		const normalizedPath = normalizedPathBySlug.get(doc.slug) || normalizePath(doc.relativePath);
-		const pathWithoutExt = normalizedPath.replace(/\.md$/i, "");
+		const pathWithoutExt = normalizedPath.replace(/\.md$/i, "").replace(/\/index$/i, "");
 		const segments = pathWithoutExt.split("/").filter(Boolean);
 		const parentPath = segments.length > 1 ? segments.slice(0, -1).join("/") : "";
 

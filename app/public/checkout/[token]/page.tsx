@@ -93,9 +93,9 @@ function scoreFor(record: CheckoutRecord, key: ScoreColumn): number | null {
 
 function InfoRow({ label, value }: { label: string; value: unknown }) {
   return (
-    <div className="flex flex-wrap sm:grid sm:grid-cols-[160px_minmax(0,1fr)] gap-1 sm:gap-3 text-[14px] sm:text-[15px] leading-snug sm:leading-6 text-[#171717] py-0.5">
-      <dt className="font-bold shrink-0">{label}:</dt>
-      <dd className="font-bold text-[#171717] break-words">{textValue(value)}</dd>
+    <div className="info-row flex flex-wrap sm:grid sm:grid-cols-[160px_minmax(0,1fr)] gap-1 sm:gap-3 text-[14px] sm:text-[15px] leading-snug sm:leading-6 text-[#171717] py-0.5">
+      <dt className="font-bold shrink-0 min-w-0">{label}:</dt>
+      <dd className="font-bold text-[#171717] break-words min-w-0">{textValue(value)}</dd>
     </div>
   )
 }
@@ -114,6 +114,10 @@ function ScoreMark({
       {scoreFor(record, scoreKey) === value ? 'X' : ''}
     </td>
   )
+}
+
+function displaySectionTitle(title: string): string {
+  return title.replace(/^[IVX]+\.\s*/i, '').trim()
 }
 
 function CommonRubricTable({
@@ -145,11 +149,7 @@ function CommonRubricTable({
           </tr>
         </thead>
         {rubric.sections.map((section, sectionIndex) => (
-          <tbody
-            key={section.id}
-            className="break-inside-avoid"
-            style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}
-          >
+          <tbody key={section.id}>
             <tr className="break-inside-avoid" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
               <td colSpan={6} className="px-1 pt-4 pb-1 text-sm sm:text-base font-black uppercase text-[#ed1c24]">
                 {sectionIndex + 1}. {section.title}
@@ -169,6 +169,71 @@ function CommonRubricTable({
             ))}
           </tbody>
         ))}
+      </table>
+    </div>
+  )
+}
+
+function ArtRubricTable({
+  record,
+  rubric,
+}: {
+  record: CheckoutRecord
+  rubric: RubricConfig
+}) {
+  return (
+    <div className="overflow-x-auto print:overflow-visible">
+      <table className="w-full border-collapse text-[12.5px] sm:text-[13.5px] text-[#171717]">
+        <thead>
+          <tr className="break-inside-avoid">
+            <th className="w-[52%] sm:w-[56%] px-2 sm:px-3 pb-2 text-center text-sm sm:text-base font-black uppercase text-[#ed1c24]">
+              Năng lực
+            </th>
+            <th colSpan={5} className="px-2 sm:px-3 pb-2 text-center text-sm sm:text-base font-black uppercase text-[#ed1c24]">
+              Mức độ thể hiện
+            </th>
+          </tr>
+          <tr className="border-b-2 border-[#171717] break-inside-avoid">
+            <th />
+            {SCORE_VALUES.map((score) => (
+              <th key={score} className="h-8 sm:h-9 border-l-2 border-[#171717] text-center font-bold">
+                {score}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rubric.sections.map((section, index) => {
+            const criterion = section.criteria[0]
+            const score = scoreFor(record, criterion.key)
+            const selectedLevel = score ? criterion.levels?.[score - 1] : null
+
+            return (
+              <tr
+                key={section.id}
+                className="border-b-2 border-[#171717] break-inside-avoid"
+                style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}
+              >
+                <td className="px-2 sm:px-4 py-3 sm:py-4 align-middle">
+                  <div className="font-black uppercase text-[#ed1c24]">
+                    {index + 1}. {displaySectionTitle(section.title)}
+                  </div>
+                  <div className="mt-1 text-[12px] sm:text-[13px] leading-relaxed text-[#404040]">
+                    {selectedLevel || criterion.label}
+                  </div>
+                </td>
+                {SCORE_VALUES.map((level) => (
+                  <td
+                    key={level}
+                    className="h-11 sm:h-12 border-l-2 border-[#171717] text-center align-middle text-[15px] font-black"
+                  >
+                    {score === level ? 'X' : ''}
+                  </td>
+                ))}
+              </tr>
+            )
+          })}
+        </tbody>
       </table>
     </div>
   )
@@ -359,16 +424,37 @@ export default async function PublicCheckoutPage({
                 border: none !important;
                 padding: 2mm 0 !important;
                 margin: 0 !important;
-                page-break-after: always !important;
-                break-after: page !important;
+                page-break-after: auto !important;
+                break-after: auto !important;
               }
               .sheet-page:last-child {
                 page-break-after: auto !important;
                 break-after: auto !important;
               }
-              tr, tbody, .avoid-break {
+              tr, .avoid-break {
                 break-inside: avoid !important;
                 page-break-inside: avoid !important;
+              }
+              .student-info-grid {
+                display: grid !important;
+                grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+                column-gap: 10mm !important;
+                row-gap: 0 !important;
+              }
+              .student-info-column {
+                min-width: 0 !important;
+              }
+              .info-row {
+                display: grid !important;
+                grid-template-columns: 42mm minmax(0, 1fr) !important;
+                column-gap: 3mm !important;
+                align-items: baseline !important;
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
+              }
+              .info-row dt,
+              .info-row dd {
+                min-width: 0 !important;
               }
             }
           `,
@@ -395,14 +481,16 @@ export default async function PublicCheckoutPage({
         >
           {/* Header */}
           <header
-            className="flex flex-col sm:grid sm:grid-cols-[280px_minmax(0,1fr)] items-center gap-3 bg-[#ed1c24] px-4 py-4 sm:px-6 sm:py-5 text-white avoid-break"
+            className="flex flex-col sm:grid sm:grid-cols-[260px_minmax(0,1fr)] items-center gap-3 bg-[#ed1c24] px-4 py-4 sm:px-6 sm:py-5 text-white avoid-break"
             style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}
           >
-            <div className="flex items-center gap-3 w-full justify-center sm:justify-start">
-              <Image src="/x_white.svg" alt="" width={38} height={42} className="h-10 sm:h-11 w-auto" priority />
-              <div>
-                <div className="text-3xl sm:text-[38px] font-black leading-none">mindX</div>
-                <div className="mt-1 text-xs sm:text-[14px] font-bold leading-none tracking-wide">Technology School</div>
+            <div className="flex w-full justify-center sm:justify-start">
+              <div className="inline-flex flex-col items-start text-white">
+                <div className="flex items-end gap-1 leading-none">
+                  <span className="text-[38px] sm:text-[44px] font-black leading-none">mind</span>
+                  <Image src="/x_white.svg" alt="" width={42} height={46} className="mb-0.5 h-[40px] sm:h-[46px] w-auto" priority />
+                </div>
+                <div className="mt-1 text-[15px] sm:text-[17px] font-black leading-none">Tech &amp; AI School</div>
               </div>
             </div>
             <h1 className="text-center sm:text-right text-lg sm:text-[22px] md:text-[24px] font-black uppercase leading-snug tracking-normal">
@@ -417,14 +505,14 @@ export default async function PublicCheckoutPage({
             <h2 className="mb-2 text-[16px] sm:text-[17px] font-black uppercase text-[#ed1c24]">
               A. Thông tin học viên
             </h2>
-            <dl className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-1 sm:gap-y-2">
-              <div>
+            <dl className="student-info-grid grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-1 sm:gap-y-2">
+              <div className="student-info-column">
                 <InfoRow label="Họ và tên Học viên" value={record.student_name} />
                 <InfoRow label="Môn trải nghiệm" value={record.trial_subject} />
                 <InfoRow label="Giáo viên hướng dẫn" value={record.trial_teacher_name} />
                 <InfoRow label="Cơ sở" value={record.center_name} />
               </div>
-              <div>
+              <div className="student-info-column">
                 <InfoRow label="Tuổi" value={record.student_age_label} />
                 <InfoRow label="Ngày trải nghiệm" value={formattedTrialDate} />
                 <InfoRow label="Tỉnh/ Thành phố" value={city} />
@@ -446,7 +534,9 @@ export default async function PublicCheckoutPage({
             </p>
 
             <div className="mt-4">
-              {rubric.mode === 'matrix' ? (
+              {rubric.type === 'art' ? (
+                <ArtRubricTable record={record} rubric={rubric} />
+              ) : rubric.mode === 'matrix' ? (
                 <CommonRubricTable record={record} rubric={rubric} />
               ) : (
                 <LevelRubricTable record={record} rubric={rubric} />

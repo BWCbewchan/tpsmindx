@@ -241,6 +241,16 @@ type FilterSelectOption = {
   subtext?: string
 }
 
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'd')
+    .toLowerCase()
+    .trim()
+}
+
 function SearchableFilterSelect({
   value,
   onChange,
@@ -275,12 +285,12 @@ function SearchableFilterSelect({
   }, [isOpen])
 
   const filteredOptions = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = normalizeSearchText(search)
     if (!q) return options
     return options.filter(
       (opt) =>
-        opt.label.toLowerCase().includes(q) ||
-        (opt.subtext && opt.subtext.toLowerCase().includes(q)),
+        normalizeSearchText(opt.label).includes(q) ||
+        (opt.subtext && normalizeSearchText(opt.subtext).includes(q)),
     )
   }, [options, search])
 

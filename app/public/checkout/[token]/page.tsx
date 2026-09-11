@@ -232,32 +232,77 @@ function LevelRubricTable({
 
 async function getCheckoutRecord(token: string): Promise<CheckoutRecord | null> {
   const numericId = /^\d+$/.test(token) ? Number.parseInt(token, 10) : null
+  console.log('[DEBUG getCheckoutRecord]', { token, numericId })
 
-  const result = await pool.query(
-    `SELECT
-        raw_id,
-        timestamp_at,
-        trial_teacher_name,
-        sales_owner_name,
-        student_name,
-        student_age_label,
-        trial_date,
-        track,
-        trial_subject,
-        center_name,
-        ${SCORE_COLUMNS.join(',\n        ')},
-        total_score,
-        case_result,
-        general_comment,
-        raw_payload
-     FROM trial_checkout_raw
-     WHERE raw_payload @> jsonb_build_object('publicToken', $1::text)
-        OR ($2::bigint IS NOT NULL AND raw_id = $2::bigint)
-     LIMIT 1`,
-    [token, numericId],
-  )
+  try {
+    const result = await pool.query(
+      `SELECT
+          raw_id,
+          timestamp_at,
+          trial_teacher_name,
+          sales_owner_name,
+          student_name,
+          student_age_label,
+          trial_date,
+          track,
+          trial_subject,
+          center_name,
+          ${SCORE_COLUMNS.join(',\n        ')},
+          total_score,
+          case_result,
+          general_comment,
+          raw_payload
+       FROM trial_checkout_raw
+       WHERE raw_payload @> jsonb_build_object('publicToken', $1::text)
+          OR ($2::bigint IS NOT NULL AND raw_id = $2::bigint)
+       LIMIT 1`,
+      [token, numericId],
+    )
+    console.log('[DEBUG getCheckoutRecord found rows]', result.rows.length)
+    return result.rows[0] || null
+  } catch (err) {
+    console.error('[DEBUG getCheckoutRecord ERROR]', err)
+    return null
+  }
+}
 
-  return result.rows[0] || null
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ token: string }>
+}) {
+  const { token } = await params
+  const record = await getCheckoutRecord(token)
+
+  if (!record) {
+    return {
+      title: 'Phiếu kết quả trải nghiệm | MindX Technology School',
+      description: 'Hệ thống quản lý giảng dạy MindX Technology School',
+    }
+  }
+
+  const studentName = textValue(record.student_name, 'Học viên')
+  const subject = textValue(record.trial_subject, 'Trải nghiệm')
+  const rawAge = textValue(record.student_age_label, '')
+  const formattedAge = rawAge ? (/^\d+$/.test(rawAge) ? `${rawAge} tuổi` : rawAge) : ''
+  const displayTitle = [studentName, subject, formattedAge].filter(Boolean).join(' - ')
+  const description = `Phiếu kết quả đánh giá mức độ sẵn sàng cho tương lai số của học viên ${studentName} (${subject}) tại MindX Technology School.`
+
+  return {
+    title: displayTitle,
+    description,
+    openGraph: {
+      title: displayTitle,
+      description,
+      type: 'website',
+      siteName: 'MindX Technology School',
+    },
+    twitter: {
+      card: 'summary',
+      title: displayTitle,
+      description,
+    },
+  }
 }
 
 export default async function PublicCheckoutPage({

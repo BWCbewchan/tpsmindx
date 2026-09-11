@@ -519,12 +519,17 @@ export function DockNav() {
     { id: 'thongtin',    label: 'Thông tin tôi', icon: Home,      href: '/user/thong-tin-giao-vien' },
     {
       id: 'checkout',
-      label: 'Checkout',
+      label: 'Vận hành',
       icon: ClipboardCheck,
       submenu: [
-        { href: '/user/checkout/create', label: 'Tạo form' },
-        { href: '/user/checkout/manage', label: 'Quản lý form đã tạo' },
-      ] as SubItem[],
+        {
+          groupLabel: 'Phiếu kết quả trải nghiệm',
+          items: [
+            { href: '/user/checkout/create', label: 'Tạo phiếu' },
+            { href: '/user/checkout/manage', label: 'Quản lý phiếu đã tạo' },
+          ],
+        },
+      ] as SubGroup[],
     },
     { id: 'thongbao',   label: 'Thông báo',     icon: Bell,      href: '/user/thong-bao', badge: unreadCount },
     {
@@ -704,8 +709,8 @@ export function DockNav() {
   // Items hidden on mobile but accessible via Settings → "Thêm tính năng"
   const mobileExtraUserItems: SubItem[] = [
     { href: '/user/thong-tin-giao-vien', label: 'Thông tin của tôi' },
-    { href: '/user/checkout/create', label: 'Checkout - Tạo form' },
-    { href: '/user/checkout/manage', label: 'Checkout - Quản lý form' },
+    { href: '/user/checkout/create', label: 'Phiếu kết quả trải nghiệm - Tạo phiếu' },
+    { href: '/user/checkout/manage', label: 'Phiếu kết quả trải nghiệm - Quản lý phiếu' },
     { href: '/user/hoat-dong-hang-thang', label: 'Hoạt động hàng tháng' },
     { href: '/user/lich-cua-toi', label: 'Lịch cá nhân' },
     { href: '/user/quan-ly-phan-hoi', label: 'Trung tâm phản hồi' },

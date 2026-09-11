@@ -8,6 +8,7 @@ Skill da ap dung:
 
 - `nextjs` de them route App Router va route handler dung session hien co.
 - `frontend-design` de thiet ke form dung nhu mot cong cu noi bo, hop tong TPS MindX, co trang thai loading/error/empty.
+- `frontend-design` de dieu chinh layout print cua phieu public, giu khoi thong tin hoc vien thanh 2 cot nhu giao dien web.
 
 ## File chinh
 
@@ -103,12 +104,18 @@ Toan bo duong link public duoc thong nhat ve dinh dang ID so: `/public/checkout/
 ## Giao dien xem phieu cong khai & Xuat PDF (`/public/checkout/[token]`)
 
 - Tich hop thanh cong cu `CheckoutToolbar` (nam tren cung, sticky, an hoan toan khi in `print:hidden`):
-  - Nut **"Xuat PDF / In phieu"**: kich hoat `window.print()` de luu file PDF vector chat luong cao hoac in an.
+  - Nut **"Xuat PDF / In phieu"**: kich hoat `window.print()` de dung print preview / Save as PDF cua trinh duyet; truoc khi in, tam doi `document.title` theo ten hoc vien/mon/ngay trai nghiem de goi y ten file.
   - Nut **"Sao chep link"**: sao chep dia chi link xem phieu vao clipboard.
   - Nut **"Quan ly form"**: quay lai trang quan ly danh sach.
+- Dieu chinh ngay 2026-09-10: quay lai `window.print()` lam luong chinh theo yeu cau nguoi dung vi print preview de nguoi dung chu dong Save as PDF va tranh loi render anh/canvas khong nhu mong muon.
+- Dieu chinh UI ngay 2026-09-10: `CheckoutToolbar` sticky sat mep tren (`top-0`) va bo goc tren de khong tao khoang trong khi scroll trang phieu.
+- Dieu chinh Art PDF ngay 2026-09-10: rieng rubric `art` tren `/public/checkout/[token]` hien thi bang `Nang luc` x `Muc do the hien 1-5`, danh dau `X` tai muc da chon thay vi hien truc tiep cot diem. Noi dung nang luc/level lay tu `ART_RUBRIC`, doi chieu voi `D:\PhieuDanhGiaMindx\art.html`.
+- Dieu chinh print layout ngay 2026-09-10: khoi `A. Thong tin hoc vien` dung class print rieng (`student-info-grid`, `student-info-column`, `info-row`) de ep 2 cot label/value khi xem truoc hoac Save as PDF, khong phu thuoc breakpoint responsive `md`.
+- Dieu chinh header phieu ngay 2026-09-10: logo trai tren public checkout hien dang wordmark `mindX` kem tagline `Tech & AI School` mau trang tren nen MindX red, khong con tach icon X va chu `Technology School`.
+- Dieu chinh print layout ngay 2026-09-10: khong ep `.sheet-page` `break-after: page` nua va khong ep `tbody` `break-inside: avoid`; chi giu `tr` va `.avoid-break` de tranh bi tach dong/tieu chi, giam tinh trang mot trang chi co vai dong roi de trang.
 - Cau hinh in an chuyen nghiep:
-  - `@page { size: A4 portrait; margin: 10mm 12mm; }`
-  - Ap dung `break-inside: avoid; page-break-inside: avoid;` cho tung tieu chi danh gia (`tr`, `tbody`), dam bao **tung tieu chi danh gia luon nam tron ven tren 1 trang**, khong bao gio bi cat doi hay rot dong giua 2 trang.
+  - `@page { size: A4 portrait; margin: 8mm 8mm; }`
+  - Ap dung `break-inside: avoid; page-break-inside: avoid;` cho tung dong/tieu chi danh gia (`tr`, `.avoid-break`), khong ap dung tren toan bo `tbody` de tranh day ca nhom tieu chi sang trang moi va tao khoang trang lon.
   - Chuan hoa mau in dung theo thiet ke goc (`-webkit-print-color-adjust: exact; print-color-adjust: exact;`).
 - Toi uu Responsive & chong rot dong ("rot dong") tren dien thoai:
   - Header MindX linh hoat, tranh don ep chu gay rot dong vun vat.
@@ -123,7 +130,9 @@ Toan bo duong link public duoc thong nhat ve dinh dang ID so: `/public/checkout/
   - Mac dinh: **"Ngày tạo (Mới nhất)"** (`created_desc`).
   - Cac tuy chon bo sung: *Ngày tạo (Cũ nhất), Ngày trải nghiệm (Mới nhất / Cũ nhất), Điểm số (Cao nhất / Thấp nhất), Tên học viên (A - Z)*.
 - Bo loc ho tro day du: tim kiem theo ten giao vien / hoc vien (co debounce 350ms), co so (khong phan biet hoa thuong/khoang trang), khoi, mon hoc, khoang ngay va cac nut loc nhanh (Hom nay, Hom qua, 7 ngay qua, 30 ngay qua, Thang nay, Tat ca).
+- Dieu chinh UI ngay 2026-09-10: bo loc `Co so` va `Mon trai nghiem` dung combobox co the go tim nhanh, ho tro tim khong dau/khong phan biet hoa thuong; khong thay doi query API hay phat sinh du lieu moi.
 - Bang du lieu hien thi cac badge trang thai ket qua case ro rang va nut "Xem phieu" tro truc tiep vao `/public/checkout/[Id]`.
+- Dieu chinh ngay 2026-09-10: bo loc `Co so` tren trang manage khong so sanh exact truc tiep giua `centers.full_name` va `trial_checkout_raw.center_name`. API `GET /api/user/checkout/forms` tao cac bien the ten co so bang cung logic `normalizeCenter` dang dung khi ghi form moi, sau do match voi `center_name` hien co trong DB. Khong insert/update them du lieu chi de phuc vu bo loc.
 
 ## Luong du lieu database checkout import
 
@@ -153,6 +162,7 @@ Trang thai ap dung database ngay 2026-09-09:
 - Du lieu checkout co PII hoc vien, nhan xet va link; theo yeu cau nghiep vu ngay 2026-09-09, giao vien duoc xem toan bo form da gui san trong man hinh quan ly checkout.
 - `trial_checkout` la view doc theo cot Excel, con `trial_checkout_raw` la bang ghi that su cho import va form moi.
 - `GET /api/user/checkout/forms` bat buoc session hop le nhung khong loc theo giao vien dang nhap; co ho tro filter theo giao vien, hoc vien, co so, khoi, mon va ngay.
+- Filter co so trong `GET /api/user/checkout/forms` la filter doc-only: tham so UI co the la `centers.full_name`, server map ve cac bien the ten checkout va so khop voi `trial_checkout_raw.center_name`; khong phat sinh dong/bang mapping moi.
 - `POST /api/user/checkout/forms` bat buoc session hop le, validate track/subject/case_result, validate day du diem theo rubric, tinh lai `total_score` tren server va insert vao `trial_checkout_raw`.
 - Khi insert form moi, API khoa bang ngan trong transaction de lay `raw_id = MAX(raw_id) + 1`, tranh trung ID trong truong hop gui dong thoi.
 - Link public cua form moi dung token sinh trong `raw_payload.publicToken` va duoc luu vao cot `Link` cua view `trial_checkout`; dong import cu tren trang quan ly duoc render theo `raw_id` de giao vien xem lai phieu da co.

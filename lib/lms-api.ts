@@ -1,4 +1,4 @@
-const LMS_API_URL = 'https://lms-api.mindx.edu.vn/graphql';
+const LMS_API_URL = process.env.LMS_API_URL || 'https://lms-api.mindx.edu.vn/';
 
 export interface GraphQLRequest {
   query: string;
@@ -9,9 +9,13 @@ export interface GraphQLRequest {
 /**
  * Core function to call LMS API directly from the server.
  */
-export async function callLmsApi<T>(request: GraphQLRequest, authHeader?: string): Promise<T> {
+export async function callLmsApi<T>(
+  request: GraphQLRequest,
+  authHeader?: string,
+  retries = 0,
+): Promise<T> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // Tăng timeout lên 30s
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
 
   try {
     const response = await fetch(LMS_API_URL, {
@@ -26,6 +30,14 @@ export async function callLmsApi<T>(request: GraphQLRequest, authHeader?: string
     });
 
     clearTimeout(timeoutId);
+
+    // Auto-retry on HTTP 429 Rate Limit
+    if (response.status === 429 && retries < 3) {
+      const waitMs = (retries + 1) * 1000;
+      console.warn(`[lms-api] Rate limited (429). Retrying in ${waitMs}ms (attempt ${retries + 1}/3)...`);
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+      return callLmsApi<T>(request, authHeader, retries + 1);
+    }
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => '');

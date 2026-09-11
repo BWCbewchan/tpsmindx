@@ -13,6 +13,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  ClipboardCheck,
   FileText,
   GraduationCap,
   Home,
@@ -512,10 +513,19 @@ export function DockNav() {
     [user?.role, roleCodes],
   )
 
-  // ── User area ── 7 desktop items  /  5 mobile items
+  // ── User area ── 8 desktop items  /  5 mobile items
   const userDesktopItems: NavDockItem[] = useMemo(() => [
     { id: 'truyenthong', label: 'Truyền thông', icon: Megaphone, href: '/user/truyenthong' },
     { id: 'thongtin',    label: 'Thông tin tôi', icon: Home,      href: '/user/thong-tin-giao-vien' },
+    {
+      id: 'checkout',
+      label: 'Checkout',
+      icon: ClipboardCheck,
+      submenu: [
+        { href: '/user/checkout/create', label: 'Tạo form' },
+        { href: '/user/checkout/manage', label: 'Quản lý form đã tạo' },
+      ] as SubItem[],
+    },
     { id: 'thongbao',   label: 'Thông báo',     icon: Bell,      href: '/user/thong-bao', badge: unreadCount },
     {
       id: 'lichhd', label: 'Lịch & HĐ', icon: CalendarDays,
@@ -591,6 +601,13 @@ export function DockNav() {
       ] as SubItem[],
     },
     {
+      id: 'hocvien', label: 'Học viên', icon: FileText,
+      submenu: [
+        { href: '/admin/kiem-soat-spck', label: 'Kiểm soát Sản phẩm cuối khóa' },
+        { href: '/admin/portfolio', label: 'Quản lý Portfolio' },
+      ] as SubItem[],
+    },
+    {
       id: 'daotao', label: 'Đào tạo', icon: GraduationCap,
       submenu: [
         { groupLabel: 'Đào Tạo Nâng Cao', items: [
@@ -655,6 +672,13 @@ export function DockNav() {
       ] as SubItem[],
     },
     {
+      id: 'hocvien', label: 'Học viên', icon: FileText,
+      submenu: [
+        { href: '/admin/kiem-soat-spck', label: 'Kiểm soát Sản phẩm cuối khóa' },
+        { href: '/admin/portfolio', label: 'Quản lý Portfolio' },
+      ] as SubItem[],
+    },
+    {
       id: 'daotao', label: 'Đào tạo', icon: GraduationCap,
       submenu: [
         { href: '/admin/page5', label: 'Thư viện video nâng cao' },
@@ -680,6 +704,8 @@ export function DockNav() {
   // Items hidden on mobile but accessible via Settings → "Thêm tính năng"
   const mobileExtraUserItems: SubItem[] = [
     { href: '/user/thong-tin-giao-vien', label: 'Thông tin của tôi' },
+    { href: '/user/checkout/create', label: 'Checkout - Tạo form' },
+    { href: '/user/checkout/manage', label: 'Checkout - Quản lý form' },
     { href: '/user/hoat-dong-hang-thang', label: 'Hoạt động hàng tháng' },
     { href: '/user/lich-cua-toi', label: 'Lịch cá nhân' },
     { href: '/user/quan-ly-phan-hoi', label: 'Trung tâm phản hồi' },
@@ -695,6 +721,9 @@ export function DockNav() {
     { href: '/admin/page4/lich-danh-gia', label: 'Lịch sự kiện' },
     { href: '/admin/deal-luong?type=salary_reduction', label: 'Hạ lương' },
     { href: '/admin/deal-luong?type=bonus', label: 'Nâng lương' },
+    // Học viên
+    { href: '/admin/kiem-soat-spck', label: 'Kiểm soát Sản phẩm cuối khóa' },
+    { href: '/admin/portfolio', label: 'Quản lý Portfolio' },
     // Đào tạo extra
     { href: '/admin/page4/danh-sach-dang-ky', label: 'Danh sách Giáo viên đăng ký' },
     { href: '/admin/thu-vien-de', label: 'Thư viện đề chuyên môn' },

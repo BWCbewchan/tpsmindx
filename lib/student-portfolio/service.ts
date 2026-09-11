@@ -1391,10 +1391,10 @@ function rewardTransactionAward(item: RewardTransactionItem): StudentPortfolioDa
   if (!isAwardType) return null;
 
   const prizeMap: Record<string, { title: string; level: 'gold' | 'silver' | 'bronze' | 'merit' }> = {
-    FIRST_PRIZE: { title: 'Đạt giải nhất Demo/SPCK', level: 'gold' },
-    SECOND_PRIZE: { title: 'Đạt giải nhì Demo/SPCK', level: 'silver' },
-    THIRD_PRIZE: { title: 'Đạt giải ba Demo/SPCK', level: 'bronze' },
-    CONSOLATION_PRIZE: { title: 'Đạt giải khuyến khích Demo/SPCK', level: 'merit' },
+    FIRST_PRIZE: { title: 'Đạt giải nhất', level: 'gold' },
+    SECOND_PRIZE: { title: 'Đạt giải nhì', level: 'silver' },
+    THIRD_PRIZE: { title: 'Đạt giải ba', level: 'bronze' },
+    CONSOLATION_PRIZE: { title: 'Đạt giải khuyến khích', level: 'merit' },
   };
 
   const fallbackPrize = directText.includes('giai nhat') || directText.includes('first')
@@ -1820,7 +1820,7 @@ export function normalizePortfolioData(data: StudentPortfolioData): StudentPortf
         : /nhi|nhì/i.test(text)
         ? 'silver'
         : 'bronze';
-      const awardTitleStr = /giải|giai/i.test(titleText) ? titleText : 'Đạt giải ba Demo/SPCK';
+      const awardTitleStr = titleText || 'Tuyên dương thành tích';
       if (!achievements.some((a) => a.title === awardTitleStr)) {
         achievements.push({
           title: awardTitleStr,
@@ -1832,11 +1832,8 @@ export function normalizePortfolioData(data: StudentPortfolioData): StudentPortf
     }
   });
 
-  // Filter out test achievements
-  const realAchievements = achievements.filter((a) => {
-    if (sameText(a.title, 'Test thành tích') || sameText(a.subtitle, 'Thành tích test')) return false;
-    return Boolean(a.title && /giải|giai|nhất|nhì|ba|khuyến khích|spck|demo/i.test(`${a.title} ${a.subtitle || ''}`));
-  });
+  // Preserve all valid user-created achievements
+  const realAchievements = achievements.filter((a) => Boolean(a.title && a.title.trim()));
 
   const rawJourney = Array.isArray(data.learningJourney) ? data.learningJourney : [];
   const assignedAwardIndices = new Set<number>();
@@ -2037,6 +2034,7 @@ export async function getPublishedPortfolioBySlug(
 
 export async function listPortfolios(input: {
   search?: string;
+  track?: string;
   pageIndex?: number;
   itemsPerPage?: number;
   centreNames?: string[];
@@ -2051,6 +2049,11 @@ export async function listPortfolios(input: {
   const offset = pageIndex * itemsPerPage;
   const params: unknown[] = [];
   const where: string[] = [];
+  const trackPatterns: Record<string, string> = {
+    coding: String.raw`(^|[^a-z0-9])(c4k[a-z0-9]*|c4t[a-z0-9]*|pt[a-z0-9]*|scratch|coding|code|js[a-z0-9]*|web|cs[a-z0-9]*|computer scientist|app producer|python)([^a-z0-9]|$)`,
+    robotics: String.raw`(^|[^a-z0-9])(rob[a-z0-9]*|robot[a-z0-9]*|robotics)([^a-z0-9]|$)`,
+    art: String.raw`(^|[^a-z0-9])(xart[a-z0-9]*|art|fine art|creative art|mỹ thuật|my thuat|vẽ|ve thuat)([^a-z0-9]|$)`,
+  };
 
   const search = cleanText(input.search);
   if (search) {
@@ -2065,6 +2068,20 @@ export async function listPortfolios(input: {
       OR data->'profile'->>'studentName' ILIKE ${param}
       OR data->'profile'->>'className' ILIKE ${param}
     )`);
+  }
+
+  const track = cleanText(input.track).toLowerCase();
+  if (track && trackPatterns[track]) {
+    params.push(trackPatterns[track]);
+    const param = `$${params.length}`;
+    where.push(`CONCAT_WS(
+      ' ',
+      class_name,
+      course_name,
+      data->'profile'->>'className',
+      data->'profile'->>'courseName',
+      data->'profile'->>'courseLine'
+    ) ~* ${param}`);
   }
 
   const centreNames = (input.centreNames || []).map(cleanText).filter(Boolean);

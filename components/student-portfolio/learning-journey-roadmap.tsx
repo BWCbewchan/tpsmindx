@@ -113,8 +113,8 @@ export function LearningJourneyRoadmap({
         </p>
       </div>
 
-      {/* Timeline List (Restored Image 1 Straight Vertical Layout) */}
-      <div className="space-y-10 border-l-2 border-[#ded6c9] pl-6 md:pl-8">
+      {/* Timeline List (Responsive Vertical Layout) */}
+      <div className="space-y-8 sm:space-y-10 border-l-2 border-[#ded6c9] pl-5 sm:pl-7 md:pl-8 ml-2 sm:ml-4">
         {journey.map((item, index) => {
           const isCompleted = isCompletedLearningStatus(item.status);
           const statusLabel = isCompleted ? 'Hoàn thành' : isRunningLearningStatus(item.status) ? 'Đang diễn ra' : item.status || 'Đang diễn ra';
@@ -143,18 +143,18 @@ export function LearningJourneyRoadmap({
           const projectImage = matchedProject?.imageUrl || matchedProject?.imageUrls?.[0];
 
           return (
-            <div key={`${item.title}-${index}`} className="relative grid gap-6 md:grid-cols-[220px_1fr]">
-              {/* Green / Accent Node Dot on Line */}
+            <div key={`${item.title}-${index}`} className="relative grid gap-4 sm:gap-6 md:grid-cols-[220px_1fr]">
+              {/* Green / Accent Node Dot on Line (Precisely aligned to line) */}
               <span
-                className="absolute -left-[34px] top-7 h-5 w-5 rounded-full border-4 border-white shadow-xs md:-left-[43px]"
+                className="absolute -left-[29px] sm:-left-[37px] md:-left-[41px] top-6 sm:top-7 h-4 w-4 sm:h-5 sm:w-5 rounded-full border-3 sm:border-4 border-white shadow-xs"
                 style={{ backgroundColor: isCompleted ? '#16a34a' : theme.ink }}
               />
 
               {/* Left Column: Course Title & Start Date */}
               <div>
-                <h3 className="text-lg font-extrabold leading-snug text-[#171512]">{item.title}</h3>
+                <h3 className="text-base sm:text-lg font-extrabold leading-snug text-[#171512]">{item.title}</h3>
                 {displayDate ? (
-                  <p className="mt-1.5 text-xs font-semibold text-[#777067]">
+                  <p className="mt-1 text-xs font-semibold text-[#777067]">
                     {displayDate.startsWith('Ngày') ? displayDate : `Thời gian: ${displayDate}`}
                   </p>
                 ) : null}
@@ -163,7 +163,7 @@ export function LearningJourneyRoadmap({
               {/* Right Column: Clean White Card (Clickable to scroll to project) */}
               <div
                 onClick={hasMatchedProject ? () => scrollToProject(projectIndex) : undefined}
-                className={`group relative overflow-hidden rounded-2xl border border-[#e4ded6] bg-white p-6 shadow-[0_8px_24px_rgba(23,21,18,0.04)] transition-all duration-300 sm:p-7 ${
+                className={`group relative overflow-hidden rounded-2xl border border-[#e4ded6] bg-white p-4 sm:p-6 md:p-7 shadow-[0_8px_24px_rgba(23,21,18,0.04)] transition-all duration-300 ${
                   hasMatchedProject
                     ? 'cursor-pointer hover:-translate-y-1 hover:border-[#cbd5e1] hover:shadow-[0_16px_36px_rgba(23,21,18,0.09)]'
                     : ''

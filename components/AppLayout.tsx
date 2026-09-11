@@ -7,6 +7,12 @@ import {
   getBrowserPath,
 } from '@/lib/auth-redirect'
 import { filterManagementPermissions } from '@/lib/admin-permission-routes'
+import {
+  canAccessPortfolioPath,
+  isPortfolioAllowedUser,
+  isPortfolioEditorUser,
+  isPortfolioRoutePath,
+} from '@/lib/menu-permissions'
 import { authHeaders } from '@/lib/auth-headers'
 import { isUnauthorizedStatus, parseJsonSafe } from '@/lib/auth-error-handling'
 import { ArrowLeft, Mail, MessageCircle, ShieldAlert } from 'lucide-react'
@@ -347,9 +353,17 @@ export default function AppLayout({
     // Check admin access
     if (requireAdmin && user) {
       const isSuperAdmin = user.role === 'super_admin'
+      const canAccessPortfolio = isPortfolioAllowedUser(user)
+      const canEditPortfolio = isPortfolioEditorUser(user)
       const isAdminUser =
-        user.isAdmin || ['super_admin', 'admin', 'manager'].includes(user.role)
-      const permissions = filterManagementPermissions(user.permissions || [])
+        user.isAdmin ||
+        ['super_admin', 'admin', 'manager'].includes(user.role) ||
+        canAccessPortfolio
+      const permissions = filterManagementPermissions(user.permissions || []).filter(
+        (permission) =>
+          !isPortfolioRoutePath(permission) ||
+          canAccessPortfolioPath(user, permission),
+      )
 
       if (!isAdminUser) {
         // Not an admin at all — redirect to user area
@@ -362,8 +376,14 @@ export default function AppLayout({
 
       // Super admin bypasses all permission checks
       if (!isSuperAdmin) {
-        // manager và admin luôn được phép vào deal-luong routes và portfolio-qc routes
-        const PORTFOLIO_QC_ROUTES = ['/admin/portfolio-qc', '/admin/deal-luong', '/admin/tao-deal-luong']
+        const PORTFOLIO_QC_ROUTES = ['/admin/deal-luong', '/admin/tao-deal-luong']
+        if (canAccessPortfolio) {
+          PORTFOLIO_QC_ROUTES.push('/admin/portfolio')
+        }
+        if (canEditPortfolio) {
+          PORTFOLIO_QC_ROUTES.push('/admin/kiem-soat-spck')
+        }
+
         const hasManagementRole =
           ['manager', 'admin', 'super_admin'].includes(user.role) ||
           roleCodes.some((code) => ['LEADER', 'TE', 'TC', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(code))
@@ -372,7 +392,7 @@ export default function AppLayout({
         const hasAnyK12LeaderAccess = permissions.some((p) => p === '/admin/quy-trinh-quy-dinh-leader' || p.startsWith('/admin/quy-trinh-quy-dinh-leader/'))
 
         const extraRoutes: string[] = []
-        if (['manager', 'admin'].includes(user.role) || hasManagementRole) {
+        if (canAccessPortfolio || ['manager', 'admin'].includes(user.role) || hasManagementRole) {
           extraRoutes.push(...PORTFOLIO_QC_ROUTES)
         }
         if (hasAnyK12Access || hasManagementRole) {
@@ -406,12 +426,14 @@ export default function AppLayout({
         ) {
           const hasPermission =
             (hasTrainingInputRole && isTrainingInputRoute) ||
-            effectivePermissions.some(
-              (p) =>
-                pathname === p ||
-                pathname.startsWith(`${p}/`) ||
-                p.startsWith(`${pathname}/`),
-            )
+            (isPortfolioRoutePath(pathname)
+              ? canAccessPortfolioPath(user, pathname)
+              : effectivePermissions.some(
+                  (p) =>
+                    pathname === p ||
+                    pathname.startsWith(`${p}/`) ||
+                    p.startsWith(`${pathname}/`),
+                ))
 
           if (!hasPermission) {
             if (hasTrainingInputRole) {

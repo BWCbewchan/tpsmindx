@@ -7,6 +7,124 @@ export function normalizeRoleToken(value?: string): string {
     .replace(/[\s-]+/g, '_')
 }
 
+const PORTFOLIO_ALLOWED_ROLE_CODES = new Set([
+  'tegl',
+  'tegl+',
+  'tm',
+  'cl',
+  'rl',
+  'al',
+  'lead',
+  'te',
+  'tc',
+])
+
+const PORTFOLIO_EDITOR_ROLE_CODES = new Set([
+  'tegl',
+  'tegl+',
+  'tm',
+  'lead',
+  'te',
+  'tc',
+])
+
+const PORTFOLIO_READ_ONLY_LEADER_ROLE_CODES = new Set(['al', 'cl', 'rl'])
+
+function getUserRoleTokens(user: any): string[] {
+  if (!user) return []
+  const rawRoles = user.userRoles || user.roleCodes || []
+  const roleCodes = rawRoles.map((code: any) =>
+    typeof code === 'string'
+      ? normalizeRoleToken(code)
+      : normalizeRoleToken(code?.role_code || code?.code),
+  )
+  return Array.from(
+    new Set([normalizeRoleToken(user.role), ...roleCodes].filter(Boolean)),
+  )
+}
+
+function isPortfolioSuperAdmin(user: any): boolean {
+  return getUserRoleTokens(user).some((code) => code === 'super_admin')
+}
+
+export function isPortfolioReadOnlyLeaderUser(user: any): boolean {
+  if (!user || isPortfolioSuperAdmin(user)) return false
+  const roleTokens = getUserRoleTokens(user)
+  const hasReadOnlyLeaderRole = roleTokens.some((code) =>
+    PORTFOLIO_READ_ONLY_LEADER_ROLE_CODES.has(code),
+  )
+  const hasEditorRole = roleTokens.some((code) =>
+    PORTFOLIO_EDITOR_ROLE_CODES.has(code),
+  )
+  const hasAdminRole = roleTokens.some((code) => code === 'admin')
+
+  return hasReadOnlyLeaderRole && !hasEditorRole && !hasAdminRole
+}
+
+export function isPortfolioEditorUser(user: any): boolean {
+  if (!user) return false
+  if (isPortfolioSuperAdmin(user)) return true
+  if (isPortfolioReadOnlyLeaderUser(user)) return false
+
+  return getUserRoleTokens(user).some((code) =>
+    PORTFOLIO_EDITOR_ROLE_CODES.has(code),
+  )
+}
+
+export function isPortfolioManagementRoutePath(path: string): boolean {
+  const targetPath = path.split('?')[0]
+  return targetPath === '/admin/portfolio' || targetPath === '/admin/portfolio/'
+}
+
+export function isPortfolioBuilderRoutePath(path: string): boolean {
+  const targetPath = path.split('?')[0]
+  return targetPath.startsWith('/admin/portfolio/builder')
+}
+
+export function isSpckSubmissionRoutePath(path: string): boolean {
+  const targetPath = path.split('?')[0]
+  return (
+    targetPath === '/admin/kiem-soat-spck' ||
+    targetPath.startsWith('/admin/kiem-soat-spck/')
+  )
+}
+
+export function isPortfolioRoutePath(path: string): boolean {
+  const targetPath = path.split('?')[0]
+  return (
+    isSpckSubmissionRoutePath(targetPath) ||
+    isPortfolioManagementRoutePath(targetPath) ||
+    isPortfolioBuilderRoutePath(targetPath)
+  )
+}
+
+export function isPortfolioAllowedUser(user: any): boolean {
+  if (!user) return false
+  if (isPortfolioSuperAdmin(user)) return true
+
+  const roleTokens = getUserRoleTokens(user)
+
+  return (
+    roleTokens.some((code) => PORTFOLIO_ALLOWED_ROLE_CODES.has(code)) ||
+    roleTokens.some((code) => PORTFOLIO_READ_ONLY_LEADER_ROLE_CODES.has(code))
+  )
+}
+
+export function canAccessPortfolioPath(user: any, path: string): boolean {
+  if (isPortfolioManagementRoutePath(path)) {
+    return isPortfolioAllowedUser(user)
+  }
+  if (isPortfolioBuilderRoutePath(path) || isSpckSubmissionRoutePath(path)) {
+    return isPortfolioEditorUser(user)
+  }
+  return false
+}
+
+function canKeepPortfolioPermission(user: any, permission: string): boolean {
+  if (!isPortfolioRoutePath(permission)) return true
+  return canAccessPortfolioPath(user, permission)
+}
+
 export function checkHrefPermission(href: string, user: any): boolean {
   if (!user) return false
 
@@ -30,6 +148,10 @@ export function checkHrefPermission(href: string, user: any): boolean {
     return false
   }
 
+  if (isPortfolioRoutePath(targetPath)) {
+    return canAccessPortfolioPath(user, targetPath)
+  }
+
   // Check role codes for training input & management roles
   const roleCodes = (user.userRoles || []).map((code: string) => normalizeRoleToken(code))
   const hasManagementRole =
@@ -47,13 +169,19 @@ export function checkHrefPermission(href: string, user: any): boolean {
     return true
   }
 
-  if (targetPath === '/admin/portfolio-qc' || targetPath === '/admin/portfolio') {
-    return true
+  // Base permissions, deal-luong and portfolio
+  const MANAGER_DEFAULT_ROUTES = ['/admin/deal-luong', '/admin/tao-deal-luong']
+  const canAccessPortfolio = isPortfolioAllowedUser(user)
+  const canEditPortfolio = isPortfolioEditorUser(user)
+  if (canAccessPortfolio) {
+    MANAGER_DEFAULT_ROUTES.push('/admin/portfolio')
   }
-
-  // Base permissions, deal-luong and portfolio-qc
-  const MANAGER_DEFAULT_ROUTES = ['/admin/deal-luong', '/admin/tao-deal-luong', '/admin/portfolio-qc', '/admin/portfolio']
-  const basePermissions = filterManagementPermissions(user.permissions || [])
+  if (canEditPortfolio) {
+    MANAGER_DEFAULT_ROUTES.push('/admin/kiem-soat-spck')
+  }
+  const basePermissions = filterManagementPermissions(user.permissions || []).filter((permission) =>
+    canKeepPortfolioPermission(user, permission),
+  )
   const permissions = Array.from(new Set([...basePermissions, ...MANAGER_DEFAULT_ROUTES]))
 
   const hasAnyK12Access = permissions.some((p) => {
@@ -106,8 +234,18 @@ export function getFilteredAdminMenuItems(adminMenuItems: any[], user: any, path
 
   if (isSuperAdmin) return adminMenuItems
 
-  const MANAGER_DEFAULT_ROUTES = ['/admin/deal-luong', '/admin/tao-deal-luong', '/admin/portfolio-qc', '/admin/portfolio']
-  const basePermissions = filterManagementPermissions(user.permissions || [])
+  const MANAGER_DEFAULT_ROUTES = ['/admin/deal-luong', '/admin/tao-deal-luong']
+  const canAccessPortfolio = isPortfolioAllowedUser(user)
+  const canEditPortfolio = isPortfolioEditorUser(user)
+  if (canAccessPortfolio) {
+    MANAGER_DEFAULT_ROUTES.push('/admin/portfolio')
+  }
+  if (canEditPortfolio) {
+    MANAGER_DEFAULT_ROUTES.push('/admin/kiem-soat-spck')
+  }
+  const basePermissions = filterManagementPermissions(user.permissions || []).filter((permission) =>
+    canKeepPortfolioPermission(user, permission),
+  )
   const permissions = Array.from(new Set([...basePermissions, ...MANAGER_DEFAULT_ROUTES]))
 
   const roleCodes = (user.userRoles || []).map((code: string) =>
@@ -150,6 +288,9 @@ export function getFilteredAdminMenuItems(adminMenuItems: any[], user: any, path
 
   const hasPermissionForHref = (href: string) => {
     const targetPath = href.split('?')[0]
+    if (isPortfolioRoutePath(targetPath)) {
+      return canAccessPortfolioPath(user, targetPath)
+    }
     return effectivePermissions.some(
       (p) =>
         targetPath === p ||

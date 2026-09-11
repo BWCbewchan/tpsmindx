@@ -46,6 +46,7 @@ export interface Class {
   status: string;
   startDate: string;
   endDate: string;
+  numberOfSessions?: number;
   course: { id: string; name: string; shortName: string; courseLine?: { id: string; name: string } };
   centre: { id: string; name: string; shortName: string };
   teachers: Array<{

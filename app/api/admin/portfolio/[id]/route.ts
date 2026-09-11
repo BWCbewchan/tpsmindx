@@ -1,8 +1,10 @@
 import { requireBearerSession } from '@/lib/datasource-api-auth';
+import { isPortfolioEditorUser } from '@/lib/menu-permissions';
 import { deletePortfolioById } from '@/lib/student-portfolio/service';
 import { NextRequest, NextResponse } from 'next/server';
 
-const ADMIN_ROLES = new Set(['super_admin', 'admin', 'manager']);
+const PORTFOLIO_ACCESS_ERROR =
+  'Tài khoản này chỉ có quyền xem portfolio, không có quyền xóa.';
 
 export async function DELETE(
   req: NextRequest,
@@ -10,11 +12,11 @@ export async function DELETE(
 ) {
   try {
     const auth = await requireBearerSession(req);
-    if (!auth.ok) return auth.response;
+    if (auth.ok === false) return auth.response;
 
-    if (!ADMIN_ROLES.has(auth.resolvedAccess.role)) {
+    if (!isPortfolioEditorUser(auth.resolvedAccess)) {
       return NextResponse.json(
-        { success: false, error: 'Không có quyền xóa portfolio' },
+        { success: false, error: PORTFOLIO_ACCESS_ERROR },
         { status: 403 },
       );
     }

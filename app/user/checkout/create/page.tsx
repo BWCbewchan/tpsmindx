@@ -23,9 +23,11 @@ import {
 } from '@/lib/trial-checkout-rubrics'
 import {
   ArrowLeft,
+  ArrowRight,
   BookOpenCheck,
   Calendar,
   CheckCircle2,
+  ChevronDown,
   CircleDot,
   ClipboardCheck,
   ExternalLink,
@@ -34,13 +36,13 @@ import {
   ListChecks,
   Loader2,
   MapPin,
-  Send,
+  Search,
   UserRound,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import type { ReactNode } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from '@/lib/app-toast'
 
 type CenterOption = {
@@ -60,6 +62,7 @@ type CheckoutContext = {
 
 type FormState = {
   teacherName: string
+  lmsCode: string
   center: string
   salesOwner: string
   studentName: string
@@ -86,6 +89,7 @@ type SubmittedInfo = {
 
 const INITIAL_FORM: FormState = {
   teacherName: '',
+  lmsCode: '',
   center: '',
   salesOwner: '',
   studentName: '',
@@ -98,8 +102,129 @@ const INITIAL_FORM: FormState = {
   note: '',
 }
 
+function SearchableCenterSelect({
+  value,
+  onChange,
+  options,
+  disabled,
+  placeholder = 'Chọn cơ sở',
+}: {
+  value: string
+  onChange: (value: string) => void
+  options: CenterOption[]
+  disabled?: boolean
+  placeholder?: string
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  const filteredOptions = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return options
+    return options.filter((c) => {
+      const name = c.full_name.toLowerCase()
+      const code = (c.short_code || '').toLowerCase()
+      const reg = (c.region || '').toLowerCase()
+      return name.includes(q) || code.includes(q) || reg.includes(q)
+    })
+  }, [options, search])
+
+  const selectedCenter = options.find((c) => c.full_name === value)
+  const displayText = selectedCenter
+    ? selectedCenter.short_code
+      ? `${selectedCenter.full_name} (${selectedCenter.short_code})`
+      : selectedCenter.full_name
+    : value || placeholder
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setIsOpen((prev) => !prev)
+            setSearch('')
+          }
+        }}
+        className={cn(
+          'flex h-11 w-full items-center justify-between rounded-lg border border-gray-200 bg-white pl-9 pr-3 text-left text-sm font-medium transition-colors outline-none focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10 disabled:bg-gray-50 disabled:cursor-not-allowed',
+          value ? 'text-gray-900' : 'text-gray-500'
+        )}
+      >
+        <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <span className="truncate">{displayText}</span>
+        <ChevronDown className={cn('h-4 w-4 text-gray-400 transition-transform duration-200 shrink-0 ml-2', isOpen && 'rotate-180')} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute left-0 top-full z-50 mt-1 max-h-64 w-full rounded-lg border border-gray-200 bg-white p-2 shadow-xl ring-1 ring-black/5">
+          <div className="relative mb-2">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400" />
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Tìm kiếm cơ sở..."
+              className="h-9 w-full rounded-md border border-gray-200 bg-gray-50 pl-8 pr-3 text-xs outline-none focus:border-[#b00020] focus:bg-white focus:ring-1 focus:ring-[#b00020]"
+            />
+          </div>
+
+          <div className="max-h-48 overflow-y-auto space-y-0.5 custom-scrollbar">
+            {filteredOptions.length === 0 ? (
+              <div className="px-3 py-2 text-center text-xs text-gray-500">
+                Không tìm thấy cơ sở phù hợp
+              </div>
+            ) : (
+              filteredOptions.map((center) => {
+                const isSelected = center.full_name === value
+                return (
+                  <button
+                    key={`${center.id}-${center.full_name}`}
+                    type="button"
+                    onClick={() => {
+                      onChange(center.full_name)
+                      setIsOpen(false)
+                    }}
+                    className={cn(
+                      'flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-medium transition-colors',
+                      isSelected
+                        ? 'bg-[#b00020]/10 text-[#b00020] font-semibold'
+                        : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                    )}
+                  >
+                    <span className="truncate">
+                      {center.full_name}
+                      {center.short_code ? ` (${center.short_code})` : ''}
+                    </span>
+                    {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-[#b00020] shrink-0" />}
+                  </button>
+                )
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const REQUIRED_LABELS: Record<keyof FormState, string> = {
   teacherName: 'Tên giáo viên',
+  lmsCode: 'Mã LMS',
   center: 'Cơ sở',
   salesOwner: 'Tên tư vấn phụ trách',
   studentName: 'Họ tên học viên',
@@ -158,7 +283,7 @@ function normalizeEmailName(email: string | undefined): string {
 
 function PhaseProgress({ phase }: { phase: number }) {
   return (
-    <div className="flex items-center gap-2" aria-label="Tiến trình form checkout">
+    <div className="flex items-center gap-2" aria-label="Tiến trình phiếu kết quả trải nghiệm">
       {[1, 2, 3].map((step, index) => {
         const isActive = step === phase
         const isDone = step < phase
@@ -454,6 +579,8 @@ export default function UserCheckoutCreatePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [submittedData, setSubmittedData] = useState<SubmittedInfo | null>(null)
+  const [isCustomSubject, setIsCustomSubject] = useState(false)
+  const [customSubjectInput, setCustomSubjectInput] = useState('')
 
   useEffect(() => {
     const fallbackTeacherName = user?.displayName || normalizeEmailName(user?.email)
@@ -463,6 +590,7 @@ export default function UserCheckoutCreatePage() {
       ...current,
       teacherName: current.teacherName || fallbackTeacherName,
       center: current.center || fallbackCenter,
+      lmsCode: current.lmsCode || (user as any)?.teacherCode || (user as any)?.code || '',
     }))
   }, [user?.assignedCenters, user?.displayName, user?.email])
 
@@ -490,6 +618,7 @@ export default function UserCheckoutCreatePage() {
           ...current,
           teacherName: data.teacherName || current.teacherName,
           center: current.center || data.defaultCenter,
+          lmsCode: data.teacherCode || current.lmsCode,
         }))
       })
       .catch((error) => {
@@ -522,10 +651,12 @@ export default function UserCheckoutCreatePage() {
   }
 
   function selectTrack(track: TrialTrack) {
+    setIsCustomSubject(false)
+    setCustomSubjectInput('')
     setForm((current) => ({
       ...current,
       track,
-      subject: current.track === track ? current.subject : '',
+      subject: '',
     }))
     setScores({})
     setErrors((current) => ({ ...current, track: '', subject: '' }))
@@ -609,12 +740,13 @@ export default function UserCheckoutCreatePage() {
         headers,
         body: JSON.stringify({
           ...form,
+          lmsCode: form.lmsCode || context?.teacherCode || '',
           scores,
         }),
       })
       const payload = await response.json()
       if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error || 'Không thể gửi form checkout')
+        throw new Error(payload?.error || 'Không thể gửi phiếu kết quả trải nghiệm')
       }
       toast.success('Gửi phiếu thành công!', { message: 'Dữ liệu đã được lưu vào cơ sở dữ liệu' })
       setSubmittedData({
@@ -629,17 +761,17 @@ export default function UserCheckoutCreatePage() {
         note: form.note,
       })
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'Không thể gửi form checkout')
+      setSubmitError(error instanceof Error ? error.message : 'Không thể gửi phiếu kết quả trải nghiệm')
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <PageLayout background="gray" maxWidth="7xl" padding="responsive">
+    <PageLayout background="gray" maxWidth="7xl" padding="responsive" className="px-4 sm:px-6 lg:px-8">
       <PageLayoutContent spacing="xl" className="pb-24">
         <PageHeader
-          title="Tạo Form Checkout"
+          title="Tạo Phiếu Kết Quả Trải Nghiệm"
           description="Điền thông tin trial, chấm điểm năng lực và gửi kết quả chốt case"
           actions={
             <Link
@@ -647,7 +779,7 @@ export default function UserCheckoutCreatePage() {
               className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#f3b4bd] bg-white px-4 text-sm font-semibold text-[#b00020] shadow-sm hover:bg-[#b00020]/5"
             >
               <ListChecks className="h-4 w-4" />
-              Quản lý form
+              Quản lý phiếu
             </Link>
           }
         />
@@ -657,7 +789,7 @@ export default function UserCheckoutCreatePage() {
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-[#b00020]">
                 <ClipboardCheck className="h-4 w-4" />
-                Trial checkout
+                Phiếu kết quả trải nghiệm
               </div>
               <h2 className="mt-1 text-xl font-bold text-gray-950">
                 {phase === 1 && 'Phase 1: Thông tin trải nghiệm'}
@@ -676,8 +808,8 @@ export default function UserCheckoutCreatePage() {
                 </div>
               )}
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2 md:col-span-2">
                   <FieldLabel>Tên giáo viên Trial</FieldLabel>
                   <div className="relative">
                     <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -691,24 +823,40 @@ export default function UserCheckoutCreatePage() {
                 </div>
 
                 <div className="space-y-2">
+                  <FieldLabel>Mã LMS</FieldLabel>
+                  <input
+                    value={form.lmsCode || context?.teacherCode || ''}
+                    readOnly
+                    disabled
+                    className="h-11 w-full rounded-lg border border-gray-200 bg-gray-100 px-3 text-sm font-semibold text-gray-700 outline-none cursor-not-allowed"
+                    placeholder="Tự động theo tài khoản"
+                  />
+                  <p className="text-[11px] text-gray-500">* Tự động điền theo tài khoản và không thể sửa</p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
                   <FieldLabel>Cơ sở</FieldLabel>
-                  <div className="relative">
-                    <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                    <select
-                      value={form.center}
-                      onChange={(event) => updateField('center', event.target.value)}
-                      disabled={isLoadingContext && centerOptions.length === 0}
-                      className="h-11 w-full rounded-lg border border-gray-200 bg-white pl-9 pr-9 text-sm font-medium text-gray-800 outline-none transition-colors focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10 disabled:bg-gray-50"
-                    >
-                      <option value="">Chọn cơ sở</option>
-                      {centerOptions.map((center) => (
-                        <option key={`${center.id}-${center.full_name}`} value={center.full_name}>
-                          {center.short_code ? `${center.full_name} (${center.short_code})` : center.full_name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <SearchableCenterSelect
+                    value={form.center}
+                    onChange={(val) => updateField('center', val)}
+                    options={centerOptions}
+                    disabled={isLoadingContext && centerOptions.length === 0}
+                  />
                   <FieldError message={errors.center} />
+                </div>
+
+                <div className="space-y-2">
+                  <FieldLabel>Tên tư vấn phụ trách</FieldLabel>
+                  <input
+                    value={form.salesOwner}
+                    onChange={(event) => updateField('salesOwner', event.target.value)}
+                    className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10"
+                    placeholder="Nhập tên tư vấn phụ trách case trial"
+                  />
+                  <p className="text-xs text-[#b00020]">GV chủ động hỏi tên tư vấn phụ trách case trial của mình</p>
+                  <FieldError message={errors.salesOwner} />
                 </div>
               </div>
 
@@ -776,18 +924,6 @@ export default function UserCheckoutCreatePage() {
                   </div>
                   <FieldError message={errors.trialDate} />
                 </div>
-
-                <div className="space-y-2">
-                  <FieldLabel>Tên tư vấn phụ trách</FieldLabel>
-                  <input
-                    value={form.salesOwner}
-                    onChange={(event) => updateField('salesOwner', event.target.value)}
-                    className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10"
-                    placeholder="Nhập tên tư vấn phụ trách case trial"
-                  />
-                  <p className="text-xs text-[#b00020]">GV chủ động hỏi tên tư vấn phụ trách case trial của mình</p>
-                  <FieldError message={errors.salesOwner} />
-                </div>
               </div>
 
               <div className="space-y-3">
@@ -818,23 +954,54 @@ export default function UserCheckoutCreatePage() {
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" role="radiogroup" aria-label="Môn trải nghiệm">
                   {form.track ? (
-                    subjectOptions.map((subject) => (
+                    <>
+                      {subjectOptions.map((subject) => (
+                        <RadioTile
+                          key={subject}
+                          checked={!isCustomSubject && form.subject === subject}
+                          label={subject}
+                          onSelect={() => {
+                            setIsCustomSubject(false)
+                            updateField('subject', subject)
+                            setScores({})
+                          }}
+                        />
+                      ))}
                       <RadioTile
-                        key={subject}
-                        checked={form.subject === subject}
-                        label={subject}
+                        checked={isCustomSubject}
+                        label="Khác"
+                        description="Môn học đặc biệt (tự điền)"
                         onSelect={() => {
-                          updateField('subject', subject)
+                          setIsCustomSubject(true)
+                          updateField('subject', customSubjectInput)
                           setScores({})
                         }}
                       />
-                    ))
+                    </>
                   ) : (
                     <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-sm text-gray-500 sm:col-span-2 xl:col-span-3">
                       Chọn khối trải nghiệm để hiện danh sách môn phù hợp.
                     </div>
                   )}
                 </div>
+                {isCustomSubject && (
+                  <div className="mt-3 rounded-lg border border-[#f3b4bd] bg-[#fff5f6] p-3.5 space-y-2">
+                    <FieldLabel required>Tên môn trải nghiệm khác</FieldLabel>
+                    <input
+                      value={customSubjectInput}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        setCustomSubjectInput(val)
+                        updateField('subject', val)
+                      }}
+                      placeholder="Nhập tên môn học trải nghiệm (VD: AI Discovery, Robotics Nâng Cao, v.v.)"
+                      className="h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 outline-none transition-colors focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10"
+                    />
+                    <p className="text-xs text-gray-600">
+                      * Tiêu chí đánh giá sẽ tự động áp dụng theo tiêu chuẩn của khối <strong>{form.track}</strong> đã chọn.
+                    </p>
+                  </div>
+                )}
                 <FieldError message={errors.subject} />
               </div>
             </div>
@@ -956,14 +1123,14 @@ export default function UserCheckoutCreatePage() {
                 className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#b00020] px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#90001a]"
               >
                 Tiếp tục
-                <Send className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4" />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#087f80] px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#066b6c] disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#b00020] px-5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#90001a] disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
                 {isSubmitting ? 'Đang gửi...' : 'Gửi phiếu'}
@@ -981,7 +1148,7 @@ export default function UserCheckoutCreatePage() {
                 </div>
                 <h3 className="mt-4 text-xl font-bold text-gray-900">Gửi phiếu đánh giá thành công!</h3>
                 <p className="mt-1 text-sm text-gray-600">
-                  Dữ liệu phiếu checkout đã được lưu thành công vào cơ sở dữ liệu Supabase.
+                  Dữ liệu phiếu kết quả trải nghiệm đã được lưu thành công vào cơ sở dữ liệu Supabase.
                 </p>
               </div>
 
@@ -1039,6 +1206,8 @@ export default function UserCheckoutCreatePage() {
                   onClick={() => {
                     setForm(INITIAL_FORM)
                     setScores({})
+                    setIsCustomSubject(false)
+                    setCustomSubjectInput('')
                     setPhase(1)
                     setSubmittedData(null)
                   }}

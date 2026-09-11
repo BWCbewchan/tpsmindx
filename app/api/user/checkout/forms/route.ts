@@ -35,6 +35,7 @@ type SubmissionBody = {
   evidenceLink?: unknown
   caseResult?: unknown
   note?: unknown
+  lmsCode?: unknown
 }
 
 function textValue(value: unknown, maxLength = 300): string {
@@ -46,28 +47,47 @@ function textValue(value: unknown, maxLength = 300): string {
 
 function parseIsoDate(value: unknown): string | null {
   const text = textValue(value, 30)
+  if (!text) return null
+
+  // Format 1: YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-    const date = new Date(`${text}T00:00:00Z`)
-    if (!Number.isNaN(date.getTime())) return text
+    const [y, m, d] = text.split('-').map(Number)
+    const date = new Date(Date.UTC(y, m - 1, d))
+    if (
+      date.getUTCFullYear() === y &&
+      date.getUTCMonth() + 1 === m &&
+      date.getUTCDate() === d
+    ) {
+      return text
+    }
   }
 
-  const match = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(text)
-  if (match) {
-    const day = match[1].padStart(2, '0')
-    const month = match[2].padStart(2, '0')
-    const year = match[3]
-    const iso = `${year}-${month}-${day}`
-    const date = new Date(`${iso}T00:00:00Z`)
-    if (!Number.isNaN(date.getTime())) {
-      const parsedDay = Number.parseInt(day, 10)
-      const parsedMonth = Number.parseInt(month, 10)
-      const parsedYear = Number.parseInt(year, 10)
+  // Format 2: DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY, or YYYY/MM/DD, YYYY.MM.DD
+  const parts = text.split(/[/.-]/)
+  if (parts.length === 3) {
+    let day = Number.parseInt(parts[0], 10)
+    let month = Number.parseInt(parts[1], 10)
+    let year = Number.parseInt(parts[2], 10)
+
+    if (parts[0].length === 4) {
+      year = Number.parseInt(parts[0], 10)
+      month = Number.parseInt(parts[1], 10)
+      day = Number.parseInt(parts[2], 10)
+    }
+
+    if (year < 100) year += 2000
+
+    if (Number.isFinite(day) && Number.isFinite(month) && Number.isFinite(year)) {
+      const date = new Date(Date.UTC(year, month - 1, day))
       if (
-        date.getUTCDate() === parsedDay &&
-        date.getUTCMonth() + 1 === parsedMonth &&
-        date.getUTCFullYear() === parsedYear
+        date.getUTCFullYear() === year &&
+        date.getUTCMonth() + 1 === month &&
+        date.getUTCDate() === day
       ) {
-        return iso
+        const yStr = String(year)
+        const mStr = String(month).padStart(2, '0')
+        const dStr = String(day).padStart(2, '0')
+        return `${yStr}-${mStr}-${dStr}`
       }
     }
   }
@@ -121,10 +141,14 @@ function addWhere(
   clauses: string[],
   values: unknown[],
   clause: string,
-  value: unknown,
+  ...args: unknown[]
 ) {
-  values.push(value)
-  clauses.push(clause.replace('?', `$${values.length}`))
+  let replacedClause = clause
+  for (const val of args) {
+    values.push(val)
+    replacedClause = replacedClause.replace('?', `$${values.length}`)
+  }
+  clauses.push(replacedClause)
 }
 
 function publicCheckoutUrl(request: NextRequest, token: string): string {
@@ -208,17 +232,36 @@ export async function GET(request: NextRequest) {
     if (!auth.ok) return auth.response
 
     const searchParams = request.nextUrl.searchParams
-    const limit = Math.min(parsePositiveInt(searchParams.get('limit'), 50), 200)
+    const page = Math.max(1, parsePositiveInt(searchParams.get('page'), 1))
+    const limit = Math.min(parsePositiveInt(searchParams.get('limit'), 100), 200)
+    const offset = (page - 1) * limit
     const clauses: string[] = []
     const values: unknown[] = []
 
     const teacher = textValue(searchParams.get('teacher'), 120)
-    if (teacher) {
+    const lmsCode = textValue(searchParams.get('lmsCode'), 80)
+    if (teacher && lmsCode) {
       addWhere(
         clauses,
         values,
-        `LOWER(trial_teacher_name) LIKE '%' || LOWER(?) || '%'`,
+        `(LOWER(trial_teacher_name) LIKE '%' || LOWER(?) || '%' OR LOWER(COALESCE(lms_code, raw_payload->>'teacherCode', '')) LIKE '%' || LOWER(?) || '%')`,
         teacher,
+        lmsCode,
+      )
+    } else if (teacher) {
+      addWhere(
+        clauses,
+        values,
+        `(LOWER(trial_teacher_name) LIKE '%' || LOWER(?) || '%' OR LOWER(COALESCE(lms_code, raw_payload->>'teacherCode', '')) LIKE '%' || LOWER(?) || '%')`,
+        teacher,
+        teacher,
+      )
+    } else if (lmsCode) {
+      addWhere(
+        clauses,
+        values,
+        `LOWER(COALESCE(lms_code, raw_payload->>'teacherCode', '')) LIKE '%' || LOWER(?) || '%'`,
+        lmsCode,
       )
     }
 
@@ -262,24 +305,29 @@ export async function GET(request: NextRequest) {
       addWhere(clauses, values, 'LOWER(trial_subject) = LOWER(?)', subject)
     }
 
-    const fromDate = parseIsoDate(searchParams.get('fromDate'))
+    const rawFrom = parseIsoDate(searchParams.get('fromDate'))
+    const rawTo = parseIsoDate(searchParams.get('toDate'))
+    const fromDate = rawFrom && rawTo && rawFrom > rawTo ? rawTo : rawFrom
+    const toDate = rawFrom && rawTo && rawFrom > rawTo ? rawFrom : rawTo
+
     if (fromDate) {
       addWhere(clauses, values, 'trial_date >= ?::date', fromDate)
     }
 
-    const toDate = parseIsoDate(searchParams.get('toDate'))
     if (toDate) {
       addWhere(clauses, values, 'trial_date <= ?::date', toDate)
     }
 
-    const sortParam = textValue(searchParams.get('sort'), 40) || 'created_desc'
-    let orderByClause = 'ORDER BY COALESCE(timestamp_at, imported_at::timestamp) DESC NULLS LAST, raw_id DESC'
-    if (sortParam === 'created_asc') {
+    const sortParam = textValue(searchParams.get('sort'), 40) || (fromDate || toDate ? 'trial_date_desc' : 'trial_date_desc')
+    let orderByClause = 'ORDER BY trial_date DESC NULLS LAST, COALESCE(timestamp_at, imported_at::timestamp) DESC NULLS LAST, raw_id DESC'
+    if (sortParam === 'created_desc') {
+      orderByClause = 'ORDER BY COALESCE(timestamp_at, imported_at::timestamp) DESC NULLS LAST, raw_id DESC'
+    } else if (sortParam === 'created_asc') {
       orderByClause = 'ORDER BY COALESCE(timestamp_at, imported_at::timestamp) ASC NULLS LAST, raw_id ASC'
     } else if (sortParam === 'trial_date_desc') {
-      orderByClause = 'ORDER BY trial_date DESC NULLS LAST, raw_id DESC'
+      orderByClause = 'ORDER BY trial_date DESC NULLS LAST, COALESCE(timestamp_at, imported_at::timestamp) DESC NULLS LAST, raw_id DESC'
     } else if (sortParam === 'trial_date_asc') {
-      orderByClause = 'ORDER BY trial_date ASC NULLS LAST, raw_id ASC'
+      orderByClause = 'ORDER BY trial_date ASC NULLS LAST, COALESCE(timestamp_at, imported_at::timestamp) ASC NULLS LAST, raw_id ASC'
     } else if (sortParam === 'score_desc') {
       orderByClause = 'ORDER BY total_score DESC NULLS LAST, raw_id DESC'
     } else if (sortParam === 'score_asc') {
@@ -290,18 +338,20 @@ export async function GET(request: NextRequest) {
 
     const whereClause = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
     values.push(limit)
+    values.push(offset)
 
     const result = await pool.query(
       `SELECT
           raw_id::integer AS id,
           COALESCE(timestamp_at, imported_at::timestamp) AS submitted_at,
           raw_payload->>'submittedByEmail' AS teacher_email,
-          raw_payload->>'teacherCode' AS teacher_code,
+          COALESCE(lms_code, raw_payload->>'teacherCode') AS lms_code,
+          COALESCE(lms_code, raw_payload->>'teacherCode') AS teacher_code,
           trial_teacher_name,
           sales_owner_name,
           student_name,
           student_age_label,
-          trial_date,
+          trial_date::text AS trial_date,
           track,
           trial_subject,
           center_name,
@@ -323,15 +373,19 @@ export async function GET(request: NextRequest) {
        FROM trial_checkout_raw
        ${whereClause}
        ${orderByClause}
-       LIMIT $${values.length}`,
+       LIMIT $${values.length - 1} OFFSET $${values.length}`,
       values,
     )
 
+    const total = result.rows[0]?.total_count || 0
     return NextResponse.json({
       success: true,
       data: {
         rows: result.rows,
-        total: result.rows[0]?.total_count || 0,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
       },
     })
   } catch (error) {
@@ -367,7 +421,7 @@ export async function POST(request: NextRequest) {
     if (!VALID_TRACKS.has(track)) {
       return NextResponse.json({ success: false, error: 'Khối trải nghiệm không hợp lệ' }, { status: 400 })
     }
-    if (!VALID_SUBJECTS.has(subject) || !SUBJECT_OPTIONS[track].includes(subject)) {
+    if (!subject) {
       return NextResponse.json({ success: false, error: 'Môn trải nghiệm không hợp lệ' }, { status: 400 })
     }
     if (!center || !salesOwner || !studentName || !studentAge || !trialDate) {
@@ -399,7 +453,7 @@ export async function POST(request: NextRequest) {
       textValue(body.teacherName, 160) ||
       textValue(teacher?.teacher_name, 160) ||
       emailUser
-    const teacherCode = textValue(teacher?.code, 80) || null
+    const teacherCode = textValue(body.lmsCode || teacher?.code, 80) || null
     const rubricType = resolveRubricType(track, subject)
 
     const scoreValues = SCORE_COLUMNS.map((column) => scorePayload[column] ?? null)
@@ -425,6 +479,7 @@ export async function POST(request: NextRequest) {
       'track',
       'trial_subject',
       'center_name',
+      'lms_code',
       ...SCORE_COLUMNS,
       'total_score',
       'case_result',
@@ -451,6 +506,7 @@ export async function POST(request: NextRequest) {
         Id: String(rawId),
         Timestamp: timestampRaw,
         'Tên giáo viên Trial': teacherName,
+        'Mã LMS': teacherCode,
         'Tên sale phụ trách': salesOwner,
         'Họ tên học viên': studentName,
         Tuổi: studentAge,
@@ -486,6 +542,8 @@ export async function POST(request: NextRequest) {
         source: sourceFile,
         submittedByEmail: email,
         teacherCode,
+        lms_code: teacherCode,
+        lmsCode: teacherCode,
         teacherName,
         center: normalizedCenter,
         salesOwner,
@@ -507,6 +565,8 @@ export async function POST(request: NextRequest) {
         publicUrl,
         phase1: {
           teacherName,
+          teacherCode,
+          lmsCode: teacherCode,
           center: normalizedCenter,
           salesOwner,
           studentName,
@@ -539,6 +599,7 @@ export async function POST(request: NextRequest) {
         track,
         subject,
         normalizedCenter,
+        teacherCode,
         ...scoreValues,
         totalScore,
         caseResult,
@@ -583,7 +644,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Không thể gửi form checkout',
+        error: error instanceof Error ? error.message : 'Không thể gửi phiếu kết quả trải nghiệm',
       },
       { status: 500 },
     )

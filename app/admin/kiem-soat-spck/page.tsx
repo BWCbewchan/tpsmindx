@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useAuth } from '@/lib/auth-context';
 import ClassFilterToolbar, {
   type FilterState,
 } from '@/components/portfolio/ClassFilterToolbar';
@@ -27,13 +26,13 @@ function normalizeVietnamese(str: string): string {
 }
 
 export default function KiemSoatSpckPage() {
-  const { user } = useAuth();
   const [classes, setClasses] = useState<PortfolioQCClass[]>([]);
   const [centres, setCentres] = useState<CentreOption[]>([]);
   const [teacherOptions, setTeacherOptions] = useState<string[]>([]);
+  const [isLoadingCentres, setIsLoadingCentres] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [pageIndex, setPageIndex] = useState(0);
   const [total, setTotal] = useState(0);
@@ -48,6 +47,7 @@ export default function KiemSoatSpckPage() {
       } else {
         setIsLoading(true);
         setError(null);
+        setHasSearched(true);
       }
       setCurrentFilters(filters);
 
@@ -139,15 +139,12 @@ export default function KiemSoatSpckPage() {
             setClasses([]);
           }
         }
-
-        setHasSearched(true);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Lỗi kết nối tới server';
         if (!isAppend) {
           setError(message || 'Lỗi kết nối tới server');
           setClasses([]);
         }
-        setHasSearched(true);
       } finally {
         setIsLoading(false);
         setIsLoadingMore(false);
@@ -156,17 +153,39 @@ export default function KiemSoatSpckPage() {
     [classes.length],
   );
 
-  // Load centres and auto-fetch classes on mount
+  // Load only filter metadata on mount. Class data is fetched after explicit search.
   useEffect(() => {
-    const initialFilter: FilterState = {
-      selectedCentres: [],
-      dateFrom: '',
-      dateTo: '',
-      qcStatus: '',
-      teacherSearch: '',
-      classSearch: '',
+    let isMounted = true;
+
+    const fetchCentres = async () => {
+      setIsLoadingCentres(true);
+
+      try {
+        const res = await fetch('/api/centers-by-user');
+        const data: {
+          success?: boolean;
+          centers?: CentreOption[];
+        } = await res.json();
+
+        if (isMounted && res.ok && data.success) {
+          setCentres(data.centers || []);
+        }
+      } catch {
+        if (isMounted) {
+          setCentres([]);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingCentres(false);
+        }
+      }
     };
-    fetchClasses(initialFilter, 0, false);
+
+    fetchCentres();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleFilter = useCallback(
@@ -175,6 +194,19 @@ export default function KiemSoatSpckPage() {
     },
     [fetchClasses],
   );
+
+  const handleClearFilters = useCallback(() => {
+    setClasses([]);
+    setTeacherOptions([]);
+    setIsLoading(false);
+    setIsLoadingMore(false);
+    setHasMore(false);
+    setHasSearched(false);
+    setPageIndex(0);
+    setTotal(0);
+    setError(null);
+    setCurrentFilters(null);
+  }, []);
 
   const handleLoadMore = useCallback(() => {
     if (!isLoading && !isLoadingMore && hasMore && currentFilters) {
@@ -206,7 +238,9 @@ export default function KiemSoatSpckPage() {
         centres={centres}
         teacherOptions={teacherOptions}
         onFilter={handleFilter}
+        onClear={handleClearFilters}
         isLoading={isLoading}
+        isLoadingCentres={isLoadingCentres}
       />
 
       {/* Enhanced Stats Summary Cards */}
@@ -222,14 +256,26 @@ export default function KiemSoatSpckPage() {
       )}
 
       {/* Class List */}
-      <ClassListTable
-        classes={classes}
-        isLoading={isLoading}
-        isLoadingMore={isLoadingMore}
-        hasMore={hasMore}
-        onLoadMore={handleLoadMore}
-        total={total}
-      />
+      {hasSearched ? (
+        <ClassListTable
+          classes={classes}
+          isLoading={isLoading}
+          isLoadingMore={isLoadingMore}
+          hasMore={hasMore}
+          onLoadMore={handleLoadMore}
+          total={total}
+        />
+      ) : (
+        <div className="bg-white border border-neutral-200 rounded-xl shadow-sm p-12 text-center">
+          <div className="text-4xl mb-3">📋</div>
+          <h3 className="text-lg font-semibold text-neutral-700 mb-1">
+            Chưa tải dữ liệu SPCK
+          </h3>
+          <p className="text-sm text-neutral-500">
+            Chọn cơ sở hoặc nhập bộ lọc, sau đó bấm Tìm kiếm để tải dữ liệu từ LMS.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -174,7 +174,7 @@ function CommonRubricTable({
   )
 }
 
-function ArtRubricTable({
+function LevelMatrixRubricTable({
   record,
   rubric,
 }: {
@@ -535,7 +535,9 @@ export default async function PublicCheckoutPage({
 
             <div className="mt-4">
               {rubric.type === 'art' ? (
-                <ArtRubricTable record={record} rubric={rubric} />
+                <LevelMatrixRubricTable record={record} rubric={rubric} />
+              ) : rubric.type === 'robotics4' ? (
+                <LevelMatrixRubricTable record={record} rubric={rubric} />
               ) : rubric.mode === 'matrix' ? (
                 <CommonRubricTable record={record} rubric={rubric} />
               ) : (

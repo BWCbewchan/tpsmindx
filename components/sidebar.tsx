@@ -148,7 +148,7 @@ export function Sidebar() {
               })
               .join('/')
           }
-          const cleanUpper = word.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+          const cleanUpper = word.replace(/[^\p{L}\p{N}]/gu, '').toUpperCase()
           if (KNOWN_UPPERCASE_TOKENS.has(cleanUpper)) {
             return word.toUpperCase()
           }
@@ -433,11 +433,16 @@ export function Sidebar() {
       icon: Home,
     },
     {
-      label: 'Checkout',
+      label: 'Thao tác vận hành',
       icon: ClipboardCheck,
       submenu: [
-        { href: '/user/checkout/create', label: 'Tạo form' },
-        { href: '/user/checkout/manage', label: 'Quản lý form đã tạo' },
+        {
+          label: 'Phiếu kết quả trải nghiệm',
+          submenu: [
+            { href: '/user/checkout/create', label: 'Tạo phiếu' },
+            { href: '/user/checkout/manage', label: 'Quản lý phiếu đã tạo' },
+          ],
+        },
       ],
     },
     { href: '/user/thong-bao', label: 'Thông báo', icon: Bell },
@@ -555,13 +560,21 @@ export function Sidebar() {
 
   // Auto-expand submenu if current page is in it (including nested submenu items)
   useEffect(() => {
+    const labelsToExpand: string[] = []
+
     if (isOnboardingActive) {
-      const labelsToExpand = menuItems
-        .filter((item: any) => item?.submenu && Array.isArray(item.submenu))
-        .map((item: any) => item.label)
+      menuItems.forEach((item: any) => {
+        if (item?.submenu && Array.isArray(item.submenu)) {
+          labelsToExpand.push(item.label)
+          item.submenu.forEach((sub: any) => {
+            if (sub?.submenu && Array.isArray(sub.submenu)) {
+              labelsToExpand.push(sub.label)
+            }
+          })
+        }
+      })
       setExpandedMenus((prev) => {
         const next = Array.from(new Set([...prev, ...labelsToExpand]))
-        // Avoid infinite loops by not updating when unchanged.
         if (
           next.length === prev.length &&
           next.every((v, i) => v === prev[i])
@@ -575,16 +588,27 @@ export function Sidebar() {
 
     menuItems.forEach((item) => {
       if ('submenu' in item && item.submenu) {
-        const isInSubmenu = hasActiveDescendant(item)
-        if (isInSubmenu && !expandedMenus.includes(item.label)) {
-          setExpandedMenus((prev) => {
-            const updated = [...prev, item.label]
-            localStorage.setItem('expandedMenus', JSON.stringify(updated))
-            return updated
-          })
+        if (hasActiveDescendant(item)) {
+          labelsToExpand.push(item.label)
         }
+        item.submenu.forEach((subItem: any) => {
+          if ('submenu' in subItem && subItem.submenu) {
+            if (hasActiveDescendant(subItem)) {
+              labelsToExpand.push(subItem.label)
+            }
+          }
+        })
       }
     })
+
+    const missingLabels = labelsToExpand.filter((label) => !expandedMenus.includes(label))
+    if (missingLabels.length > 0) {
+      setExpandedMenus((prev) => {
+        const updated = Array.from(new Set([...prev, ...missingLabels]))
+        localStorage.setItem('expandedMenus', JSON.stringify(updated))
+        return updated
+      })
+    }
   }, [
     menuItems,
     pathname,
@@ -848,11 +872,11 @@ export function Sidebar() {
                             }}
                             className="flex-1 text-left"
                           >
-                            {toTitleCase(item.label)}
+                            {(item as any).rawLabel ?? toTitleCase(item.label)}
                           </Link>
                         ) : (
                           <span className="flex-1 text-left">
-                            {toTitleCase(item.label)}
+                            {(item as any).rawLabel ?? toTitleCase(item.label)}
                           </span>
                         )}
                         <button
@@ -927,50 +951,74 @@ export function Sidebar() {
                                 })()
                                 : subItem.submenu
 
+                              const isSubExpanded = expandedMenus.includes(subItem.label)
+
                               return (
                                 <div
                                   key={subItem.label}
-                                  className="space-y-1 py-1"
+                                  className="space-y-1 py-0.5"
                                 >
-                                  <div
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleSubmenu(subItem.label)}
+                                    aria-expanded={isSubExpanded}
                                     className={cn(
-                                      'px-2 py-1 text-[11px] font-semibold tracking-wide text-gray-500',
-                                      subItem.label !==
-                                      'Kiểm Tra Chuyên Môn/Trải Nghiệm' &&
-                                      'uppercase',
+                                      'w-full flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-semibold tracking-wide transition-all duration-200 text-left group/sub focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a1001f] focus-visible:ring-offset-1',
+                                      isSubActive
+                                        ? 'bg-[#a1001f]/10 text-[#a1001f] shadow-xs'
+                                        : isSubExpanded
+                                          ? 'bg-gray-100 text-gray-900'
+                                          : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900',
                                     )}
                                   >
-                                    {toTitleCase(subItem.label)}
-                                  </div>
-                                  <div className="ml-2 space-y-1 border-l border-gray-200 pl-2">
-                                    {nestedItems?.map((nestedItem: any) => {
-                                      const isNestedActive = isPathMatch(
-                                        nestedItem.href,
-                                      )
-                                      if (!nestedItem.href) return null
+                                    <span className="truncate flex-1">{toTitleCase(subItem.label)}</span>
+                                    <ChevronDown
+                                      className={cn(
+                                        'h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform duration-200 group-hover/sub:text-gray-600',
+                                        isSubActive && 'text-[#a1001f]',
+                                        isSubExpanded && 'rotate-180',
+                                      )}
+                                    />
+                                  </button>
 
-                                      return (
-                                        <Link
-                                          key={nestedItem.href}
-                                          href={nestedItem.href}
-                                          prefetch={false}
-                                          data-tour={getTourTargetForHref(
-                                            nestedItem.href,
-                                          )}
-                                          onClick={closeSidebarOnMobile}
-                                          className={cn(
-                                            'flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium tracking-wide transition-all duration-300 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a1001f] focus-visible:ring-offset-1',
-                                            isNestedActive
-                                              ? 'bg-[#a1001f]/10 text-[#a1001f] border-l-3 border-[#a1001f] shadow-sm'
-                                              : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 hover:border-l-3 hover:border-gray-300',
-                                          )}
-                                        >
-                                          <span>
-                                            {nestedItem.rawLabel ?? toTitleCase(nestedItem.label)}
-                                          </span>
-                                        </Link>
-                                      )
-                                    })}
+                                  <div
+                                    className={cn(
+                                      'transition-all duration-200 ease-in-out',
+                                      isSubExpanded
+                                        ? 'max-h-96 opacity-100'
+                                        : 'max-h-0 overflow-hidden opacity-0',
+                                    )}
+                                  >
+                                    <div className="ml-3 mt-0.5 space-y-1 border-l-2 border-gray-200 pl-2.5 py-0.5">
+                                      {nestedItems?.map((nestedItem: any) => {
+                                        const isNestedActive = isPathMatch(
+                                          nestedItem.href,
+                                        )
+                                        if (!nestedItem.href) return null
+
+                                        return (
+                                          <Link
+                                            key={nestedItem.href}
+                                            href={nestedItem.href}
+                                            prefetch={false}
+                                            data-tour={getTourTargetForHref(
+                                              nestedItem.href,
+                                            )}
+                                            onClick={closeSidebarOnMobile}
+                                            className={cn(
+                                              'flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium tracking-wide transition-all duration-200 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a1001f] focus-visible:ring-offset-1',
+                                              isNestedActive
+                                                ? 'bg-[#a1001f]/10 text-[#a1001f] border-l-3 border-[#a1001f] shadow-xs'
+                                                : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900 hover:border-l-3 hover:border-gray-300',
+                                            )}
+                                          >
+                                            <span>
+                                              {nestedItem.rawLabel ?? toTitleCase(nestedItem.label)}
+                                            </span>
+                                          </Link>
+                                        )
+                                      })}
+                                    </div>
                                   </div>
                                 </div>
                               )
@@ -1026,7 +1074,7 @@ export function Sidebar() {
                       >
                         <Icon className="h-3.5 w-3.5" />
                       </div>
-                      <span>{toTitleCase(item.label)}</span>
+                      <span>{(item as any).rawLabel ?? toTitleCase(item.label)}</span>
                       {item.label === 'Thông báo' && unreadCount > 0 && (
                         <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold text-white leading-none">
                           {unreadCount}

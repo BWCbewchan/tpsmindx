@@ -5,7 +5,6 @@ import {
 import { getAccessibleCenters } from '@/lib/center-access'
 import pool from '@/lib/db'
 import { fetchQCTemplates, findQCTemplate } from '@/lib/qc-templates'
-import { getQCWindowInfo } from '@/lib/qc-time-window'
 import { NextRequest, NextResponse } from 'next/server'
 
 type AccessibleCenter = {
@@ -100,71 +99,81 @@ export async function GET(request: NextRequest) {
     if (!gate.ok) return gate.response
 
     const { searchParams } = request.nextUrl
+    const requestedLimit = Number(searchParams.get('limit') || 200) || 200
     const limit = Math.min(
-      100,
-      Math.max(1, Number(searchParams.get('limit') || 30) || 30),
+      1000,
+      Math.max(1, requestedLimit),
     )
     const q = toText(searchParams.get('q'), 120).toLowerCase()
+    const emailNorm = (gate.sessionEmail || '').toLowerCase()
+    const isSuperOrAdmin =
+      gate.role === 'super_admin' ||
+      gate.role === 'admin' ||
+      emailNorm.includes('hoteaching') ||
+      emailNorm.includes('hr-teaching')
     const accessibleCenters =
-      gate.role === 'super_admin' ? null : await getAccessibleCenters(gate.sessionEmail)
+      isSuperOrAdmin ? null : await getAccessibleCenters(gate.sessionEmail)
     const allowedKeys =
-      gate.role === 'super_admin'
+      isSuperOrAdmin
         ? null
         : buildCenterKeys((accessibleCenters ?? []) as AccessibleCenter[])
-
-    if (gate.role !== 'super_admin' && (!allowedKeys || allowedKeys.size === 0)) {
-      return NextResponse.json({
-        success: true,
-        records: [],
-        count: 0,
-      })
-    }
 
     const values: unknown[] = []
     const conditions: string[] = []
     if (q) {
       values.push(`%${q}%`)
       conditions.push(`(
-        LOWER(class_name) LIKE $${values.length}
-        OR LOWER(class_code) LIKE $${values.length}
-        OR LOWER(teacher_name) LIKE $${values.length}
-        OR LOWER(center_name) LIKE $${values.length}
+        LOWER(q.class_name) LIKE $${values.length}
+        OR LOWER(q.class_code) LIKE $${values.length}
+        OR LOWER(q.teacher_name) LIKE $${values.length}
+        OR LOWER(q.center_name) LIKE $${values.length}
+        OR LOWER(q.created_by_email) LIKE $${values.length}
+        OR LOWER(u.display_name) LIKE $${values.length}
       )`)
     }
-    const sqlLimit = gate.role === 'super_admin' ? limit : Math.min(500, limit * 10)
+    const sqlLimit = isSuperOrAdmin ? limit : Math.min(1000, limit * 5)
     values.push(sqlLimit)
 
     const result = await pool.query(
       `
       SELECT
-        id,
-        template_key,
-        template_title,
-        class_lms_id,
-        class_code,
-        class_name,
-        center_name,
-        teacher_name,
-        student_count,
-        session_index,
-        session_date,
-        total_score,
-        max_score,
-        result_label,
-        signed,
-        created_by_email,
-        created_at
-      FROM quan_ly_qc
+        q.id,
+        q.template_key,
+        q.template_title,
+        q.class_lms_id,
+        q.class_code,
+        q.class_name,
+        q.center_name,
+        q.teacher_name,
+        q.teacher_rank,
+        q.assistant_name,
+        q.student_count,
+        q.session_index,
+        q.session_date,
+        q.total_score,
+        q.max_score,
+        q.result_label,
+        q.general_note,
+        q.signed,
+        q.criteria_snapshot,
+        q.answers,
+        q.created_by_email,
+        COALESCE(u.display_name, q.created_by_email) AS created_by_name,
+        q.created_at
+      FROM quan_ly_qc q
+      LEFT JOIN app_users u ON LOWER(u.email) = LOWER(q.created_by_email)
       ${conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''}
-      ORDER BY created_at DESC
+      ORDER BY q.created_at DESC
       LIMIT $${values.length}
       `,
       values,
     )
     const rows =
-      gate.role === 'super_admin'
+      isSuperOrAdmin
         ? result.rows
         : result.rows.filter((row) =>
+            (row.created_by_email &&
+              row.created_by_email.toLowerCase() === gate.sessionEmail.toLowerCase()) ||
             centerIsAccessible([row.center_name], allowedKeys),
           )
     const records = rows.slice(0, limit)
@@ -187,6 +196,9 @@ export async function GET(request: NextRequest) {
       success: true,
       records,
       count: records.length,
+      isSuperAdmin: isSuperOrAdmin,
+      userRole: gate.role,
+      userEmail: gate.sessionEmail,
       monthlySummary: {
         target: monthlyTarget,
         completed: monthlyCompleted,
@@ -264,10 +276,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const emailNorm = (gate.sessionEmail || '').toLowerCase()
+    const isSuperOrTeachingHo =
+      gate.role === 'super_admin' ||
+      gate.role === 'admin' ||
+      emailNorm.includes('hoteaching') ||
+      emailNorm.includes('hr-teaching')
+
     const accessibleCenters =
-      gate.role === 'super_admin' ? null : await getAccessibleCenters(gate.sessionEmail)
+      isSuperOrTeachingHo ? null : await getAccessibleCenters(gate.sessionEmail)
     const allowedKeys =
-      gate.role === 'super_admin'
+      isSuperOrTeachingHo
         ? null
         : buildCenterKeys((accessibleCenters ?? []) as AccessibleCenter[])
 
@@ -282,28 +301,6 @@ export async function POST(request: NextRequest) {
         { status: 403 },
       )
     }
-
-    const sessionWindow = getQCWindowInfo({
-      date: sessionInfo?.date,
-      startTime: sessionInfo?.startTime,
-      endTime: sessionInfo?.endTime,
-      sessionHour: sessionInfo?.sessionHour,
-    })
-    if (!sessionWindow.canCreateQC) {
-      return NextResponse.json(
-        {
-          success: false,
-          error:
-            sessionWindow.qcWindowStatus === 'upcoming'
-              ? 'Buổi học này chưa đến giờ tạo phiếu QC'
-              : sessionWindow.qcWindowStatus === 'missing-time'
-                ? 'Buổi học thiếu giờ bắt đầu hoặc giờ kết thúc trên LMS'
-                : 'Buổi học này đã quá hạn tạo phiếu QC',
-        },
-        { status: 400 },
-      )
-    }
-
     const answerByCriterion = new Map<string, QCAnswerInput>()
     answersInput.forEach((answer) => {
       const criterionId = toText(answer?.criterionId, 300)
@@ -342,7 +339,16 @@ export async function POST(request: NextRequest) {
     const totalScore = answers.reduce((sum, answer) => sum + answer.score, 0)
     const maxScore = template.maxScore
     const normalizedScore = maxScore > 0 ? (totalScore / maxScore) * 10 : 0
-    const resultLabel = normalizedScore >= 8 ? 'ĐẠT' : 'KHÔNG ĐẠT'
+    const resultLabel =
+      normalizedScore >= 9.5
+        ? 'Tốt'
+        : normalizedScore >= 8.0
+          ? 'Đạt'
+          : normalizedScore >= 7.0
+            ? 'Khá'
+            : normalizedScore >= 5.0
+              ? 'Rủi ro vừa'
+              : 'Rủi ro cao'
     const sessionIndexRaw = Number(sessionInfo?.sessionIndex)
     const sessionIndex = Number.isInteger(sessionIndexRaw) && sessionIndexRaw > 0
       ? sessionIndexRaw
@@ -389,9 +395,9 @@ export async function POST(request: NextRequest) {
         $1, $2, $3, $4, $5, $6,
         $7, $8, $9, $10, $11, $12,
         $13, $14, $15, $16, $17, $18,
-        $19, $20, $21, $22, $23, $24,
-        $25::jsonb, $26::jsonb, $27, $28,
-        $29, $30, $31, $32::jsonb, $33, FALSE
+        $19, $20, $21, $22, $23,
+        $24::jsonb, $25::jsonb, $26, $27,
+        $28, $29, $30, $31, $32::jsonb, $33, FALSE
       )
       RETURNING *
       `,

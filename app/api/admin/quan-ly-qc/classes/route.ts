@@ -1,5 +1,5 @@
 import { requireBearerDbRoles } from '@/lib/auth-server'
-import { getAccessibleCenters } from '@/lib/center-access'
+import { getAccessibleCenters, getAllActiveCenters } from '@/lib/center-access'
 import { callLmsApi } from '@/lib/lms-api'
 import {
   getOrRefreshLmsToken,
@@ -98,6 +98,69 @@ function buildCenterKeys(centers: AccessibleCenter[]): Set<string> {
   return keys
 }
 
+function matchesSearchValue(value: unknown, queryKey: string): boolean {
+  const valueKey = normalizeKey(value)
+  return Boolean(valueKey && queryKey && valueKey.includes(queryKey))
+}
+
+function teacherAssignmentMatchesSearch(item: any, queryKey: string): boolean {
+  if (item?.isActive === false) return false
+
+  const teacher = item?.teacher ?? {}
+  return [
+    teacher?.id,
+    teacher?.username,
+    teacher?.code,
+    teacher?.fullName,
+    teacher?.email,
+    item?.role?.id,
+    item?.role?.name,
+    item?.role?.shortName,
+    item?.role?.code,
+  ].some((value) => matchesSearchValue(value, queryKey))
+}
+
+function rawClassMatchesSearch(cls: any, q?: string): boolean {
+  const queryKey = normalizeKey(q)
+  if (!queryKey) return true
+
+  const directFields = [
+    cls?.id,
+    cls?.name,
+    cls?.status,
+    cls?.numberOfSessions,
+    cls?.course?.id,
+    cls?.course?.name,
+    cls?.course?.shortName,
+    cls?.course?.courseLine?.id,
+    cls?.course?.courseLine?.name,
+    cls?.centre?.id,
+    cls?.centre?.name,
+    cls?.centre?.shortName,
+  ]
+
+  if (directFields.some((value) => matchesSearchValue(value, queryKey))) return true
+
+  if ((cls?.teachers ?? []).some((item: any) => teacherAssignmentMatchesSearch(item, queryKey))) {
+    return true
+  }
+
+  return (cls?.slots ?? []).some((slot: any) => {
+    const slotFields = [
+      slot?._id,
+      slot?.date,
+      slot?.startTime,
+      slot?.endTime,
+      slot?.sessionHour,
+    ]
+
+    return (
+      slotFields.some((value) => matchesSearchValue(value, queryKey)) ||
+      (slot?.teachers ?? []).some((item: any) => teacherAssignmentMatchesSearch(item, queryKey))
+    )
+  })
+}
+
 function isClassInAccessibleCenter(cls: any, allowedKeys: Set<string> | null) {
   if (!allowedKeys) return true
   const candidates = [
@@ -115,6 +178,67 @@ function isClassInAccessibleCenter(cls: any, allowedKeys: Set<string> | null) {
     }
     return false
   })
+}
+
+function matchesCourseLine(cls: any, filterKey: string): boolean {
+  if (!filterKey || filterKey === 'all') return true
+
+  const text = [
+    cls?.courseLineName,
+    cls?.courseName,
+    cls?.name,
+    cls?.course?.courseLine?.name,
+    cls?.course?.name,
+    cls?.course?.shortName,
+  ]
+    .filter(Boolean)
+    .join(' ')
+  const norm = normalizeKey(text)
+  const f = normalizeKey(filterKey)
+
+  if (f === 'coding' || f.includes('cod') || f.includes('c4k') || f.includes('c4t')) {
+    if (
+      norm.includes('c4k') ||
+      norm.includes('c4t') ||
+      norm.includes('coding') ||
+      norm.includes('cod') ||
+      norm.includes('scratch') ||
+      norm.includes('python') ||
+      norm.includes('laptrinh')
+    ) {
+      return true
+    }
+    return /\b(jsa|jsi|jsb|pta|pti|ptb|csa|csb|csi|web|game|pro)\b/i.test(norm)
+  }
+
+  if (f === 'robotics' || f.includes('rob') || f.includes('kind')) {
+    if (
+      norm.includes('robot') ||
+      norm.includes('kindergarten') ||
+      norm.includes('vex') ||
+      norm.includes('lego') ||
+      norm.includes('steam')
+    ) {
+      return true
+    }
+    return /\b(rob|kind)\b/i.test(norm) || norm.includes('rob') || norm.includes('kind')
+  }
+
+  if (f === 'art' || f.includes('art') || f.includes('xart')) {
+    if (
+      norm.includes('xart') ||
+      norm.includes('mythuat') ||
+      norm.includes('dohoa') ||
+      norm.includes('graphic') ||
+      norm.includes('painting') ||
+      norm.includes('drawing')
+    ) {
+      return true
+    }
+    return /\b(art|xart)\b/i.test(norm)
+  }
+
+  return norm.includes(f)
 }
 
 function toIsoBoundary(dateText: string | null, fallback: Date, endOfDay = false) {
@@ -190,6 +314,48 @@ function teacherNamesFromAccounts(
     .filter(Boolean)
 }
 
+function isAssistantAssignment(item: any): boolean {
+  if (item?.isActive === false) return false
+  const roleValues = [
+    item?.role?.shortName,
+    item?.role?.name,
+    item?.role?.code,
+  ].map((value) => String(value ?? '').trim().toUpperCase())
+  return (
+    roleValues.includes('TA') ||
+    roleValues.some((r) => r.includes('TRỢ GIẢNG') || r.includes('ASSISTANT'))
+  )
+}
+
+function assistantAccounts(assignments: any[]): Array<{
+  id: string
+  fullName: string
+  email: string
+  username: string
+  code: string
+}> {
+  const seen = new Set<string>()
+  const accounts: Array<{
+    id: string
+    fullName: string
+    email: string
+    username: string
+    code: string
+  }> = []
+
+  assignments.forEach((item) => {
+    if (!isAssistantAssignment(item)) return
+    const account = teacherAccountFromAssignment(item)
+    if (!account) return
+    const key = account.id || account.email || account.username || account.code || account.fullName
+    if (seen.has(key)) return
+    seen.add(key)
+    accounts.push(account)
+  })
+
+  return accounts
+}
+
 function mapClass(cls: any, now: Date) {
   const activeStudents = (cls?.students ?? []).filter((item: any) => item?.activeInClass !== false)
   const slots = (cls?.slots ?? [])
@@ -201,6 +367,8 @@ function mapClass(cls: any, now: Date) {
     })
     .map((slot: any, index: number) => {
       const teacherAccounts = lecturerAccounts(slot?.teachers ?? [])
+      const taAccounts = assistantAccounts(slot?.teachers ?? [])
+      const slotTeacherRank = teacherAccounts[0]?.code || ''
       const session = {
         id: String(slot?._id ?? ''),
         date: slot?.date ?? null,
@@ -210,6 +378,9 @@ function mapClass(cls: any, now: Date) {
         sessionIndex: index + 1,
         teacherNames: teacherNamesFromAccounts(teacherAccounts),
         teacherAccounts,
+        assistantNames: teacherNamesFromAccounts(taAccounts),
+        assistantAccounts: taAccounts,
+        teacherRank: slotTeacherRank,
         studentAttendanceCount: Array.isArray(slot?.studentAttendance)
           ? slot.studentAttendance.length
           : 0,
@@ -220,9 +391,11 @@ function mapClass(cls: any, now: Date) {
         ...getQCWindowInfo(session, now),
       }
     })
-  const eligibleSessionCount = slots.filter((slot: { canCreateQC: boolean }) => slot.canCreateQC).length
+  const eligibleSessionCount = slots.length
 
   const teacherAccounts = lecturerAccounts(cls?.teachers ?? [])
+  const taAccounts = assistantAccounts(cls?.teachers ?? [])
+  const classTeacherRank = teacherAccounts[0]?.code || ''
 
   return {
     id: String(cls?.id ?? ''),
@@ -238,6 +411,9 @@ function mapClass(cls: any, now: Date) {
     centreShortName: cls?.centre?.shortName ?? '',
     teacherNames: teacherNamesFromAccounts(teacherAccounts),
     teacherAccounts,
+    assistantNames: teacherNamesFromAccounts(taAccounts),
+    assistantAccounts: taAccounts,
+    teacherRank: classTeacherRank,
     studentCount: activeStudents.length,
     slots,
     eligibleSessionCount,
@@ -262,15 +438,26 @@ export async function GET(request: NextRequest) {
     const endDateFrom = toIsoBoundary(searchParams.get('from'), startFallback)
     const startDateTo = toIsoBoundary(searchParams.get('to'), endFallback, true)
 
-    const accessibleCenters =
-      gate.role === 'super_admin' ? null : await getAccessibleCenters(gate.sessionEmail)
-    const allowedKeys =
-      gate.role === 'super_admin'
-        ? null
-        : buildCenterKeys((accessibleCenters ?? []) as AccessibleCenter[])
+    const emailNorm = (gate.sessionEmail || '').toLowerCase()
+    const isSuperOrTeachingHo =
+      gate.role === 'super_admin' ||
+      gate.role === 'admin' ||
+      emailNorm.includes('hoteaching') ||
+      emailNorm.includes('hr-teaching')
 
-    if (allowedKeys && allowedKeys.size === 0) {
-      return NextResponse.json({ success: true, classes: [], total: 0 })
+    let accessibleCenters: AccessibleCenter[] = []
+    let allowedKeys: Set<string> | null = null
+
+    if (isSuperOrTeachingHo) {
+      // Super admin / Teaching HO: xem được tất cả các lớp ở tất cả cơ sở
+      allowedKeys = null
+      accessibleCenters = (await getAllActiveCenters()) as AccessibleCenter[]
+    } else {
+      accessibleCenters = (await getAccessibleCenters(gate.sessionEmail)) as AccessibleCenter[]
+      allowedKeys = buildCenterKeys(accessibleCenters ?? [])
+      if (allowedKeys.size === 0) {
+        return NextResponse.json({ success: true, classes: [], total: 0 })
+      }
     }
 
     // Tự động làm mới token LMS hoặc sử dụng fallback service account
@@ -278,35 +465,23 @@ export async function GET(request: NextRequest) {
     let authHeader = tokenSession.token ? `Bearer ${tokenSession.token}` : undefined
     const itemsPerPage = 100
     const maxPages = 20
-    const variables = {
-      search: q,
+    const baseVariables = {
       statusIn: ['RUNNING', 'PREPARING'],
       startDateTo,
       endDateFrom,
-      pageIndex: 0,
       itemsPerPage,
       orderBy: 'startDate_asc',
     }
 
-    let firstResult: any
-    try {
-      firstResult = await callLmsApi<any>(
-        {
-          query: GET_QC_CLASSES_QUERY,
-          operationName: 'GetClasses',
-          variables,
-        },
-        authHeader,
-      )
-    } catch (err: any) {
-      console.warn(
-        '[quan-ly-qc/classes] LMS token call failed:',
-        err?.message,
-        '- Retrying with fallback account...',
-      )
-      tokenSession = await loginFallbackLmsAccount()
-      if (tokenSession.token) {
-        authHeader = `Bearer ${tokenSession.token}`
+    const fetchLmsClassPages = async (search: string | undefined) => {
+      const variables = {
+        ...baseVariables,
+        search,
+        pageIndex: 0,
+      }
+
+      let firstResult: any
+      try {
         firstResult = await callLmsApi<any>(
           {
             query: GET_QC_CLASSES_QUERY,
@@ -315,49 +490,146 @@ export async function GET(request: NextRequest) {
           },
           authHeader,
         )
-      } else {
-        throw err
+      } catch (err: any) {
+        console.warn(
+          '[quan-ly-qc/classes] LMS token call failed:',
+          err?.message,
+          '- Retrying with fallback account...',
+        )
+        tokenSession = await loginFallbackLmsAccount()
+        if (tokenSession.token) {
+          authHeader = `Bearer ${tokenSession.token}`
+          firstResult = await callLmsApi<any>(
+            {
+              query: GET_QC_CLASSES_QUERY,
+              operationName: 'GetClasses',
+              variables,
+            },
+            authHeader,
+          )
+        } else {
+          throw err
+        }
       }
+
+      const firstPage = firstResult?.data?.classes
+      const allClasses = Array.isArray(firstPage?.data) ? [...firstPage.data] : []
+      const total = Number(firstPage?.pagination?.total ?? allClasses.length)
+      const totalPages = Math.min(Math.ceil(total / itemsPerPage), maxPages)
+
+      for (let pageIndex = 1; pageIndex < totalPages; pageIndex += 1) {
+        try {
+          const pageResult = await callLmsApi<any>(
+            {
+              query: GET_QC_CLASSES_QUERY,
+              operationName: 'GetClasses',
+              variables: { ...variables, pageIndex },
+            },
+            authHeader,
+          )
+          const pageRows = pageResult?.data?.classes?.data
+          if (!Array.isArray(pageRows) || pageRows.length === 0) break
+          allClasses.push(...pageRows)
+        } catch (pageErr) {
+          console.warn(
+            `[quan-ly-qc/classes] Error fetching page ${pageIndex}:`,
+            pageErr,
+          )
+          break
+        }
+      }
+
+      return { allClasses, total, totalPages }
     }
 
-    const firstPage = firstResult?.data?.classes
-    const allClasses = Array.isArray(firstPage?.data) ? [...firstPage.data] : []
-    const total = Number(firstPage?.pagination?.total ?? allClasses.length)
-    const totalPages = Math.min(Math.ceil(total / itemsPerPage), maxPages)
+    const searchedClasses = await fetchLmsClassPages(q)
+    let allClasses = searchedClasses.allClasses
+    let lmsTotal = searchedClasses.total
+    let truncated =
+      searchedClasses.totalPages === maxPages &&
+      searchedClasses.total > maxPages * itemsPerPage
 
-    for (let pageIndex = 1; pageIndex < totalPages; pageIndex += 1) {
-      try {
-        const pageResult = await callLmsApi<any>(
-          {
-            query: GET_QC_CLASSES_QUERY,
-            operationName: 'GetClasses',
-            variables: { ...variables, pageIndex },
-          },
-          authHeader,
-        )
-        const pageRows = pageResult?.data?.classes?.data
-        if (!Array.isArray(pageRows) || pageRows.length === 0) break
-        allClasses.push(...pageRows)
-      } catch (pageErr) {
-        console.warn(
-          `[quan-ly-qc/classes] Error fetching page ${pageIndex}:`,
-          pageErr,
-        )
-        break
-      }
+    if (q) {
+      const unsearchedClasses = await fetchLmsClassPages(undefined)
+      const merged = new Map<string, any>()
+      ;[...allClasses, ...unsearchedClasses.allClasses].forEach((cls, index) => {
+        const key = String(cls?.id ?? cls?._id ?? cls?.name ?? index)
+        if (!merged.has(key)) merged.set(key, cls)
+      })
+
+      allClasses = Array.from(merged.values())
+      lmsTotal = unsearchedClasses.total
+      truncated =
+        truncated ||
+        (unsearchedClasses.totalPages === maxPages &&
+          unsearchedClasses.total > maxPages * itemsPerPage)
     }
 
     const now = new Date()
-    const classes = allClasses
+    let classes = allClasses
       .filter((cls) => isClassInAccessibleCenter(cls, allowedKeys))
+      .filter((cls) => rawClassMatchesSearch(cls, q))
       .map((cls) => mapClass(cls, now))
+
+    // 3 Khối chính theo yêu cầu: Coding(C4K/C4T), Robotics(ROB, KIND), Art(XArt)
+    const availableCourseLines = [
+      'Coding (C4K/C4T)',
+      'Robotics (ROB, KIND)',
+      'Art (XArt)',
+    ]
+
+    // Lọc theo Cơ sở nếu có param
+    const centreParam = searchParams.get('centre')?.trim()
+    if (centreParam && centreParam !== 'all') {
+      const targetCenter = (accessibleCenters || []).find(
+        (c: any) =>
+          c.full_name === centreParam ||
+          c.short_code === centreParam ||
+          String(c.id) === centreParam,
+      )
+
+      const targetKeys = new Set<string>()
+      targetKeys.add(normalizeKey(centreParam))
+      if (targetCenter) {
+        if (targetCenter.full_name) targetKeys.add(normalizeKey(targetCenter.full_name))
+        if (targetCenter.short_code) targetKeys.add(normalizeKey(targetCenter.short_code))
+        if (targetCenter.id) targetKeys.add(normalizeKey(targetCenter.id))
+      }
+
+      classes = classes.filter((cls) => {
+        const c1 = normalizeKey(cls.centreName)
+        const c2 = normalizeKey(cls.centreShortName)
+        const c3 = normalizeKey(cls.centreId)
+        for (const k of targetKeys) {
+          if (!k) continue
+          if (c1 === k || c2 === k || c3 === k) return true
+          if (c1.includes(k) || k.includes(c1)) return true
+          if (c2.includes(k) || k.includes(c2)) return true
+        }
+        return false
+      })
+    }
+
+    // Lọc theo Khối nếu có param
+    const courseLineParam =
+      searchParams.get('courseLine')?.trim() || searchParams.get('khoi')?.trim()
+    if (courseLineParam && courseLineParam !== 'all') {
+      classes = classes.filter((cls) => matchesCourseLine(cls, courseLineParam))
+    }
 
     const response = NextResponse.json({
       success: true,
       classes,
       total: classes.length,
-      lmsTotal: total,
-      truncated: totalPages === maxPages && total > maxPages * itemsPerPage,
+      lmsTotal,
+      isSuperAdmin: isSuperOrTeachingHo,
+      accessibleCenters: (accessibleCenters || []).map((c: any) => ({
+        id: c.id,
+        full_name: c.full_name,
+        short_code: c.short_code,
+      })),
+      availableCourseLines,
+      truncated,
     })
 
     applyRefreshedCookies(response, tokenSession)

@@ -416,6 +416,7 @@ export default function AppLayout({
             return
           }
         }
+
         // Check if user has permission for current route
         // Allow bypass for universal admin routes like /admin/profile
         if (

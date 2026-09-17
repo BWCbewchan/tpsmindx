@@ -1,0 +1,8 @@
+{
+  "01-tao-portfolio": "/api/storage-image?bucket=mindx-thumbnails&key=k12-leader-docs%2Fportfolio-2026-09-11%2F01-tao-portfolio.jpg",
+  "02-chinh-sua-ho-so": "/api/storage-image?bucket=mindx-thumbnails&key=k12-leader-docs%2Fportfolio-2026-09-11%2F02-chinh-sua-ho-so.jpg",
+  "03-san-pham-diem-so": "/api/storage-image?bucket=mindx-thumbnails&key=k12-leader-docs%2Fportfolio-2026-09-11%2F03-san-pham-diem-so.jpg",
+  "04-ban-public": "/api/storage-image?bucket=mindx-thumbnails&key=k12-leader-docs%2Fportfolio-2026-09-11%2F04-ban-public.jpg",
+  "05-quan-ly-portfolio": "/api/storage-image?bucket=mindx-thumbnails&key=k12-leader-docs%2Fportfolio-2026-09-11%2F05-quan-ly-portfolio.jpg",
+  "video": "/api/storage-image?bucket=mindx-videos&key=k12-leader-docs%2Fportfolio-2026-09-11%2Fvideo.mp4"
+}

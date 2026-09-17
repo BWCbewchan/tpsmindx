@@ -13,7 +13,9 @@ interface ClassFilterToolbarProps {
   centres: CentreOption[];
   teacherOptions?: string[];
   onFilter: (filters: FilterState) => void;
+  onClear?: () => void;
   isLoading?: boolean;
+  isLoadingCentres?: boolean;
 }
 
 export interface FilterState {
@@ -38,7 +40,9 @@ export default function ClassFilterToolbar({
   centres,
   teacherOptions = [],
   onFilter,
+  onClear,
   isLoading = false,
+  isLoadingCentres = false,
 }: ClassFilterToolbarProps) {
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [isCentreDropdownOpen, setIsCentreDropdownOpen] = useState(false);
@@ -56,12 +60,10 @@ export default function ClassFilterToolbar({
         const selected = prev.selectedCentres.includes(centreName)
           ? prev.selectedCentres.filter((c) => c !== centreName)
           : [...prev.selectedCentres, centreName];
-        const next = { ...prev, selectedCentres: selected };
-        onFilter(next);
-        return next;
+        return { ...prev, selectedCentres: selected };
       });
     },
-    [onFilter],
+    [],
   );
 
   const handleSearch = useCallback(() => {
@@ -70,8 +72,9 @@ export default function ClassFilterToolbar({
 
   const handleClear = useCallback(() => {
     setFilters(INITIAL_FILTERS);
-    onFilter(INITIAL_FILTERS);
-  }, [onFilter]);
+    setIsCentreDropdownOpen(false);
+    onClear?.();
+  }, [onClear]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -122,12 +125,15 @@ export default function ClassFilterToolbar({
         <div className="relative" data-centre-dropdown>
           <button
             onClick={() => setIsCentreDropdownOpen(!isCentreDropdownOpen)}
+            disabled={isLoadingCentres}
             className="h-9 px-3 border border-neutral-300 rounded-lg text-sm bg-white hover:border-mindx-red/50 
-                       focus:outline-none focus:ring-2 focus:ring-mindx-red/20 transition-all
+                       focus:outline-none focus:ring-2 focus:ring-mindx-red/20 transition-all disabled:opacity-60
                        flex items-center gap-1.5 min-w-[170px]"
           >
             <span className="text-neutral-600 truncate">
-              {filters.selectedCentres.length > 0
+              {isLoadingCentres
+                ? 'Đang tải cơ sở...'
+                : filters.selectedCentres.length > 0
                 ? `${filters.selectedCentres.length} cơ sở`
                 : 'Tất cả cơ sở'}
             </span>
@@ -149,7 +155,11 @@ export default function ClassFilterToolbar({
 
           {isCentreDropdownOpen && (
             <div className="absolute z-50 mt-1 w-80 max-h-64 overflow-y-auto bg-white border border-neutral-200 rounded-lg shadow-lg">
-              {centres.length === 0 ? (
+              {isLoadingCentres ? (
+                <div className="p-3 text-sm text-neutral-500">
+                  Đang tải danh sách cơ sở...
+                </div>
+              ) : centres.length === 0 ? (
                 <div className="p-3 text-sm text-neutral-500">
                   Không có cơ sở nào
                 </div>
@@ -201,11 +211,7 @@ export default function ClassFilterToolbar({
         {/* QC Status */}
         <select
           value={filters.qcStatus}
-          onChange={(e) => {
-            const val = e.target.value;
-            updateFilter('qcStatus', val);
-            onFilter({ ...filters, qcStatus: val });
-          }}
+          onChange={(e) => updateFilter('qcStatus', e.target.value)}
           className="h-9 px-3 border border-neutral-300 rounded-lg text-sm bg-white text-neutral-700
                      hover:border-mindx-red/50 focus:outline-none focus:ring-2 focus:ring-mindx-red/20
                      transition-all min-w-[160px]"

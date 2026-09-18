@@ -1,6 +1,15 @@
 import { promises as fs } from 'fs'
 import { createHash } from 'crypto'
 import path from 'path'
+import {
+  CreateBucketCommand,
+  GetObjectCommand,
+  HeadBucketCommand,
+  PutObjectCommand,
+} from '@aws-sdk/client-s3'
+import * as XLSX from 'xlsx'
+import pool from '@/lib/db'
+import { createSupabaseS3Client, isSupabaseS3Configured } from '@/lib/supabase-s3'
 
 export type CheckCongRecord = {
   checkKey: string
@@ -64,37 +73,106 @@ type AdminMonthBase = {
   }
 }
 
+type ParsedCheckCongCsv = {
+  headers: string[]
+  rows: string[][]
+  records: CheckCongRecord[]
+  availableMonths: string[]
+}
+
+type StoredCheckCongImportFile = {
+  id: number
+  periodMonth: string
+  originalFileName: string
+  originalFileType: 'csv' | 'excel'
+  sheetName: string | null
+  s3Bucket: string
+  s3Key: string
+  fileSize: number
+  recordCount: number
+  contentSha256: string
+  uploadedByEmail: string | null
+  createdAt: string
+}
+
+type CheckCongImportResult = {
+  savedPath: string
+  recordCount: number
+  files: Array<{
+    month: string
+    recordCount: number
+    storagePath: string
+  }>
+  sheetName?: string
+}
+
 const CSV_PATH =
   process.env.CHECK_CONG_CSV_PATH ||
   path.join(process.cwd(), 'public', 'data', 'check-cong-class.csv')
+
+const STORAGE_BUCKET =
+  process.env.CHECK_CONG_STORAGE_BUCKET || 'check-cong-data'
+
+const STORAGE_PREFIX = (process.env.CHECK_CONG_STORAGE_PREFIX || 'check-cong')
+  .replace(/^\/+|\/+$/g, '')
+
+const ACTIVE_IMPORT_CACHE_TTL_MS = 30_000
+
+const REQUIRED_HEADERS = [
+  'Centre shortname',
+  'Type',
+  'Teacher name',
+  'Work email',
+  'Username',
+  'Status',
+  'Slot time',
+]
 
 let cached:
   | {
       loadedAt: number
       mtimeMs: number
       records: CheckCongRecord[]
+      availableMonths: string[]
     }
   | undefined
 
 let adminBaseCache:
   | {
-      mtimeMs: number
+      cacheKey: string
       months: string[]
       byMonth: Map<string, AdminMonthBase>
     }
   | undefined
+
+let activeImportsCache:
+  | {
+      loadedAt: number
+      files: StoredCheckCongImportFile[]
+    }
+  | undefined
+
+const storageCsvCache = new Map<
+  string,
+  {
+    loadedAt: number
+    csvText: string
+    parsed: ParsedCheckCongCsv
+  }
+>()
 
 function parseCSVRows(text: string): string[][] {
   const rows: string[][] = []
   let row: string[] = []
   let cell = ''
   let inQuote = false
+  const source = text.replace(/^\uFEFF/, '')
 
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i]
+  for (let i = 0; i < source.length; i++) {
+    const char = source[i]
 
     if (char === '"') {
-      if (inQuote && text[i + 1] === '"') {
+      if (inQuote && source[i + 1] === '"') {
         cell += '"'
         i++
       } else {
@@ -104,7 +182,7 @@ function parseCSVRows(text: string): string[][] {
       row.push(cell.trim())
       cell = ''
     } else if ((char === '\n' || char === '\r') && !inQuote) {
-      if (char === '\r' && text[i + 1] === '\n') i++
+      if (char === '\r' && source[i + 1] === '\n') i++
       row.push(cell.trim())
       if (row.some((value) => value !== '')) rows.push(row)
       row = []
@@ -120,6 +198,75 @@ function parseCSVRows(text: string): string[][] {
   }
 
   return rows
+}
+
+function serializeCSVRows(rows: string[][]): string {
+  return rows
+    .map((row) =>
+      row
+        .map((value) => {
+          const text = String(value ?? '')
+          return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+        })
+        .join(','),
+    )
+    .join('\r\n')
+}
+
+function formatWorkbookCell(value: unknown): string {
+  if (value == null) return ''
+  if (value instanceof Date) {
+    const year = value.getFullYear()
+    const month = String(value.getMonth() + 1).padStart(2, '0')
+    const day = String(value.getDate()).padStart(2, '0')
+    const hour = String(value.getHours()).padStart(2, '0')
+    const minute = String(value.getMinutes()).padStart(2, '0')
+    const second = String(value.getSeconds()).padStart(2, '0')
+    return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+  }
+  return String(value).trim()
+}
+
+function validateCheckCongHeaders(headers: string[], fileTypeLabel: string) {
+  const missingHeaders = REQUIRED_HEADERS.filter(
+    (header) => !headers.includes(header),
+  )
+
+  if (missingHeaders.length > 0) {
+    throw new Error(`${fileTypeLabel} thiếu cột: ${missingHeaders.join(', ')}`)
+  }
+}
+
+function workbookBufferToCsvText(buffer: Buffer): {
+  csvText: string
+  sheetName: string
+  recordCount: number
+} {
+  const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: true })
+  const sheetName = workbook.SheetNames[0]
+  if (!sheetName) {
+    throw new Error('File Excel không có sheet dữ liệu')
+  }
+
+  const worksheet = workbook.Sheets[sheetName]
+  const rows = XLSX.utils
+    .sheet_to_json<unknown[]>(worksheet, {
+      header: 1,
+      raw: true,
+      defval: '',
+      blankrows: false,
+    })
+    .map((row) => row.map(formatWorkbookCell))
+    .filter((row) => row.some((value) => value !== ''))
+
+  const headers = rows[0] ?? []
+  validateCheckCongHeaders(headers, 'File Excel')
+
+  return {
+    csvText: serializeCSVRows(rows),
+    sheetName,
+    recordCount: Math.max(0, rows.length - 1),
+  }
 }
 
 function normalize(value: unknown): string {
@@ -349,6 +496,79 @@ function rowToRecord(row: Record<string, string>): CheckCongRecord {
   }
 }
 
+function rowsToParsedCheckCongCsv(rows: string[], fileTypeLabel: string): ParsedCheckCongCsv
+function rowsToParsedCheckCongCsv(rows: string[][], fileTypeLabel: string): ParsedCheckCongCsv
+function rowsToParsedCheckCongCsv(
+  inputRows: string[] | string[][],
+  fileTypeLabel: string,
+): ParsedCheckCongCsv {
+  const rows =
+    typeof inputRows[0] === 'string'
+      ? parseCSVRows((inputRows as string[]).join('\n'))
+      : (inputRows as string[][])
+  const headers = rows[0] ?? []
+  validateCheckCongHeaders(headers, fileTypeLabel)
+
+  const records = rows
+    .slice(1)
+    .map((values) => {
+      const row: Record<string, string> = {}
+      headers.forEach((header, index) => {
+        row[header] = values[index] || ''
+      })
+      return rowToRecord(row)
+    })
+    .filter((record) => record.username || record.workEmail || record.personalEmail)
+
+  return {
+    headers,
+    rows,
+    records,
+    availableMonths: uniqueMonthKeys(records),
+  }
+}
+
+function parseCheckCongCsvText(
+  csvText: string,
+  fileTypeLabel = 'File CSV',
+): ParsedCheckCongCsv {
+  return rowsToParsedCheckCongCsv(parseCSVRows(csvText), fileTypeLabel)
+}
+
+function getRecordMonth(record: CheckCongRecord): string {
+  const date = parseSlotDate(record.slotTime)
+  if (!date) return ''
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+function splitParsedCsvByMonth(parsed: ParsedCheckCongCsv): Map<string, string[][]> {
+  const byMonth = new Map<string, string[][]>()
+
+  parsed.rows.slice(1).forEach((values) => {
+    const row: Record<string, string> = {}
+    parsed.headers.forEach((header, index) => {
+      row[header] = values[index] || ''
+    })
+    const record = rowToRecord(row)
+    if (!record.username && !record.workEmail && !record.personalEmail) return
+    const month = getRecordMonth(record)
+    if (!month) {
+      throw new Error(
+        `Không xác định được tháng từ Slot time: ${record.slotTime || '(trống)'}`,
+      )
+    }
+    const current = byMonth.get(month) || [parsed.headers]
+    current.push(values)
+    byMonth.set(month, current)
+  })
+
+  if (byMonth.size === 0) {
+    throw new Error('File không có dòng công hợp lệ để import')
+  }
+
+  return byMonth
+}
+
 function parseSlotDate(slotTime: string): Date | null {
   const raw = slotTime.trim()
   const date = new Date(raw)
@@ -440,26 +660,262 @@ function buildSummary(records: CheckCongRecord[], month: string): CheckCongSumma
   }
 }
 
-export async function loadCheckCongRecords(): Promise<CheckCongRecord[]> {
-  const stat = await fs.stat(CSV_PATH)
-  if (cached && cached.mtimeMs === stat.mtimeMs) return cached.records
+function isMissingRelationError(error: unknown): boolean {
+  return (error as { code?: string })?.code === '42P01'
+}
 
-  const csvText = await fs.readFile(CSV_PATH, 'utf8')
-  const rows = parseCSVRows(csvText)
-  const headers = rows[0] ?? []
-  const records = rows
-    .slice(1)
-    .map((values) => {
-      const row: Record<string, string> = {}
-      headers.forEach((header, index) => {
-        row[header] = values[index] || ''
-      })
-      return rowToRecord(row)
-    })
-    .filter((record) => record.username || record.workEmail || record.personalEmail)
+function mapImportFileRow(row: Record<string, unknown>): StoredCheckCongImportFile {
+  return {
+    id: Number(row.id),
+    periodMonth: String(row.period_month ?? ''),
+    originalFileName: String(row.original_file_name ?? ''),
+    originalFileType: String(row.original_file_type || 'csv') as 'csv' | 'excel',
+    sheetName: row.sheet_name == null ? null : String(row.sheet_name),
+    s3Bucket: String(row.s3_bucket ?? ''),
+    s3Key: String(row.s3_key ?? ''),
+    fileSize: Number(row.file_size ?? 0),
+    recordCount: Number(row.record_count ?? 0),
+    contentSha256: String(row.content_sha256 ?? ''),
+    uploadedByEmail:
+      row.uploaded_by_email == null ? null : String(row.uploaded_by_email),
+    createdAt:
+      row.created_at == null
+        ? new Date().toISOString()
+        : new Date(String(row.created_at)).toISOString(),
+  }
+}
 
-  cached = { loadedAt: Date.now(), mtimeMs: stat.mtimeMs, records }
-  return records
+async function waitForMigrationInit() {
+  if (!global.migrationInitPromise) return
+  await global.migrationInitPromise.catch(() => undefined)
+}
+
+async function ensureCheckCongImportTable() {
+  await waitForMigrationInit()
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS check_cong_import_files (
+      id BIGSERIAL PRIMARY KEY,
+      period_month VARCHAR(7) NOT NULL CHECK (period_month ~ '^[0-9]{4}-[0-9]{2}$'),
+      original_file_name TEXT NOT NULL,
+      original_file_type VARCHAR(20) NOT NULL DEFAULT 'csv'
+        CHECK (original_file_type IN ('csv', 'excel')),
+      sheet_name TEXT,
+      s3_bucket TEXT NOT NULL,
+      s3_key TEXT NOT NULL,
+      file_size BIGINT NOT NULL DEFAULT 0,
+      record_count INTEGER NOT NULL DEFAULT 0,
+      content_sha256 VARCHAR(64) NOT NULL,
+      uploaded_by_email VARCHAR(255),
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      activated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    ALTER TABLE check_cong_import_files
+      ADD COLUMN IF NOT EXISTS sheet_name TEXT,
+      ADD COLUMN IF NOT EXISTS uploaded_by_email VARCHAR(255),
+      ADD COLUMN IF NOT EXISTS activated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP;
+
+    CREATE INDEX IF NOT EXISTS idx_check_cong_import_files_period_active
+      ON check_cong_import_files(period_month, is_active, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_check_cong_import_files_created
+      ON check_cong_import_files(created_at DESC);
+    CREATE UNIQUE INDEX IF NOT EXISTS uq_check_cong_import_active_month
+      ON check_cong_import_files(period_month)
+      WHERE is_active IS TRUE;
+  `)
+}
+
+async function listActiveCheckCongImportFiles(): Promise<StoredCheckCongImportFile[]> {
+  if (
+    activeImportsCache &&
+    Date.now() - activeImportsCache.loadedAt < ACTIVE_IMPORT_CACHE_TTL_MS
+  ) {
+    return activeImportsCache.files
+  }
+
+  await waitForMigrationInit()
+  try {
+    const result = await pool.query(
+      `
+      SELECT *
+      FROM check_cong_import_files
+      WHERE is_active IS TRUE
+      ORDER BY period_month DESC, created_at DESC
+      `,
+    )
+    const files = result.rows.map(mapImportFileRow)
+    activeImportsCache = { loadedAt: Date.now(), files }
+    return files
+  } catch (error: unknown) {
+    if (isMissingRelationError(error)) return []
+    throw error
+  }
+}
+
+async function ensureStorageBucket() {
+  if (!isSupabaseS3Configured()) {
+    throw new Error('Chưa cấu hình Supabase S3 Storage để lưu file check công')
+  }
+
+  const client = createSupabaseS3Client()
+  try {
+    await client.send(new HeadBucketCommand({ Bucket: STORAGE_BUCKET }))
+  } catch {
+    await client.send(new CreateBucketCommand({ Bucket: STORAGE_BUCKET }))
+  }
+}
+
+async function streamToBuffer(stream: AsyncIterable<Uint8Array> | undefined) {
+  if (!stream) return Buffer.alloc(0)
+  const chunks: Buffer[] = []
+  for await (const chunk of stream) {
+    chunks.push(Buffer.from(chunk))
+  }
+  return Buffer.concat(chunks)
+}
+
+async function readStorageCsvText(file: StoredCheckCongImportFile): Promise<string> {
+  const cacheKey = `${file.id}:${file.contentSha256}`
+  const cachedText = storageCsvCache.get(cacheKey)
+  if (cachedText) return cachedText.csvText
+
+  const client = createSupabaseS3Client()
+  const object = await client.send(
+    new GetObjectCommand({
+      Bucket: file.s3Bucket,
+      Key: file.s3Key,
+    }),
+  )
+  const buffer = await streamToBuffer(object.Body as AsyncIterable<Uint8Array>)
+  const csvText = buffer.toString('utf8')
+  storageCsvCache.set(cacheKey, {
+    loadedAt: Date.now(),
+    csvText,
+    parsed: parseCheckCongCsvText(csvText),
+  })
+  return csvText
+}
+
+async function loadStorageRecordsForFile(
+  file: StoredCheckCongImportFile,
+): Promise<ParsedCheckCongCsv> {
+  const cacheKey = `${file.id}:${file.contentSha256}`
+  const cachedParsed = storageCsvCache.get(cacheKey)
+  if (cachedParsed) return cachedParsed.parsed
+
+  const csvText = await readStorageCsvText(file)
+  const parsed = parseCheckCongCsvText(csvText)
+  storageCsvCache.set(cacheKey, { loadedAt: Date.now(), csvText, parsed })
+  return parsed
+}
+
+async function loadLegacyCheckCongParsed(): Promise<
+  ParsedCheckCongCsv & { mtimeMs: number }
+> {
+  try {
+    const stat = await fs.stat(CSV_PATH)
+    if (cached && cached.mtimeMs === stat.mtimeMs) {
+      return {
+        headers: [],
+        rows: [],
+        records: cached.records,
+        availableMonths: cached.availableMonths,
+        mtimeMs: stat.mtimeMs,
+      }
+    }
+
+    const csvText = await fs.readFile(CSV_PATH, 'utf8')
+    const parsed = parseCheckCongCsvText(csvText)
+    cached = {
+      loadedAt: Date.now(),
+      mtimeMs: stat.mtimeMs,
+      records: parsed.records,
+      availableMonths: parsed.availableMonths,
+    }
+    return { ...parsed, mtimeMs: stat.mtimeMs }
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') throw error
+    cached = {
+      loadedAt: Date.now(),
+      mtimeMs: 0,
+      records: [],
+      availableMonths: [],
+    }
+    return {
+      headers: [],
+      rows: [],
+      records: [],
+      availableMonths: [],
+      mtimeMs: 0,
+    }
+  }
+}
+
+async function loadCheckCongData(inputMonth: string = 'all'): Promise<{
+  records: CheckCongRecord[]
+  availableMonths: string[]
+  cacheKey: string
+}> {
+  const month = inputMonth || 'all'
+  const activeFiles = await listActiveCheckCongImportFiles()
+  const activeByMonth = new Map(
+    activeFiles.map((file) => [file.periodMonth, file]),
+  )
+  const targetFiles =
+    /^\d{4}-\d{2}$/.test(month)
+      ? activeByMonth.get(month)
+        ? [activeByMonth.get(month)!]
+        : []
+      : activeFiles
+
+  const records: CheckCongRecord[] = []
+  const loadedStorageMonths = new Set<string>()
+  const storageCacheParts: string[] = []
+
+  for (const file of targetFiles) {
+    try {
+      const parsed = await loadStorageRecordsForFile(file)
+      records.push(...parsed.records.filter((record) => sameMonth(record, month)))
+      loadedStorageMonths.add(file.periodMonth)
+      storageCacheParts.push(`${file.id}:${file.contentSha256}`)
+    } catch (error) {
+      console.warn(
+        `Không đọc được file check công trên Storage (${file.periodMonth}):`,
+        error,
+      )
+    }
+  }
+
+  const legacy = await loadLegacyCheckCongParsed()
+  const legacyRecords = legacy.records.filter((record) => {
+    const recordMonth = getRecordMonth(record)
+    if (recordMonth && loadedStorageMonths.has(recordMonth)) return false
+    return sameMonth(record, month)
+  })
+  records.push(...legacyRecords)
+
+  const availableMonths = Array.from(
+    new Set([
+      ...activeFiles.map((file) => file.periodMonth),
+      ...legacy.availableMonths,
+    ]),
+  ).sort((a, b) => b.localeCompare(a))
+
+  return {
+    records,
+    availableMonths,
+    cacheKey: [
+      `storage:${storageCacheParts.join('|')}`,
+      `legacy:${legacy.mtimeMs}`,
+      `month:${month}`,
+    ].join(';'),
+  }
+}
+
+export async function loadCheckCongRecords(month = 'all'): Promise<CheckCongRecord[]> {
+  const data = await loadCheckCongData(month)
+  return data.records
 }
 
 export async function saveCheckCongCsv(csvText: string): Promise<{
@@ -468,22 +924,7 @@ export async function saveCheckCongCsv(csvText: string): Promise<{
 }> {
   const rows = parseCSVRows(csvText)
   const headers = rows[0] ?? []
-  const requiredHeaders = [
-    'Centre shortname',
-    'Type',
-    'Teacher name',
-    'Work email',
-    'Username',
-    'Status',
-    'Slot time',
-  ]
-  const missingHeaders = requiredHeaders.filter(
-    (header) => !headers.includes(header),
-  )
-
-  if (missingHeaders.length > 0) {
-    throw new Error(`File CSV thiếu cột: ${missingHeaders.join(', ')}`)
-  }
+  validateCheckCongHeaders(headers, 'File CSV')
 
   await fs.mkdir(path.dirname(CSV_PATH), { recursive: true })
   await fs.writeFile(CSV_PATH, csvText, 'utf8')
@@ -496,25 +937,234 @@ export async function saveCheckCongCsv(csvText: string): Promise<{
   }
 }
 
+export async function saveCheckCongWorkbook(buffer: Buffer): Promise<{
+  savedPath: string
+  recordCount: number
+  sheetName: string
+}> {
+  const parsed = workbookBufferToCsvText(buffer)
+  const result = await saveCheckCongCsv(parsed.csvText)
+
+  return {
+    ...result,
+    recordCount: parsed.recordCount,
+    sheetName: parsed.sheetName,
+  }
+}
+
+function buildMonthlyStorageKey(month: string, contentSha256: string): string {
+  const year = month.slice(0, 4)
+  const monthValue = month.slice(5, 7)
+  const prefix = STORAGE_PREFIX ? `${STORAGE_PREFIX}/` : ''
+  return `${prefix}${year}/${monthValue}/check-cong-${month}-${Date.now()}-${contentSha256.slice(
+    0,
+    12,
+  )}.csv`
+}
+
+async function persistCheckCongImport(input: {
+  parsed: ParsedCheckCongCsv
+  originalFileName: string
+  originalFileType: 'csv' | 'excel'
+  sheetName?: string | null
+  uploadedByEmail?: string | null
+}): Promise<CheckCongImportResult> {
+  await ensureStorageBucket()
+  await ensureCheckCongImportTable()
+
+  const groupedRows = splitParsedCsvByMonth(input.parsed)
+  const uploadedFiles: Array<{
+    month: string
+    recordCount: number
+    storagePath: string
+    bucket: string
+    key: string
+    size: number
+    sha256: string
+  }> = []
+
+  const client = createSupabaseS3Client()
+  for (const [month, rows] of groupedRows) {
+    const csvText = `\uFEFF${serializeCSVRows(rows)}`
+    const body = Buffer.from(csvText, 'utf8')
+    const sha256 = createHash('sha256').update(body).digest('hex')
+    const key = buildMonthlyStorageKey(month, sha256)
+
+    await client.send(
+      new PutObjectCommand({
+        Bucket: STORAGE_BUCKET,
+        Key: key,
+        Body: body,
+        ContentType: 'text/csv; charset=utf-8',
+        Metadata: {
+          period_month: month,
+          source: 'check-cong',
+        },
+      }),
+    )
+
+    uploadedFiles.push({
+      month,
+      recordCount: Math.max(0, rows.length - 1),
+      storagePath: `s3://${STORAGE_BUCKET}/${key}`,
+      bucket: STORAGE_BUCKET,
+      key,
+      size: body.length,
+      sha256,
+    })
+  }
+
+  const dbClient = await pool.connect()
+  try {
+    await dbClient.query('BEGIN')
+    for (const file of uploadedFiles) {
+      await dbClient.query(
+        `
+        UPDATE check_cong_import_files
+        SET is_active = FALSE
+        WHERE period_month = $1
+          AND is_active IS TRUE
+        `,
+        [file.month],
+      )
+      await dbClient.query(
+        `
+        INSERT INTO check_cong_import_files (
+          period_month,
+          original_file_name,
+          original_file_type,
+          sheet_name,
+          s3_bucket,
+          s3_key,
+          file_size,
+          record_count,
+          content_sha256,
+          uploaded_by_email,
+          is_active,
+          activated_at
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, TRUE, CURRENT_TIMESTAMP)
+        `,
+        [
+          file.month,
+          input.originalFileName,
+          input.originalFileType,
+          input.sheetName || null,
+          file.bucket,
+          file.key,
+          file.size,
+          file.recordCount,
+          file.sha256,
+          input.uploadedByEmail || null,
+        ],
+      )
+    }
+    await dbClient.query('COMMIT')
+  } catch (error) {
+    await dbClient.query('ROLLBACK')
+    throw error
+  } finally {
+    dbClient.release()
+  }
+
+  cached = undefined
+  adminBaseCache = undefined
+  activeImportsCache = undefined
+  storageCsvCache.clear()
+
+  return {
+    savedPath:
+      uploadedFiles.length === 1
+        ? uploadedFiles[0].storagePath
+        : `s3://${STORAGE_BUCKET}/${STORAGE_PREFIX || ''}`,
+    recordCount: uploadedFiles.reduce((sum, file) => sum + file.recordCount, 0),
+    files: uploadedFiles.map((file) => ({
+      month: file.month,
+      recordCount: file.recordCount,
+      storagePath: file.storagePath,
+    })),
+    sheetName: input.sheetName || undefined,
+  }
+}
+
+export async function saveCheckCongImportCsv(input: {
+  csvText: string
+  originalFileName: string
+  uploadedByEmail?: string | null
+}): Promise<CheckCongImportResult> {
+  const parsed = parseCheckCongCsvText(input.csvText, 'File CSV')
+  return persistCheckCongImport({
+    parsed,
+    originalFileName: input.originalFileName,
+    originalFileType: 'csv',
+    uploadedByEmail: input.uploadedByEmail,
+  })
+}
+
+export async function saveCheckCongImportWorkbook(input: {
+  buffer: Buffer
+  originalFileName: string
+  uploadedByEmail?: string | null
+}): Promise<CheckCongImportResult> {
+  const workbook = workbookBufferToCsvText(input.buffer)
+  const parsed = parseCheckCongCsvText(workbook.csvText, 'File Excel')
+  return persistCheckCongImport({
+    parsed,
+    originalFileName: input.originalFileName,
+    originalFileType: 'excel',
+    sheetName: workbook.sheetName,
+    uploadedByEmail: input.uploadedByEmail,
+  })
+}
+
 export async function exportOriginalCheckCongRowsByKeys(
   checkKeys: string[],
 ): Promise<{ csv: string; count: number }> {
   const keys = new Set(checkKeys.filter(Boolean))
   if (keys.size === 0) return { csv: '', count: 0 }
 
-  const csvText = await fs.readFile(CSV_PATH, 'utf8')
-  const rows = parseCSVRows(csvText)
-  const headers = rows[0] ?? []
-  const matchedRows: string[][] = []
+  const activeFiles = await listActiveCheckCongImportFiles()
+  const csvSources: string[] = []
 
-  for (const values of rows.slice(1)) {
-    const row: Record<string, string> = {}
-    headers.forEach((header, index) => {
-      row[header] = values[index] || ''
-    })
-    const record = rowToRecord(row)
-    if (keys.has(record.checkKey)) {
-      matchedRows.push(headers.map((_, index) => values[index] || ''))
+  for (const file of activeFiles) {
+    try {
+      csvSources.push(await readStorageCsvText(file))
+    } catch (error) {
+      console.warn(
+        `Không đọc được file check công khi export phản hồi (${file.periodMonth}):`,
+        error,
+      )
+    }
+  }
+
+  try {
+    csvSources.push(await fs.readFile(CSV_PATH, 'utf8'))
+  } catch (error: unknown) {
+    if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') throw error
+  }
+
+  let headers: string[] = []
+  const matchedRows: string[][] = []
+  const seenKeys = new Set<string>()
+
+  for (const csvText of csvSources) {
+    const rows = parseCSVRows(csvText)
+    const sourceHeaders = rows[0] ?? []
+    if (headers.length === 0 && sourceHeaders.length > 0) {
+      headers = sourceHeaders
+    }
+
+    for (const values of rows.slice(1)) {
+      const row: Record<string, string> = {}
+      sourceHeaders.forEach((header, index) => {
+        row[header] = values[index] || ''
+      })
+      const record = rowToRecord(row)
+      if (keys.has(record.checkKey) && !seenKeys.has(record.checkKey)) {
+        const outputHeaders = headers.length > 0 ? headers : sourceHeaders
+        matchedRows.push(outputHeaders.map((header) => row[header] || ''))
+        seenKeys.add(record.checkKey)
+      }
     }
   }
 
@@ -657,12 +1307,12 @@ export async function getAdminCheckCong(input: {
   const limit = Math.min(100, Math.max(1, Math.floor(input.limit || 20)))
   const status = normalize(input.status)
   const query = input.query || ''
-  const allRecords = await loadCheckCongRecords()
-  const mtimeMs = cached?.mtimeMs ?? 0
-  if (!adminBaseCache || adminBaseCache.mtimeMs !== mtimeMs) {
+  const checkCongData = await loadCheckCongData(month)
+  const allRecords = checkCongData.records
+  if (!adminBaseCache || adminBaseCache.cacheKey !== checkCongData.cacheKey) {
     adminBaseCache = {
-      mtimeMs,
-      months: uniqueMonthKeys(allRecords),
+      cacheKey: checkCongData.cacheKey,
+      months: checkCongData.availableMonths,
       byMonth: new Map(),
     }
   }
@@ -705,7 +1355,8 @@ export async function getTeacherCheckCong(input: {
   month?: string
   hourlyRate?: number | null
 }) {
-  const records = await loadCheckCongRecords()
+  const month = input.month || 'all'
+  const records = await loadCheckCongRecords(month)
   const lookup = new Set(
     [input.email, input.personalEmail, input.username, input.code]
       .map(normalize)
@@ -722,7 +1373,6 @@ export async function getTeacherCheckCong(input: {
     return candidates.some((candidate) => lookup.has(candidate))
   })
 
-  const month = input.month || 'all'
   const scoped = teacherRecords
     .filter((record) => sameMonth(record, month))
     .map((record) => ({

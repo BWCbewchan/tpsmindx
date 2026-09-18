@@ -414,14 +414,14 @@ export default function AdminCheckCongPage() {
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok || result.success === false) {
-        throw new Error(result.error || 'Upload CSV thất bại')
+        throw new Error(result.error || 'Upload file thất bại')
       }
       toast.success(`Đã upload ${formatNumber(result.uploaded.recordCount)} dòng`)
       setLoadedRecords([])
       tableScrollRef.current?.scrollTo({ top: 0 })
       await fetchPage(1, 'reset')
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Upload CSV thất bại')
+      toast.error(error instanceof Error ? error.message : 'Upload file thất bại')
     } finally {
       setIsUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -545,13 +545,13 @@ export default function AdminCheckCongPage() {
   return (
     <PageContainer
       title="Kiểm tra công giáo viên"
-      description="Quản lý dữ liệu công từ file CSV cuối tháng và phân tích số ca checked của toàn bộ giáo viên."
+      description="Quản lý dữ liệu công từ file CSV/Excel cuối tháng và phân tích số ca checked của toàn bộ giáo viên."
       headerActions={
         <div className="flex flex-wrap items-center gap-2">
           <input
             ref={fileRef}
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
             className="hidden"
             onChange={handleUpload}
           />
@@ -562,7 +562,7 @@ export default function AdminCheckCongPage() {
             disabled={isUploading}
           >
             <FileUp className="h-4 w-4" />
-            {isUploading ? 'Đang tải lên...' : 'Tải CSV'}
+            {isUploading ? 'Đang tải lên...' : 'Tải CSV/Excel'}
           </Button>
         </div>
       }

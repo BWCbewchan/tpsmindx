@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS check_cong_import_files (
   id BIGSERIAL PRIMARY KEY,
-  period_month VARCHAR(7) NOT NULL CHECK (period_month ~ '^\d{4}-\d{2}$'),
+  period_month VARCHAR(7) NOT NULL CHECK (period_month ~ '^[0-9]{4}-[0-9]{2}$'),
   original_file_name TEXT NOT NULL,
   original_file_type VARCHAR(20) NOT NULL DEFAULT 'csv'
     CHECK (original_file_type IN ('csv', 'excel')),

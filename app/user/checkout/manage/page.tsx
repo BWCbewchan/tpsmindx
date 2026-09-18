@@ -8,6 +8,8 @@ import { cn } from '@/lib/utils'
 import {
   ALL_MANAGE_SUBJECT_OPTIONS,
   MANAGE_SUBJECT_OPTIONS,
+  OTHER_SUBJECT_FILTER_LABEL,
+  OTHER_SUBJECT_FILTER_VALUE,
   TRACKS,
   type TrialTrack,
 } from '@/lib/trial-checkout-rubrics'
@@ -509,10 +511,17 @@ export default function UserCheckoutManagePage() {
   }, [])
 
   const subjectFilterOptions: FilterSelectOption[] = useMemo(() => {
-    return subjectOptions.map((s) => ({
-      value: s,
-      label: s,
-    }))
+    return [
+      ...subjectOptions.map((s) => ({
+        value: s,
+        label: s,
+      })),
+      {
+        value: OTHER_SUBJECT_FILTER_VALUE,
+        label: OTHER_SUBJECT_FILTER_LABEL,
+        subtext: 'Môn tự điền',
+      },
+    ]
   }, [subjectOptions])
 
   const sortOptions: FilterSelectOption[] = useMemo(

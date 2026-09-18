@@ -3,6 +3,8 @@ import pool from '@/lib/db'
 import {
   ALL_SUBJECT_OPTIONS,
   CASE_RESULT_OPTIONS,
+  KNOWN_CHECKOUT_SUBJECT_OPTIONS,
+  OTHER_SUBJECT_FILTER_VALUE,
   SCORE_COLUMNS,
   SUBJECT_OPTIONS,
   TRACKS,
@@ -301,7 +303,18 @@ export async function GET(request: NextRequest) {
     }
 
     const subject = textValue(searchParams.get('subject'), 120)
-    if (subject) {
+    if (subject === OTHER_SUBJECT_FILTER_VALUE) {
+      values.push(KNOWN_CHECKOUT_SUBJECT_OPTIONS)
+      const knownSubjectParam = `$${values.length}`
+      clauses.push(`(
+        NULLIF(TRIM(COALESCE(trial_subject, '')), '') IS NOT NULL
+        AND NOT EXISTS (
+          SELECT 1
+          FROM unnest(${knownSubjectParam}::text[]) AS known_subject(value)
+          WHERE LOWER(TRIM(trial_subject)) = LOWER(TRIM(known_subject.value))
+        )
+      )`)
+    } else if (subject) {
       addWhere(clauses, values, 'LOWER(trial_subject) = LOWER(?)', subject)
     }
 

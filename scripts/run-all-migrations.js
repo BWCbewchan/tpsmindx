@@ -310,7 +310,8 @@ async function main() {
                 { name: 'V105_quan_ly_qc', file: '../migrations/create_quan_ly_qc.sql' },
                 { name: 'V106_quan_ly_qc_teacher_account_and_scaled_score', file: '../migrations/update_quan_ly_qc_teacher_account_and_scaled_score.sql' },
                 { name: 'V107_trial_checkout_raw', file: '../migrations/V107_trial_checkout_raw.sql' },
-                { name: 'V108_trial_checkout_excel_view', file: '../migrations/V108_trial_checkout_excel_view.sql' }
+                { name: 'V108_trial_checkout_excel_view', file: '../migrations/V108_trial_checkout_excel_view.sql' },
+                { name: 'V112_check_cong_import_files', file: '../migrations/V112_check_cong_import_files.sql' }
             ];
 
 

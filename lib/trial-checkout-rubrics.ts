@@ -107,6 +107,9 @@ export const LEGACY_ART_SUBJECT_OPTIONS = [
   'VISUAL COMMUNICATION',
 ]
 
+export const OTHER_SUBJECT_FILTER_VALUE = '__checkout_other_subject__'
+export const OTHER_SUBJECT_FILTER_LABEL = 'Khác'
+
 export const MANAGE_SUBJECT_OPTIONS: Record<TrialTrack, string[]> = {
   Coding: SUBJECT_OPTIONS.Coding,
   Robotics: SUBJECT_OPTIONS.Robotics,
@@ -115,6 +118,14 @@ export const MANAGE_SUBJECT_OPTIONS: Record<TrialTrack, string[]> = {
 
 export const ALL_MANAGE_SUBJECT_OPTIONS = Array.from(
   new Set(Object.values(MANAGE_SUBJECT_OPTIONS).flat()),
+)
+
+export const KNOWN_CHECKOUT_SUBJECT_OPTIONS = Array.from(
+  new Set([
+    ...ALL_SUBJECT_OPTIONS,
+    ...LEGACY_CODING_SUBJECT_OPTIONS,
+    ...LEGACY_ART_SUBJECT_OPTIONS,
+  ]),
 )
 
 export const ACTIVE_CASE_RESULT_OPTIONS = [

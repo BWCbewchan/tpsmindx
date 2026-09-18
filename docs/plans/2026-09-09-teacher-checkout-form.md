@@ -132,6 +132,7 @@ Toan bo duong link public duoc thong nhat ve dinh dang ID so: `/public/checkout/
   - Cac tuy chon bo sung: *Ngày tạo (Cũ nhất), Ngày trải nghiệm (Mới nhất / Cũ nhất), Điểm số (Cao nhất / Thấp nhất), Tên học viên (A - Z)*.
 - Bo loc ho tro day du: tim kiem theo ten giao vien / hoc vien (co debounce 350ms), co so (khong phan biet hoa thuong/khoang trang), khoi, mon hoc, khoang ngay va cac nut loc nhanh (Hom nay, Hom qua, 7 ngay qua, 30 ngay qua, Thang nay, Tat ca).
 - Dieu chinh UI ngay 2026-09-10: bo loc `Co so` va `Mon trai nghiem` dung combobox co the go tim nhanh, ho tro tim khong dau/khong phan biet hoa thuong; khong thay doi query API hay phat sinh du lieu moi.
+- Dieu chinh ngay 2026-09-17: bo loc `Mon trai nghiem` co them muc `Khac` de hien cac phieu co mon do giao vien tu dien khi tao phieu. UI gui sentinel `__checkout_other_subject__`, API chi loc doc cac dong `trial_subject` khong rong va khong thuoc danh sach mon checkout chuan/legacy da biet; khong tao hay mapping them du lieu moi.
 - Bang du lieu hien thi cac badge trang thai ket qua case ro rang va nut "Xem phieu" tro truc tiep vao `/public/checkout/[Id]`.
 - Dieu chinh ngay 2026-09-10: bo loc `Co so` tren trang manage khong so sanh exact truc tiep giua `centers.full_name` va `trial_checkout_raw.center_name`. API `GET /api/user/checkout/forms` tao cac bien the ten co so bang cung logic `normalizeCenter` dang dung khi ghi form moi, sau do match voi `center_name` hien co trong DB. Khong insert/update them du lieu chi de phuc vu bo loc.
 
@@ -164,6 +165,7 @@ Trang thai ap dung database ngay 2026-09-09:
 - `trial_checkout` la view doc theo cot Excel, con `trial_checkout_raw` la bang ghi that su cho import va form moi.
 - `GET /api/user/checkout/forms` bat buoc session hop le nhung khong loc theo giao vien dang nhap; co ho tro filter theo giao vien, hoc vien, co so, khoi, mon va ngay.
 - Filter co so trong `GET /api/user/checkout/forms` la filter doc-only: tham so UI co the la `centers.full_name`, server map ve cac bien the ten checkout va so khop voi `trial_checkout_raw.center_name`; khong phat sinh dong/bang mapping moi.
+- Filter mon `Khac` trong `GET /api/user/checkout/forms` la filter doc-only: tham so UI la sentinel `__checkout_other_subject__`, server so sanh `trial_subject` voi danh sach mon chuan/legacy trong `lib/trial-checkout-rubrics.ts` de lay cac mon tu dien.
 - `POST /api/user/checkout/forms` bat buoc session hop le, validate track/subject/case_result, validate day du diem theo rubric, tinh lai `total_score` tren server va insert vao `trial_checkout_raw`.
 - Khi insert form moi, API khoa bang ngan trong transaction de lay `raw_id = MAX(raw_id) + 1`, tranh trung ID trong truong hop gui dong thoi.
 - Link public cua form moi dung token sinh trong `raw_payload.publicToken` va duoc luu vao cot `Link` cua view `trial_checkout`; dong import cu tren trang quan ly duoc render theo `raw_id` de giao vien xem lai phieu da co.

@@ -1,9 +1,13 @@
 import { requireBearerDbRoles, requireBearerSuperAdmin } from '@/lib/auth-server'
-import { getAdminCheckCong, saveCheckCongCsv } from '@/lib/check-cong-service'
+import {
+  getAdminCheckCong,
+  saveCheckCongImportCsv,
+  saveCheckCongImportWorkbook,
+} from '@/lib/check-cong-service'
 import { clientIpFromRequest, rateLimitOr429 } from '@/lib/rate-limit-memory'
 import { NextRequest, NextResponse } from 'next/server'
 
-const MAX_CSV_BYTES = 25 * 1024 * 1024
+const MAX_IMPORT_BYTES = 25 * 1024 * 1024
 
 export async function GET(request: NextRequest) {
   const gate = await requireBearerDbRoles(request, [
@@ -45,27 +49,42 @@ export async function POST(request: NextRequest) {
 
     if (!file || typeof file === 'string') {
       return NextResponse.json(
-        { success: false, error: 'Vui lòng chọn file CSV' },
+        { success: false, error: 'Vui lòng chọn file CSV hoặc Excel' },
         { status: 400 },
       )
     }
 
-    if (!file.name.toLowerCase().endsWith('.csv')) {
+    const lowerFileName = file.name.toLowerCase()
+    const isCsv = lowerFileName.endsWith('.csv')
+    const isExcel =
+      lowerFileName.endsWith('.xlsx') || lowerFileName.endsWith('.xls')
+
+    if (!isCsv && !isExcel) {
       return NextResponse.json(
-        { success: false, error: 'Chỉ hỗ trợ upload file .csv' },
+        { success: false, error: 'Chỉ hỗ trợ upload file .csv, .xlsx hoặc .xls' },
         { status: 400 },
       )
     }
 
-    if (file.size > MAX_CSV_BYTES) {
+    if (file.size > MAX_IMPORT_BYTES) {
       return NextResponse.json(
-        { success: false, error: 'File CSV vượt quá 25MB' },
+        { success: false, error: 'File import vượt quá 25MB' },
         { status: 400 },
       )
     }
 
-    const csvText = Buffer.from(await file.arrayBuffer()).toString('utf8')
-    const result = await saveCheckCongCsv(csvText)
+    const buffer = Buffer.from(await file.arrayBuffer())
+    const result = isCsv
+      ? await saveCheckCongImportCsv({
+          csvText: buffer.toString('utf8'),
+          originalFileName: file.name,
+          uploadedByEmail: gate.sessionEmail,
+        })
+      : await saveCheckCongImportWorkbook({
+          buffer,
+          originalFileName: file.name,
+          uploadedByEmail: gate.sessionEmail,
+        })
     const month = String(formData.get('month') || 'all')
     const data = await getAdminCheckCong({ month, page: 1, limit: 20 })
 
@@ -75,12 +94,15 @@ export async function POST(request: NextRequest) {
         fileName: file.name,
         size: file.size,
         recordCount: result.recordCount,
+        fileType: isCsv ? 'csv' : 'excel',
+        sheetName: result.sheetName || null,
+        files: result.files,
       },
       ...data,
     })
   } catch (error: unknown) {
     const message =
-      error instanceof Error ? error.message : 'Không thể upload file CSV'
+      error instanceof Error ? error.message : 'Không thể upload file import'
     return NextResponse.json({ success: false, error: message }, { status: 500 })
   }
 }

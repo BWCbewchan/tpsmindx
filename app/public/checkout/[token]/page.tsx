@@ -555,7 +555,7 @@ export default async function PublicCheckoutPage({
           className="sheet-page mt-6 print:mt-0 bg-white px-5 py-6 sm:px-10 sm:py-8 md:px-12 md:py-10 shadow-xl border border-[#e5e5e5] print:border-none print:shadow-none"
         >
           {/* C. ĐÁNH GIÁ NĂNG LỰC / KẾT QUẢ */}
-          <div className="avoid-break" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+          <div>
             <h2 className="mb-1 text-[16px] sm:text-[17px] font-black uppercase text-[#ed1c24]">
               C. ĐÁNH GIÁ NĂNG LỰC
             </h2>

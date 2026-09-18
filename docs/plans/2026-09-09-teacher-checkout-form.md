@@ -9,6 +9,7 @@ Skill da ap dung:
 - `nextjs` de them route App Router va route handler dung session hien co.
 - `frontend-design` de thiet ke form dung nhu mot cong cu noi bo, hop tong TPS MindX, co trang thai loading/error/empty.
 - `frontend-design` de dieu chinh layout print cua phieu public, giu khoi thong tin hoc vien thanh 2 cot nhu giao dien web.
+- `nextjs` de them route danh sach public `/public/checkout` va tach ro API doc public voi API ghi can session.
 
 ## File chinh
 
@@ -20,6 +21,7 @@ Skill da ap dung:
 - Sidebar giao vien: `components/sidebar.tsx`
 - Dock/mobile navigation: `components/dock-nav.tsx`
 - Rubric Phase 2 dung chung client/server: `lib/trial-checkout-rubrics.ts`
+- Trang public danh sach phieu: `app/public/checkout/page.tsx`
 - Trang public xem phieu: `app/public/checkout/[token]/page.tsx`
 - View database cot Excel: `migrations/V108_trial_checkout_excel_view.sql`
 - Script ap dung rieng view: `scripts/apply_trial_checkout_excel_view.js`
@@ -41,7 +43,7 @@ User dang nhap
   -> Sinh publicToken, tu dong tao public URL /public/checkout/[token] va gan vao evidence_link
   -> public.trial_checkout_raw append dong moi, cot Link luu public URL cua phieu
   -> public.trial_checkout view expose dong moi theo dung header Excel
-  -> app/user/checkout/manage load toan bo danh sach tu database (ho tro loc mon khong phan biet hoa thuong)
+  -> app/user/checkout/manage hoac /public/checkout load toan bo danh sach tu database (ho tro loc mon khong phan biet hoa thuong)
   -> Link /public/checkout/[token-or-id] render phieu danh gia de xem/gui ra ngoai
 ```
 
@@ -114,6 +116,7 @@ Toan bo duong link public duoc thong nhat ve dinh dang ID so: `/public/checkout/
 - Dieu chinh print layout ngay 2026-09-10: khoi `A. Thong tin hoc vien` dung class print rieng (`student-info-grid`, `student-info-column`, `info-row`) de ep 2 cot label/value khi xem truoc hoac Save as PDF, khong phu thuoc breakpoint responsive `md`.
 - Dieu chinh header phieu ngay 2026-09-10: logo trai tren public checkout hien dang wordmark `mindX` kem tagline `Tech & AI School` mau trang tren nen MindX red, khong con tach icon X va chu `Technology School`.
 - Dieu chinh print layout ngay 2026-09-10: khong ep `.sheet-page` `break-after: page` nua va khong ep `tbody` `break-inside: avoid`; chi giu `tr` va `.avoid-break` de tranh bi tach dong/tieu chi, giam tinh trang mot trang chi co vai dong roi de trang.
+- Dieu chinh print layout ngay 2026-09-18: bo `avoid-break` tren toan bo khoi `C. Danh gia nang luc` de phan C co the chay len ngay duoi bang B neu trang in con cho, tranh tinh trang hang cuoi bang chiem mot trang va day C sang trang moi.
 - Cau hinh in an chuyen nghiep:
   - `@page { size: A4 portrait; margin: 8mm 8mm; }`
   - Ap dung `break-inside: avoid; page-break-inside: avoid;` cho tung dong/tieu chi danh gia (`tr`, `.avoid-break`), khong ap dung tren toan bo `tbody` de tranh day ca nhom tieu chi sang trang moi va tao khoang trang lon.
@@ -124,7 +127,10 @@ Toan bo duong link public duoc thong nhat ve dinh dang ID so: `/public/checkout/
 
 ## Giao dien quan ly form Checkout (`/user/checkout/manage`)
 
-- Giao dien dong nhat phong cach sang nhe (Light mode) cua he thong TPS MindX (`PageLayout background="gray"`, the trang `bg-white`, vien xam `border-gray-200`), loai bo hoan toan nen toi mau/den truoc day.
+- Giao dien dong nhat phong cach sang nhe (Light mode) cua he thong TPS MindX (`PageLayout background="white"`, the trang `bg-white`, vien xam `border-gray-200`), loai bo hoan toan nen toi mau/den truoc day.
+- Dieu chinh UI ngay 2026-09-18: shell checkout (`/user/checkout/create` va `/user/checkout/manage`) dung nen trang de khop giao dien quan ly phieu, chi giu vien/bang mau nhe cho tung khoi noi dung.
+- Dieu chinh ngay 2026-09-18: them route public `/public/checkout` de xem danh sach phieu checkout khong can dang nhap. Route nay dung lai UI manage va cung goi API doc-only; route tao phieu va thao tac submit van yeu cau session.
+- Dieu chinh ngay 2026-09-18: header trang manage co them nut **"Link public"** canh nut **"Tạo phiếu mới"**, mo `/public/checkout` o tab moi.
 - Nut header tren cung doi ten thanh **"Tạo phiếu đánh giá"** (thay cho "Tạo form").
 - Loai bo nut thua "Viết phiếu đánh giá" nam duoi khu vuc bo loc nhanh.
 - **Bo loc sap xep moi**:
@@ -158,12 +164,12 @@ Trang thai ap dung database ngay 2026-09-09:
 ## Rang buoc
 
 - Form chi ghi database khi Submit o Phase 3 thanh cong.
-- API context chi tra ve thong tin can thiet cho form: email, ten giao vien, ma giao vien, co so mac dinh va danh sach co so active.
+- API context khi co session tra ve thong tin can thiet cho form: email, ten giao vien, ma giao vien, co so mac dinh va danh sach co so active; khi khong co session chi tra danh sach co so active cho bo loc public.
 - Ten giao vien lay tu bang `teachers`; neu khong co record, fallback ve ten email dang nhap.
 - Co so cho phep chon lai de xu ly truong hop teacher bi gan sai center, nhung khong duoc dung lua chon nay lam phan quyen bao cao khi chua mapping/validate server.
-- Du lieu checkout co PII hoc vien, nhan xet va link; theo yeu cau nghiep vu ngay 2026-09-09, giao vien duoc xem toan bo form da gui san trong man hinh quan ly checkout.
+- Du lieu checkout co PII hoc vien, nhan xet va link; theo yeu cau nghiep vu ngay 2026-09-09, giao vien duoc xem toan bo form da gui san trong man hinh quan ly checkout; theo yeu cau ngay 2026-09-18, danh sach nay cung co route public `/public/checkout`.
 - `trial_checkout` la view doc theo cot Excel, con `trial_checkout_raw` la bang ghi that su cho import va form moi.
-- `GET /api/user/checkout/forms` bat buoc session hop le nhung khong loc theo giao vien dang nhap; co ho tro filter theo giao vien, hoc vien, co so, khoi, mon va ngay.
+- `GET /api/user/checkout/forms` la API doc public/read-only cho danh sach checkout; khong loc theo giao vien dang nhap, co ho tro filter theo giao vien, hoc vien, co so, khoi, mon va ngay.
 - Filter co so trong `GET /api/user/checkout/forms` la filter doc-only: tham so UI co the la `centers.full_name`, server map ve cac bien the ten checkout va so khop voi `trial_checkout_raw.center_name`; khong phat sinh dong/bang mapping moi.
 - Filter mon `Khac` trong `GET /api/user/checkout/forms` la filter doc-only: tham so UI la sentinel `__checkout_other_subject__`, server so sanh `trial_subject` voi danh sach mon chuan/legacy trong `lib/trial-checkout-rubrics.ts` de lay cac mon tu dien.
 - `POST /api/user/checkout/forms` bat buoc session hop le, validate track/subject/case_result, validate day du diem theo rubric, tinh lai `total_score` tren server va insert vao `trial_checkout_raw`.

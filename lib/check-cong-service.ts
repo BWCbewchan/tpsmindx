@@ -3,6 +3,7 @@ import { createHash } from 'crypto'
 import path from 'path'
 import {
   CreateBucketCommand,
+  DeleteObjectCommand,
   GetObjectCommand,
   HeadBucketCommand,
   PutObjectCommand,
@@ -571,20 +572,101 @@ function splitParsedCsvByMonth(parsed: ParsedCheckCongCsv): Map<string, string[]
 
 function parseSlotDate(slotTime: string): Date | null {
   const raw = slotTime.trim()
-  const date = new Date(raw)
-  if (!Number.isNaN(date.getTime())) return date
+  if (!raw) return null
 
-  const slash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(.+))?$/)
-  if (slash) {
-    const first = Number(slash[1])
-    const second = Number(slash[2])
-    const year = Number(slash[3])
-    const month = first > 12 ? second : first
-    const day = first > 12 ? first : second
-    const parsed = new Date(year, month - 1, day)
-    return Number.isNaN(parsed.getTime()) ? null : parsed
+  const monthNames: Record<string, number> = {
+    jan: 1,
+    feb: 2,
+    mar: 3,
+    apr: 4,
+    may: 5,
+    jun: 6,
+    jul: 7,
+    aug: 8,
+    sep: 9,
+    oct: 10,
+    nov: 11,
+    dec: 12,
   }
 
+  const buildDate = (
+    year: number,
+    month: number,
+    day: number,
+    timeText = '',
+  ) => {
+    const time = timeText
+      .trim()
+      .match(/^(\d{1,2})(?::(\d{1,2}))?(?::(\d{1,2}))?/)
+    const hour = time ? Number(time[1] || 0) : 0
+    const minute = time ? Number(time[2] || 0) : 0
+    const second = time ? Number(time[3] || 0) : 0
+    if (
+      month < 1 ||
+      month > 12 ||
+      day < 1 ||
+      day > 31 ||
+      hour > 23 ||
+      minute > 59 ||
+      second > 59
+    ) {
+      return null
+    }
+    const parsed = new Date(year, month - 1, day, hour, minute, second)
+    if (
+      Number.isNaN(parsed.getTime()) ||
+      parsed.getFullYear() !== year ||
+      parsed.getMonth() !== month - 1 ||
+      parsed.getDate() !== day
+    ) {
+      return null
+    }
+    return parsed
+  }
+
+  const iso = raw.match(
+    /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s]+(\d{1,2}:\d{1,2}(?::\d{1,2})?))?/,
+  )
+  if (iso) {
+    return buildDate(Number(iso[1]), Number(iso[2]), Number(iso[3]), iso[4])
+  }
+
+  const englishDate = raw.match(
+    /^(?:[A-Za-z]{3}\s+)?([A-Za-z]{3})\s+(\d{1,2})\s+(\d{4})(?:\s+(\d{1,2}:\d{1,2}(?::\d{1,2})?))?/,
+  )
+  if (englishDate) {
+    const month = monthNames[englishDate[1].toLowerCase()]
+    if (month) {
+      return buildDate(
+        Number(englishDate[3]),
+        month,
+        Number(englishDate[2]),
+        englishDate[4],
+      )
+    }
+  }
+
+  const slashDateFirst = raw.match(
+    /^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s+(\d{1,2}:\d{1,2}(?::\d{1,2})?))?/,
+  )
+  if (slashDateFirst) {
+    const day = Number(slashDateFirst[1])
+    const month = Number(slashDateFirst[2])
+    const year = Number(slashDateFirst[3])
+    return buildDate(year, month, day, slashDateFirst[4])
+  }
+
+  const slashTimeFirst = raw.match(
+    /^(\d{1,2}:\d{1,2}(?::\d{1,2})?)\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/,
+  )
+  if (slashTimeFirst) {
+    const day = Number(slashTimeFirst[2])
+    const month = Number(slashTimeFirst[3])
+    const year = Number(slashTimeFirst[4])
+    return buildDate(year, month, day, slashTimeFirst[1])
+  }
+
+  const date = new Date(raw)
   return Number.isNaN(date.getTime()) ? null : date
 }
 
@@ -1014,6 +1096,19 @@ async function persistCheckCongImport(input: {
     })
   }
 
+  async function cleanupUploadedFiles() {
+    await Promise.allSettled(
+      uploadedFiles.map((file) =>
+        client.send(
+          new DeleteObjectCommand({
+            Bucket: file.bucket,
+            Key: file.key,
+          }),
+        ),
+      ),
+    )
+  }
+
   const dbClient = await pool.connect()
   try {
     await dbClient.query('BEGIN')
@@ -1062,6 +1157,7 @@ async function persistCheckCongImport(input: {
     await dbClient.query('COMMIT')
   } catch (error) {
     await dbClient.query('ROLLBACK')
+    await cleanupUploadedFiles()
     throw error
   } finally {
     dbClient.release()

@@ -11,7 +11,33 @@ function textOrEmpty(value: unknown): string {
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireBearerSession(request)
-    if (!auth.ok) return auth.response
+
+    const centersResult = await pool.query(
+      `SELECT id, region, short_code, full_name
+       FROM centers
+       WHERE status = 'Active'
+       ORDER BY region, full_name`,
+    )
+
+    const centers = centersResult.rows.map((row) => ({
+      id: Number(row.id),
+      region: textOrEmpty(row.region) || null,
+      short_code: textOrEmpty(row.short_code) || null,
+      full_name: textOrEmpty(row.full_name),
+    }))
+
+    if (!auth.ok) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          email: '',
+          teacherCode: null,
+          teacherName: '',
+          defaultCenter: '',
+          centers,
+        },
+      })
+    }
 
     const email = auth.sessionEmail.trim().toLowerCase()
     const emailUser = email.split('@')[0] || email
@@ -38,26 +64,12 @@ export async function GET(request: NextRequest) {
       [email, emailUser],
     )
 
-    const centersResult = await pool.query(
-      `SELECT id, region, short_code, full_name
-       FROM centers
-       WHERE status = 'Active'
-       ORDER BY region, full_name`,
-    )
-
     const teacher = teacherResult.rows[0] || {}
     const assignedDefault = auth.accessibleCenters[0]?.full_name || ''
     const defaultCenter =
       textOrEmpty(teacher.default_center) ||
       assignedDefault ||
       textOrEmpty(centersResult.rows[0]?.full_name)
-
-    const centers = centersResult.rows.map((row) => ({
-      id: Number(row.id),
-      region: textOrEmpty(row.region) || null,
-      short_code: textOrEmpty(row.short_code) || null,
-      full_name: textOrEmpty(row.full_name),
-    }))
 
     if (
       defaultCenter &&

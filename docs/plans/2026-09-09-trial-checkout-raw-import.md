@@ -89,6 +89,7 @@ app/user/checkout/create
   -> Supabase public.trial_checkout_raw
   -> Supabase public.trial_checkout view thấy dòng mới theo 32 cột Excel
   -> app/user/checkout/manage qua /api/user/checkout/forms GET
+  -> /public/checkout co the xem danh sach public qua cung API doc-only
   -> người dùng bấm Link để mở trang public dạng phiếu đánh giá
 ```
 
@@ -146,7 +147,7 @@ Ly do khong doi ten truc tiep cot trong bang raw: import script va audit layer c
 
 - Theo yêu cầu nghiệp vụ ngày 2026-09-09, giáo viên được xem toàn bộ form checkout đã gửi sẵn qua API quản lý form.
 - Form mới ghi tiếp vào `trial_checkout_raw` để không tách khỏi bảng checkout cũ; `source_file = teacher-checkout-form`, `source_sheet = app/user/checkout/create`, `raw_payload.source = teacher-checkout-form`.
-- Public page không list dữ liệu; form mới mở bằng `raw_payload.publicToken`, dữ liệu import cũ mở từ trang quản lý bằng `raw_id`.
+- Theo yêu cầu ngày 2026-09-18, `/public/checkout` là trang public xem danh sách phiếu checkout qua API đọc; từng form mới vẫn mở bằng `raw_payload.publicToken`/`raw_id` ở `/public/checkout/[token-or-id]`.
 - Khi xây API/UI trên dữ liệu này, phải lọc theo role và center-scope theo `docs/CENTER_BASED_ACCESS.md`; `center_name` hiện là text nên cần bước mapping sang `centers` trước khi dùng làm phân quyền cứng.
 - Không FK `trial_teacher_name` sang `teachers` trong bảng raw vì file chỉ có tên, chưa có teacher code/email ổn định. Mapping teacher nên làm ở bảng/phần xử lý riêng.
 - Các cột điểm cho phép null vì mỗi môn dùng bộ tiêu chí khác nhau.

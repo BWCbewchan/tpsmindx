@@ -768,7 +768,7 @@ export default function UserCheckoutCreatePage() {
   }
 
   return (
-    <PageLayout background="gray" maxWidth="7xl" padding="responsive" className="px-4 sm:px-6 lg:px-8">
+    <PageLayout background="white" maxWidth="7xl" padding="responsive" className="px-4 sm:px-6 lg:px-8">
       <PageLayoutContent spacing="xl" className="pb-24">
         <PageHeader
           title="Tạo Phiếu Kết Quả Trải Nghiệm"

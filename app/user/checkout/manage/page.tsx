@@ -404,7 +404,7 @@ function SearchableFilterSelect({
 }
 
 export default function UserCheckoutManagePage() {
-  const { token, user } = useAuth()
+  const { token, isLoading: authLoading } = useAuth()
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS)
   const [sortBy, setSortBy] = useState<string>('trial_date_desc')
   const [debouncedTeacher, setDebouncedTeacher] = useState('')
@@ -463,7 +463,7 @@ export default function UserCheckoutManagePage() {
   }, [filters.toDate])
 
   useEffect(() => {
-    if (!user?.email) return
+    if (authLoading) return
     const controller = new AbortController()
     setIsLoadingContext(true)
 
@@ -487,7 +487,7 @@ export default function UserCheckoutManagePage() {
       })
 
     return () => controller.abort()
-  }, [token, user?.email])
+  }, [authLoading, token])
 
   const subjectOptions = useMemo(() => {
     if (!filters.track) return ALL_MANAGE_SUBJECT_OPTIONS
@@ -571,7 +571,7 @@ export default function UserCheckoutManagePage() {
   ])
 
   useEffect(() => {
-    if (!user?.email) return
+    if (authLoading) return
     const controller = new AbortController()
     setIsLoading(true)
     setError('')
@@ -604,7 +604,7 @@ export default function UserCheckoutManagePage() {
       })
 
     return () => controller.abort()
-  }, [queryString, refreshSignal, token, user?.email])
+  }, [authLoading, queryString, refreshSignal, token])
 
   function updateFilter<K extends keyof Filters>(key: K, value: Filters[K]) {
     setActiveQuickFilter('')
@@ -666,19 +666,30 @@ export default function UserCheckoutManagePage() {
   )
 
   return (
-    <PageLayout background="gray" maxWidth="full" padding="responsive" className="px-4 sm:px-6 lg:px-8">
+    <PageLayout background="white" maxWidth="full" padding="responsive" className="px-4 sm:px-6 lg:px-8">
       <PageLayoutContent spacing="xl" className="pb-24">
         <PageHeader
           title="Quản Lý Phiếu Kết Quả Trải Nghiệm"
           description="Tìm kiếm và theo dõi các phiếu kết quả trải nghiệm đánh giá học viên"
           actions={
-            <Link
-              href="/user/checkout/create"
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#b00020] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#90001a]"
-            >
-              <FilePlus2 className="h-4 w-4" />
-              Tạo phiếu mới
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href="/public/checkout"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#f3b4bd] bg-white px-4 text-sm font-semibold text-[#b00020] shadow-sm transition-colors hover:bg-[#b00020]/5"
+              >
+                <ExternalLink className="h-4 w-4" />
+                Link public
+              </Link>
+              <Link
+                href="/user/checkout/create"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#b00020] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#90001a]"
+              >
+                <FilePlus2 className="h-4 w-4" />
+                Tạo phiếu mới
+              </Link>
+            </div>
           }
         />
 

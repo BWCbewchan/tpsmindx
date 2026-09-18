@@ -230,9 +230,6 @@ function formatTrialDateRaw(trialDate: string | null, trialDateRaw?: string): st
 
 export async function GET(request: NextRequest) {
   try {
-    const auth = await requireBearerSession(request)
-    if (!auth.ok) return auth.response
-
     const searchParams = request.nextUrl.searchParams
     const page = Math.max(1, parsePositiveInt(searchParams.get('page'), 1))
     const limit = Math.min(parsePositiveInt(searchParams.get('limit'), 100), 200)

@@ -41,6 +41,21 @@ export function useSystemHealth(requestEmail?: string) {
 
 // ── Engagement ────────────────────────────────────────
 
+interface InteractionRankingItem {
+  rank: number
+  user_id: string
+  interactions: number
+  active_days: number
+  interactions_per_day: number
+}
+
+interface CenterUserDetailItem {
+  user_id: string
+  actor_type: 'teacher' | 'manager'
+  usage_count: number
+  last_seen: string
+}
+
 export interface EngagementData {
   dau: Array<{ date: string; users: number }>
   wau: Array<{ date: string; users: number }>
@@ -58,26 +73,24 @@ export interface EngagementData {
     last_seen: string
     hits_5m: number
   }>
-  user_interaction_ranking: Array<{
-    rank: number
-    user_id: string
-    interactions: number
-    active_days: number
-    interactions_per_day: number
-  }>
+  user_interaction_ranking: InteractionRankingItem[]
+  manager_interaction_ranking: InteractionRankingItem[]
+  teacher_interaction_ranking: InteractionRankingItem[]
   center_usage: Array<{
     center: string
     users: number
+    teacher_users: number
+    manager_users: number
     usage_count: number
     usage_per_user: number
   }>
-  center_user_details: Record<
+  center_user_details: Record<string, CenterUserDetailItem[]>
+  center_actor_details: Record<
     string,
-    Array<{
-      user_id: string
-      usage_count: number
-      last_seen: string
-    }>
+    {
+      teachers: CenterUserDetailItem[]
+      managers: CenterUserDetailItem[]
+    }
   >
 }
 

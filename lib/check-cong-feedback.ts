@@ -1,5 +1,3 @@
-import { promises as fs } from 'fs'
-import path from 'path'
 import pool from '@/lib/db'
 import { createNotification, createNotificationForEveryone } from '@/lib/notification-service'
 import {
@@ -47,15 +45,6 @@ export type CheckCongFeedbackSetting = {
 
 type StoredCheckCongFeedbackSetting = Omit<CheckCongFeedbackSetting, 'canSubmit'>
 
-type CheckCongFeedbackStore = {
-  version: 1
-  nextId: number
-  setting: StoredCheckCongFeedbackSetting
-  feedbacks: CheckCongFeedback[]
-}
-
-const STORE_PATH = path.join(process.cwd(), 'data', 'check-cong-feedback-store.json')
-
 const defaultSetting = (): StoredCheckCongFeedbackSetting => ({
   isOpen: false,
   opensAt: null,
@@ -63,15 +52,6 @@ const defaultSetting = (): StoredCheckCongFeedbackSetting => ({
   updatedByEmail: null,
   updatedAt: null,
 })
-
-const defaultStore = (): CheckCongFeedbackStore => ({
-  version: 1,
-  nextId: 1,
-  setting: defaultSetting(),
-  feedbacks: [],
-})
-
-let writeQueue = Promise.resolve()
 
 function normalizeEmail(value: string) {
   return value.trim().toLowerCase()
@@ -103,28 +83,86 @@ function formatDeadline(raw: Date | string | null) {
   }).format(new Date(raw))
 }
 
-async function readStore(): Promise<CheckCongFeedbackStore> {
-  try {
-    const raw = await fs.readFile(STORE_PATH, 'utf8')
-    const parsed = JSON.parse(raw) as Partial<CheckCongFeedbackStore>
-    return {
-      version: 1,
-      nextId: Math.max(1, Number(parsed.nextId || 1)),
-      setting: {
-        ...defaultSetting(),
-        ...(parsed.setting || {}),
-      },
-      feedbacks: Array.isArray(parsed.feedbacks) ? parsed.feedbacks : [],
-    }
-  } catch (error: unknown) {
-    if ((error as NodeJS.ErrnoException)?.code === 'ENOENT') {
-      return importLegacyDbStore()
-    }
-    throw error
+async function waitForMigrationInit() {
+  if (!global.migrationInitPromise) return
+  await global.migrationInitPromise.catch(() => undefined)
+}
+
+async function ensureCheckCongFeedbackTables() {
+  await waitForMigrationInit()
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS check_cong_feedback_settings (
+      id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+      is_open BOOLEAN NOT NULL DEFAULT FALSE,
+      opens_at TIMESTAMP WITH TIME ZONE,
+      closes_at TIMESTAMP WITH TIME ZONE,
+      updated_by_email VARCHAR(255),
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    INSERT INTO check_cong_feedback_settings (id)
+    VALUES (1)
+    ON CONFLICT (id) DO NOTHING;
+
+    CREATE TABLE IF NOT EXISTS check_cong_feedbacks (
+      id BIGSERIAL PRIMARY KEY,
+      check_key VARCHAR(80) NOT NULL,
+      teacher_email VARCHAR(255) NOT NULL,
+      teacher_name VARCHAR(255),
+      username VARCHAR(100),
+      centre VARCHAR(100),
+      work_type VARCHAR(50),
+      class_name TEXT,
+      course TEXT,
+      course_line TEXT,
+      role_type VARCHAR(100),
+      slot_time TEXT,
+      status_snapshot VARCHAR(50),
+      student_count INTEGER,
+      slot_duration NUMERIC(8,2),
+      effective_duration NUMERIC(8,2),
+      feedback_content TEXT NOT NULL,
+      feedback_status VARCHAR(20) NOT NULL DEFAULT 'pending'
+        CHECK (feedback_status IN ('pending', 'approved', 'rejected')),
+      reviewer_email VARCHAR(255),
+      reviewer_note TEXT,
+      reviewed_at TIMESTAMP WITH TIME ZONE,
+      exported_at TIMESTAMP WITH TIME ZONE,
+      created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(check_key, teacher_email)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_check_cong_feedbacks_status_created
+      ON check_cong_feedbacks(feedback_status, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_check_cong_feedbacks_teacher
+      ON check_cong_feedbacks(LOWER(teacher_email), created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_check_cong_feedbacks_check_key
+      ON check_cong_feedbacks(check_key);
+  `)
+}
+
+function toIsoString(value: unknown): string | null {
+  if (value == null) return null
+  const date = new Date(String(value))
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
+
+function mapSettingRow(
+  row: Record<string, unknown> | undefined,
+): StoredCheckCongFeedbackSetting {
+  if (!row) return defaultSetting()
+  return {
+    isOpen: Boolean(row.is_open),
+    opensAt: toIsoString(row.opens_at),
+    closesAt: toIsoString(row.closes_at),
+    updatedByEmail:
+      row.updated_by_email == null ? null : String(row.updated_by_email),
+    updatedAt: toIsoString(row.updated_at),
   }
 }
 
-function mapLegacyFeedbackRow(row: Record<string, unknown>): CheckCongFeedback {
+function mapFeedbackRow(row: Record<string, unknown>): CheckCongFeedback {
   return {
     id: Number(row.id),
     checkKey: String(row.check_key ?? ''),
@@ -146,120 +184,97 @@ function mapLegacyFeedbackRow(row: Record<string, unknown>): CheckCongFeedback {
     feedbackStatus: String(row.feedback_status || 'pending') as CheckCongFeedbackStatus,
     reviewerEmail: row.reviewer_email == null ? null : String(row.reviewer_email),
     reviewerNote: row.reviewer_note == null ? null : String(row.reviewer_note),
-    reviewedAt: row.reviewed_at == null ? null : new Date(String(row.reviewed_at)).toISOString(),
-    exportedAt: row.exported_at == null ? null : new Date(String(row.exported_at)).toISOString(),
-    createdAt: row.created_at == null ? new Date().toISOString() : new Date(String(row.created_at)).toISOString(),
-    updatedAt: row.updated_at == null ? new Date().toISOString() : new Date(String(row.updated_at)).toISOString(),
+    reviewedAt: toIsoString(row.reviewed_at),
+    exportedAt: toIsoString(row.exported_at),
+    createdAt: toIsoString(row.created_at) ?? new Date().toISOString(),
+    updatedAt: toIsoString(row.updated_at) ?? new Date().toISOString(),
   }
 }
 
-async function importLegacyDbStore(): Promise<CheckCongFeedbackStore> {
-  try {
-    const [settingResult, feedbackResult] = await Promise.all([
-      pool.query(
-        `SELECT is_open, opens_at, closes_at, updated_by_email, updated_at
-         FROM check_cong_feedback_settings
-         WHERE id = 1`,
-      ),
-      pool.query(`SELECT * FROM check_cong_feedbacks ORDER BY id ASC`),
-    ])
-    const legacySetting = settingResult.rows[0]
-    const feedbacks = feedbackResult.rows.map(mapLegacyFeedbackRow)
-    const maxId = feedbacks.reduce((max, feedback) => Math.max(max, feedback.id), 0)
-
-    return {
-      version: 1,
-      nextId: maxId + 1,
-      setting: legacySetting
-        ? {
-            isOpen: Boolean(legacySetting.is_open),
-            opensAt: legacySetting.opens_at
-              ? new Date(legacySetting.opens_at).toISOString()
-              : null,
-            closesAt: legacySetting.closes_at
-              ? new Date(legacySetting.closes_at).toISOString()
-              : null,
-            updatedByEmail: legacySetting.updated_by_email ?? null,
-            updatedAt: legacySetting.updated_at
-              ? new Date(legacySetting.updated_at).toISOString()
-              : null,
-          }
-        : defaultSetting(),
-      feedbacks,
-    }
-  } catch (error: unknown) {
-    if ((error as { code?: string })?.code === '42P01') {
-      return defaultStore()
-    }
-    throw error
-  }
-}
-
-async function writeStore(store: CheckCongFeedbackStore) {
-  await fs.mkdir(path.dirname(STORE_PATH), { recursive: true })
-  const tmpPath = `${STORE_PATH}.tmp`
-  await fs.writeFile(tmpPath, `${JSON.stringify(store, null, 2)}\n`, 'utf8')
-  await fs.rename(tmpPath, STORE_PATH)
-}
-
-async function updateStore<T>(
-  mutator: (store: CheckCongFeedbackStore) => Promise<T> | T,
-): Promise<T> {
-  const run = async () => {
-    const store = await readStore()
-    const result = await mutator(store)
-    await writeStore(store)
-    return result
-  }
-
-  const next = writeQueue.then(run, run)
-  writeQueue = next.then(
-    () => undefined,
-    () => undefined,
+async function readFeedbackSetting(): Promise<StoredCheckCongFeedbackSetting> {
+  await ensureCheckCongFeedbackTables()
+  const result = await pool.query(
+    `SELECT is_open, opens_at, closes_at, updated_by_email, updated_at
+     FROM check_cong_feedback_settings
+     WHERE id = 1`,
   )
-  return next
+  return mapSettingRow(result.rows[0])
 }
 
-async function closeExpiredFeedbackWindow(store: CheckCongFeedbackStore) {
-  const setting = store.setting
-  if (
-    !setting.isOpen &&
-    setting.closesAt &&
-    new Date(setting.closesAt).getTime() < Date.now()
-  ) {
-    store.setting = {
-      ...setting,
-      opensAt: null,
-      closesAt: null,
-      updatedAt: new Date().toISOString(),
-    }
-    return
-  }
+async function closeExpiredFeedbackWindow(): Promise<StoredCheckCongFeedbackSetting> {
+  await ensureCheckCongFeedbackTables()
+  const expiredOpen = await pool.query(
+    `
+    UPDATE check_cong_feedback_settings
+    SET is_open = FALSE,
+        opens_at = NULL,
+        closes_at = NULL,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = 1
+      AND is_open IS TRUE
+      AND closes_at IS NOT NULL
+      AND closes_at < CURRENT_TIMESTAMP
+    RETURNING *
+    `,
+  )
 
-  if (
-    setting.isOpen &&
-    setting.closesAt &&
-    new Date(setting.closesAt).getTime() < Date.now()
-  ) {
-    store.setting = {
-      ...setting,
-      isOpen: false,
-      opensAt: null,
-      closesAt: null,
-      updatedAt: new Date().toISOString(),
-    }
+  if (expiredOpen.rows.length > 0) {
     await Promise.allSettled([
       notifyCheckCongTeachersFeedbackClosed(),
       notifyCheckCongReviewersForClosing(),
     ])
+  } else {
+    await pool.query(
+      `
+      UPDATE check_cong_feedback_settings
+      SET opens_at = NULL,
+          closes_at = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = 1
+        AND is_open IS FALSE
+        AND closes_at IS NOT NULL
+        AND closes_at < CURRENT_TIMESTAMP
+      `,
+    )
   }
+
+  return readFeedbackSetting()
+}
+
+function getFeedbackMonth(feedback: CheckCongFeedback): string {
+  const raw = feedback.slotTime.trim()
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-/)
+  if (iso) return `${iso[1]}-${iso[2].padStart(2, '0')}`
+
+  const englishMonths: Record<string, string> = {
+    jan: '01',
+    feb: '02',
+    mar: '03',
+    apr: '04',
+    may: '05',
+    jun: '06',
+    jul: '07',
+    aug: '08',
+    sep: '09',
+    oct: '10',
+    nov: '11',
+    dec: '12',
+  }
+  const english = raw.match(/^(?:[A-Za-z]{3}\s+)?([A-Za-z]{3})\s+\d{1,2}\s+(\d{4})/)
+  if (english) {
+    const month = englishMonths[english[1].toLowerCase()]
+    if (month) return `${english[2]}-${month}`
+  }
+
+  const viDate = raw.match(/(?:^|\s)(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+  if (viDate) return `${viDate[3]}-${viDate[2].padStart(2, '0')}`
+
+  return feedback.createdAt.slice(0, 7)
 }
 
 export async function getCheckCongFeedbackSetting(): Promise<CheckCongFeedbackSetting> {
-  return updateStore(async (store) => {
-    await closeExpiredFeedbackWindow(store)
-    return withSubmitState(store.setting)
-  })
+  const setting = await closeExpiredFeedbackWindow()
+  return withSubmitState(setting)
 }
 
 export async function updateCheckCongFeedbackSetting(input: {
@@ -268,36 +283,38 @@ export async function updateCheckCongFeedbackSetting(input: {
   closesAt?: string | null
   updatedByEmail: string
 }) {
-  const transition = await updateStore(async (store) => {
-    await closeExpiredFeedbackWindow(store)
-    const previous = store.setting
-    const now = new Date().toISOString()
-    store.setting = {
-      isOpen: input.isOpen,
-      opensAt: input.isOpen ? input.opensAt || null : null,
-      closesAt: input.isOpen ? input.closesAt || null : null,
-      updatedByEmail: normalizeEmail(input.updatedByEmail),
-      updatedAt: now,
-    }
+  const previous = await closeExpiredFeedbackWindow()
+  const result = await pool.query(
+    `
+    UPDATE check_cong_feedback_settings
+    SET is_open = $1,
+        opens_at = $2,
+        closes_at = $3,
+        updated_by_email = $4,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = 1
+    RETURNING *
+    `,
+    [
+      input.isOpen,
+      input.isOpen ? input.opensAt || null : null,
+      input.isOpen ? input.closesAt || null : null,
+      normalizeEmail(input.updatedByEmail),
+    ],
+  )
 
-    return {
-      setting: withSubmitState(store.setting),
-      opened: store.setting.isOpen && !previous.isOpen,
-      closed: previous.isOpen && !store.setting.isOpen,
-    }
-  })
-
-  if (transition.opened) {
-    await notifyCheckCongTeachersFeedbackOpened(transition.setting.closesAt)
+  const setting = withSubmitState(mapSettingRow(result.rows[0]))
+  if (setting.isOpen && !previous.isOpen) {
+    await notifyCheckCongTeachersFeedbackOpened(setting.closesAt)
   }
-  if (transition.closed) {
+  if (previous.isOpen && !setting.isOpen) {
     await Promise.allSettled([
       notifyCheckCongTeachersFeedbackClosed(),
       notifyCheckCongReviewersForClosing(),
     ])
   }
 
-  return transition.setting
+  return setting
 }
 
 async function notifyCheckCongTeachersFeedbackOpened(closesAt: Date | string | null) {
@@ -321,22 +338,41 @@ async function notifyCheckCongTeachersFeedbackClosed() {
 }
 
 export async function getFeedbacksForTeacher(email: string) {
-  const normalized = normalizeEmail(email)
-  const store = await readStore()
-  return store.feedbacks
-    .filter((feedback) => normalizeEmail(feedback.teacherEmail) === normalized)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  await ensureCheckCongFeedbackTables()
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM check_cong_feedbacks
+    WHERE LOWER(TRIM(teacher_email)) = LOWER(TRIM($1))
+    ORDER BY created_at DESC
+    `,
+    [email],
+  )
+  return result.rows.map(mapFeedbackRow)
 }
 
 export async function getFeedbacksForKeys(checkKeys: string[]) {
-  const keys = new Set(checkKeys.filter(Boolean))
-  if (keys.size === 0) return new Map<string, CheckCongFeedback>()
-  const store = await readStore()
-  return new Map(
-    store.feedbacks
-      .filter((feedback) => keys.has(feedback.checkKey))
-      .map((feedback) => [feedback.checkKey, feedback]),
+  const keys = Array.from(new Set(checkKeys.filter(Boolean)))
+  if (keys.length === 0) return new Map<string, CheckCongFeedback>()
+
+  await ensureCheckCongFeedbackTables()
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM check_cong_feedbacks
+    WHERE check_key = ANY($1::text[])
+    ORDER BY updated_at DESC
+    `,
+    [keys],
   )
+  const feedbacks = new Map<string, CheckCongFeedback>()
+  for (const row of result.rows) {
+    const feedback = mapFeedbackRow(row)
+    if (!feedbacks.has(feedback.checkKey)) {
+      feedbacks.set(feedback.checkKey, feedback)
+    }
+  }
+  return feedbacks
 }
 
 export async function submitCheckCongFeedback(input: {
@@ -353,50 +389,82 @@ export async function submitCheckCongFeedback(input: {
     throw new Error('Hiện chưa mở thời gian phản hồi công')
   }
 
+  await ensureCheckCongFeedbackTables()
   const normalizedEmail = normalizeEmail(input.teacherEmail)
-  const now = new Date().toISOString()
-  return updateStore((store) => {
-    const existingIndex = store.feedbacks.findIndex(
-      (feedback) =>
-        feedback.checkKey === input.record.checkKey &&
-        normalizeEmail(feedback.teacherEmail) === normalizedEmail,
+  const result = await pool.query(
+    `
+    INSERT INTO check_cong_feedbacks (
+      check_key,
+      teacher_email,
+      teacher_name,
+      username,
+      centre,
+      work_type,
+      class_name,
+      course,
+      course_line,
+      role_type,
+      slot_time,
+      status_snapshot,
+      student_count,
+      slot_duration,
+      effective_duration,
+      feedback_content,
+      feedback_status,
+      reviewer_email,
+      reviewer_note,
+      reviewed_at,
+      exported_at
     )
-    const current = existingIndex >= 0 ? store.feedbacks[existingIndex] : null
-    const feedback: CheckCongFeedback = {
-      id: current?.id ?? store.nextId++,
-      checkKey: input.record.checkKey,
-      teacherEmail: normalizedEmail,
-      teacherName: input.record.teacherName,
-      username: input.record.username,
-      centre: input.record.centre,
-      workType: input.record.type,
-      className: input.record.className,
-      course: input.record.course,
-      courseLine: input.record.courseLine,
-      roleType: input.record.roleType,
-      slotTime: input.record.slotTime,
-      statusSnapshot: input.record.status,
-      studentCount: input.record.studentCount,
-      slotDuration: input.record.slotDuration,
-      effectiveDuration: input.record.effectiveDuration,
-      feedbackContent: input.content.trim(),
-      feedbackStatus: 'pending',
-      reviewerEmail: null,
-      reviewerNote: null,
-      reviewedAt: null,
-      exportedAt: null,
-      createdAt: current?.createdAt ?? now,
-      updatedAt: now,
-    }
+    VALUES (
+      $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+      $11, $12, $13, $14, $15, $16, 'pending', NULL, NULL, NULL, NULL
+    )
+    ON CONFLICT (check_key, teacher_email)
+    DO UPDATE SET
+      teacher_name = EXCLUDED.teacher_name,
+      username = EXCLUDED.username,
+      centre = EXCLUDED.centre,
+      work_type = EXCLUDED.work_type,
+      class_name = EXCLUDED.class_name,
+      course = EXCLUDED.course,
+      course_line = EXCLUDED.course_line,
+      role_type = EXCLUDED.role_type,
+      slot_time = EXCLUDED.slot_time,
+      status_snapshot = EXCLUDED.status_snapshot,
+      student_count = EXCLUDED.student_count,
+      slot_duration = EXCLUDED.slot_duration,
+      effective_duration = EXCLUDED.effective_duration,
+      feedback_content = EXCLUDED.feedback_content,
+      feedback_status = 'pending',
+      reviewer_email = NULL,
+      reviewer_note = NULL,
+      reviewed_at = NULL,
+      exported_at = NULL,
+      updated_at = CURRENT_TIMESTAMP
+    RETURNING *
+    `,
+    [
+      input.record.checkKey,
+      normalizedEmail,
+      input.record.teacherName,
+      input.record.username,
+      input.record.centre,
+      input.record.type,
+      input.record.className,
+      input.record.course,
+      input.record.courseLine,
+      input.record.roleType,
+      input.record.slotTime,
+      input.record.status,
+      input.record.studentCount,
+      input.record.slotDuration,
+      input.record.effectiveDuration,
+      input.content.trim(),
+    ],
+  )
 
-    if (existingIndex >= 0) {
-      store.feedbacks[existingIndex] = feedback
-    } else {
-      store.feedbacks.push(feedback)
-    }
-
-    return feedback
-  })
+  return mapFeedbackRow(result.rows[0])
 }
 
 async function notifyCheckCongReviewersForClosing() {
@@ -424,18 +492,36 @@ export async function listCheckCongFeedbacks(input: {
   status?: string
   month?: string
 }) {
-  const store = await readStore()
-  return store.feedbacks
+  await ensureCheckCongFeedbackTables()
+  const values: unknown[] = []
+  const where: string[] = []
+  if (input.status && input.status !== 'all') {
+    values.push(input.status)
+    where.push(`feedback_status = $${values.length}`)
+  }
+
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM check_cong_feedbacks
+    ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+    ORDER BY created_at DESC
+    LIMIT 1000
+    `,
+    values,
+  )
+
+  return result.rows
+    .map(mapFeedbackRow)
     .filter((feedback) => {
       if (input.status && input.status !== 'all' && feedback.feedbackStatus !== input.status) {
         return false
       }
       if (input.month && /^\d{4}-\d{2}$/.test(input.month)) {
-        return feedback.createdAt.startsWith(input.month)
+        return getFeedbackMonth(feedback) === input.month
       }
       return true
     })
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 500)
 }
 
@@ -445,20 +531,28 @@ export async function reviewCheckCongFeedback(input: {
   reviewerEmail: string
   reviewerNote?: string
 }) {
-  const feedback = await updateStore((store) => {
-    const index = store.feedbacks.findIndex((item) => item.id === input.id)
-    if (index < 0) throw new Error('Không tìm thấy phản hồi')
-    const updated: CheckCongFeedback = {
-      ...store.feedbacks[index],
-      feedbackStatus: input.status,
-      reviewerEmail: normalizeEmail(input.reviewerEmail),
-      reviewerNote: input.reviewerNote?.trim() || null,
-      reviewedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }
-    store.feedbacks[index] = updated
-    return updated
-  })
+  await ensureCheckCongFeedbackTables()
+  const result = await pool.query(
+    `
+    UPDATE check_cong_feedbacks
+    SET feedback_status = $2,
+        reviewer_email = $3,
+        reviewer_note = $4,
+        reviewed_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1
+    RETURNING *
+    `,
+    [
+      input.id,
+      input.status,
+      normalizeEmail(input.reviewerEmail),
+      input.reviewerNote?.trim() || null,
+    ],
+  )
+
+  if (result.rows.length === 0) throw new Error('Không tìm thấy phản hồi')
+  const feedback = mapFeedbackRow(result.rows[0])
 
   await createNotification({
     recipientEmail: feedback.teacherEmail,
@@ -484,15 +578,15 @@ export async function exportApprovedCheckCongFeedbackCsv() {
   )
 
   if (pendingExport.length > 0) {
-    const exportedIds = new Set(pendingExport.map((row) => row.id))
-    await updateStore((store) => {
-      const now = new Date().toISOString()
-      store.feedbacks = store.feedbacks.map((feedback) =>
-        exportedIds.has(feedback.id)
-          ? { ...feedback, exportedAt: now, updatedAt: now }
-          : feedback,
-      )
-    })
+    await pool.query(
+      `
+      UPDATE check_cong_feedbacks
+      SET exported_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ANY($1::bigint[])
+      `,
+      [pendingExport.map((row) => row.id)],
+    )
   }
 
   return { csv: exported.csv, count: exported.count }

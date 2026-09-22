@@ -54,41 +54,89 @@ function parseRate(value: unknown): number | null {
   return parsed && Number.isFinite(parsed) ? parsed : null
 }
 
+function textValue(value: unknown): string {
+  return String(value ?? '').trim()
+}
+
+async function findTeacherForCheckCong(identity: string) {
+  const normalized = identity.trim().toLowerCase()
+  const username = normalized.includes('@')
+    ? normalized.split('@')[0] || normalized
+    : normalized
+
+  const result = await pool.query(
+    `
+    SELECT
+      code,
+      COALESCE(
+        NULLIF(TRIM(user_name), ''),
+        NULLIF(TRIM("User name"), '')
+      ) AS user_name,
+      COALESCE(
+        NULLIF(TRIM(work_email), ''),
+        NULLIF(TRIM("Work email"), '')
+      ) AS work_email,
+      NULLIF(TRIM(personal_email), '') AS personal_email,
+      COALESCE(
+        NULLIF(TRIM(full_name), ''),
+        NULLIF(TRIM("Full name"), '')
+      ) AS full_name,
+      rate_k12_check,
+      rank_k12_check
+    FROM teachers
+    WHERE LOWER(TRIM(COALESCE(work_email, ''))) = $1
+       OR LOWER(TRIM(COALESCE("Work email", ''))) = $1
+       OR LOWER(TRIM(COALESCE(personal_email, ''))) = $1
+       OR LOWER(TRIM(COALESCE(user_name, ''))) = $2
+       OR LOWER(TRIM(COALESCE("User name", ''))) = $2
+       OR LOWER(TRIM(COALESCE(code, ''))) = $2
+       OR LOWER(TRIM(SPLIT_PART(COALESCE(work_email, ''), '@', 1))) = $2
+       OR LOWER(TRIM(SPLIT_PART(COALESCE("Work email", ''), '@', 1))) = $2
+       OR LOWER(TRIM(SPLIT_PART(COALESCE(personal_email, ''), '@', 1))) = $2
+    LIMIT 1
+    `,
+    [normalized, username],
+  )
+
+  return (result.rows[0] as Record<string, unknown> | undefined) ?? null
+}
+
+function buildTeacherCheckCongInput(
+  authEmail: string,
+  teacher: Record<string, unknown>,
+  month: string,
+) {
+  return {
+    email: textValue(teacher.work_email) || authEmail,
+    sessionEmail: authEmail,
+    personalEmail: textValue(teacher.personal_email),
+    username: textValue(teacher.user_name),
+    code: textValue(teacher.code),
+    fullName: textValue(teacher.full_name),
+    month,
+    hourlyRate: parseRate(teacher.rate_k12_check),
+  }
+}
+
 export const GET = withApiProtection(async (request: NextRequest) => {
   try {
     const auth = await requireBearerOrSessionCookie(request)
     if (!auth.ok) return auth.response
 
     const month = String(request.nextUrl.searchParams.get('month') || 'all')
-    const teacherRes = await pool.query(
-      `
-      SELECT code, user_name, work_email, personal_email, full_name,
-             rate_k12_check, rank_k12_check
-      FROM teachers
-      WHERE LOWER(TRIM(work_email)) = LOWER(TRIM($1))
-         OR LOWER(TRIM("Work email")) = LOWER(TRIM($1))
-      LIMIT 1
-    `,
-      [auth.sessionEmail],
-    )
+    const teacher = await findTeacherForCheckCong(auth.sessionEmail)
 
-    if (teacherRes.rows.length === 0) {
+    if (!teacher) {
       return NextResponse.json(
         { success: false, error: 'Không tìm thấy hồ sơ giáo viên' },
         { status: 404 },
       )
     }
 
-    const teacher = teacherRes.rows[0] as Record<string, unknown>
     const rate = parseRate(teacher.rate_k12_check)
-    const checkCong = await getTeacherCheckCong({
-      email: auth.sessionEmail,
-      personalEmail: String(teacher.personal_email ?? ''),
-      username: String(teacher.user_name ?? ''),
-      code: String(teacher.code ?? ''),
-      month,
-      hourlyRate: rate,
-    })
+    const checkCong = await getTeacherCheckCong(
+      buildTeacherCheckCongInput(auth.sessionEmail, teacher, month),
+    )
 
     const feedbacks = await getFeedbacksForKeys(
       checkCong.records.map((record) => record.checkKey),
@@ -141,34 +189,22 @@ export const POST = withApiProtection(async (request: NextRequest) => {
       )
     }
 
-    const teacherRes = await pool.query(
-      `
-      SELECT code, user_name, work_email, personal_email, full_name,
-             rate_k12_check, rank_k12_check
-      FROM teachers
-      WHERE LOWER(TRIM(work_email)) = LOWER(TRIM($1))
-         OR LOWER(TRIM("Work email")) = LOWER(TRIM($1))
-      LIMIT 1
-    `,
-      [auth.sessionEmail],
-    )
+    const teacher = await findTeacherForCheckCong(auth.sessionEmail)
 
-    if (teacherRes.rows.length === 0) {
+    if (!teacher) {
       return NextResponse.json(
         { success: false, error: 'Không tìm thấy hồ sơ giáo viên' },
         { status: 404 },
       )
     }
 
-    const teacher = teacherRes.rows[0] as Record<string, unknown>
-    const checkCong = await getTeacherCheckCong({
-      email: auth.sessionEmail,
-      personalEmail: String(teacher.personal_email ?? ''),
-      username: String(teacher.user_name ?? ''),
-      code: String(teacher.code ?? ''),
-      month: String(body.month || 'all'),
-      hourlyRate: parseRate(teacher.rate_k12_check),
-    })
+    const checkCong = await getTeacherCheckCong(
+      buildTeacherCheckCongInput(
+        auth.sessionEmail,
+        teacher,
+        String(body.month || 'all'),
+      ),
+    )
     const record = checkCong.records.find((item) => item.checkKey === checkKey)
     if (!record) {
       return NextResponse.json(
@@ -179,7 +215,7 @@ export const POST = withApiProtection(async (request: NextRequest) => {
 
     const feedback = await submitCheckCongFeedback({
       record,
-      teacherEmail: auth.sessionEmail,
+      teacherEmail: record.workEmail || textValue(teacher.work_email) || auth.sessionEmail,
       content,
     })
 

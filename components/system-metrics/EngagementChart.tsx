@@ -47,15 +47,22 @@ export function EngagementChart({
   }))
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between mb-4">
+    <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h3 className="text-sm font-semibold text-gray-800">
           Người dùng hoạt động
         </h3>
-        <div className="flex rounded-lg border border-gray-200 p-0.5 bg-gray-50">
+        <div
+          role="tablist"
+          aria-label="Chọn biểu đồ người dùng hoạt động"
+          className="flex w-fit rounded-lg border border-gray-200 bg-gray-50 p-0.5"
+        >
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'dau'}
             onClick={() => onTabChange('dau')}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-200 ${
+            className={`min-h-9 rounded-md px-3 py-1 text-xs font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a1001f]/35 sm:min-h-0 ${
               activeTab === 'dau'
                 ? 'bg-[#a1001f] text-white shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'
@@ -64,8 +71,11 @@ export function EngagementChart({
             DAU
           </button>
           <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'wau'}
             onClick={() => onTabChange('wau')}
-            className={`px-3 py-1 text-xs font-medium rounded-md transition-all duration-200 ${
+            className={`min-h-9 rounded-md px-3 py-1 text-xs font-medium transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a1001f]/35 sm:min-h-0 ${
               activeTab === 'wau'
                 ? 'bg-[#a1001f] text-white shadow-sm'
                 : 'text-gray-600 hover:text-gray-900'

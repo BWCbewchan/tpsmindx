@@ -62,7 +62,7 @@ export function MetricCard({
   return (
     <div
       className={`
-        relative overflow-hidden rounded-xl border bg-white p-5 
+        relative min-w-0 overflow-hidden rounded-xl border bg-white p-5
         shadow-sm hover:shadow-md transition-all duration-300 group
         ${isWarning ? 'border-red-200 ring-1 ring-red-100' : 'border-gray-200'}
       `}
@@ -77,11 +77,11 @@ export function MetricCard({
       />
 
       {/* Header */}
-      <div className="relative flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2">
+      <div className="relative mb-3 flex min-w-0 items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
           <div
             className={`
-              flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-300
+              flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-300
               ${isWarning
                 ? 'bg-red-50 text-red-600'
                 : 'bg-[#a1001f]/8 text-[#a1001f] group-hover:bg-[#a1001f] group-hover:text-white'
@@ -90,13 +90,13 @@ export function MetricCard({
           >
             <Icon className="h-[18px] w-[18px]" />
           </div>
-          <span className="text-xs font-medium text-gray-500 leading-tight max-w-[120px]">
+          <span className="min-w-0 max-w-[120px] text-xs font-medium leading-tight text-gray-500">
             {label}
           </span>
         </div>
 
         {live && (
-          <span className="flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
@@ -107,8 +107,8 @@ export function MetricCard({
       </div>
 
       {/* Value */}
-      <div className="relative flex items-baseline gap-1.5 mb-1">
-        <span className="text-2xl font-bold tracking-tight text-gray-900">
+      <div className="relative mb-1 flex min-w-0 items-baseline gap-1.5">
+        <span className="min-w-0 truncate text-2xl font-bold tracking-tight text-gray-900">
           {value}
         </span>
         {unit && (

@@ -1445,29 +1445,58 @@ export async function getAdminCheckCong(input: {
 
 export async function getTeacherCheckCong(input: {
   email: string
+  sessionEmail?: string
   personalEmail?: string
   username?: string
   code?: string
+  fullName?: string
   month?: string
   hourlyRate?: number | null
 }) {
   const month = input.month || 'all'
   const records = await loadCheckCongRecords(month)
-  const lookup = new Set(
-    [input.email, input.personalEmail, input.username, input.code]
-      .map(normalize)
-      .filter(Boolean),
-  )
+  const lookup = new Set<string>()
+  const addLookupAlias = (value: unknown) => {
+    const normalized = normalize(value)
+    if (!normalized) return
+    lookup.add(normalized)
+    if (normalized.includes('@')) {
+      const prefix = normalized.split('@')[0]
+      if (prefix) lookup.add(prefix)
+    } else {
+      lookup.add(`${normalized}@mindx.net.vn`)
+    }
+  }
 
-  const teacherRecords = records.filter((record) => {
-    const candidates = [
-      record.workEmail,
-      record.personalEmail,
-      record.username,
-      record.username ? `${record.username}@mindx.net.vn` : '',
-    ].map(normalize)
-    return candidates.some((candidate) => lookup.has(candidate))
-  })
+  const lookupSources = [
+    input.email,
+    input.sessionEmail,
+    input.personalEmail,
+    input.username,
+    input.code,
+  ]
+  lookupSources.forEach(addLookupAlias)
+
+  const findByAliases = () =>
+    records.filter((record) => {
+      const candidates = [
+        record.workEmail,
+        record.personalEmail,
+        record.username,
+        record.username ? `${record.username}@mindx.net.vn` : '',
+        record.workEmail ? record.workEmail.split('@')[0] : '',
+        record.personalEmail ? record.personalEmail.split('@')[0] : '',
+      ].map(normalize)
+      return candidates.some((candidate) => lookup.has(candidate))
+    })
+
+  let teacherRecords = findByAliases()
+  const fullName = normalizeSearchText(input.fullName)
+  if (teacherRecords.length === 0 && fullName) {
+    teacherRecords = records.filter(
+      (record) => normalizeSearchText(record.teacherName) === fullName,
+    )
+  }
 
   const scoped = teacherRecords
     .filter((record) => sameMonth(record, month))

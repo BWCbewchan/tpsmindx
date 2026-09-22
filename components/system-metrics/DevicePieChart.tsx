@@ -22,17 +22,17 @@ export function DevicePieChart({ mobile, desktop }: DevicePieChartProps) {
   const total = mobile + desktop
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h3 className="text-sm font-semibold text-gray-800 mb-4">
+    <div className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
+      <h3 className="mb-4 text-sm font-semibold text-gray-800">
         Phân bổ thiết bị
       </h3>
 
       {total === 0 ? (
-        <div className="flex items-center justify-center h-[180px] text-sm text-gray-400">
+        <div className="flex h-[180px] items-center justify-center text-sm text-gray-400">
           Chưa có dữ liệu
         </div>
       ) : (
-        <div className="flex items-center gap-6">
+        <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
           <ResponsiveContainer width={140} height={140}>
             <PieChart>
               <Pie
@@ -69,14 +69,14 @@ export function DevicePieChart({ mobile, desktop }: DevicePieChartProps) {
           </ResponsiveContainer>
 
           {/* Legend */}
-          <div className="flex flex-col gap-3">
+          <div className="flex w-full min-w-0 flex-row justify-center gap-4 sm:w-auto sm:flex-col sm:justify-start sm:gap-3">
             {data.map((entry, idx) => (
-              <div key={entry.name} className="flex items-center gap-2.5">
+              <div key={entry.name} className="flex min-w-0 items-center gap-2.5">
                 <span
-                  className="h-3 w-3 rounded-sm"
+                  className="h-3 w-3 shrink-0 rounded-sm"
                   style={{ backgroundColor: COLORS[idx % COLORS.length] }}
                 />
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs font-medium text-gray-700">
                     {LABELS[entry.name]}
                   </p>

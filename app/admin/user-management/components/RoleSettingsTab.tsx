@@ -126,19 +126,21 @@ export default function RoleSettingsTab() {
                                     key={r.role_code} 
                                     onClick={() => openRole(r)}
                                     variant="outline"
-                                    className={`text-left p-4 h-auto justify-start transition-all duration-200 hover:shadow-md ${
+                                    className={`w-full min-w-0 flex-col items-stretch overflow-hidden whitespace-normal text-left p-4 h-auto justify-start transition-all duration-200 hover:shadow-md ${
                                         isSelected ? 'border-[#a1001f] bg-red-50 shadow-md' : 'hover:border-gray-300'
                                     }`}
                                     asChild
                                 >
                                     <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-sm font-bold text-gray-900">{r.role_code}</span>
-                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.permission_count > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                                        <div className="mb-1 flex min-w-0 items-start justify-between gap-3">
+                                            <span className="min-w-0 break-words text-sm font-bold text-gray-900">{r.role_code}</span>
+                                            <span className={`shrink-0 whitespace-nowrap text-xs px-2 py-0.5 rounded-full font-medium ${r.permission_count > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                                                 }`}>{r.permission_count} màn hình</span>
                                         </div>
-                                        <p className="text-xs font-medium text-gray-700">{r.role_name}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">{r.description}</p>
+                                        <p className="min-w-0 break-words text-xs font-medium leading-5 text-gray-700">{r.role_name}</p>
+                                        {r.description ? (
+                                            <p className="mt-1 min-w-0 whitespace-normal break-words text-xs leading-5 text-gray-400">{r.description}</p>
+                                        ) : null}
                                     </div>
                                 </Button>
                             );

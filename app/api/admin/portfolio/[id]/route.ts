@@ -23,6 +23,12 @@ export async function DELETE(
 
     const { id } = await params;
     const isSuperAdmin = auth.resolvedAccess.role === 'super_admin';
+    if (!isSuperAdmin && auth.accessibleCenters.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Tài khoản chưa được phân công cơ sở. Vui lòng liên hệ quản trị viên.' },
+        { status: 403 },
+      );
+    }
     const centreNames = isSuperAdmin
       ? []
       : auth.accessibleCenters.map((center) => center.full_name).filter(Boolean);

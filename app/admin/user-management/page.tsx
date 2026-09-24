@@ -14,7 +14,8 @@ import { useSearchParams } from "next/navigation";
 export default function UserManagementPage() {
     const { user } = useAuth();
     const searchParams = useSearchParams();
-    const initialTab = (searchParams.get('tab') as Tab) || 'users';
+    const requestedTab = searchParams.get('tab');
+    const initialTab: Tab = ['users', 'roles', 'screens', 'data'].includes(requestedTab || '') ? requestedTab as Tab : 'users';
     const [tab, setTab] = useState<Tab>(initialTab);
 
     if (user?.role !== 'super_admin') {
@@ -38,25 +39,25 @@ export default function UserManagementPage() {
         {
             key: 'users',
             label: 'Quản lý tài khoản',
-            description: 'Tạo, tìm, gán role và cơ sở cho tài khoản.',
+            description: 'Tạo, tìm, gán vai trò và cơ sở cho tài khoản.',
             icon: <Users className="h-4 w-4" />,
         },
         {
             key: 'roles',
-            label: 'Cài đặt Role',
-            description: 'Phân quyền màn hình theo từng role.',
+            label: 'Cài đặt vai trò',
+            description: 'Phân quyền màn hình theo từng vai trò.',
             icon: <Settings className="h-4 w-4" />,
         },
         {
             key: 'screens',
             label: 'Cài đặt màn hình',
-            description: 'CRUD danh mục màn hình và trạng thái hiển thị.',
+            description: 'Thêm, sửa danh mục màn hình và trạng thái hiển thị.',
             icon: <LayoutGrid className="h-4 w-4" />,
         },
         {
             key: 'data',
             label: 'Dữ liệu tham chiếu',
-            description: 'Centers, leaders và dữ liệu nền cho hệ thống.',
+            description: 'Cơ sở, trưởng nhóm và dữ liệu nền cho hệ thống.',
             icon: <Database className="h-4 w-4" />,
         },
     ];
@@ -72,7 +73,7 @@ export default function UserManagementPage() {
                         Quản lý tài khoản & phân quyền
                     </h1>
                     <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-600 sm:text-[15px]">
-                        Tạo và gán tài khoản, cấu hình role/màn hình, quản lý dữ liệu centers & teaching leaders (một leader có thể phụ trách nhiều khu vực).
+                        Tạo và gán tài khoản, cấu hình vai trò và màn hình, quản lý cơ sở và trưởng nhóm giảng dạy (một trưởng nhóm có thể phụ trách nhiều khu vực).
                     </p>
                 </header>
 

@@ -1,7 +1,7 @@
 [
   {
     "route_path": "/admin/dashboard",
-    "label": "Dashboard",
+    "label": "Bảng điều khiển",
     "group_name": "Tổng quan",
     "sort_order": 1,
     "description": "",
@@ -9,7 +9,7 @@
   },
   {
     "route_path": "/admin/page1",
-    "label": "Thông tin GV",
+    "label": "Thông tin giáo viên",
     "group_name": "Quản lý",
     "sort_order": 2,
     "description": "",
@@ -25,7 +25,7 @@
   },
   {
     "route_path": "/admin/page3",
-    "label": "Màn hình 3",
+    "label": "Màn hình đang phát triển",
     "group_name": "Quản lý",
     "sort_order": 4,
     "description": "",
@@ -52,7 +52,7 @@
     "label": "Tab: GEN Planner",
     "group_name": "Đào tạo đầu vào",
     "sort_order": 7,
-    "description": "",
+    "description": "Mã quyền tab cũ, không phải URL trang độc lập. Phiên bản hiện tại dùng quyền trang GEN Planner; chưa kiểm tra quyền riêng từng tab.",
     "is_active": true
   },
   {
@@ -60,23 +60,23 @@
     "label": "Tab: Theo dõi đào tạo",
     "group_name": "Đào tạo đầu vào",
     "sort_order": 8,
-    "description": "",
+    "description": "Mã quyền tab cũ, không phải URL trang độc lập. Phiên bản hiện tại dùng quyền trang GEN Planner; chưa kiểm tra quyền riêng từng tab.",
     "is_active": true
   },
   {
     "route_path": "/admin/hr-candidates/gen-planner/scheduling",
-    "label": "Tab: Xếp lịch training",
+    "label": "Tab: Xếp lịch đào tạo",
     "group_name": "Đào tạo đầu vào",
     "sort_order": 9,
-    "description": "",
+    "description": "Mã quyền tab cũ, không phải URL trang độc lập. Phiên bản hiện tại dùng quyền trang GEN Planner; chưa kiểm tra quyền riêng từng tab.",
     "is_active": true
   },
   {
     "route_path": "/admin/hr-candidates/gen-planner/overview",
-    "label": "Tab: Theo dõi lịch training",
+    "label": "Tab: Theo dõi lịch đào tạo",
     "group_name": "Đào tạo đầu vào",
     "sort_order": 10,
-    "description": "",
+    "description": "Mã quyền tab cũ, không phải URL trang độc lập. Phiên bản hiện tại dùng quyền trang GEN Planner; chưa kiểm tra quyền riêng từng tab.",
     "is_active": true
   },
   {
@@ -121,7 +121,7 @@
   },
   {
     "route_path": "/admin/thu-vien-de",
-    "label": "Library đề chuyên môn",
+    "label": "Thư viện đề chuyên môn",
     "group_name": "Đánh giá năng lực GV",
     "sort_order": 14,
     "description": "",
@@ -129,7 +129,7 @@
   },
   {
     "route_path": "/admin/page5",
-    "label": "QL đào tạo nâng cao",
+    "label": "Quản lý đào tạo nâng cao",
     "group_name": "Đào tạo",
     "sort_order": 15,
     "description": "",
@@ -145,7 +145,7 @@
   },
   {
     "route_path": "/admin/assignments",
-    "label": "QL Assignments",
+    "label": "Quản lý bài kiểm tra nâng cao",
     "group_name": "Đào tạo",
     "sort_order": 17,
     "description": "",
@@ -153,7 +153,7 @@
   },
   {
     "route_path": "/admin/assignment-questions",
-    "label": "Câu hỏi Assignment",
+    "label": "Câu hỏi bài kiểm tra nâng cao",
     "group_name": "Đào tạo",
     "sort_order": 18,
     "description": "",
@@ -180,12 +180,12 @@
     "label": "Training Studio",
     "group_name": "Đào tạo",
     "sort_order": 21,
-    "description": "",
-    "is_active": true
+    "description": "Mục cũ: không có trang tương ứng trong phiên bản hiện tại. Không dùng để cấp quyền mới.",
+    "is_active": false
   },
   {
     "route_path": "/admin/giaitrinh",
-    "label": "QL Giải trình",
+    "label": "Quản lý giải trình",
     "group_name": "Nội dung",
     "sort_order": 22,
     "description": "",
@@ -209,7 +209,7 @@
   },
   {
     "route_path": "/admin/truyenthong",
-    "label": "QL truyền thông",
+    "label": "Quản lý truyền thông",
     "group_name": "Nội dung",
     "sort_order": 24,
     "description": "",
@@ -217,7 +217,7 @@
   },
   {
     "route_path": "/admin/database",
-    "label": "Database Manager",
+    "label": "Quản lý cơ sở dữ liệu",
     "group_name": "Hệ thống",
     "sort_order": 25,
     "description": "",
@@ -225,7 +225,7 @@
   },
   {
     "route_path": "/admin/cloudinary",
-    "label": "Cloudinary Manager",
+    "label": "Quản lý hình ảnh Cloudinary",
     "group_name": "Hệ thống",
     "sort_order": 26,
     "description": "",
@@ -233,7 +233,7 @@
   },
   {
     "route_path": "/admin/user-management",
-    "label": "QL tài khoản",
+    "label": "Quản lý tài khoản",
     "group_name": "Hệ thống",
     "sort_order": 27,
     "description": "",
@@ -253,6 +253,278 @@
     "group_name": "Quản lý",
     "sort_order": 29,
     "description": "Quản lý và biên tập tài liệu quy trình quy định Leader/TE/TC",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/check-cong",
+    "label": "Kiểm tra chấm công",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 33,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/deal-luong",
+    "label": "Duyệt thỏa thuận lương",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 34,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/tao-deal-luong",
+    "label": "Tạo thỏa thuận lương",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 35,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/portfolio",
+    "label": "Quản lý Portfolio",
+    "group_name": "Portfolio học viên",
+    "sort_order": 36,
+    "description": "Xem danh sách Portfolio học viên. Quyền biên tập được cấp riêng.",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/portfolio/builder",
+    "label": "Biên tập hồ sơ sản phẩm",
+    "group_name": "Biên tập Portfolio",
+    "sort_order": 37,
+    "description": "Quyền biên tập riêng; không tự cấp quyền xem danh sách Portfolio.",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/kiem-soat-spck",
+    "label": "Kiểm soát sản phẩm cuối khóa",
+    "group_name": "Portfolio học viên",
+    "sort_order": 38,
+    "description": "Kiểm soát lớp học và tạo, biên tập Portfolio học viên.",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/feedback",
+    "label": "Quản lý phản hồi",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 39,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/manager-centers",
+    "label": "Quản lý cơ sở phụ trách",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 40,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/email-monitor",
+    "label": "Theo dõi email",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 41,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/quan-ly-be-mai",
+    "label": "Quản lý bé Mai",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 42,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/thong-bao",
+    "label": "Quản lý thông báo",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 43,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/giao-trinh-trai-nghiem",
+    "label": "Giáo trình trải nghiệm",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 44,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/giao-trinh-chuyen-mon",
+    "label": "Giáo trình chuyên môn",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 45,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/s3-supabase-manager",
+    "label": "Quản lý kho lưu trữ",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 46,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/database-migration",
+    "label": "Cập nhật cấu trúc dữ liệu",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 47,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/system-metrics",
+    "label": "Chỉ số hệ thống (chỉ quản trị viên cấp cao)",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 48,
+    "description": "Chỉ quản trị viên cấp cao được truy cập.",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/hr-onboarding",
+    "label": "Quản lý hội nhập",
+    "group_name": "Đào tạo đầu vào",
+    "sort_order": 49,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page2/manage",
+    "label": "Quản lý quy trình K12 Teaching",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 50,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page2/custom",
+    "label": "Tài liệu quy trình tùy chỉnh",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 51,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/quan-ly-tai-lieu-giang-day",
+    "label": "Quản lý tài liệu giảng dạy",
+    "group_name": "Tài liệu giảng dạy",
+    "sort_order": 52,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/xu-ly-tinh-huong",
+    "label": "Xử lý tình huống",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 53,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/hr-candidates/training-documents",
+    "label": "Tài liệu đào tạo đầu vào",
+    "group_name": "Đào tạo đầu vào",
+    "sort_order": 54,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/hr-candidates/pedagogy-training",
+    "label": "Tập huấn sư phạm",
+    "group_name": "Đào tạo đầu vào",
+    "sort_order": 55,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/hr-candidates/input-assessment",
+    "label": "Đánh giá đầu vào",
+    "group_name": "Đào tạo đầu vào",
+    "sort_order": 56,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/hr-candidates/training-calendar",
+    "label": "Lịch đào tạo đầu vào",
+    "group_name": "Đào tạo đầu vào",
+    "sort_order": 57,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/truyenthong/sliders",
+    "label": "Quản lý ảnh trình chiếu",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 58,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/truyenthong/posts",
+    "label": "Quản lý bài truyền thông",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 59,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/truyenthong/posts/create",
+    "label": "Tạo bài truyền thông",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 60,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/thu-vien-de/questions",
+    "label": "Quản lý câu hỏi chuyên môn",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 61,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page4/thu-vien-de",
+    "label": "Thư viện đề đánh giá",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 62,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page4/thu-vien-de/questions",
+    "label": "Câu hỏi đánh giá",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 63,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/page4/form-dang-ky",
+    "label": "Biểu mẫu đăng ký đánh giá",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 64,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/hr-onboarding/videos/lesson",
+    "label": "Chi tiết bài học đầu vào",
+    "group_name": "Đào tạo đầu vào",
+    "sort_order": 65,
+    "description": "",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/giao-trinh",
+    "label": "Chi tiết giáo trình",
+    "group_name": "Chức năng quản trị",
+    "sort_order": 66,
+    "description": "",
     "is_active": true
   }
 ]

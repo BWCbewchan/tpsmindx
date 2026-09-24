@@ -107,6 +107,54 @@ const VALID_STATUS: LeaveStatus[] = [
 
 const MIN_ADVANCE_HOURS_TEACHER = 72;
 
+function dateOnly(value: unknown): string {
+  const raw = String(value ?? '');
+  return raw.includes('T') ? raw.split('T')[0]! : raw.slice(0, 10);
+}
+
+function classTimeStartHhMm(value: unknown): string | null {
+  const match = String(value ?? '').match(/(\d{1,2})(?:h|:)(\d{2})/i);
+  if (!match) return null;
+
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (
+    !Number.isInteger(hour) ||
+    !Number.isInteger(minute) ||
+    hour < 0 ||
+    hour > 23 ||
+    minute < 0 ||
+    minute > 59
+  ) {
+    return null;
+  }
+
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+function leaveStartDateTime(leaveDate: unknown, classTime: unknown): Date | null {
+  const ld = dateOnly(leaveDate);
+  const startHm = classTimeStartHhMm(classTime);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ld) || !startHm) return null;
+
+  const leaveStart = new Date(`${ld}T${startHm}:00+07:00`);
+  return isNaN(leaveStart.getTime()) ? null : leaveStart;
+}
+
+function getMinAdvanceError(leaveDate: unknown, classTime: unknown): string | null {
+  const leaveStart = leaveStartDateTime(leaveDate, classTime);
+  if (!leaveStart) {
+    return 'Không xác định được thời điểm bắt đầu buổi học.';
+  }
+
+  const diffHours = (leaveStart.getTime() - Date.now()) / (1000 * 60 * 60);
+  if (diffHours < MIN_ADVANCE_HOURS_TEACHER) {
+    return `Thời điểm bắt đầu buổi học cần cách hiện tại tối thiểu ${MIN_ADVANCE_HOURS_TEACHER} giờ.`;
+  }
+
+  return null;
+}
+
 type AccessibleCenter = {
   id: number;
   full_name: string;
@@ -457,6 +505,17 @@ export async function POST(request: NextRequest) {
       );
     }
     const normalizedStudentCount = String(studentCountNum);
+
+    const advanceError = getMinAdvanceError(leave_date, trimmedClassTime);
+    if (advanceError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: advanceError,
+        },
+        { status: 400 },
+      );
+    }
 
     const normalizedHasSubstitute = Boolean(has_substitute);
 
@@ -1007,16 +1066,12 @@ export async function PATCH(request: NextRequest) {
         );
       }
 
-      const ldRaw = String(leave_date);
-      const ld =
-        ldRaw.includes('T') ? ldRaw.split('T')[0]! : ldRaw.slice(0, 10);
-      const leaveDateMs = new Date(`${ld}T00:00:00`).getTime();
-      const diffHours = (leaveDateMs - Date.now()) / (1000 * 60 * 60);
-      if (diffHours < MIN_ADVANCE_HOURS_TEACHER) {
+      const advanceError = getMinAdvanceError(leave_date, trimmedClassTime);
+      if (advanceError) {
         return NextResponse.json(
           {
             success: false,
-            error: `Ngày xin nghỉ cần cách thời điểm hiện tại tối thiểu ${MIN_ADVANCE_HOURS_TEACHER} giờ.`,
+            error: advanceError,
           },
           { status: 400 },
         );

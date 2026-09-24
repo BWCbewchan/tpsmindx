@@ -7,12 +7,7 @@ import {
   getBrowserPath,
 } from '@/lib/auth-redirect'
 import { filterManagementPermissions } from '@/lib/admin-permission-routes'
-import {
-  canAccessPortfolioPath,
-  isPortfolioAllowedUser,
-  isPortfolioEditorUser,
-  isPortfolioRoutePath,
-} from '@/lib/menu-permissions'
+import { checkHrefPermission } from '@/lib/menu-permissions'
 import { authHeaders } from '@/lib/auth-headers'
 import { isUnauthorizedStatus, parseJsonSafe } from '@/lib/auth-error-handling'
 import { ArrowLeft, Mail, MessageCircle, ShieldAlert } from 'lucide-react'
@@ -173,15 +168,6 @@ export default function AppLayout({
     token,
     getDatasourceRedirectPath,
   ])
-  const getRoutePermissionAliases = (path: string) => {
-    if (path === '/admin/thu-vien-de') {
-      return ['/admin/thu-vien-de', '/admin/page4/thu-vien-de']
-    }
-    if (path === '/admin/page4/thu-vien-de') {
-      return ['/admin/page4/thu-vien-de', '/admin/thu-vien-de']
-    }
-    return [path]
-  }
 
   useEffect(() => {
     if (isLoading) return
@@ -331,18 +317,6 @@ export default function AppLayout({
       return
     }
 
-    const roleCodes = (user?.userRoles || []).map((code) =>
-      String(code).toUpperCase(),
-    )
-    const hasTrainingInputRole = roleCodes.some(
-      (code) => code === 'HR' || code === 'TE' || code === 'TF',
-    )
-    const isTrainingInputRoute =
-      pathname === '/admin/hr-candidates' ||
-      pathname.startsWith('/admin/hr-candidates/') ||
-      pathname === '/admin/hr-onboarding/videos' ||
-      pathname.startsWith('/admin/hr-onboarding/videos/')
-
     // Redirect to login if authentication required but not authenticated
     if (requireAuth && !user && !hasRedirected.current) {
       hasRedirected.current = true
@@ -350,110 +324,15 @@ export default function AppLayout({
       return
     }
 
-    // Check admin access
-    if (requireAdmin && user) {
-      const isSuperAdmin = user.role === 'super_admin'
-      const canAccessPortfolio = isPortfolioAllowedUser(user)
-      const canEditPortfolio = isPortfolioEditorUser(user)
-      const isAdminUser =
-        user.isAdmin ||
-        ['super_admin', 'admin', 'manager'].includes(user.role) ||
-        canAccessPortfolio
-      const permissions = filterManagementPermissions(user.permissions || []).filter(
-        (permission) =>
-          !isPortfolioRoutePath(permission) ||
-          canAccessPortfolioPath(user, permission),
-      )
-
-      if (!isAdminUser) {
-        // Not an admin at all — redirect to user area
-        if (!hasRedirected.current) {
-          hasRedirected.current = true
-          router.replace('/user/thong-tin-giao-vien')
-        }
-        return
+    if (requireAdmin && user && pathname.startsWith('/admin')) {
+      if (pathname === '/admin/dashboard' && !checkHrefPermission(pathname, user)) {
+        const landing = filterManagementPermissions(user.permissions || []).find(
+          (path) => path.startsWith('/admin/') && checkHrefPermission(path, user),
+        )
+        if (landing) { router.replace(landing); return }
       }
-
-      // Super admin bypasses all permission checks
-      if (!isSuperAdmin) {
-        const PORTFOLIO_QC_ROUTES = ['/admin/deal-luong', '/admin/tao-deal-luong']
-        if (canAccessPortfolio) {
-          PORTFOLIO_QC_ROUTES.push('/admin/portfolio')
-        }
-        if (canEditPortfolio) {
-          PORTFOLIO_QC_ROUTES.push('/admin/kiem-soat-spck')
-        }
-
-        const hasManagementRole =
-          ['manager', 'admin', 'super_admin'].includes(user.role) ||
-          roleCodes.some((code) => ['LEADER', 'TE', 'TC', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(code))
-
-        const hasAnyK12Access = permissions.some((p) => p === '/admin/page2' || p.startsWith('/admin/page2/'))
-        const hasAnyK12LeaderAccess = permissions.some((p) => p === '/admin/quy-trinh-quy-dinh-leader' || p.startsWith('/admin/quy-trinh-quy-dinh-leader/'))
-
-        const extraRoutes: string[] = []
-        if (canAccessPortfolio || ['manager', 'admin'].includes(user.role) || hasManagementRole) {
-          extraRoutes.push(...PORTFOLIO_QC_ROUTES)
-        }
-        if (hasAnyK12Access || hasManagementRole) {
-          extraRoutes.push('/admin/page2', '/admin/page2/manage')
-        }
-        if (hasAnyK12LeaderAccess || hasManagementRole) {
-          extraRoutes.push('/admin/quy-trinh-quy-dinh-leader', '/admin/quy-trinh-quy-dinh-leader/manage')
-        }
-
-        const effectivePermissions = Array.from(new Set([...permissions, ...extraRoutes]))
-
-        // If they have no permissions at all, show contact message
-        if (effectivePermissions.length === 0) {
-          if (hasTrainingInputRole && isTrainingInputRoute) {
-            setNoPermission(false)
-          } else if (hasTrainingInputRole) {
-            router.replace('/admin/hr-candidates/gen-planner')
-            return
-          } else {
-            setNoPermission(true)
-            return
-          }
-        }
-
-        // Check if user has permission for current route
-        // Allow bypass for universal admin routes like /admin/profile
-        if (
-          pathname.startsWith('/admin') &&
-          pathname !== '/admin' &&
-          !pathname.startsWith('/admin/profile')
-        ) {
-          const hasPermission =
-            (hasTrainingInputRole && isTrainingInputRoute) ||
-            (isPortfolioRoutePath(pathname)
-              ? canAccessPortfolioPath(user, pathname)
-              : effectivePermissions.some(
-                  (p) =>
-                    pathname === p ||
-                    pathname.startsWith(`${p}/`) ||
-                    p.startsWith(`${pathname}/`),
-                ))
-
-          if (!hasPermission) {
-            if (hasTrainingInputRole) {
-              router.replace('/admin/hr-candidates/gen-planner')
-              return
-            }
-
-            // Find first allowed valid admin route to redirect to
-            const firstAllowed = effectivePermissions.find((p) =>
-              p.startsWith('/admin/'),
-            )
-            if (firstAllowed) {
-              router.replace(firstAllowed)
-            } else {
-              setNoPermission(true)
-            }
-            return
-          }
-        }
-      }
+      setNoPermission(!checkHrefPermission(pathname, user))
+      return
     }
 
     // Teacher /user gate: xử lý bởi effect teacherGateBlocking + API brief=1 (không redirect /checkdatasource đồng bộ ở đây).
@@ -536,8 +415,7 @@ export default function AppLayout({
     requireAdmin &&
     pathname.startsWith('/admin') &&
     user &&
-    (!user.isAdmin) &&
-    (adminAccessState === 'checking' || adminAccessState === 'idle')
+    adminAccessState !== 'allowed'
 
   if (adminGateBlocking) {
     return null
@@ -549,7 +427,7 @@ export default function AppLayout({
   }
 
   // Fallback UI for unassigned admin roles
-  if (noPermission) {
+  if (noPermission || (requireAdmin && user && !checkHrefPermission(pathname, user))) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center animate-in fade-in zoom-in duration-300">
@@ -560,8 +438,8 @@ export default function AppLayout({
             Chưa được cấp quyền
           </h2>
           <p className="text-gray-600 mb-8">
-            Tài khoản của bạn đã có vai trò Quản lý nhưng chưa được phân quyền
-            truy cập các màn hình cụ thể.
+            Tài khoản của bạn chưa được cấp quyền truy cập màn hình này.
+            Vui lòng liên hệ quản trị viên để được hỗ trợ.
           </p>
 
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-8 text-left">

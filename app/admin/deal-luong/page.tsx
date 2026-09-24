@@ -1,6 +1,8 @@
 'use client';
 
 import { Modal } from '@/components/ui/modal';
+import { checkHrefPermission } from '@/lib/menu-permissions';
+import { authHeaders } from '@/lib/auth-headers';
 import { useAuth } from '@/lib/auth-context';
 import { useEffect, useState, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -98,7 +100,7 @@ function getSteps(deal: SalaryDeal): StepItem[] {
 
 // ─── Component ──────────────────────────────────────
 export default function AdminDealLuongPage() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const dealTypeTab = (searchParams.get('type') as SalaryDeal['deal_type']) || 'bonus';
@@ -120,9 +122,10 @@ export default function AdminDealLuongPage() {
   // ─── Fetch ───────────────────────────────────────
   const fetchDeals = async () => {
     try {
-      const res = await fetch('/api/salary-deals');
+      const res = await fetch('/api/salary-deals', { headers: authHeaders(token) });
       const data = await res.json();
-      if (data.success) setDeals(data.data);
+      if (res.ok && data.success) setDeals(data.data);
+      else { setDeals([]); toast.error(data.error || 'Không thể tải thỏa thuận lương'); }
     } catch { /* ignore */ } finally { setLoading(false); }
   };
 
@@ -177,7 +180,7 @@ export default function AdminDealLuongPage() {
     try {
       const res = await fetch('/api/salary-deals', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
         body: JSON.stringify({
           id: selectedDeal.id,
           action,
@@ -295,6 +298,7 @@ export default function AdminDealLuongPage() {
             />
           </div>
           <Button
+            disabled={!checkHrefPermission('/admin/tao-deal-luong', user)}
             onClick={() => router.push(`/admin/tao-deal-luong?type=${dealTypeTab}`)}
             className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/20 shrink-0"
           >

@@ -3,7 +3,7 @@ import { toast } from "@/lib/app-toast";
 import { useAuth } from "@/lib/auth-context";
 import { authHeaders } from "@/lib/auth-headers";
 import { Loader2, Save, Settings, Plus, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import PermSelector from "./PermSelector";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/primitives/icon";
@@ -14,7 +14,7 @@ interface RoleData {
 }
 
 export default function RoleSettingsTab() {
-    const { token } = useAuth();
+    const { token, refreshPermissions } = useAuth();
     const [roles, setRoles] = useState<RoleData[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedRole, setSelectedRole] = useState<RoleData | null>(null);
@@ -41,21 +41,22 @@ export default function RoleSettingsTab() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [selectedRole, showNewRoleDialog]);
 
-    useEffect(() => { loadRoles(); }, []);
-
-    const loadRoles = async () => {
+    const loadRoles = useCallback(async () => {
         try {
             setLoading(true);
-            const res = await fetch('/api/app-auth/reference-data', { headers: authHeaders(token) });
+            const res = await fetch('/api/app-auth/role-permissions', { headers: authHeaders(token) });
             const data = await res.json();
-            if (data.roles) setRoles(data.roles);
-        } catch { toast.error("Lỗi tải roles"); }
+            if (!res.ok || !Array.isArray(data.roles)) throw new Error();
+            setRoles(data.roles);
+        } catch { toast.error("Không thể tải danh sách vai trò"); }
         finally { setLoading(false); }
-    };
+    }, [token]);
+
+    useEffect(() => { void loadRoles(); }, [loadRoles]);
 
     const openRole = (r: RoleData) => {
         setSelectedRole(r);
-        setPerms(r.permissions.filter(p => p !== null));
+        setPerms((r.permissions || []).filter((p): p is string => typeof p === "string"));
     };
 
     const handleSave = async () => {
@@ -70,7 +71,8 @@ export default function RoleSettingsTab() {
             if (data.success) {
                 toast.success(`Đã lưu ${data.count} quyền cho ${selectedRole.role_code}`);
                 setSelectedRole(null);
-                loadRoles();
+                await refreshPermissions();
+                await loadRoles();
             } else toast.error(data.error || "Lỗi");
         } catch { toast.error("Lỗi kết nối"); }
         finally { setSaving(false); }
@@ -91,10 +93,11 @@ export default function RoleSettingsTab() {
             });
             const data = await res.json();
             if (data.success) {
-                toast.success(`Đã tạo Role ${data.roleCode}`);
+                toast.success(`Đã tạo vai trò ${data.roleCode}`);
                 setShowNewRoleDialog(false);
                 setNewRoleCode(""); setNewRoleName(""); setNewRoleDept(""); setNewRoleDesc("");
-                loadRoles();
+                await refreshPermissions();
+                await loadRoles();
             } else toast.error(data.error || "Lỗi");
         } catch { toast.error("Lỗi kết nối"); }
         finally { setCreatingRole(false); }
@@ -107,10 +110,10 @@ export default function RoleSettingsTab() {
     return (
         <div className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <p className="text-sm text-gray-500">Click vào role để set các màn hình mà role đó được xem. Sau đó gán role cho user ở tab "Quản lý tài khoản".</p>
+                <p className="text-sm text-gray-500">Chọn vai trò để cấu hình các màn hình được truy cập, sau đó gán vai trò cho tài khoản tại thẻ "Quản lý tài khoản".</p>
                 <Button onClick={() => setShowNewRoleDialog(true)} className="flex-shrink-0">
                     <Icon icon={Plus} size="sm" />
-                    Thêm Role Mới
+                    Thêm vai trò mới
                 </Button>
             </div>
 
@@ -126,20 +129,21 @@ export default function RoleSettingsTab() {
                                     key={r.role_code} 
                                     onClick={() => openRole(r)}
                                     variant="outline"
-                                    className={`text-left p-4 h-auto justify-start transition-all duration-200 hover:shadow-md ${
+                                    className={`w-full min-w-0 flex-col items-stretch overflow-hidden whitespace-normal text-left p-4 h-auto justify-start transition-all duration-200 hover:shadow-md ${
                                         isSelected ? 'border-[#a1001f] bg-red-50 shadow-md' : 'hover:border-gray-300'
                                     }`}
-                                    asChild
                                 >
-                                    <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-sm font-bold text-gray-900">{r.role_code}</span>
-                                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${r.permission_count > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                                    <span className="block">
+                                        <span className="mb-1 flex min-w-0 items-start justify-between gap-3">
+                                            <span className="min-w-0 break-words text-sm font-bold text-gray-900">{r.role_code}</span>
+                                            <span className={`shrink-0 whitespace-nowrap text-xs px-2 py-0.5 rounded-full font-medium ${r.permission_count > 0 ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
                                                 }`}>{r.permission_count} màn hình</span>
-                                        </div>
-                                        <p className="text-xs font-medium text-gray-700">{r.role_name}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">{r.description}</p>
-                                    </div>
+                                        </span>
+                                        <span className="block min-w-0 break-words text-xs font-medium leading-5 text-gray-700">{r.role_name}</span>
+                                        {r.description ? (
+                                            <span className="block mt-1 min-w-0 whitespace-normal break-words text-xs leading-5 text-gray-400">{r.description}</span>
+                                        ) : null}
+                                    </span>
                                 </Button>
                             );
                         })}
@@ -186,7 +190,7 @@ export default function RoleSettingsTab() {
                     <div className="cursor-pointer bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4 border-b pb-3">
                             <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                                Thêm Role Mới
+                                Thêm vai trò mới
                             </h3>
                             <Button variant="ghost" size="icon-sm" onClick={() => setShowNewRoleDialog(false)}>
                                 <Icon icon={X} size="sm" />
@@ -194,11 +198,11 @@ export default function RoleSettingsTab() {
                         </div>
                         <form onSubmit={handleCreateRole} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Mã Role</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Mã vai trò</label>
                                 <input type="text" required value={newRoleCode} onChange={e => setNewRoleCode(e.target.value)} placeholder="VD: MKT, HR, AD..." className="w-full border border-gray-300 rounded-lg px-3 py-2 uppercase focus:ring-2 focus:ring-gray-900 focus:border-gray-900 outline-none" />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tên Role hiển thị</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tên vai trò hiển thị</label>
                                 <input type="text" required value={newRoleName} onChange={e => setNewRoleName(e.target.value)} placeholder="VD: Marketing, Hành chính nhân sự..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gray-900 focus:border-gray-900 outline-none" />
                             </div>
                             <div>
@@ -207,7 +211,7 @@ export default function RoleSettingsTab() {
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Mô tả chi tiết</label>
-                                <textarea rows={2} value={newRoleDesc} onChange={e => setNewRoleDesc(e.target.value)} placeholder="Phạm vi công việc của role này..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gray-900 focus:border-gray-900 outline-none resize-none"></textarea>
+                                <textarea rows={2} value={newRoleDesc} onChange={e => setNewRoleDesc(e.target.value)} placeholder="Phạm vi công việc của vai trò này..." className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-gray-900 focus:border-gray-900 outline-none resize-none"></textarea>
                             </div>
                             <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 mt-2">
                                 <Button type="button" variant="outline" onClick={() => setShowNewRoleDialog(false)}>
@@ -219,7 +223,7 @@ export default function RoleSettingsTab() {
                                     loading={creatingRole}
                                 >
                                     <Icon icon={Plus} size="sm" />
-                                    Khởi tạo Role
+                                    Tạo vai trò
                                 </Button>
                             </div>
                         </form>

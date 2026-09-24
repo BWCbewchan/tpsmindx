@@ -19,6 +19,11 @@ const GET_ALL_CLASSES_QUERY = /* graphql */ `
         status
         course { id name shortName courseLine { id name } }
         centre { id name shortName }
+        teachers {
+          isActive
+          teacher { id fullName username code email }
+          role { id name shortName }
+        }
         slots {
           _id
           date
@@ -64,6 +69,31 @@ const GET_ALL_CLASSES_QUERY = /* graphql */ `
   }
 `;
 
+function normalizeEmail(value: unknown): string {
+  return String(value ?? '').toLowerCase().trim();
+}
+
+function isLecAssignment(assignment: any, userEmail: string): boolean {
+  if (assignment?.isActive === false) return false;
+
+  const teacherEmail = normalizeEmail(assignment?.teacher?.email);
+  if (!teacherEmail || teacherEmail !== userEmail) return false;
+
+  const roleValues = [
+    assignment?.role?.shortName,
+    assignment?.role?.name,
+    assignment?.role?.code,
+  ].map((value) => String(value ?? '').trim().toUpperCase());
+
+  return roleValues.includes('LEC');
+}
+
+function hasMatchingTeacherAttendance(slot: any, userEmail: string): boolean {
+  return (slot.teacherAttendance || []).some((attendance: any) => {
+    return normalizeEmail(attendance?.teacher?.email) === userEmail;
+  });
+}
+
 export async function GET(request: NextRequest) {
   const sessionCookie = request.cookies.get(TPS_SESSION_COOKIE)?.value;
   if (!sessionCookie) {
@@ -75,7 +105,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Phiên đăng nhập không hợp lệ' }, { status: 401 });
   }
 
-  const userEmail = session.email.toLowerCase().trim();
+  const userEmail = normalizeEmail(session.email);
 
   const firebaseToken = request.cookies.get('lms_firebase_token')?.value || '';
 
@@ -175,20 +205,23 @@ export async function GET(request: NextRequest) {
 
     const slots = allClasses
       .filter((cls: any) => {
-        // Filter chỉ lấy lớp mà user có role LEC
-        const hasLecRole = (cls.slots || []).some((slot: any) => {
-          return (slot.teachers || []).some((t: any) => {
-            const teacherEmail = t.teacher?.email?.toLowerCase().trim();
-            const roleShortName = t.role?.shortName?.toUpperCase();
-            return teacherEmail === userEmail && roleShortName === 'LEC';
-          });
-        });
+        // Ưu tiên phân công LEC từ LMS; fallback teacherAttendance cho lớp mới
+        // khi slot.teachers/class.teachers chưa được đồng bộ nhưng GV đã dạy.
+        const hasLecRole =
+          (cls.teachers || []).some((t: any) => isLecAssignment(t, userEmail)) ||
+          (cls.slots || []).some((slot: any) =>
+            (slot.teachers || []).some((t: any) => isLecAssignment(t, userEmail)),
+          );
 
-        if (!hasLecRole) {
+        const hasAttendedSlot = (cls.slots || []).some((slot: any) =>
+          hasMatchingTeacherAttendance(slot, userEmail),
+        );
+
+        if (!hasLecRole && !hasAttendedSlot) {
           // skip non-LEC classes
         }
 
-        return hasLecRole;
+        return hasLecRole || hasAttendedSlot;
       })
       .flatMap((cls: any) => {
         const classSlots = (cls.slots || [])

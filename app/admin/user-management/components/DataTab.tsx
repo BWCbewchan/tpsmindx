@@ -203,7 +203,7 @@ function CentersLeadersPanel() {
     loadAll()
   }, [fStatus, fArea, fRole])
 
-  const loadAll = async () => {
+  async function loadAll() {
     setLoading(true)
     try {
       const [cRes, lRes] = await Promise.all([
@@ -1645,7 +1645,7 @@ function RolesPanel() {
     load()
   }, [])
 
-  const load = async () => {
+  async function load() {
     setLoading(true)
     try {
       const [rolesRes, leadersRes] = await Promise.all([

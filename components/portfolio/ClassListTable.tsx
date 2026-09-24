@@ -128,7 +128,7 @@ export default function ClassListTable({
       <div className="bg-white border border-neutral-200 rounded-xl shadow-sm p-12 text-center">
         <div className="text-4xl mb-3">📋</div>
         <h3 className="text-lg font-semibold text-neutral-700 mb-1">
-          Không tìm thấy lớp finished nào
+          Không tìm thấy lớp đã kết thúc nào
         </h3>
         <p className="text-sm text-neutral-500">
           Thử thay đổi bộ lọc hoặc kiểm tra lại kết nối LMS
@@ -245,18 +245,18 @@ export default function ClassListTable({
         {isLoadingMore ? (
           <div className="flex items-center gap-2 text-xs text-neutral-500 font-medium">
             <Loader2 size={16} className="animate-spin text-mindx-red" />
-            <span>Đang tải thêm danh sách lớp finished...</span>
+            <span>Đang tải thêm danh sách lớp đã kết thúc...</span>
           </div>
         ) : hasMore ? (
           <button
             onClick={onLoadMore}
             className="text-xs text-neutral-500 hover:text-mindx-red font-medium transition-colors cursor-pointer py-1 px-4 rounded-full hover:bg-neutral-100 border border-neutral-200"
           >
-            Đã hiển thị {classes.length} / {total || 'nhiều'} lớp finished — Kéo xuống hoặc nhấp để tải tiếp
+            Đã tải {classes.length} lớp phù hợp — Kéo xuống hoặc nhấp để tải tiếp
           </button>
         ) : (
           <div className="text-xs text-neutral-400 font-medium">
-            Đã hiển thị tất cả {classes.length} lớp finished
+            Đã hiển thị tất cả {classes.length} lớp đã kết thúc
           </div>
         )}
       </div>

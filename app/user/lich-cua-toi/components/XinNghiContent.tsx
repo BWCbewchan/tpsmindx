@@ -200,6 +200,34 @@ function timeToMinutes(iso: string): number {
   return (h || 0) * 60 + (m || 0)
 }
 
+function buildLeaveStartDateTime(leaveDate: string, startTime: string | null): Date | null {
+  const dateStr = String(leaveDate || '').includes('T')
+    ? String(leaveDate || '').split('T')[0]
+    : String(leaveDate || '').slice(0, 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr) || !startTime) return null
+
+  const startHm = normalizeHhMm(startTime)
+  if (!/^\d{2}:\d{2}$/.test(startHm)) return null
+
+  const leaveStart = new Date(`${dateStr}T${startHm}:00+07:00`)
+  return isNaN(leaveStart.getTime()) ? null : leaveStart
+}
+
+function getMinAdvanceValidationError(
+  leaveDate: string,
+  startTime: string | null,
+): string | null {
+  const leaveStart = buildLeaveStartDateTime(leaveDate, startTime)
+  if (!leaveStart) return 'Không xác định được thời điểm bắt đầu buổi học.'
+
+  const diffHours = (leaveStart.getTime() - Date.now()) / (1000 * 60 * 60)
+  if (diffHours < MIN_ADVANCE_HOURS) {
+    return `Thời điểm bắt đầu buổi học cần cách hiện tại tối thiểu ${MIN_ADVANCE_HOURS} giờ.`
+  }
+
+  return null
+}
+
 function matchesStatFilter(
   status: LeaveRequest['status'],
   filter: StatFilter | null,
@@ -1510,11 +1538,11 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
       return 'Lý do xin nghỉ cần rõ ràng hơn (tối thiểu 10 ký tự).'
     }
 
-    const leaveDateMs = new Date(`${formData.leave_date}T00:00:00`).getTime()
-    const diffHours = (leaveDateMs - Date.now()) / (1000 * 60 * 60)
-    if (diffHours < MIN_ADVANCE_HOURS) {
-      return `Ngày xin nghỉ cần cách thời điểm hiện tại tối thiểu ${MIN_ADVANCE_HOURS} giờ.`
-    }
+    const advanceError = getMinAdvanceValidationError(
+      formData.leave_date,
+      classTimeStart,
+    )
+    if (advanceError) return advanceError
 
     if (formData.has_substitute) {
       if (
@@ -1626,11 +1654,11 @@ ${editForm.teacher_name || '[Họ Và Tên]'}`
       return 'Lý do xin nghỉ cần rõ ràng hơn (tối thiểu 10 ký tự).'
     }
 
-    const leaveDateMs = new Date(`${editForm.leave_date}T00:00:00`).getTime()
-    const diffHours = (leaveDateMs - Date.now()) / (1000 * 60 * 60)
-    if (diffHours < MIN_ADVANCE_HOURS) {
-      return `Ngày xin nghỉ cần cách thời điểm hiện tại tối thiểu ${MIN_ADVANCE_HOURS} giờ.`
-    }
+    const advanceError = getMinAdvanceValidationError(
+      editForm.leave_date,
+      editClassTimeStart,
+    )
+    if (advanceError) return advanceError
 
     if (editForm.has_substitute) {
       if (

@@ -124,7 +124,7 @@ export default function KiemSoatSpckPage() {
           setPageIndex(targetPageIndex);
           const rawTotal = data.pagination?.total || (isAppend ? classes.length + filteredClasses.length : filteredClasses.length);
           setTotal(rawTotal);
-          setHasMore(rawClasses.length > 0);
+          setHasMore((targetPageIndex + 1) * (data.pagination?.itemsPerPage || 50) < rawTotal);
 
           if (data.accessibleCenters) {
             setCentres(data.accessibleCenters);

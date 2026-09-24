@@ -71,7 +71,7 @@ export default function UsersTab() {
 
     useEffect(() => { loadReferenceData(); }, []);
 
-    const loadReferenceData = async () => {
+    async function loadReferenceData() {
         try {
             setLoading(true);
             const r = await fetch('/api/app-auth/reference-data', { headers: authHeaders(token) });
@@ -83,7 +83,7 @@ export default function UsersTab() {
         finally { setLoading(false); }
     };
 
-    const close = () => {
+    function close() {
         setPanel('none');
         setSel(null);
         setSelCenterIds(new Set());
@@ -346,7 +346,7 @@ export default function UsersTab() {
                     <input
                         value={userSearch}
                         onChange={(e) => setUserSearch(e.target.value)}
-                        placeholder="Tìm theo tên, email, role..."
+                        placeholder="Tìm theo tên, email, vai trò..."
                         className="w-full rounded-lg border border-gray-200 bg-gray-50/80 py-2 pl-10 pr-3 text-sm outline-none transition focus:border-[#a1001f] focus:bg-white focus:ring-2 focus:ring-[#a1001f]/15"
                         aria-label="Tìm người dùng"
                     />
@@ -388,11 +388,11 @@ export default function UsersTab() {
                         {/* Role Filter */}
                         <div className="flex flex-col">
                             <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-blue-600"></span>Role
+                                <span className="w-2 h-2 rounded-full bg-blue-600"></span>Vai trò
                             </label>
                             <input
                                 type="text"
-                                placeholder="Tìm role..."
+                                placeholder="Tìm vai trò..."
                                 value={roleSearch}
                                 onChange={(e) => setRoleSearch(e.target.value)}
                                 className="mb-2 px-2.5 py-1.5 border border-blue-200 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400"
@@ -595,7 +595,7 @@ export default function UsersTab() {
                                 <div className="md:col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">Tên</label>
                                     <input type="text" value={exName} onChange={e => setExName(e.target.value)} placeholder="Nguyễn Văn A" required className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500" /></div>
                             </div>
-                            <div className="mt-4"><label className="block text-sm font-semibold text-gray-800 mb-2">Vai trò (Role)</label>
+                            <div className="mt-4"><label className="block text-sm font-semibold text-gray-800 mb-2">Vai trò</label>
                                 <div className="space-y-4 max-h-[300px] overflow-y-auto border rounded-xl p-3 bg-gray-50/50">
                                     {depts.map(dept => (
                                         <div key={dept}>
@@ -642,7 +642,7 @@ export default function UsersTab() {
                                 <div className="space-y-1"><label className="block text-sm font-medium text-gray-700">Mật khẩu</label>
                                     <div className="relative"><input type={showPw ? "text" : "password"} value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Tối thiểu 6 ký tự" required minLength={6} className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-[#a1001f]/20 focus:border-[#a1001f]" />
                                         <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 p-1 hover:bg-gray-100 rounded-full transition-colors">{showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
-                                <div className="md:col-span-2 space-y-1"><label className="block text-sm font-medium text-gray-700">Vai trò (Role)</label>
+                                <div className="md:col-span-2 space-y-1"><label className="block text-sm font-medium text-gray-700">Vai trò</label>
                                     <div className="space-y-4 max-h-[300px] overflow-y-auto border border-[#a1001f]/20 rounded-xl p-3 bg-gray-50/50">
                                         {depts.map(dept => (
                                             <div key={dept}>
@@ -678,7 +678,7 @@ export default function UsersTab() {
                 <div className="cursor-pointer fixed inset-0 z-modal-backdrop-custom flex items-center justify-center p-4 bg-black/50 overflow-y-auto" onClick={close}>
                     <div className="cursor-pointer bg-white rounded-xl shadow-2xl p-6 w-full max-w-3xl" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-2">
-                            <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900"><Key className="h-5 w-5 text-indigo-600" />Gán role quản lý cho: <span className="text-indigo-600">{sel.display_name}</span></h3>
+                            <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900"><Key className="h-5 w-5 text-indigo-600" />Gán vai trò quản lý cho: <span className="text-indigo-600">{sel.display_name}</span></h3>
                             <button onClick={close} className="text-gray-400 hover:text-gray-600 rounded-full p-1 hover:bg-gray-100 transition-colors"><X className="h-5 w-5" /></button>
                         </div>
                         <p className="text-sm text-gray-500 mb-5 border-b pb-3">Mỗi role chứa một tập hợp các quyền truy cập màn hình. User sẽ được cấp quyền tổng hợp từ những role được chỉ định.</p>
@@ -927,7 +927,7 @@ export default function UsersTab() {
                                                 <button onClick={() => openViewCenters(u)} className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-3 py-2 text-xs font-medium transition-all sm:flex-none ${isSel && panel === 'viewCenters' ? 'bg-green-600 text-white border-green-600' : 'border-green-200 text-green-700 hover:bg-green-50'}`}>
                                                     <Eye className="h-3.5 w-3.5" />Xem cơ sở</button>
                                                 <button onClick={() => openRoles(u)} className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-3 py-2 text-xs font-medium transition-all sm:flex-none ${isSel && panel === 'roles' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-indigo-200 text-indigo-700 hover:bg-indigo-50'}`}>
-                                                    <Key className="h-3.5 w-3.5" />Gán Role</button>
+                                                    <Key className="h-3.5 w-3.5" />Gán vai trò</button>
                                                 {(u.role === 'admin' || u.role === 'manager') && (
                                                     <button onClick={() => openCenters(u)} className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-3 py-2 text-xs font-medium transition-all sm:flex-none ${isSel && panel === 'centers' ? 'bg-blue-600 text-white border-blue-600' : 'border-blue-200 text-blue-700 hover:bg-blue-50'}`}>
                                                         <Building2 className="h-3.5 w-3.5" />Gán cơ sở

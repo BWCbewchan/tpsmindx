@@ -66,9 +66,10 @@ export async function POST(request: NextRequest) {
 
         const { roleCode, permissions } = await request.json();
 
-        if (!roleCode || !Array.isArray(permissions)) {
+        if (typeof roleCode !== 'string' || !roleCode.trim() || !Array.isArray(permissions) ||
+            permissions.some((path: unknown) => typeof path !== 'string' || !path.startsWith('/admin/') || path.includes('?') || path.includes('#'))) {
             return NextResponse.json(
-                { error: 'roleCode và permissions array là bắt buộc' },
+                { error: 'Mã vai trò và danh sách đường dẫn màn hình hợp lệ là bắt buộc' },
                 { status: 400 }
             );
         }
@@ -77,10 +78,16 @@ export async function POST(request: NextRequest) {
         try {
             await client.query('BEGIN');
 
+            const role = await client.query('SELECT role_code FROM roles WHERE role_code = $1 FOR UPDATE', [roleCode]);
+            if (role.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return NextResponse.json({ error: 'Không tìm thấy vai trò' }, { status: 404 });
+            }
+
             // Remove all existing permissions for this role
             await client.query('DELETE FROM role_permissions WHERE role_code = $1', [roleCode]);
 
-            const safePermissions = filterManagementPermissions(permissions);
+            const safePermissions = Array.from(new Set(filterManagementPermissions(permissions)));
 
             // Insert new permissions
             if (safePermissions.length > 0) {
@@ -115,9 +122,9 @@ export async function PUT(request: NextRequest) {
 
         const { roleCode, roleName, department, description } = await request.json();
 
-        if (!roleCode || !roleName || !department) {
+        if ([roleCode, roleName, department].some(value => typeof value !== 'string' || !value.trim()) || (description != null && typeof description !== 'string')) {
             return NextResponse.json(
-                { error: 'Mã Role, Tên Role và Phòng Ban là bắt buộc' },
+                { error: 'Mã vai trò, Tên vai trò và Phòng Ban là bắt buộc' },
                 { status: 400 }
             );
         }
@@ -126,7 +133,7 @@ export async function PUT(request: NextRequest) {
 
         const existing = await pool.query('SELECT role_code FROM roles WHERE role_code = $1', [normalizedCode]);
         if (existing.rows.length > 0) {
-            return NextResponse.json({ error: 'Mã Role này đã tồn tại' }, { status: 409 });
+            return NextResponse.json({ error: 'Mã vai trò này đã tồn tại' }, { status: 409 });
         }
 
         await pool.query(
@@ -149,7 +156,7 @@ export async function PATCH(request: NextRequest) {
 
         const { roleCode, roleName, department, description } = await request.json();
 
-        if (!roleCode || !roleName || !department) {
+        if ([roleCode, roleName, department].some(value => typeof value !== 'string' || !value.trim()) || (description != null && typeof description !== 'string')) {
             return NextResponse.json(
                 { error: 'roleCode, roleName và department là bắt buộc' },
                 { status: 400 }
@@ -174,7 +181,7 @@ export async function PATCH(request: NextRequest) {
         );
 
         if (updated.rowCount === 0) {
-            return NextResponse.json({ error: 'Không tìm thấy role' }, { status: 404 });
+            return NextResponse.json({ error: 'Không tìm thấy vai trò' }, { status: 404 });
         }
 
         return NextResponse.json({ success: true, role: updated.rows[0] });

@@ -516,76 +516,30 @@ export async function fetchClassesForQC(
   data: PortfolioQCClass[];
   pagination: { total: number; pageIndex: number; itemsPerPage: number };
 }> {
-  const pageIndex = filter.pageIndex ?? 0;
-  const itemsPerPage = 50; // Strictly 50 classes per page
-
-  const lmsPage1Index = pageIndex * 2;
-  const lmsPage2Index = lmsPage1Index + 1;
-
+  const pageIndex = Number.isSafeInteger(filter.pageIndex) && Number(filter.pageIndex) >= 0
+    ? Number(filter.pageIndex) : 0;
+  const itemsPerPage = 50;
   const nowMs = Date.now();
-  const nowIso = new Date(nowMs).toISOString();
-
   const baseVariables: Record<string, unknown> = {
-    itemsPerPage: 50,
+    pageIndex,
+    itemsPerPage,
     orderBy: 'endDate_desc',
-    endDateTo: filter.dateTo ? lmsDateToUtcIso(filter.dateTo, true) : nowIso,
+    endDateTo: filter.dateTo ? lmsDateToUtcIso(filter.dateTo, true) : new Date(nowMs).toISOString(),
   };
-
   if (filter.search) baseVariables.search = filter.search;
   if (filter.teacherId) baseVariables.teacherSlot = [filter.teacherId];
   if (filter.dateFrom) baseVariables.endDateFrom = lmsDateToUtcIso(filter.dateFrom);
 
-  // Fetch 2 pages from LMS in parallel (100 candidate classes)
-  const [response1, response2] = await Promise.all([
-    callLmsApi<{
-      data: { classes: { data: Class[]; pagination: { total: number } } };
-    }>(
-      {
-        query: GET_CLASSES_QC_QUERY,
-        operationName: 'GetClasses',
-        variables: { ...baseVariables, pageIndex: lmsPage1Index },
-      },
-      authHeader,
-    ).catch(() => ({ data: { classes: { data: [], pagination: { total: 0 } } } })),
-    callLmsApi<{
-      data: { classes: { data: Class[]; pagination: { total: number } } };
-    }>(
-      {
-        query: GET_CLASSES_QC_QUERY,
-        operationName: 'GetClasses',
-        variables: { ...baseVariables, pageIndex: lmsPage2Index },
-      },
-      authHeader,
-    ).catch(() => ({ data: { classes: { data: [], pagination: { total: 0 } } } })),
-  ]);
-
-  let raw1: Class[] = response1.data?.classes?.data || [];
-  let raw2: Class[] = response2.data?.classes?.data || [];
-  let rawTotal = response1.data?.classes?.pagination?.total || (raw1.length + raw2.length);
-
-  // Fallback retry if 0 classes returned with endDateTo parameter
-  if (raw1.length === 0 && raw2.length === 0) {
-    const fallbackVariables = { ...baseVariables };
-    delete fallbackVariables.endDateTo;
-
-    const [fb1, fb2] = await Promise.all([
-      callLmsApi<{ data: { classes: { data: Class[]; pagination: { total: number } } } }>(
-        { query: GET_CLASSES_QC_QUERY, operationName: 'GetClasses', variables: { ...fallbackVariables, pageIndex: lmsPage1Index } },
-        authHeader,
-      ).catch(() => ({ data: { classes: { data: [], pagination: { total: 0 } } } })),
-      callLmsApi<{ data: { classes: { data: Class[]; pagination: { total: number } } } }>(
-        { query: GET_CLASSES_QC_QUERY, operationName: 'GetClasses', variables: { ...fallbackVariables, pageIndex: lmsPage2Index } },
-        authHeader,
-      ).catch(() => ({ data: { classes: { data: [], pagination: { total: 0 } } } })),
-    ]);
-
-    raw1 = fb1.data?.classes?.data || [];
-    raw2 = fb2.data?.classes?.data || [];
-    rawTotal = fb1.data?.classes?.pagination?.total || (raw1.length + raw2.length);
-  }
+  // Consume exactly one source page: combining two then slicing loses classes.
+  // Propagate LMS errors so the route can refresh expired authentication.
+  const response = await callLmsApi<{
+    data: { classes: { data: Class[]; pagination: { total: number } } };
+  }>({ query: GET_CLASSES_QC_QUERY, operationName: 'GetClasses', variables: baseVariables }, authHeader);
+  const rawClasses = response.data?.classes?.data || [];
+  const rawTotal = response.data?.classes?.pagination?.total ?? rawClasses.length;
 
   // Strictly filter classes whose end date (endDate or final slot date) is <= current time (Date.now())
-  const filteredLmsClasses = [...raw1, ...raw2].filter((c) => {
+  const filteredLmsClasses = rawClasses.filter((c) => {
     if (!c) return false;
 
     // Filter requirement: Only include classes with 14 sessions (numberOfSessions >= 14 or slots >= 14)

@@ -9,7 +9,9 @@ import {
   BarChart3,
   BookOpen,
   CalendarCheck,
+  Check,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   ClipboardCheck,
   Clock,
@@ -345,19 +347,22 @@ interface FeatureTabConfig {
     title: string;
     description: string;
     icon: React.ComponentType<{ className?: string }>;
-    detailIcon: React.ComponentType<{ className?: string }>;
     accent: string;
-    numberClass: string;
-    lineClass: string;
-    haloClass: string;
+    numberColor: string;
   }>;
   sectionsBoxTitle: string;
   sectionsBoxSubtitle: string;
-  tags: Array<{ label: string; icon: React.ComponentType<{ className?: string }> }>;
+  tags: Array<{
+    label: string;
+    icon: React.ComponentType<{ className?: string }>;
+    color?: string;
+  }>;
   ctaLabelAdmin: string;
   ctaHrefAdmin: string;
   ctaLabelTeacher: string;
   ctaHrefTeacher: string;
+  guideHrefAdmin: string;
+  guideHrefTeacher: string;
 }
 
 const FEATURES_MAP: Record<FeatureTabId, FeatureTabConfig> = {
@@ -376,46 +381,39 @@ const FEATURES_MAP: Record<FeatureTabId, FeatureTabConfig> = {
         title: 'Dữ liệu lớp học',
         description: 'Quản lý tiến độ lưu trữ sản phẩm cuối khóa của học viên',
         icon: GraduationCap,
-        detailIcon: BarChart3,
-        accent: 'text-sky-700 bg-sky-50 border-sky-100',
-        numberClass: 'text-sky-300',
-        lineClass: 'bg-sky-500',
-        haloClass: 'bg-sky-100 text-sky-600',
+        accent: 'bg-sky-50 text-sky-700 border-sky-100/80',
+        numberColor: 'text-slate-300',
       },
       {
         title: 'Hồ sơ năng lực',
         description: 'Áp dụng dữ liệu từ LMS để tạo và xuất bản Portfolio cá nhân của học viên',
         icon: LayoutTemplate,
-        detailIcon: IdCard,
-        accent: 'text-[#a1001f] bg-rose-50 border-rose-100',
-        numberClass: 'text-rose-300',
-        lineClass: 'bg-[#a1001f]',
-        haloClass: 'bg-rose-100 text-[#a1001f]',
+        accent: 'bg-rose-50 text-[#a1001f] border-rose-100/80',
+        numberColor: 'text-slate-300',
       },
       {
         title: 'Quản lý & theo dõi',
         description: 'Theo dõi trạng thái, mở bản public và kiểm soát chất lượng sản phẩm cuối\u00A0khóa',
         icon: FileStack,
-        detailIcon: ShieldCheck,
-        accent: 'text-emerald-700 bg-emerald-50 border-emerald-100',
-        numberClass: 'text-emerald-300',
-        lineClass: 'bg-emerald-500',
-        haloClass: 'bg-emerald-100 text-emerald-600',
+        accent: 'bg-emerald-50 text-emerald-700 border-emerald-100/80',
+        numberColor: 'text-slate-300',
       },
     ],
     sectionsBoxTitle: 'Các phần trong Portfolio',
     sectionsBoxSubtitle: 'Người phụ trách có thể kiểm tra nội dung và chọn trạng thái phù hợp trước khi chia sẻ.',
     tags: [
-      { label: 'Thông tin học viên', icon: GraduationCap },
-      { label: 'Lộ trình học tập', icon: BookOpen },
-      { label: 'Dự án / Sản phẩm', icon: Sparkles },
-      { label: 'Thư viện hình ảnh', icon: Layers },
-      { label: 'Thành tích', icon: Award },
+      { label: 'Thông tin học viên', icon: GraduationCap, color: 'text-sky-600' },
+      { label: 'Lộ trình học tập', icon: BookOpen, color: 'text-rose-600' },
+      { label: 'Dự án / Sản phẩm', icon: Sparkles, color: 'text-amber-500' },
+      { label: 'Thư viện hình ảnh', icon: Layers, color: 'text-indigo-600' },
+      { label: 'Thành tích', icon: Award, color: 'text-emerald-600' },
     ],
     ctaLabelAdmin: 'Mở Quản lý Portfolio',
     ctaHrefAdmin: '/admin/portfolio',
     ctaLabelTeacher: 'Xem chi tiết',
     ctaHrefTeacher: '/admin/portfolio',
+    guideHrefAdmin: '/admin/quy-trinh-quy-dinh-leader?doc=iv-quy-trinh-lam-viec%2F1-codingroboticsart-leader%2F14-portfolio-ho-so-hoc-vien',
+    guideHrefTeacher: '/admin/quy-trinh-quy-dinh-leader?doc=iv-quy-trinh-lam-viec%2F1-codingroboticsart-leader%2F14-portfolio-ho-so-hoc-vien',
   },
   checkout: {
     id: 'checkout',
@@ -432,44 +430,37 @@ const FEATURES_MAP: Record<FeatureTabId, FeatureTabConfig> = {
         title: 'Tiêu chí Rubrics',
         description: 'Bộ tiêu chí đánh giá tư duy, kỹ năng và thao tác chuẩn hóa cho từng\u00A0khối',
         icon: ClipboardCheck,
-        detailIcon: Award,
-        accent: 'text-amber-700 bg-amber-50 border-amber-100',
-        numberClass: 'text-amber-300',
-        lineClass: 'bg-amber-500',
-        haloClass: 'bg-amber-100 text-amber-600',
+        accent: 'bg-amber-50 text-amber-700 border-amber-100/80',
+        numberColor: 'text-slate-300',
       },
       {
         title: 'Nhận xét & lộ trình',
         description: 'Phù hợp cho học viên trải nghiệm, ghi nhận xét chi tiết và định hướng phát\u00A0triển',
         icon: FileText,
-        detailIcon: IdCard,
-        accent: 'text-[#a1001f] bg-rose-50 border-rose-100',
-        numberClass: 'text-rose-300',
-        lineClass: 'bg-[#a1001f]',
-        haloClass: 'bg-rose-100 text-[#a1001f]',
+        accent: 'bg-rose-50 text-[#a1001f] border-rose-100/80',
+        numberColor: 'text-slate-300',
       },
       {
-        title: 'PDF',
+        title: 'Xuất bản PDF',
         description: 'Xuất bản phiếu kết quả trải nghiệm định dạng PDF sắc nét, thuận tiện lưu\u00A0trữ',
         icon: FileCheck,
-        detailIcon: ShieldCheck,
-        accent: 'text-emerald-700 bg-emerald-50 border-emerald-100',
-        numberClass: 'text-emerald-300',
-        lineClass: 'bg-emerald-500',
-        haloClass: 'bg-emerald-100 text-emerald-600',
+        accent: 'bg-emerald-50 text-emerald-700 border-emerald-100/80',
+        numberColor: 'text-slate-300',
       },
     ],
     sectionsBoxTitle: 'Tiện ích phiếu kết quả trải nghiệm',
     sectionsBoxSubtitle: 'Hỗ trợ giáo viên và đội ngũ quản lý đồng bộ dữ liệu nhanh chóng, chính xác.',
     tags: [
-      { label: 'Đánh giá Rubrics', icon: ClipboardCheck },
-      { label: 'Tư vấn lộ trình', icon: BookOpen },
-      { label: 'PDF', icon: FileCheck },
+      { label: 'Đánh giá Rubrics', icon: ClipboardCheck, color: 'text-amber-600' },
+      { label: 'Tư vấn lộ trình', icon: BookOpen, color: 'text-sky-600' },
+      { label: 'Định dạng PDF', icon: FileCheck, color: 'text-rose-600' },
     ],
     ctaLabelAdmin: 'Xem Quản lý Phiếu',
     ctaHrefAdmin: '/user/checkout/manage',
     ctaLabelTeacher: 'Tạo phiếu trải nghiệm',
     ctaHrefTeacher: '/user/checkout/create',
+    guideHrefAdmin: '/admin/page2?doc=v.-quy-trinh-van-hanh-buoi-trai-nghiem%2Fquy-trinh-mot-ca-trai-nghiem%2Fphieu-danh-gia-ket-qua-trai-nghiem-checkout',
+    guideHrefTeacher: '/user/quy-trinh-quy-dinh?doc=v.-quy-trinh-van-hanh-buoi-trai-nghiem%2Fquy-trinh-mot-ca-trai-nghiem%2Fphieu-danh-gia-ket-qua-trai-nghiem-checkout',
   },
   checkcong: {
     id: 'checkcong',
@@ -486,46 +477,39 @@ const FEATURES_MAP: Record<FeatureTabId, FeatureTabConfig> = {
         title: 'Đối soát giờ dạy',
         description: 'Thống kê chi tiết giờ thực tế, ca slot, số buổi đứng lớp và ca trực trải\u00A0nghiệm',
         icon: Clock,
-        detailIcon: BarChart3,
-        accent: 'text-emerald-700 bg-emerald-50 border-emerald-100',
-        numberClass: 'text-emerald-300',
-        lineClass: 'bg-emerald-500',
-        haloClass: 'bg-emerald-100 text-emerald-600',
+        accent: 'bg-emerald-50 text-emerald-700 border-emerald-100/80',
+        numberColor: 'text-slate-300',
       },
       {
         title: 'Tiến độ check công',
         description: 'Theo dõi tiến độ hoàn tất check công với cảnh báo ca sót kịp thời trước ngày khóa\u00A0sổ',
         icon: CalendarCheck,
-        detailIcon: ShieldCheck,
-        accent: 'text-sky-700 bg-sky-50 border-sky-100',
-        numberClass: 'text-sky-300',
-        lineClass: 'bg-sky-500',
-        haloClass: 'bg-sky-100 text-sky-600',
+        accent: 'bg-sky-50 text-sky-700 border-sky-100/80',
+        numberColor: 'text-slate-300',
       },
       {
         title: 'Cổng phản hồi',
         description: 'Gửi khiếu nại trực tiếp trên hệ thống và theo dõi kết quả xử lý từ ban quản\u00A0lý',
         icon: FileStack,
-        detailIcon: Award,
-        accent: 'text-[#a1001f] bg-rose-50 border-rose-100',
-        numberClass: 'text-rose-300',
-        lineClass: 'bg-[#a1001f]',
-        haloClass: 'bg-rose-100 text-[#a1001f]',
+        accent: 'bg-rose-50 text-[#a1001f] border-rose-100/80',
+        numberColor: 'text-slate-300',
       },
     ],
     sectionsBoxTitle: 'Tính năng cốt lõi',
     sectionsBoxSubtitle: 'Đảm bảo mọi quyền lợi và thù lao giảng dạy được đối soát công khai, chuẩn mực.',
     tags: [
-      { label: 'Giờ thực tế & Slot', icon: Clock },
-      { label: 'Tỷ lệ check công', icon: CheckCircle2 },
-      { label: 'Cổng phản hồi công', icon: FileStack },
-      { label: 'Tạm tính thù lao', icon: Award },
-      { label: 'Báo cáo cơ sở', icon: BarChart3 },
+      { label: 'Giờ thực tế & Slot', icon: Clock, color: 'text-emerald-600' },
+      { label: 'Tỷ lệ check công', icon: CheckCircle2, color: 'text-sky-600' },
+      { label: 'Cổng phản hồi', icon: FileStack, color: 'text-rose-600' },
+      { label: 'Tạm tính thù lao', icon: Award, color: 'text-amber-600' },
+      { label: 'Báo cáo cơ sở', icon: BarChart3, color: 'text-indigo-600' },
     ],
     ctaLabelAdmin: 'Mở Kiểm tra công',
     ctaHrefAdmin: '/admin/check-cong',
     ctaLabelTeacher: 'Kiểm tra công của tôi',
     ctaHrefTeacher: '/user/thong-tin-giao-vien?tab=checkCong',
+    guideHrefAdmin: '/admin/page2?doc=iv.-quy-trinh-quy-dinh-chung%2Fhuong-dan-kiem-tra-cong-luong',
+    guideHrefTeacher: '/user/quy-trinh-quy-dinh?doc=iv.-quy-trinh-quy-dinh-chung%2Fhuong-dan-kiem-tra-cong-luong',
   },
 };
 
@@ -552,29 +536,34 @@ export function AdminPortfolioFeaturePopup() {
     return false;
   }, [pathname, user]);
 
-  // Tab list strictly conditioned by role:
-  // - Management side: 3 tabs [portfolio, checkout, checkcong]
-  // - Teacher side: ONLY 2 tabs [checkout, checkcong] (no portfolio)
-  const availableTabs = useMemo<FeatureTabConfig[]>(() => {
+  // Step list strictly conditioned by role:
+  // - Management side: 3 steps [portfolio, checkout, checkcong]
+  // - Teacher side: ONLY 2 steps [checkout, checkcong] (no portfolio)
+  const availableSteps = useMemo<FeatureTabConfig[]>(() => {
     if (isManagement) {
       return [FEATURES_MAP.portfolio, FEATURES_MAP.checkout, FEATURES_MAP.checkcong];
     }
     return [FEATURES_MAP.checkout, FEATURES_MAP.checkcong];
   }, [isManagement]);
 
-  const [selectedTabId, setSelectedTabId] = useState<FeatureTabId | null>(null);
+  const [currentStepIndex, setCurrentStepIndex] = useState(0);
 
-  const activeTabId = useMemo<FeatureTabId>(() => {
-    if (selectedTabId && availableTabs.some((t) => t.id === selectedTabId)) {
-      return selectedTabId;
+  const activeIndex = useMemo(() => {
+    if (currentStepIndex >= availableSteps.length) {
+      return availableSteps.length - 1;
     }
-    return availableTabs[0]?.id || 'checkout';
-  }, [availableTabs, selectedTabId]);
+    if (currentStepIndex < 0) return 0;
+    return currentStepIndex;
+  }, [availableSteps.length, currentStepIndex]);
 
   const currentFeature = useMemo(
-    () => FEATURES_MAP[activeTabId] || availableTabs[0] || FEATURES_MAP.checkout,
-    [activeTabId, availableTabs],
+    () => availableSteps[activeIndex] || FEATURES_MAP.checkout,
+    [activeIndex, availableSteps],
   );
+
+  const isFirstStep = activeIndex === 0;
+  const isLastStep = activeIndex === availableSteps.length - 1;
+  const nextFeature = !isLastStep ? availableSteps[activeIndex + 1] : null;
 
   const canShow = useMemo(() => {
     if (!user) return false;
@@ -599,7 +588,10 @@ export function AdminPortfolioFeaturePopup() {
   useEffect(() => {
     setMounted(true);
     // Allow triggering from console or custom events at any time
-    const handleForceOpen = () => setOpen(true);
+    const handleForceOpen = () => {
+      setCurrentStepIndex(0);
+      setOpen(true);
+    };
     window.addEventListener('open-feature-popup', handleForceOpen);
     if (typeof window !== 'undefined') {
       (window as unknown as { __showFeaturePopup?: () => void }).__showFeaturePopup = handleForceOpen;
@@ -648,6 +640,24 @@ export function AdminPortfolioFeaturePopup() {
     router.push(href);
   }, [closePopup, currentFeature, isManagement, router]);
 
+  const handleReadGuide = useCallback(() => {
+    closePopup();
+    const href = isManagement ? currentFeature.guideHrefAdmin : currentFeature.guideHrefTeacher;
+    router.push(href);
+  }, [closePopup, currentFeature, isManagement, router]);
+
+  const handleNextStep = useCallback(() => {
+    if (!isLastStep) {
+      setCurrentStepIndex((prev) => Math.min(prev + 1, availableSteps.length - 1));
+    } else {
+      closePopup();
+    }
+  }, [availableSteps.length, closePopup, isLastStep]);
+
+  const handlePrevStep = useCallback(() => {
+    setCurrentStepIndex((prev) => Math.max(prev - 1, 0));
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -662,6 +672,22 @@ export function AdminPortfolioFeaturePopup() {
       if (event.key === 'Escape' && !event.isComposing) {
         event.preventDefault();
         closePopup();
+        return;
+      }
+
+      if (event.key === 'ArrowRight' && !event.isComposing) {
+        if (!isLastStep) {
+          event.preventDefault();
+          handleNextStep();
+        }
+        return;
+      }
+
+      if (event.key === 'ArrowLeft' && !event.isComposing) {
+        if (!isFirstStep) {
+          event.preventDefault();
+          handlePrevStep();
+        }
         return;
       }
 
@@ -702,7 +728,7 @@ export function AdminPortfolioFeaturePopup() {
       }
       previousFocusRef.current = null;
     };
-  }, [closePopup, open]);
+  }, [closePopup, handleNextStep, handlePrevStep, isFirstStep, isLastStep, open]);
 
   if (!mounted || !open) return null;
 
@@ -710,18 +736,8 @@ export function AdminPortfolioFeaturePopup() {
   const ctaLabel = isManagement ? currentFeature.ctaLabelAdmin : currentFeature.ctaLabelTeacher;
 
   return createPortal(
-    <div className="fixed inset-0 z-modal-raised-custom flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-md sm:p-6 animate-fadeIn">
-      <style>{`
-        @keyframes portfolioFeatureBorderSpin {
-          to { transform: rotate(360deg); }
-        }
-        .portfolio-feature-border {
-          -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-          -webkit-mask-composite: xor;
-          mask-composite: exclude;
-        }
-      `}</style>
-      <button className="absolute inset-0 cursor-default" type="button" aria-label="Đóng popup tính năng" onClick={closePopup} />
+    <div className="fixed inset-0 z-modal-raised-custom flex items-center justify-center overflow-y-auto bg-slate-950/60 p-2 sm:p-4 md:p-6 backdrop-blur-md animate-fadeIn">
+      <button className="fixed inset-0 cursor-default" type="button" aria-label="Đóng popup tính năng" onClick={closePopup} />
       <section
         ref={dialogRef}
         role="dialog"
@@ -729,57 +745,26 @@ export function AdminPortfolioFeaturePopup() {
         aria-labelledby={TITLE_ID}
         aria-describedby={DESC_ID}
         tabIndex={-1}
-        className="relative flex flex-col lg:grid lg:grid-cols-[1fr_1.18fr] max-h-[calc(100vh-24px)] sm:max-h-[calc(100vh-40px)] w-full max-w-[1040px] overflow-hidden rounded-[24px] sm:rounded-[28px] border border-[#a1001f]/25 bg-white shadow-[0_30px_90px_rgba(15,23,42,0.32)] outline-none ring-1 ring-white/60"
+        className="relative flex flex-col my-auto max-h-[calc(100dvh-16px)] sm:max-h-[calc(100dvh-32px)] md:max-h-[calc(100dvh-48px)] w-full max-w-[1020px] overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200/90 bg-white shadow-[0_24px_64px_-12px_rgba(15,23,42,0.22)] outline-none"
       >
-        <span
-          className="portfolio-feature-border pointer-events-none absolute inset-0 z-30 rounded-[24px] sm:rounded-[28px] p-[1.5px]"
-          aria-hidden="true"
-        >
-          <span className="absolute -inset-[55%] block animate-[portfolioFeatureBorderSpin_8s_linear_infinite] bg-[conic-gradient(from_90deg,rgba(161,0,31,0.08),rgba(161,0,31,0.78),rgba(244,180,45,0.32),rgba(161,0,31,0.78),rgba(161,0,31,0.08))]" />
-        </span>
         <button
           type="button"
           onClick={closePopup}
-          className="absolute right-3 top-3 z-40 grid h-9 w-9 place-items-center rounded-full border border-white/70 bg-white/90 text-slate-500 shadow-sm backdrop-blur transition duration-300 hover:rotate-90 hover:scale-105 hover:border-[#a1001f]/30 hover:bg-white hover:text-[#a1001f] focus:outline-none focus:ring-4 focus:ring-[#a1001f]/15"
+          className="absolute right-3.5 top-3.5 z-40 grid h-8 w-8 place-items-center rounded-full border border-slate-200/80 bg-white/90 text-slate-400 shadow-2xs backdrop-blur transition hover:bg-slate-100 hover:text-slate-700 focus:outline-none"
           aria-label="Đóng popup"
         >
-          <X className="h-4.5 w-4.5 transition-transform duration-300" />
+          <X className="h-4 w-4" />
         </button>
 
-        {/* MOBILE TAB SELECTOR (Chỉ hiển thị trên mobile/tablet < lg ở đầu trang để điều khiển toàn bộ popup) */}
-        <div className="lg:hidden shrink-0 border-b border-slate-200/80 bg-white/95 backdrop-blur-sm px-4 pt-3.5 pb-2.5 z-30">
-          <div className="flex flex-wrap items-center gap-1.5 pr-9">
-            {availableTabs.map((tab) => {
-              const isActive = tab.id === activeTabId;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setSelectedTabId(tab.id)}
-                  className={cn(
-                    'inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs font-bold transition-all duration-200 focus:outline-none whitespace-nowrap',
-                    isActive
-                      ? 'bg-[#a1001f] text-white shadow-sm shadow-[#a1001f]/20'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900',
-                  )}
-                >
-                  <span>{tab.tabLabel}</span>
-                  {isActive && <ChevronRight className="h-3 w-3 opacity-80" />}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* SCROLLABLE WRAPPER ON MOBILE (< lg), DUAL-COLUMN GRID ON DESKTOP (>= lg) */}
-        <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden flex flex-col lg:contents">
+        {/* DIALOG BODY: SCROLLABLE ON MOBILE, 2-COLUMN GRID ON DESKTOP */}
+        <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden flex flex-col lg:grid lg:grid-cols-[1fr_1.18fr]">
           {/* ── LEFT COLUMN: PREVIEW & VALUE PROPOSITION ──────────────── */}
-          <div className="relative flex flex-col bg-[#f8f2e7] px-5 py-5 sm:px-7 sm:py-6 text-slate-950 lg:justify-between lg:overflow-hidden lg:h-full shrink-0">
-            <div className="absolute inset-0 bg-[#f8f2e7]" aria-hidden />
+          <div className="relative flex flex-col bg-[#fcfbfa] px-5 py-4 sm:px-7 sm:py-6 text-slate-950 border-b lg:border-b-0 lg:border-r border-slate-100 lg:overflow-y-auto min-h-0 justify-between">
+            <div className="absolute inset-0 bg-[#fcfbfa]" aria-hidden />
             {notebookLines.map((top) => (
               <span
                 key={top}
-                className="absolute left-8 right-8 border-t border-slate-900/[0.035]"
+                className="absolute left-8 right-8 border-t border-slate-900/[0.025]"
                 style={{ top }}
                 aria-hidden="true"
               />
@@ -787,130 +772,128 @@ export function AdminPortfolioFeaturePopup() {
 
             {/* Header text on Left */}
             <div className="relative z-10 pr-8 lg:pr-0">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-[#a1001f]/15 bg-white/80 px-2.5 py-0.5 text-[10.5px] font-black uppercase tracking-[0.14em] text-[#a1001f] shadow-sm">
-                <Sparkles className="h-3 w-3 text-[#a1001f]" />
-                Tính năng mới
+              <div className="flex items-center gap-2">
+                <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-2.5 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#a1001f] shadow-2xs">
+                  <Sparkles className="h-3 w-3 text-[#a1001f]" />
+                  Tính năng mới
+                </div>
+                <span className="rounded-full border border-slate-200/80 bg-white px-2 py-0.5 text-[10px] font-mono font-bold text-slate-500 shadow-2xs">
+                  {activeIndex + 1}/{availableSteps.length}
+                </span>
               </div>
-              <h2 id={TITLE_ID} className="mt-2.5 max-w-[420px] text-lg sm:text-2xl lg:text-[26px] font-black leading-tight tracking-normal text-slate-900 text-balance text-pretty">
+              <h2 id={TITLE_ID} className="mt-2.5 max-w-[420px] text-lg sm:text-2xl lg:text-[25px] font-bold leading-tight tracking-tight text-slate-900 text-balance text-pretty">
                 {currentFeature.title}
               </h2>
-              <p id={DESC_ID} className="mt-1.5 max-w-[430px] text-xs sm:text-sm font-medium leading-relaxed text-slate-600 text-pretty">
+              <p id={DESC_ID} className="mt-1.5 max-w-[430px] text-xs sm:text-sm font-normal leading-relaxed text-slate-500 text-pretty">
                 {currentFeature.description}
               </p>
             </div>
 
-            {/* Interactive Stack Preview (Hiển thị đầy đủ skeleton, cách text an toàn bằng mt-6 sm:mt-8) */}
-            <div className="relative z-10 mt-6 sm:mt-8 flex items-center justify-center pb-4">
+            {/* Interactive Stack Preview */}
+            <div className="relative z-10 mt-4 sm:mt-6 lg:mt-8 flex items-center justify-center pb-2 sm:pb-4">
               <div className="w-full max-w-[340px]">
                 <PreviewComponent />
               </div>
             </div>
           </div>
 
-          {/* ── RIGHT COLUMN: TAB SELECTOR, HIGHLIGHTS & CONTENT ──── */}
-          <div className="relative z-10 flex flex-1 flex-col bg-[linear-gradient(180deg,#ffffff_0%,#fff7f8_100%)] lg:min-h-0 lg:overflow-hidden">
-            {/* Middle Body: Scrollable on Desktop, Natural flow on Mobile */}
-            <div className="p-4 sm:p-6 space-y-3.5 lg:flex-1 lg:overflow-y-auto">
-              {/* DESKTOP TAB SELECTOR HEADER (Chỉ hiện trên desktop >= lg) */}
-              <div className="hidden lg:block border-b border-slate-100 pb-2.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  {availableTabs.map((tab) => {
-                    const isActive = tab.id === activeTabId;
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => setSelectedTabId(tab.id)}
-                        className={cn(
-                          'inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[#a1001f]/30 whitespace-nowrap',
-                          isActive
-                            ? 'bg-[#a1001f] text-white shadow-md shadow-[#a1001f]/20 scale-[1.02]'
-                            : 'bg-slate-100/90 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900',
-                        )}
-                      >
-                        <span>{tab.tabLabel}</span>
-                        {isActive && <ChevronRight className="h-3.5 w-3.5 opacity-80" />}
-                      </button>
-                    );
-                  })}
-                </div>
+          {/* ── RIGHT COLUMN: STEP HEADER, HIGHLIGHTS & CONTENT ──── */}
+          <div className="relative z-10 flex flex-1 flex-col bg-white min-h-0 lg:overflow-hidden">
+            {/* STEP HEADER: Replaces tabs with clean indicator & clickable step pills */}
+            <div className="shrink-0 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-3.5 pr-16 sm:pr-20 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#a1001f] shrink-0">
+                  {currentFeature.badge}
+                </span>
+                <span className="text-slate-300 shrink-0">•</span>
+                <span className="text-xs font-semibold text-slate-700 truncate">
+                  {currentFeature.tabLabel}
+                </span>
               </div>
 
+              {/* Clickable Step Pills */}
+              <div className="flex items-center gap-1.5 shrink-0" role="tablist" aria-label="Các bước cập nhật">
+                {availableSteps.map((step, idx) => {
+                  const isActive = idx === activeIndex;
+                  return (
+                    <button
+                      key={step.id}
+                      type="button"
+                      onClick={() => setCurrentStepIndex(idx)}
+                      className={cn(
+                        'h-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#a1001f]/30',
+                        isActive
+                          ? 'w-6 bg-[#a1001f]'
+                          : idx < activeIndex
+                            ? 'w-2.5 bg-slate-400 hover:bg-slate-500'
+                            : 'w-2.5 bg-slate-200 hover:bg-slate-300',
+                      )}
+                      aria-label={`Bước ${idx + 1}: ${step.tabLabel}`}
+                      title={`Bước ${idx + 1}: ${step.tabLabel}`}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Middle Content inside Right Column: Scrollable if height is constrained */}
+            <div className="p-4 sm:p-6 space-y-3.5 sm:space-y-4 flex-1 overflow-y-auto min-h-0">
               {/* TITLE & SUBTITLE */}
               <div className="pr-2 sm:pr-8">
-                <p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#a1001f]">
+                <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#a1001f]">
                   {currentFeature.highlightsTitle}
                 </p>
-                <h3 className="mt-1 text-base font-black text-slate-950 sm:text-lg text-balance text-pretty">
+                <h3 className="mt-1 text-base font-bold text-slate-900 sm:text-lg text-balance text-pretty">
                   {currentFeature.highlightsSubtitle}
                 </h3>
               </div>
 
-              {/* 3 HIGHLIGHTS CARDS */}
+              {/* 3 HIGHLIGHTS CARDS - VỪA PHẢI, MÀU DỊU NHẸ, KHÔNG RỐI */}
               <div className="grid auto-rows-fr gap-2.5 sm:grid-cols-3">
                 {currentFeature.highlights.map((item, index) => {
                   const Icon = item.icon;
-                  const DetailIcon = item.detailIcon;
                   return (
                     <article
                       key={item.title}
-                      className="relative flex min-h-[145px] sm:min-h-[185px] flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white p-3 sm:p-3.5 pb-0 shadow-xs transition hover:-translate-y-0.5 hover:border-[#a1001f]/20 hover:shadow-md"
+                      className="flex flex-col rounded-xl border border-slate-200/80 bg-white p-3.5 shadow-2xs transition hover:border-slate-300 hover:shadow-xs"
                     >
-                      <span className="absolute inset-x-0 top-0 h-1 rounded-t-2xl bg-slate-100" aria-hidden="true" />
-                      <div className="flex items-start justify-between gap-2">
-                        <div className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-xl border', item.accent)}>
-                          <Icon className="h-4 w-4 shrink-0" />
+                      <div className="flex items-center justify-between gap-2">
+                        <div className={cn('grid h-7 w-7 shrink-0 place-items-center rounded-lg border', item.accent)}>
+                          <Icon className="h-3.5 w-3.5" />
                         </div>
-                        <span className={cn('text-[11px] font-black', item.numberClass)}>
+                        <span className={cn('text-[11px] font-mono font-bold', item.numberColor)}>
                           {String(index + 1).padStart(2, '0')}
                         </span>
                       </div>
-                      <h4 className="mt-2 text-xs font-black leading-snug text-slate-950 text-balance text-pretty">{item.title}</h4>
-                      <div className={cn('mt-1 h-0.5 w-8 rounded-full', item.lineClass)} aria-hidden="true" />
-                      <p className="mt-1.5 text-[10.5px] font-medium leading-[1.5] text-slate-500 text-pretty">
+                      <h4 className="mt-2.5 text-xs font-bold leading-snug text-slate-900 text-balance text-pretty">
+                        {item.title}
+                      </h4>
+                      <p className="mt-1 text-[11px] font-normal leading-[1.5] text-slate-500 text-pretty">
                         {item.description}
                       </p>
-
-                      {/* VÒNG TRÒN ICON ĐÁY THẺ - NẰM TRONG VÙNG RIÊNG TÁCH BIỆT HOÀN TOÀN VỚI CHỮ */}
-                      <div className="mt-auto flex items-end justify-center pt-2">
-                        <span
-                          className={cn(
-                            'grid h-8 w-14 sm:h-9 sm:w-16 place-items-center rounded-t-full shadow-2xs border-t border-x border-white/60',
-                            item.haloClass,
-                          )}
-                          aria-hidden="true"
-                        >
-                          <DetailIcon className="h-4 w-4 sm:h-4.5 sm:w-4.5 mb-0.5" />
-                        </span>
-                      </div>
                     </article>
                   );
                 })}
               </div>
 
-              {/* SECTIONS BOX */}
-              <div className="rounded-2xl border border-slate-200 bg-white p-3.5 shadow-xs">
-                <div className="flex items-start gap-2.5">
-                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-slate-950 text-white">
-                    <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs sm:text-sm font-black text-slate-950 text-balance text-pretty">{currentFeature.sectionsBoxTitle}</h4>
-                    <p className="mt-0.5 text-2xs sm:text-xs font-medium leading-relaxed text-slate-500 text-pretty">
-                      {currentFeature.sectionsBoxSubtitle}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {currentFeature.tags.map((item) => {
-                    const Icon = item.icon;
+              {/* SECTIONS / TAGS BOX - CÓ ICON NHỎ XINH, MÀU SẮC DỊU DÀNG VỪA PHẢI */}
+              <div className="rounded-xl border border-slate-200/80 bg-slate-50/50 p-3.5">
+                <h4 className="text-xs font-bold text-slate-900 text-balance text-pretty">
+                  {currentFeature.sectionsBoxTitle}
+                </h4>
+                <p className="mt-0.5 text-2xs sm:text-xs font-normal leading-relaxed text-slate-500 text-pretty">
+                  {currentFeature.sectionsBoxSubtitle}
+                </p>
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
+                  {currentFeature.tags.map((tag) => {
+                    const TagIcon = tag.icon;
                     return (
                       <span
-                        key={item.label}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200/90 bg-slate-50/70 px-2.5 py-1.5 text-[11.5px] font-bold text-slate-700 shadow-2xs transition hover:bg-white hover:border-slate-300"
+                        key={tag.label}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200/80 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 shadow-2xs transition hover:border-[#a1001f]/30 hover:text-[#a1001f]"
                       >
-                        <Icon className="h-3.5 w-3.5 shrink-0 text-[#a1001f]" />
-                        <span className="leading-none whitespace-nowrap">{item.label}</span>
+                        <TagIcon className={cn('h-3 w-3 shrink-0', tag.color || 'text-slate-400')} />
+                        <span>{tag.label}</span>
                       </span>
                     );
                   })}
@@ -920,23 +903,61 @@ export function AdminPortfolioFeaturePopup() {
           </div>
         </div>
 
-        {/* PINNED ACTIONS FOOTER (Always 100% visible on both mobile and desktop) */}
-        <div className="shrink-0 border-t border-slate-100 bg-white/95 backdrop-blur-sm px-4 py-3 sm:px-6 sm:py-3.5 flex items-center justify-end gap-3 z-20 shadow-[0_-4px_12px_rgba(0,0,0,0.03)] lg:col-start-2">
-          <button
-            type="button"
-            onClick={closePopup}
-            className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-200"
-          >
-            Để sau
-          </button>
-          <button
-            type="button"
-            onClick={handleCtaClick}
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#a1001f] px-5 text-xs sm:text-sm font-black text-white shadow-lg shadow-[#a1001f]/20 transition hover:bg-[#850019] focus:outline-none focus:ring-4 focus:ring-[#a1001f]/20"
-          >
-            {ctaLabel}
-            <ArrowRight className="h-4 w-4" />
-          </button>
+        {/* PINNED ACTIONS FOOTER (Always 100% visible on both mobile and desktop across all zoom levels) */}
+        <div className="shrink-0 border-t border-slate-100 bg-white/95 backdrop-blur-sm px-4 py-2.5 sm:px-6 sm:py-3 flex items-center justify-between gap-2 z-20 shadow-[0_-4px_12px_rgba(0,0,0,0.02)]">
+          {/* Left: Previous step / Dismiss */}
+          <div className="flex items-center gap-2 shrink-0">
+            {!isFirstStep && (
+              <button
+                type="button"
+                onClick={handlePrevStep}
+                className="inline-flex h-9 items-center justify-center gap-1 rounded-xl border border-slate-200 bg-white px-2.5 sm:px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition whitespace-nowrap active:scale-[0.98]"
+              >
+                <ChevronLeft className="h-3.5 w-3.5" />
+                <span>Quay lại</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={closePopup}
+              className="text-xs font-medium text-slate-400 hover:text-slate-700 px-1 py-1 transition shrink-0"
+            >
+              Để sau
+            </button>
+          </div>
+
+          {/* Right: Read guide & Step Navigation */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleReadGuide}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 sm:px-3.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition focus:outline-none focus:ring-2 focus:ring-slate-200 whitespace-nowrap active:scale-[0.98]"
+            >
+              <BookOpen className="h-3.5 w-3.5 text-slate-500 shrink-0" />
+              <span>Đọc quy trình</span>
+            </button>
+
+            {!isLastStep ? (
+              <button
+                type="button"
+                onClick={handleNextStep}
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#a1001f] px-3.5 sm:px-4 text-xs font-bold text-white hover:bg-[#850019] shadow-sm shadow-[#a1001f]/20 transition focus:outline-none focus:ring-4 focus:ring-[#a1001f]/20 whitespace-nowrap active:scale-[0.98]"
+              >
+                <span className="hidden sm:inline">Tiếp theo: {nextFeature?.tabLabel}</span>
+                <span className="sm:hidden">Tiếp theo</span>
+                <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={closePopup}
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-xl bg-[#a1001f] px-3.5 sm:px-4 text-xs font-bold text-white hover:bg-[#850019] shadow-sm shadow-[#a1001f]/20 transition focus:outline-none focus:ring-4 focus:ring-[#a1001f]/20 whitespace-nowrap active:scale-[0.98]"
+              >
+                <Check className="h-3.5 w-3.5 shrink-0" />
+                <span>Đã hiểu</span>
+              </button>
+            )}
+          </div>
         </div>
       </section>
     </div>,

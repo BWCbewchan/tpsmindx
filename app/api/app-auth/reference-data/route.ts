@@ -7,31 +7,27 @@ import pool from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
 
 async function syncAllTeachingLeadersToAppUsers() {
-  // First sync users
-  await pool.query(
-    `INSERT INTO app_users (email, display_name, role, auth_type, is_active, created_by)
-     SELECT LOWER(TRIM(email)), full_name, 'manager', 'firebase',
-       CASE WHEN status = 'Deactive' THEN false ELSE true END,
-       'teaching_leaders-sync'
-     FROM teaching_leaders
-     WHERE email IS NOT NULL AND trim(email) <> ''
-     ON CONFLICT (email) DO UPDATE SET
-       display_name = EXCLUDED.display_name,
-       role = 'manager',
-       auth_type = EXCLUDED.auth_type,
-       is_active = EXCLUDED.is_active,
-       created_by = EXCLUDED.created_by`,
-  );
+  // Bootstrap new leaders only. Reading this endpoint must never restore revoked
+  // roles, reactivate a disabled account, or demote an existing super administrator.
+  await pool.query(`
+    WITH new_users AS (
+      INSERT INTO app_users (email, display_name, role, auth_type, is_active, created_by)
+      SELECT DISTINCT ON (LOWER(TRIM(tl.email)))
+        LOWER(TRIM(tl.email)), tl.full_name, 'manager', 'firebase',
+        CASE WHEN tl.status = 'Deactive' THEN false ELSE true END, 'teaching_leaders-sync'
+      FROM teaching_leaders tl
+      WHERE tl.email IS NOT NULL AND trim(tl.email) <> ''
+      ORDER BY LOWER(TRIM(tl.email)), tl.code
+      ON CONFLICT (email) DO NOTHING
+      RETURNING id, email
+    )
+    INSERT INTO user_roles (user_id, role_code)
+    SELECT nu.id, tl.role_code FROM new_users nu
+    JOIN teaching_leaders tl ON LOWER(TRIM(tl.email)) = nu.email
+    JOIN roles r ON r.role_code = tl.role_code
+    ON CONFLICT (user_id, role_code) DO NOTHING
+  `);
 
-  // Then assign roles
-  await pool.query(
-    `INSERT INTO user_roles (user_id, role_code)
-     SELECT au.id, tl.role_code
-     FROM teaching_leaders tl
-     JOIN app_users au ON LOWER(TRIM(au.email)) = LOWER(TRIM(tl.email))
-     WHERE tl.email IS NOT NULL AND trim(tl.email) <> '' AND tl.role_code IS NOT NULL
-     ON CONFLICT (user_id, role_code) DO NOTHING`,
-  );
 }
 
 export async function GET(request: NextRequest) {

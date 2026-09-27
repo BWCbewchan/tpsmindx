@@ -55,7 +55,7 @@ export default function LeadersPanel() {
 
     const [centers, setCenters] = useState<{ id: string; display_name: string; full_name: string }[]>([]);
 
-    const load = async () => {
+    async function load() {
         setLoading(true);
         try {
             const params = new URLSearchParams({ table: 'teaching_leaders' });

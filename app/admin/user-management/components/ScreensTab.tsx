@@ -103,7 +103,7 @@ export default function ScreensTab() {
         window.localStorage.setItem(DISPLAY_MODE_STORAGE_KEY, displayMode);
     }, [displayMode]);
 
-    const loadScreens = async () => {
+    async function loadScreens() {
         try {
             setLoading(true);
             const res = await fetch('/api/app-auth/screens?includeInactive=true', { headers: authHeaders(token) });
@@ -182,7 +182,7 @@ export default function ScreensTab() {
     const activeCount = screens.filter((screen) => screen.is_active).length;
     const hiddenCount = totalCount - activeCount;
 
-    const closeForm = () => {
+    function closeForm() {
         setShowForm(false);
         setForm(emptyForm());
         setMode('create');
@@ -303,9 +303,9 @@ export default function ScreensTab() {
                         <LayoutGrid className="h-4 w-4" />
                         Cài đặt màn hình
                     </div>
-                    <h3 className="text-lg font-bold text-gray-900">Quản lý danh mục màn hình được dùng trong quyền role</h3>
+                    <h3 className="text-lg font-bold text-gray-900">Quản lý danh mục màn hình được dùng trong quyền vai trò</h3>
                     <p className="max-w-3xl text-sm text-gray-600">
-                        Tạo, chỉnh sửa và ẩn màn hình. Khi đổi đường dẫn, hệ thống sẽ đồng bộ lại dữ liệu quyền màn hình của role và user.
+                        Tạo, chỉnh sửa và ẩn mục trong danh mục. Trạng thái ẩn không thu hồi quyền đã cấp và không điều khiển sidebar hoặc dock. Khi đổi đường dẫn, hệ thống sẽ đồng bộ quyền của vai trò và tài khoản.
                     </p>
                 </div>
 
@@ -683,7 +683,7 @@ export default function ScreensTab() {
                                     {mode === 'create' ? 'Thêm màn hình mới' : 'Sửa màn hình'}
                                 </h3>
                                 <p className="mt-1 text-sm text-gray-500">
-                                    Đổi đường dẫn sẽ tự đồng bộ lại quyền role và user.
+                                    Đổi đường dẫn sẽ tự đồng bộ lại quyền vai trò và user.
                                 </p>
                             </div>
                             <button

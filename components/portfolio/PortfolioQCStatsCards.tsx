@@ -83,7 +83,7 @@ export default function PortfolioQCStatsCards({
           <span className="text-2xl font-extrabold text-amber-950">
             {loadedClassesCount}
           </span>
-          <span className="text-xs font-medium text-amber-700">lớp học finished</span>
+          <span className="text-xs font-medium text-amber-700">lớp đã kết thúc được tải</span>
         </div>
       </div>
 

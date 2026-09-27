@@ -1,3 +1,4 @@
+import { checkHrefPermission } from '@/lib/menu-permissions';
 import {
   rejectIfEmailNotSelf,
   requireBearerSession,
@@ -17,6 +18,11 @@ export async function GET(request: NextRequest) {
     const email = searchParams.get('email');
     const status = searchParams.get('status');
     const dealType = searchParams.get('deal_type');
+
+    const canReadAll = checkHrefPermission('/admin/deal-luong', auth.resolvedAccess);
+    if ((!email || email.trim().toLowerCase() !== auth.sessionEmail.trim().toLowerCase()) && !canReadAll) {
+      return NextResponse.json({ success: false, error: 'Bạn chưa được cấp quyền xem các thỏa thuận lương.' }, { status: 403 });
+    }
 
     if (email) {
       const denied = rejectIfEmailNotSelf(
@@ -85,6 +91,9 @@ export async function POST(request: NextRequest) {
     const auth = await requireBearerSession(request);
     if (!auth.ok) return auth.response;
 
+    if (auth.resolvedAccess.isAdmin && !checkHrefPermission('/admin/tao-deal-luong', auth.resolvedAccess)) {
+      return NextResponse.json({ success: false, error: 'Bạn chưa được cấp quyền tạo thỏa thuận lương.' }, { status: 403 });
+    }
     const body = await request.json();
     const {
       deal_type,
@@ -206,10 +215,13 @@ export async function PATCH(request: NextRequest) {
     const auth = await requireBearerSession(request);
     if (!auth.ok) return auth.response;
 
+    if (!checkHrefPermission('/admin/deal-luong', auth.resolvedAccess)) {
+      return NextResponse.json({ success: false, error: 'Bạn chưa được cấp quyền duyệt thỏa thuận lương.' }, { status: 403 });
+    }
     const body = await request.json();
     const { id, action, note, reviewer_name } = body;
 
-    if (!id || !action || !reviewer_name) {
+    if (!id || !['approve', 'reject'].includes(action) || !reviewer_name) {
       return NextResponse.json(
         {
           success: false,

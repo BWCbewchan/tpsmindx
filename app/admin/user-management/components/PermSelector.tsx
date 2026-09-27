@@ -4,13 +4,14 @@ import { filterManagementPermissions, isManagementPermissionRoute } from "@/lib/
 import { authHeaders } from "@/lib/auth-headers";
 import { DEFAULT_SCREEN_CATALOG, type ScreenCatalogItem } from "@/lib/default-screen-catalog";
 import { ChevronDown, ChevronUp, Loader2, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 export default function PermSelector({ perms, setPerms }: { perms: string[]; setPerms: (v: string[]) => void }) {
     const { token } = useAuth();
     const [screens, setScreens] = useState<ScreenCatalogItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [expanded, setExpanded] = useState<string[]>([]);
+    const initializedGroups = useRef(false);
     const [search, setSearch] = useState("");
 
     useEffect(() => {
@@ -23,7 +24,7 @@ export default function PermSelector({ perms, setPerms }: { perms: string[]; set
                     headers: authHeaders(token),
                 });
                 const data = await res.json();
-                const nextScreens = (Array.isArray(data.screens) && data.screens.length > 0 ? data.screens : DEFAULT_SCREEN_CATALOG)
+                const nextScreens = Array.from(new Map([...DEFAULT_SCREEN_CATALOG, ...(Array.isArray(data.screens) ? data.screens : [])].map((screen: ScreenCatalogItem) => [screen.route_path, screen])).values())
                     .filter((screen: ScreenCatalogItem) => isManagementPermissionRoute(screen.route_path));
                 if (!cancelled) {
                     setScreens(nextScreens);
@@ -45,9 +46,15 @@ export default function PermSelector({ perms, setPerms }: { perms: string[]; set
         };
     }, [token]);
 
+    // Keep existing legacy grants visible for revocation, but do not offer
+    // hidden catalog entries or public/user routes for new admin grants.
+    const selectableScreens = useMemo(() => screens.filter((screen) =>
+        perms.includes(screen.route_path) || (screen.is_active && screen.route_path.startsWith('/admin/'))
+    ), [screens, perms]);
+
     const groups = useMemo(() => {
         const byGroup = new Map<string, ScreenCatalogItem[]>();
-        for (const screen of screens) {
+        for (const screen of selectableScreens) {
             const next = byGroup.get(screen.group_name) || [];
             next.push(screen);
             byGroup.set(screen.group_name, next);
@@ -60,7 +67,7 @@ export default function PermSelector({ perms, setPerms }: { perms: string[]; set
                 order: Math.min(...items.map((item) => item.sort_order)),
             }))
             .sort((a, b) => a.order - b.order || a.groupName.localeCompare(b.groupName));
-    }, [screens]);
+    }, [selectableScreens]);
 
     useEffect(() => {
         const safePerms = filterManagementPermissions(perms);
@@ -70,7 +77,8 @@ export default function PermSelector({ perms, setPerms }: { perms: string[]; set
     }, [perms, setPerms]);
 
     useEffect(() => {
-        if (expanded.length === 0 && groups.length > 0) {
+        if (!initializedGroups.current && groups.length > 0) {
+            initializedGroups.current = true;
             setExpanded(groups.map((group) => group.groupName));
         }
     }, [expanded.length, groups]);
@@ -99,15 +107,18 @@ export default function PermSelector({ perms, setPerms }: { perms: string[]; set
     const togglePerm = (path: string) => setPerms(perms.includes(path) ? perms.filter((item) => item !== path) : [...perms, path]);
 
     const toggleAllGroup = (groupName: string) => {
-        const groupPaths = screens.filter((screen) => screen.group_name === groupName).map((screen) => screen.route_path);
+        const groupPaths = (visibleGroups.find((group) => group.groupName === groupName)?.items || []).map((screen) => screen.route_path);
         const allSelected = groupPaths.every((path) => perms.includes(path));
         setPerms(allSelected ? perms.filter((path) => !groupPaths.includes(path)) : [...new Set([...perms, ...groupPaths])]);
     };
 
-    const selectAll = () => setPerms(perms.length === screens.length ? [] : screens.map((screen) => screen.route_path));
+    const visiblePaths = visibleGroups.flatMap((group) => group.items.map((screen) => screen.route_path));
+    const allSelected = visiblePaths.length > 0 && visiblePaths.every((path) => perms.includes(path));
+    const selectAll = () => setPerms(allSelected ? perms.filter((path) => !visiblePaths.includes(path)) : [...new Set([...perms, ...visiblePaths])]);
 
     return (
         <div className="space-y-3">
+            <p className="text-xs text-gray-600">Các màn hình quản lý K12 và biên tập Portfolio cần được cấp quyền riêng. Quyền của tài khoản là tổng quyền trực tiếp và các vai trò được gán. Quản trị viên cấp cao có toàn quyền; chỉ cấp quyền biên tập Portfolio khi chọn Kiểm soát sản phẩm cuối khóa hoặc Biên tập hồ sơ sản phẩm.</p>
             <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="relative w-full sm:max-w-sm">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -120,9 +131,9 @@ export default function PermSelector({ perms, setPerms }: { perms: string[]; set
                 </div>
                 <div className="flex items-center justify-between gap-3 sm:justify-end">
                     <button type="button" onClick={selectAll} className="text-xs font-medium text-[#a1001f] hover:underline">
-                        {perms.length === screens.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                        {allSelected ? 'Bỏ chọn kết quả' : 'Chọn các kết quả'}
                     </button>
-                    <span className="text-xs text-gray-500">{perms.length}/{screens.length}</span>
+                    <span className="text-xs text-gray-500">{perms.length}/{selectableScreens.length}</span>
                 </div>
             </div>
 
@@ -140,24 +151,19 @@ export default function PermSelector({ perms, setPerms }: { perms: string[]; set
 
                     return (
                         <div key={groupName} className="overflow-hidden rounded-lg border border-gray-200">
-                            <button
-                                type="button"
-                                onClick={() => toggleGroup(groupName)}
-                                className="flex w-full items-center justify-between bg-gray-50 px-3 py-2 transition-colors hover:bg-gray-100"
-                            >
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={groupPaths.length > 0 && groupPaths.every((path) => perms.includes(path))}
-                                        onChange={() => toggleAllGroup(groupName)}
-                                        onClick={(event) => event.stopPropagation()}
-                                        className="rounded border-gray-300 text-[#a1001f] focus:ring-[#a1001f]"
-                                    />
-                                    <span className="text-xs font-bold text-gray-700">{groupName}</span>
-                                    <span className="text-xs text-gray-400">({selectedCount}/{items.length})</span>
-                                </div>
-                                {expandedGroup ? <ChevronUp className="h-3.5 w-3.5 text-gray-400" /> : <ChevronDown className="h-3.5 w-3.5 text-gray-400" />}
-                            </button>
+                            <div className="flex items-center gap-2 bg-gray-50 px-3 py-2">
+                                <input
+                                    type="checkbox"
+                                    aria-label={`Chọn nhóm ${groupName}`}
+                                    checked={groupPaths.length > 0 && groupPaths.every((path) => perms.includes(path))}
+                                    onChange={() => toggleAllGroup(groupName)}
+                                    className="rounded border-gray-300 text-[#a1001f] focus:ring-[#a1001f]"
+                                />
+                                <button type="button" aria-expanded={expandedGroup} onClick={() => toggleGroup(groupName)} className="flex flex-1 items-center justify-between text-left">
+                                    <span className="text-xs font-bold text-gray-700">{groupName} <span className="font-normal text-gray-400">({selectedCount}/{items.length})</span></span>
+                                    {expandedGroup ? <ChevronUp className="h-3.5 w-3.5 text-gray-400" /> : <ChevronDown className="h-3.5 w-3.5 text-gray-400" />}
+                                </button>
+                            </div>
 
                             {expandedGroup && (
                                 <div className="space-y-1 px-3 py-2">

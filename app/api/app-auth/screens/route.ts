@@ -1,3 +1,4 @@
+import { DEFAULT_SCREEN_CATALOG_JSON } from '@/lib/default-screen-catalog';
 import { requireBearerDbRoles, requireBearerSuperAdmin } from '@/lib/auth-server';
 import { isManagementPermissionRoute } from '@/lib/admin-permission-routes';
 import pool from '@/lib/db';
@@ -49,6 +50,16 @@ export async function GET(request: NextRequest) {
   try {
     const gate = await requireBearerDbRoles(request, ['super_admin', 'admin']);
     if (!gate.ok) return gate.response;
+
+    // Backfill new application screens without overwriting administrator labels/settings.
+    await pool.query(`
+      INSERT INTO app_screens (route_path, label, group_name, sort_order, description, is_active)
+      SELECT route_path, label, group_name, sort_order, description, is_active
+      FROM jsonb_to_recordset($1::jsonb) AS s(
+        route_path text, label text, group_name text, sort_order integer, description text, is_active boolean
+      )
+      ON CONFLICT (route_path) DO NOTHING
+    `, [DEFAULT_SCREEN_CATALOG_JSON]);
 
     const { searchParams } = new URL(request.url);
     const includeInactive = searchParams.get('includeInactive') !== 'false';

@@ -276,6 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (
           currentPerms !== newPerms ||
           currentRole !== newRole ||
+          user.isAdmin !== data.isAdmin ||
           currentUserRoles !== nextUserRoles
         ) {
           const updatedUser = {
@@ -295,6 +296,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logger.error('Error refreshing permissions', { error: error.message })
     }
   }, [user, token])
+
+  // Refresh role changes in open tabs, including revocations while the page is idle.
+  useEffect(() => {
+    if (!user) return
+    const refresh = () => { if (document.visibilityState === 'visible') void refreshPermissions() }
+    const interval = window.setInterval(refresh, 45_000)
+    window.addEventListener('focus', refresh)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('focus', refresh)
+    }
+  }, [user, refreshPermissions])
 
   const contextValue = useMemo(
     () => ({

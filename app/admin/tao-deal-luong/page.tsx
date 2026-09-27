@@ -3,6 +3,7 @@
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { StepItem, Stepper } from '@/components/ui/stepper';
+import { checkHrefPermission } from '@/lib/menu-permissions';
 import { useAuth } from '@/lib/auth-context';
 import { authHeaders } from '@/lib/auth-headers';
 import { parseLegacyTeacherFromInfoJson } from '@/lib/teacher-db-mapper';
@@ -115,7 +116,7 @@ function getSteps(deal: SalaryDeal): StepItem[] {
 }
 
 // ─── Component ──────────────────────────────────────
-const ALLOWED_ROLES = ['manager', 'admin', 'super_admin'];
+
 
 export default function DealLuongPage() {
   const { user, token } = useAuth();
@@ -139,8 +140,8 @@ export default function DealLuongPage() {
 
   // ─── Role check ──────────────────────────────────
   const userRole = user?.role;
-  const canAccess = user ? ALLOWED_ROLES.includes(userRole || '') : false;
-  const isTegl = userRole === 'manager';
+  const canAccess = checkHrefPermission('/admin/tao-deal-luong', user);
+  const isTegl = userRole === 'manager' && checkHrefPermission('/admin/deal-luong', user);
   const isSuperAdmin = userRole === 'super_admin';
 
   const [form, setForm] = useState({
@@ -182,11 +183,12 @@ export default function DealLuongPage() {
     if (!user?.email) return;
     try {
       // manager và super_admin thấy tất cả deals, các role khác chỉ thấy của mình
-      const isViewAll = ['manager', 'admin', 'super_admin'].includes(user.role || '');
+      const isViewAll = checkHrefPermission('/admin/deal-luong', user);
       const url = isViewAll ? '/api/salary-deals' : `/api/salary-deals?email=${encodeURIComponent(user.email)}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { headers: authHeaders(token) });
       const data = await res.json();
-      if (data.success) setDeals(data.data);
+      if (res.ok && data.success) setDeals(data.data);
+      else { setDeals([]); toast.error(data.error || 'Không thể tải thỏa thuận lương'); }
     } catch { /* ignore */ } finally { setLoading(false); }
   };
 
@@ -283,7 +285,7 @@ export default function DealLuongPage() {
 
       const res = await fetch('/api/salary-deals', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
@@ -355,7 +357,7 @@ export default function DealLuongPage() {
     try {
       const res = await fetch('/api/salary-deals', {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
         body: JSON.stringify({
           id: selectedDeal.id,
           action,

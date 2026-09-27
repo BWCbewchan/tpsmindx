@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
  * GET /api/admin/portfolio-qc/classes
  *
  * Fetch classes for Portfolio QC management.
- * Only accessible by configured Portfolio role codes.
+ * Requires an explicit SPCK/editor permission.
  * Centres are filtered based on the user's assignedCenters.
  */
 export async function GET(req: NextRequest) {
@@ -49,17 +49,22 @@ export async function GET(req: NextRequest) {
       ? centreNamesParam.split(',').map((s) => s.trim()).filter(Boolean)
       : [];
 
-    // If user selected specific centres, validate they have access
-    let centreNamesToFilter: string[] = [];
-    if (selectedCentreNames.length > 0) {
-      const accessibleNames = new Set(accessibleCenters.map((c) => c.full_name));
-      centreNamesToFilter = selectedCentreNames.filter(
-        (name) => accessibleNames.size === 0 || accessibleNames.has(name),
+    const isSuperAdmin = auth.resolvedAccess.role === 'super_admin';
+    const accessibleNames = new Set(accessibleCenters.map((c) => c.full_name));
+    if (!isSuperAdmin && accessibleNames.size === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Tài khoản chưa được phân công cơ sở. Vui lòng liên hệ quản trị viên.' },
+        { status: 403 },
       );
-      if (centreNamesToFilter.length === 0) {
-        centreNamesToFilter = selectedCentreNames;
-      }
     }
+    if (!isSuperAdmin && selectedCentreNames.some((name) => !accessibleNames.has(name))) {
+      return NextResponse.json(
+        { success: false, error: 'Không có quyền truy cập cơ sở đã chọn.' },
+        { status: 403 },
+      );
+    }
+    const centreNamesToFilter = selectedCentreNames.length > 0
+      ? selectedCentreNames : isSuperAdmin ? [] : [...accessibleNames];
 
     const filter = {
       centreNames: centreNamesToFilter,
@@ -100,8 +105,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Post-filter by centre names ONLY if user explicitly selected specific centres
-    if (selectedCentreNames.length > 0 && centreNamesToFilter.length > 0) {
+    // Enforce the assigned scope even when no centre filter was selected.
+    if (centreNamesToFilter.length > 0) {
       const nameSet = new Set(centreNamesToFilter);
       result.data = result.data.filter((cls) => nameSet.has(cls.centreName));
     }

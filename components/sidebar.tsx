@@ -915,41 +915,9 @@ export function Sidebar() {
                             const isSubActive = isMenuItemActive(subItem)
 
                             if (subHasSubmenu) {
-                              const isK12PolicyTeacher =
-                                subItem.label === 'Quy Trình, Quy Định K12 Teaching' ||
-                                subItem.label === 'Quy Trình, Quy Định K12 Teaching (Giáo Viên)'
-                              const isK12PolicyLeader =
-                                subItem.label === 'Quy Trình, Quy Định K12 Teaching - Leader/TE/TC'
-
-                              const nestedItems = isK12PolicyTeacher
-                                ? (() => {
-                                  const current = Array.isArray(subItem.submenu) ? [...subItem.submenu] : []
-                                  const hasManageItem = current.some((entry: any) => entry?.href === '/admin/page2/manage')
-                                  if (!hasManageItem) {
-                                    current.push({ href: '/admin/page2/manage', label: 'Quản Lý Tài Liệu' })
-                                  }
-                                  const roleCodes = (user?.userRoles || []).map((code) => normalizeRoleToken(code))
-                                  const hasRestrictedRole = roleCodes.some((code) => code === 'te' || code === 'leader' || code === 'tc')
-                                  if (hasRestrictedRole) {
-                                    return current.filter((item: any) => item?.href !== '/admin/page2/manage')
-                                  }
-                                  return current
-                                })()
-                                : isK12PolicyLeader
-                                ? (() => {
-                                  const current = Array.isArray(subItem.submenu) ? [...subItem.submenu] : []
-                                  const hasManageItem = current.some((entry: any) => entry?.href === '/admin/quy-trinh-quy-dinh-leader/manage')
-                                  if (!hasManageItem) {
-                                    current.push({ href: '/admin/quy-trinh-quy-dinh-leader/manage', label: 'Quản Lý Tài Liệu' })
-                                  }
-                                  const roleCodes = (user?.userRoles || []).map((code) => normalizeRoleToken(code))
-                                  const hasRestrictedRole = roleCodes.some((code) => code === 'te' || code === 'leader' || code === 'tc')
-                                  if (hasRestrictedRole) {
-                                    return current.filter((item: any) => item?.href !== '/admin/quy-trinh-quy-dinh-leader/manage')
-                                  }
-                                  return current
-                                })()
-                                : subItem.submenu
+                              // Children have already passed the shared permission filter.
+                              // Never inject management links after filtering.
+                              const nestedItems = subItem.submenu
 
                               const isSubExpanded = expandedMenus.includes(subItem.label)
 

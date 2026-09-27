@@ -20,13 +20,21 @@ export async function GET(req: NextRequest) {
 
     const params = req.nextUrl.searchParams;
     const isSuperAdmin = auth.resolvedAccess.role === 'super_admin';
-    const centreNames = isSuperAdmin
-      ? []
-      : auth.accessibleCenters.map((center) => center.full_name).filter(Boolean);
+    const requestedCentre = params.get('centre')?.trim();
+    const accessibleCentreNames = auth.accessibleCenters.map((center) => center.full_name).filter(Boolean);
+    const centreNames = requestedCentre
+      ? isSuperAdmin || accessibleCentreNames.includes(requestedCentre)
+        ? [requestedCentre]
+        : ['__NO_ACCESS_TO_SELECTED_CENTRE__']
+      : isSuperAdmin
+        ? []
+        : accessibleCentreNames;
 
     const result = await listPortfolios({
       search: params.get('search') || undefined,
       track: params.get('track') || undefined,
+      dateFrom: params.get('dateFrom') || undefined,
+      dateTo: params.get('dateTo') || undefined,
       pageIndex: Number(params.get('pageIndex') || 0),
       itemsPerPage: Number(params.get('itemsPerPage') || 25),
       centreNames,

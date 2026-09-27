@@ -6,8 +6,8 @@ import ClassFilterToolbar, {
 } from '@/components/portfolio/ClassFilterToolbar';
 import ClassListTable from '@/components/portfolio/ClassListTable';
 import PortfolioQCStatsCards from '@/components/portfolio/PortfolioQCStatsCards';
-import type { PortfolioQCClass } from '@/lib/portfolio/types';
-import { Sparkles } from 'lucide-react';
+import type { PortfolioQCClass, PortfolioQCStudent } from '@/lib/portfolio/types';
+import { Download, Sparkles } from 'lucide-react';
 
 interface CentreOption {
   id: number;
@@ -25,6 +25,29 @@ function normalizeVietnamese(str: string): string {
     .trim();
 }
 
+function csvEscape(value: unknown) {
+  const text = String(value ?? '').replace(/\r?\n/g, ' ').trim();
+  if (/[",\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function getStudentSubmissionStatus(student: PortfolioQCStudent) {
+  const category = student.representativeProduct?.category;
+  if (category === 'approved') return 'Đã duyệt';
+  if (category === 'rejected') return 'Bị từ chối';
+  if (category === 'pending') return 'Chờ duyệt';
+  if (category === 'draft') return 'Bản nháp';
+  return student.hasSubmission ? 'Đã nộp' : 'Chưa nộp';
+}
+
+function getPortfolioStatusLabel(status: PortfolioQCStudent['portfolioStatus']) {
+  if (status === 'published') return 'Đã xuất bản';
+  if (status === 'draft') return 'Bản nháp';
+  return 'Chưa tạo';
+}
+
 export default function KiemSoatSpckPage() {
   const [classes, setClasses] = useState<PortfolioQCClass[]>([]);
   const [centres, setCentres] = useState<CentreOption[]>([]);
@@ -38,6 +61,7 @@ export default function KiemSoatSpckPage() {
   const [total, setTotal] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [currentFilters, setCurrentFilters] = useState<FilterState | null>(null);
+  const [isExportingCsv, setIsExportingCsv] = useState(false);
 
   // Fetch classes from API with append mode support
   const fetchClasses = useCallback(
@@ -214,10 +238,96 @@ export default function KiemSoatSpckPage() {
     }
   }, [currentFilters, fetchClasses, hasMore, isLoading, isLoadingMore, pageIndex]);
 
+  const handleExportCsv = useCallback(async () => {
+    if (classes.length === 0 || isExportingCsv) return;
+
+    setIsExportingCsv(true);
+    setError(null);
+
+    try {
+      const rows: string[][] = [];
+      const headers = [
+        'Mã lớp',
+        'Tên khóa',
+        'Khối',
+        'Cơ sở',
+        'Giáo viên',
+        'Tổng học viên active',
+        'Đã nộp trong lớp',
+        'Tỉ lệ nộp lớp',
+        'Học viên',
+        'Trạng thái nộp SPCK',
+        'Tên sản phẩm',
+        'Link sản phẩm',
+        'Số bài nộp',
+        'Trạng thái portfolio',
+      ];
+
+      for (const cls of classes) {
+        const res = await fetch(
+          `/api/admin/portfolio/classes/${encodeURIComponent(cls.id)}/students?className=${encodeURIComponent(cls.name)}`,
+        );
+        const data = (await res.json()) as {
+          success?: boolean;
+          students?: PortfolioQCStudent[];
+          error?: string;
+        };
+
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || `Không thể tải học viên lớp ${cls.name}`);
+        }
+
+        const students = data.students || [];
+        students.forEach((student) => {
+          rows.push([
+            cls.name,
+            cls.courseName,
+            cls.courseLineTag,
+            cls.centreName,
+            cls.teacherName,
+            String(cls.totalStudents),
+            String(cls.submittedCount),
+            `${cls.submissionRatio}%`,
+            student.studentName,
+            getStudentSubmissionStatus(student),
+            student.submissionTitle || student.representativeProduct?.title || '',
+            student.submissionLink || student.representativeProduct?.link || '',
+            String(student.representativeProduct?.totalSubmissions || student.submissionCount || 0),
+            getPortfolioStatusLabel(student.portfolioStatus),
+          ]);
+        });
+      }
+
+      if (rows.length === 0) {
+        setError('Không có học viên active nào để xuất CSV theo bộ lọc hiện tại.');
+        return;
+      }
+
+      const csvContent = [headers, ...rows]
+        .map((row) => row.map(csvEscape).join(','))
+        .join('\r\n');
+      const blob = new Blob([`\uFEFF${csvContent}`], {
+        type: 'text/csv;charset=utf-8;',
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `spck-submissions-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Không thể xuất CSV');
+    } finally {
+      setIsExportingCsv(false);
+    }
+  }, [classes, isExportingCsv]);
+
   return (
     <div className="max-w-[1400px] mx-auto px-4 py-6 space-y-5">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-9.5 h-9.5 bg-gradient-to-br from-mindx-red to-mindx-red-dark rounded-xl flex items-center justify-center shadow-sm">
             <Sparkles size={18} className="text-white" />
@@ -231,6 +341,19 @@ export default function KiemSoatSpckPage() {
             </p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={() => void handleExportCsv()}
+          disabled={!hasSearched || classes.length === 0 || isLoading || isExportingCsv}
+          className="inline-flex h-10 items-center gap-2 rounded-xl border border-mindx-red/20 bg-white px-4 text-sm font-semibold text-mindx-red shadow-sm transition hover:border-mindx-red/40 hover:bg-mindx-red/5 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isExportingCsv ? (
+            <span className="h-4 w-4 rounded-full border-2 border-mindx-red/25 border-t-mindx-red animate-spin" />
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          Xuất CSV
+        </button>
       </div>
 
       {/* Filter Toolbar */}

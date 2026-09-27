@@ -1037,7 +1037,9 @@ export default function AdminCheckCongPage() {
                           <div key={type}>
                             <div className="mb-2 flex items-center justify-between text-sm">
                               <span className="font-bold text-gray-900">
-                                {type === 'CLASS' ? 'Lớp học (CLASS)' : 'Office Hours'}
+                                {type === 'CLASS'
+                                  ? 'Lớp học (CLASS)'
+                                  : 'Office Hours (Makeup/Trial/Fixed)'}
                               </span>
                               <span className="font-semibold text-gray-500">
                                 {formatNumber(count)}

@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 import { ProjectCardShowcase } from '@/components/student-portfolio/project-card-showcase';
 import { GalleryShowcase } from '@/components/student-portfolio/gallery-showcase';
 import { LearningJourneyRoadmap } from '@/components/student-portfolio/learning-journey-roadmap';
+import { PortfolioAnalyticsTracker } from '@/components/student-portfolio/portfolio-analytics-tracker';
 import { PortfolioMobileMenu } from '@/components/student-portfolio/portfolio-mobile-menu';
 import { PortfolioPdfDownloadButton } from '@/components/student-portfolio/portfolio-pdf-download-button';
 import { PortfolioSideProgressNav } from '@/components/student-portfolio/portfolio-side-progress-nav';
@@ -503,6 +504,13 @@ export default async function PublicPortfolioPage({
 
   return (
     <main className={`scroll-smooth min-h-screen ${theme.surface} text-[#171512] antialiased portfolio-theme relative bg-[#faf8f5] overflow-x-clip w-full max-w-full`}>
+      {isPublicMode ? (
+        <PortfolioAnalyticsTracker
+          portfolioId={portfolio.id}
+          publicSlug={portfolio.public_slug || profile.slug || slug}
+        />
+      ) : null}
+
       <div className="portfolio-pdf-brand hidden" style={{ display: 'none' }}>
         <img src={logoTechAi.src} alt="MindX Tech & AI School" />
       </div>
@@ -702,7 +710,13 @@ export default async function PublicPortfolioPage({
           </div>
           <div className="space-y-6">
             {(data.projects || []).map((project: StudentPortfolioData['projects'][number], index: number) => (
-              <div id={projectAnchorId(index)} key={`${project.title}-${index}`} className="scroll-mt-24">
+              <div
+                id={projectAnchorId(index)}
+                key={`${project.title}-${index}`}
+                className="scroll-mt-24"
+                data-portfolio-project-index={index + 1}
+                data-portfolio-project-title={project.title || `Sản phẩm ${index + 1}`}
+              >
                 <ProjectCardShowcase
                   project={project}
                   defaultCourse={profile.courseName || profile.className}

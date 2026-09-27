@@ -1,7 +1,8 @@
 'use client';
 
 import { Search, X, Filter } from 'lucide-react';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import DateRangePicker from './DateRangePicker';
 
 interface CentreOption {
   id: number;
@@ -36,6 +37,14 @@ const INITIAL_FILTERS: FilterState = {
   classSearch: '',
 };
 
+function normalizeSearchText(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 export default function ClassFilterToolbar({
   centres,
   teacherOptions = [],
@@ -46,6 +55,19 @@ export default function ClassFilterToolbar({
 }: ClassFilterToolbarProps) {
   const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
   const [isCentreDropdownOpen, setIsCentreDropdownOpen] = useState(false);
+  const [centreSearch, setCentreSearch] = useState('');
+
+  const filteredCentres = useMemo(() => {
+    const keyword = normalizeSearchText(centreSearch);
+    if (!keyword) return centres;
+
+    return centres.filter((centre) => {
+      const haystack = normalizeSearchText(
+        [centre.full_name, centre.short_code || ''].filter(Boolean).join(' '),
+      );
+      return haystack.includes(keyword);
+    });
+  }, [centreSearch, centres]);
 
   const updateFilter = useCallback(
     <K extends keyof FilterState>(key: K, value: FilterState[K]) => {
@@ -72,6 +94,7 @@ export default function ClassFilterToolbar({
 
   const handleClear = useCallback(() => {
     setFilters(INITIAL_FILTERS);
+    setCentreSearch('');
     setIsCentreDropdownOpen(false);
     onClear?.();
   }, [onClear]);
@@ -154,7 +177,33 @@ export default function ClassFilterToolbar({
           </button>
 
           {isCentreDropdownOpen && (
-            <div className="absolute z-50 mt-1 w-80 max-h-64 overflow-y-auto bg-white border border-neutral-200 rounded-lg shadow-lg">
+            <div className="absolute z-50 mt-1 w-80 overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-xl">
+              <div className="border-b border-neutral-100 bg-white p-2">
+                <div className="relative">
+                  <Search
+                    size={14}
+                    className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400"
+                  />
+                  <input
+                    type="text"
+                    value={centreSearch}
+                    onChange={(e) => setCentreSearch(e.target.value)}
+                    placeholder="Nhập tên cơ sở để tìm nhanh..."
+                    className="h-9 w-full rounded-lg border border-neutral-200 bg-neutral-50 pl-8 pr-8 text-sm text-neutral-800 outline-none transition placeholder:text-neutral-400 focus:border-mindx-red/50 focus:bg-white focus:ring-2 focus:ring-mindx-red/15"
+                  />
+                  {centreSearch ? (
+                    <button
+                      type="button"
+                      onClick={() => setCentreSearch('')}
+                      className="absolute right-2 top-1/2 grid h-5 w-5 -translate-y-1/2 place-items-center rounded-full text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-700"
+                      aria-label="Xóa tìm kiếm cơ sở"
+                    >
+                      <X size={12} />
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              <div className="max-h-60 overflow-y-auto py-1">
               {isLoadingCentres ? (
                 <div className="p-3 text-sm text-neutral-500">
                   Đang tải danh sách cơ sở...
@@ -163,8 +212,12 @@ export default function ClassFilterToolbar({
                 <div className="p-3 text-sm text-neutral-500">
                   Không có cơ sở nào
                 </div>
+              ) : filteredCentres.length === 0 ? (
+                <div className="p-3 text-sm text-neutral-500">
+                  Không tìm thấy cơ sở phù hợp
+                </div>
               ) : (
-                centres.map((centre) => (
+                filteredCentres.map((centre) => (
                   <label
                     key={centre.id}
                     className="flex items-center gap-2.5 px-3 py-2 hover:bg-neutral-50 cursor-pointer text-sm"
@@ -183,30 +236,22 @@ export default function ClassFilterToolbar({
                   </label>
                 ))
               )}
+              </div>
             </div>
           )}
         </div>
 
         {/* Date Range */}
-        <div className="flex items-center gap-1.5">
-          <input
-            type="date"
-            value={filters.dateFrom}
-            onChange={(e) => updateFilter('dateFrom', e.target.value)}
-            className="h-9 px-2.5 border border-neutral-300 rounded-lg text-sm bg-white
-                       hover:border-mindx-red/50 focus:outline-none focus:ring-2 focus:ring-mindx-red/20
-                       transition-all w-[140px]"
-          />
-          <span className="text-neutral-400 text-xs">→</span>
-          <input
-            type="date"
-            value={filters.dateTo}
-            onChange={(e) => updateFilter('dateTo', e.target.value)}
-            className="h-9 px-2.5 border border-neutral-300 rounded-lg text-sm bg-white
-                       hover:border-mindx-red/50 focus:outline-none focus:ring-2 focus:ring-mindx-red/20
-                       transition-all w-[140px]"
-          />
-        </div>
+        <DateRangePicker
+          dateFrom={filters.dateFrom}
+          dateTo={filters.dateTo}
+          onChange={(range) => {
+            updateFilter('dateFrom', range.dateFrom);
+            updateFilter('dateTo', range.dateTo);
+          }}
+          className="w-[220px]"
+          placeholder="Khoảng thời gian"
+        />
 
         {/* QC Status */}
         <select

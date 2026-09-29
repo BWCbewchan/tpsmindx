@@ -2,6 +2,7 @@ import pool from '@/lib/db';
 import { callLmsApi } from '@/lib/lms-api';
 import { generateSlug } from '@/lib/utils';
 import type {
+  PortfolioAnalyticsSummary,
   StudentPortfolioData,
   StudentPortfolioListItem,
   StudentPortfolioRecord,
@@ -305,6 +306,60 @@ async function ensurePortfolioSchema() {
         ON portfolios(student_lms_id);
       CREATE INDEX IF NOT EXISTS idx_portfolios_status
         ON portfolios(status);
+
+      CREATE TABLE IF NOT EXISTS portfolio_view_sessions (
+        id BIGSERIAL PRIMARY KEY,
+        portfolio_id VARCHAR(80) NOT NULL,
+        public_slug VARCHAR(255) NOT NULL,
+        session_id VARCHAR(120) NOT NULL,
+        duration_seconds INTEGER DEFAULT 0,
+        user_agent TEXT,
+        referrer TEXT,
+        started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE portfolio_view_sessions DROP CONSTRAINT IF EXISTS portfolio_view_sessions_portfolio_id_fkey;
+      ALTER TABLE portfolio_view_sessions ADD COLUMN IF NOT EXISTS portfolio_id VARCHAR(80);
+      ALTER TABLE portfolio_view_sessions ALTER COLUMN portfolio_id TYPE VARCHAR(80) USING portfolio_id::text;
+      ALTER TABLE portfolio_view_sessions ADD COLUMN IF NOT EXISTS public_slug VARCHAR(255);
+      ALTER TABLE portfolio_view_sessions ADD COLUMN IF NOT EXISTS session_id VARCHAR(120);
+      ALTER TABLE portfolio_view_sessions ADD COLUMN IF NOT EXISTS duration_seconds INTEGER DEFAULT 0;
+      ALTER TABLE portfolio_view_sessions ADD COLUMN IF NOT EXISTS user_agent TEXT;
+      ALTER TABLE portfolio_view_sessions ADD COLUMN IF NOT EXISTS referrer TEXT;
+      ALTER TABLE portfolio_view_sessions ADD COLUMN IF NOT EXISTS started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+      ALTER TABLE portfolio_view_sessions ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_portfolio_view_sessions_unique_session
+        ON portfolio_view_sessions(portfolio_id, session_id);
+      CREATE INDEX IF NOT EXISTS idx_portfolio_view_sessions_portfolio_id
+        ON portfolio_view_sessions(portfolio_id);
+      CREATE INDEX IF NOT EXISTS idx_portfolio_view_sessions_public_slug
+        ON portfolio_view_sessions(public_slug);
+      CREATE INDEX IF NOT EXISTS idx_portfolio_view_sessions_last_seen
+        ON portfolio_view_sessions(last_seen_at);
+
+      CREATE TABLE IF NOT EXISTS portfolio_project_view_events (
+        id BIGSERIAL PRIMARY KEY,
+        portfolio_id VARCHAR(80) NOT NULL,
+        session_id VARCHAR(120) NOT NULL,
+        project_index INTEGER NOT NULL,
+        project_title VARCHAR(255),
+        viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      ALTER TABLE portfolio_project_view_events DROP CONSTRAINT IF EXISTS portfolio_project_view_events_portfolio_id_fkey;
+      ALTER TABLE portfolio_project_view_events ADD COLUMN IF NOT EXISTS portfolio_id VARCHAR(80);
+      ALTER TABLE portfolio_project_view_events ALTER COLUMN portfolio_id TYPE VARCHAR(80) USING portfolio_id::text;
+      ALTER TABLE portfolio_project_view_events ADD COLUMN IF NOT EXISTS session_id VARCHAR(120);
+      ALTER TABLE portfolio_project_view_events ADD COLUMN IF NOT EXISTS project_index INTEGER;
+      ALTER TABLE portfolio_project_view_events ADD COLUMN IF NOT EXISTS project_title VARCHAR(255);
+      ALTER TABLE portfolio_project_view_events ADD COLUMN IF NOT EXISTS viewed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_portfolio_project_view_unique
+        ON portfolio_project_view_events(portfolio_id, session_id, project_index);
+      CREATE INDEX IF NOT EXISTS idx_portfolio_project_view_portfolio_id
+        ON portfolio_project_view_events(portfolio_id);
     `).then(() => undefined);
   }
   return schemaReady;
@@ -2032,15 +2087,95 @@ export async function getPublishedPortfolioBySlug(
   return record;
 }
 
+function normalizeAnalyticsDuration(value: unknown) {
+  const numeric = Math.round(Number(value || 0));
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.min(24 * 60 * 60, numeric));
+}
+
+export async function recordPortfolioAnalytics(input: {
+  portfolioId: string | number;
+  publicSlug: string;
+  sessionId: string;
+  durationSeconds?: number;
+  userAgent?: string | null;
+  referrer?: string | null;
+  projectViews?: Array<{ index: number; title?: string }>;
+}) {
+  await ensurePortfolioSchema();
+
+  const portfolioId = cleanText(String(input.portfolioId || '')).slice(0, 80);
+  const sessionId = cleanText(input.sessionId).slice(0, 120);
+  const publicSlug = cleanText(input.publicSlug).slice(0, 255);
+  if (!portfolioId || !sessionId || !publicSlug) {
+    throw new Error('Invalid portfolio analytics payload');
+  }
+
+  const durationSeconds = normalizeAnalyticsDuration(input.durationSeconds);
+  const userAgent = cleanText(input.userAgent || '').slice(0, 500) || null;
+  const referrer = cleanText(input.referrer || '').slice(0, 500) || null;
+
+  await pool.query(
+    `INSERT INTO portfolio_view_sessions (
+       portfolio_id,
+       public_slug,
+       session_id,
+       duration_seconds,
+       user_agent,
+       referrer,
+       started_at,
+       last_seen_at
+     )
+     VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+     ON CONFLICT (portfolio_id, session_id)
+     DO UPDATE SET
+       public_slug = EXCLUDED.public_slug,
+       duration_seconds = GREATEST(portfolio_view_sessions.duration_seconds, EXCLUDED.duration_seconds),
+       user_agent = COALESCE(portfolio_view_sessions.user_agent, EXCLUDED.user_agent),
+       referrer = COALESCE(portfolio_view_sessions.referrer, EXCLUDED.referrer),
+       last_seen_at = CURRENT_TIMESTAMP`,
+    [portfolioId, publicSlug, sessionId, durationSeconds, userAgent, referrer],
+  );
+
+  const projectViews = (input.projectViews || [])
+    .map((project) => ({
+      index: Math.max(0, Math.round(Number(project.index || 0))),
+      title: cleanText(project.title || '').slice(0, 255),
+    }))
+    .filter((project) => project.index > 0);
+
+  if (projectViews.length > 0) {
+    await Promise.all(
+      projectViews.map((project) =>
+        pool.query(
+          `INSERT INTO portfolio_project_view_events (
+             portfolio_id,
+             session_id,
+             project_index,
+             project_title,
+             viewed_at
+           )
+           VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+           ON CONFLICT (portfolio_id, session_id, project_index) DO NOTHING`,
+          [portfolioId, sessionId, project.index, project.title || null],
+        ),
+      ),
+    );
+  }
+}
+
 export async function listPortfolios(input: {
   search?: string;
   track?: string;
+  dateFrom?: string;
+  dateTo?: string;
   pageIndex?: number;
   itemsPerPage?: number;
   centreNames?: string[];
 } = {}): Promise<{
   data: StudentPortfolioListItem[];
   pagination: { total: number; pageIndex: number; itemsPerPage: number };
+  analytics: PortfolioAnalyticsSummary;
 }> {
   await ensurePortfolioSchema();
 
@@ -2060,13 +2195,13 @@ export async function listPortfolios(input: {
     params.push(`%${search}%`);
     const param = `$${params.length}`;
     where.push(`(
-      student_name ILIKE ${param}
-      OR class_name ILIKE ${param}
-      OR centre_name ILIKE ${param}
-      OR course_name ILIKE ${param}
-      OR public_slug ILIKE ${param}
-      OR data->'profile'->>'studentName' ILIKE ${param}
-      OR data->'profile'->>'className' ILIKE ${param}
+      p.student_name ILIKE ${param}
+      OR p.class_name ILIKE ${param}
+      OR p.centre_name ILIKE ${param}
+      OR p.course_name ILIKE ${param}
+      OR p.public_slug ILIKE ${param}
+      OR p.data->'profile'->>'studentName' ILIKE ${param}
+      OR p.data->'profile'->>'className' ILIKE ${param}
     )`);
   }
 
@@ -2076,12 +2211,26 @@ export async function listPortfolios(input: {
     const param = `$${params.length}`;
     where.push(`CONCAT_WS(
       ' ',
-      class_name,
-      course_name,
-      data->'profile'->>'className',
-      data->'profile'->>'courseName',
-      data->'profile'->>'courseLine'
+      p.class_name,
+      p.course_name,
+      p.data->'profile'->>'className',
+      p.data->'profile'->>'courseName',
+      p.data->'profile'->>'courseLine'
     ) ~* ${param}`);
+  }
+
+  const dateFrom = cleanText(input.dateFrom);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateFrom)) {
+    params.push(dateFrom);
+    const param = `$${params.length}`;
+    where.push(`p.updated_at >= ${param}::date`);
+  }
+
+  const dateTo = cleanText(input.dateTo);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateTo)) {
+    params.push(dateTo);
+    const param = `$${params.length}`;
+    where.push(`p.updated_at < (${param}::date + INTERVAL '1 day')`);
   }
 
   const centreNames = (input.centreNames || []).map(cleanText).filter(Boolean);
@@ -2089,14 +2238,95 @@ export async function listPortfolios(input: {
     params.push(centreNames);
     const param = `$${params.length}`;
     where.push(`(
-      centre_name = ANY(${param}::text[])
-      OR data->'profile'->>'centreName' = ANY(${param}::text[])
+      p.centre_name = ANY(${param}::text[])
+      OR p.data->'profile'->>'centreName' = ANY(${param}::text[])
     )`);
   }
 
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const countResult = await pool.query(
-    `SELECT COUNT(*)::int AS total FROM portfolios ${whereSql}`,
+    `SELECT COUNT(*)::int AS total FROM portfolios p ${whereSql}`,
+    params,
+  );
+
+  const analyticsResult = await pool.query(
+    `WITH filtered AS (
+       SELECT p.id::text AS id
+       FROM portfolios p
+       ${whereSql}
+     ),
+     sessions AS (
+       SELECT s.portfolio_id, s.duration_seconds
+       FROM portfolio_view_sessions s
+       INNER JOIN filtered f ON f.id = s.portfolio_id
+     ),
+     project_events AS (
+       SELECT pv.id
+       FROM portfolio_project_view_events pv
+       INNER JOIN filtered f ON f.id = pv.portfolio_id
+     )
+     SELECT
+       (SELECT COUNT(*)::int FROM filtered) AS portfolio_count,
+       (SELECT COUNT(*)::int FROM sessions) AS total_views,
+       COALESCE((SELECT ROUND(AVG(NULLIF(duration_seconds, 0)))::int FROM sessions), 0) AS average_view_duration_seconds,
+       COALESCE((SELECT MAX(duration_seconds)::int FROM sessions), 0) AS max_view_duration_seconds,
+       (SELECT COUNT(*)::int FROM project_events) AS project_view_count,
+      (SELECT COUNT(DISTINCT portfolio_id)::int FROM sessions) AS viewed_portfolio_count`,
+    params,
+  );
+
+  const topPortfoliosResult = await pool.query(
+    `WITH filtered AS (
+       SELECT
+         p.id::text AS id,
+         p.student_name,
+         p.class_name,
+         p.centre_name,
+         p.public_slug,
+         p.updated_at
+       FROM portfolios p
+       ${whereSql}
+     ),
+     view_counts AS (
+       SELECT portfolio_id, COUNT(*)::int AS view_count
+       FROM portfolio_view_sessions
+       GROUP BY portfolio_id
+     )
+     SELECT
+       f.id,
+       f.student_name,
+       f.class_name,
+       f.centre_name,
+       f.public_slug,
+       COALESCE(v.view_count, 0)::int AS view_count
+     FROM filtered f
+     LEFT JOIN view_counts v ON v.portfolio_id = f.id
+     WHERE COALESCE(v.view_count, 0) > 0
+     ORDER BY view_count DESC, f.updated_at DESC
+     LIMIT 5`,
+    params,
+  );
+
+  const centreViewsResult = await pool.query(
+    `WITH filtered AS (
+       SELECT
+         p.id::text AS id,
+         COALESCE(
+           NULLIF(p.centre_name, ''),
+           NULLIF(p.data->'profile'->>'centreName', ''),
+           'Chưa rõ cơ sở'
+         ) AS centre_name
+       FROM portfolios p
+       ${whereSql}
+     )
+     SELECT
+       f.centre_name,
+       COUNT(*)::int AS view_count
+     FROM portfolio_view_sessions s
+     INNER JOIN filtered f ON f.id = s.portfolio_id
+     GROUP BY f.centre_name
+     ORDER BY view_count DESC, f.centre_name ASC
+     LIMIT 10`,
     params,
   );
 
@@ -2105,24 +2335,46 @@ export async function listPortfolios(input: {
   const offsetParam = `$${rowsParams.length}`;
   const result = await pool.query(
     `SELECT
-       id,
-       student_lms_id,
-       class_lms_id,
-       student_name,
-       class_name,
-       centre_name,
-       course_name,
-       public_slug,
-       status,
-       created_by,
-       created_at,
-       updated_at
-     FROM portfolios
+       p.id,
+       p.student_lms_id,
+       p.class_lms_id,
+       p.student_name,
+       p.class_name,
+       p.centre_name,
+       p.course_name,
+       p.public_slug,
+       p.status,
+       p.created_by,
+       p.created_at,
+       p.updated_at,
+       COALESCE(views.view_count, 0) AS view_count,
+       COALESCE(views.avg_view_duration_seconds, 0) AS avg_view_duration_seconds,
+       COALESCE(views.max_view_duration_seconds, 0) AS max_view_duration_seconds,
+       COALESCE(project_views.project_view_count, 0) AS project_view_count,
+       views.last_viewed_at
+     FROM portfolios p
+     LEFT JOIN (
+       SELECT
+         portfolio_id,
+         COUNT(*)::int AS view_count,
+         COALESCE(ROUND(AVG(NULLIF(duration_seconds, 0)))::int, 0) AS avg_view_duration_seconds,
+         COALESCE(MAX(duration_seconds)::int, 0) AS max_view_duration_seconds,
+         MAX(last_seen_at) AS last_viewed_at
+       FROM portfolio_view_sessions
+       GROUP BY portfolio_id
+     ) views ON views.portfolio_id = p.id::text
+     LEFT JOIN (
+       SELECT portfolio_id, COUNT(*)::int AS project_view_count
+       FROM portfolio_project_view_events
+       GROUP BY portfolio_id
+     ) project_views ON project_views.portfolio_id = p.id::text
      ${whereSql}
-     ORDER BY updated_at DESC, created_at DESC
+     ORDER BY p.updated_at DESC, p.created_at DESC
      LIMIT ${limitParam} OFFSET ${offsetParam}`,
     rowsParams,
   );
+
+  const analyticsRow = analyticsResult.rows[0] || {};
 
   return {
     data: result.rows as StudentPortfolioListItem[],
@@ -2130,6 +2382,26 @@ export async function listPortfolios(input: {
       total: Number(countResult.rows[0]?.total || 0),
       pageIndex,
       itemsPerPage,
+    },
+    analytics: {
+      portfolioCount: Number(analyticsRow.portfolio_count || 0),
+      totalViews: Number(analyticsRow.total_views || 0),
+      averageViewDurationSeconds: Number(analyticsRow.average_view_duration_seconds || 0),
+      maxViewDurationSeconds: Number(analyticsRow.max_view_duration_seconds || 0),
+      projectViewCount: Number(analyticsRow.project_view_count || 0),
+      viewedPortfolioCount: Number(analyticsRow.viewed_portfolio_count || 0),
+      topPortfolios: topPortfoliosResult.rows.map((row) => ({
+        id: row.id,
+        student_name: row.student_name,
+        class_name: row.class_name,
+        centre_name: row.centre_name,
+        public_slug: row.public_slug,
+        view_count: Number(row.view_count || 0),
+      })),
+      centreViews: centreViewsResult.rows.map((row) => ({
+        centre_name: row.centre_name,
+        view_count: Number(row.view_count || 0),
+      })),
     },
   };
 }

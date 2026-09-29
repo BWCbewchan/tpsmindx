@@ -131,6 +131,7 @@ Toan bo duong link public duoc thong nhat ve dinh dang ID so: `/public/checkout/
 - Dieu chinh UI ngay 2026-09-18: shell checkout (`/user/checkout/create` va `/user/checkout/manage`) dung nen trang de khop giao dien quan ly phieu, chi giu vien/bang mau nhe cho tung khoi noi dung.
 - Dieu chinh ngay 2026-09-18: them route public `/public/checkout` de xem danh sach phieu checkout khong can dang nhap. Route nay dung lai UI manage va cung goi API doc-only; route tao phieu va thao tac submit van yeu cau session.
 - Dieu chinh ngay 2026-09-18: header trang manage co them nut **"Link public"** canh nut **"Tạo phiếu mới"**, mo `/public/checkout` o tab moi.
+- Dieu chinh ngay 2026-09-29: rieng route public `/public/checkout` an ca hai nut header **"Link public"** va **"Tạo phiếu mới"**; trang manage noi bo `/user/checkout/manage` van giu hai nut nay.
 - Nut header tren cung doi ten thanh **"Tạo phiếu đánh giá"** (thay cho "Tạo form").
 - Loai bo nut thua "Viết phiếu đánh giá" nam duoi khu vuc bo loc nhanh.
 - **Bo loc sap xep moi**:

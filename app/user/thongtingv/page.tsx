@@ -2103,7 +2103,9 @@ export default function Page1() {
                         <strong>{checkCongData.summary.classSessions}</strong>
                       </div>
                       <div className="rounded-lg border border-gray-200 p-3 text-sm">
-                        <span className="text-gray-500">Office hours:</span>{' '}
+                        <span className="text-gray-500">
+                          Office hours (Makeup/Trial/Fixed):
+                        </span>{' '}
                         <strong>{checkCongData.summary.officeHours}</strong>
                       </div>
                       <div className="rounded-lg border border-gray-200 p-3 text-sm">
@@ -2172,7 +2174,7 @@ export default function Page1() {
                                 {record.studentCount ?? '-'}
                               </TableCell>
                               <TableCell className="text-center font-semibold">
-                                {record.payHours || record.effectiveDuration || record.slotDuration}
+                                {record.payHours ?? record.effectiveDuration ?? record.slotDuration}
                               </TableCell>
                               <TableCell>
                                 <div className="font-semibold text-gray-900">
@@ -2300,8 +2302,8 @@ export default function Page1() {
                                   Công
                                 </div>
                                 <div className="text-sm font-bold text-gray-950">
-                                  {record.payHours ||
-                                    record.effectiveDuration ||
+                                  {record.payHours ??
+                                    record.effectiveDuration ??
                                     record.slotDuration}
                                 </div>
                               </div>

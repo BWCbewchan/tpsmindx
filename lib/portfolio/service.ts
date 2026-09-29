@@ -48,11 +48,12 @@ const GET_CLASSES_QC_QUERY = /* graphql */ `
         teachers {
           isActive
           teacher { id fullName }
-          role { shortName }
+          role { name shortName }
         }
         students {
           _id
           activeInClass
+          completionInfo { status note reason }
           student { id fullName }
         }
         numberOfSessions
@@ -60,6 +61,11 @@ const GET_CLASSES_QC_QUERY = /* graphql */ `
           _id
           date
           startTime
+          teachers {
+            isActive
+            teacher { id fullName }
+            role { name shortName }
+          }
           studentAttendance {
             _id
             status
@@ -112,6 +118,76 @@ function sortSlots(slots: Class['slots']): Class['slots'] {
     });
 }
 
+function normalizeStatusText(value?: string | null) {
+  return (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .trim();
+}
+
+function isActiveClassStudent(
+  student: NonNullable<Class['students']>[number] | null | undefined,
+) {
+  if (!student) return false;
+  if (student.activeInClass === false) return false;
+
+  const completionStatus = normalizeStatusText(
+    student.completionInfo?.status ||
+      (student as any).status ||
+      (student as any).studentStatus,
+  );
+  const completionReason = normalizeStatusText(
+    student.completionInfo?.reason ||
+      student.completionInfo?.note ||
+      (student as any).reason ||
+      (student as any).note,
+  );
+  const inactiveSource = `${completionStatus} ${completionReason}`.trim();
+  if (!inactiveSource) return true;
+
+  const inactiveKeywords = [
+    'deactive',
+    'deactivated',
+    'inactive',
+    'uncompleted',
+    'incomplete',
+    'not completed',
+    'not_complete',
+    'khong hoan thanh',
+    'chua hoan thanh',
+    'failed',
+    'fail',
+    'rejected',
+    'denied',
+    'suspended',
+    'stopped',
+    'cancelled',
+    'canceled',
+    'dropout',
+    'dropped',
+    'withdraw',
+    'removed',
+    'quit',
+    'nghi',
+    'ngung',
+    'tam dung',
+    'bao luu',
+    'drop_out',
+    'drop out',
+    'on_hold',
+    'on hold',
+    'wrong_enroll',
+    'wrong enroll',
+    'transfer_course_line',
+    'transfer course line',
+  ];
+
+  return !inactiveKeywords.some((keyword) => inactiveSource.includes(keyword));
+}
+
 /**
  * Extract the course line tag from class name or course data.
  * E.g. "TT-C4K-GI32" → "C4K", "TL-XART-VA819-ONL-HB" → "XART"
@@ -135,24 +211,74 @@ function extractCourseLineTag(
   return '';
 }
 
+function normalizeTeacherRole(role?: { name?: string; shortName?: string } | null) {
+  return normalizeStatusText([role?.shortName, role?.name].filter(Boolean).join(' '));
+}
+
+function isLectureRole(role?: { name?: string; shortName?: string } | null) {
+  const normalized = normalizeTeacherRole(role);
+  return (
+    normalized === 'lec' ||
+    normalized.includes('lecture') ||
+    normalized.includes('lecturer') ||
+    normalized.includes('giang vien')
+  );
+}
+
+function isSupplyRole(role?: { name?: string; shortName?: string } | null) {
+  const normalized = normalizeTeacherRole(role);
+  return (
+    normalized.includes('supply') ||
+    normalized.includes('substitute') ||
+    normalized.includes('cover') ||
+    normalized.includes('tro giang') ||
+    normalized.includes('assistant')
+  );
+}
+
 /**
- * Get the primary teacher name from a class.
+ * Get the main classroom teacher.
+ * Prefer the LEC/lecturer who appears in the most class sessions; Supply does not count as the main teacher.
  */
 function getPrimaryTeacher(
   teachers: Class['teachers'],
+  slots: Class['slots'] = [],
 ): string {
-  if (!teachers?.length) return '';
+  const lectureCounts = new Map<string, { name: string; count: number; firstIndex: number }>();
 
-  // Prefer active teacher with instructor-like role
-  const active = teachers.filter((t) => t.isActive);
-  const instructor =
-    active.find(
-      (t) =>
-        t.role?.shortName?.toLowerCase() === 'gv' ||
-        t.role?.shortName?.toLowerCase() === 'instructor',
-    ) || active[0];
+  sortSlots(slots).forEach((slot, slotIndex) => {
+    (slot.teachers || []).forEach((assignment) => {
+      if (assignment.isActive === false) return;
+      if (!isLectureRole(assignment.role)) return;
 
-  return instructor?.teacher?.fullName || teachers[0]?.teacher?.fullName || '';
+      const teacherId = assignment.teacher?.id || assignment.teacher?.fullName;
+      const teacherName = assignment.teacher?.fullName || '';
+      if (!teacherId || !teacherName) return;
+
+      const existing = lectureCounts.get(teacherId);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        lectureCounts.set(teacherId, {
+          name: teacherName,
+          count: 1,
+          firstIndex: slotIndex,
+        });
+      }
+    });
+  });
+
+  const [mainLectureTeacher] = Array.from(lectureCounts.values()).sort(
+    (a, b) => b.count - a.count || a.firstIndex - b.firstIndex || a.name.localeCompare(b.name),
+  );
+  if (mainLectureTeacher) return mainLectureTeacher.name;
+
+  const activeTeachers = (teachers || []).filter((teacher) => teacher.isActive !== false);
+  const classLectureTeacher = activeTeachers.find((teacher) => isLectureRole(teacher.role));
+  if (classLectureTeacher?.teacher?.fullName) return classLectureTeacher.teacher.fullName;
+
+  const nonSupplyTeacher = activeTeachers.find((teacher) => !isSupplyRole(teacher.role));
+  return nonSupplyTeacher?.teacher?.fullName || '';
 }
 
 /**
@@ -547,7 +673,7 @@ export async function fetchClassesForQC(
     if (totalSessionsCount < 14) return false;
 
     // Filter requirement: Skip classes with 0 active students
-    const activeStudentsCount = (c.students ?? []).filter((s) => s.activeInClass !== false).length;
+    const activeStudentsCount = (c.students ?? []).filter(isActiveClassStudent).length;
     if (activeStudentsCount === 0) return false;
 
     // Determine effective end date of the class
@@ -654,9 +780,7 @@ export async function fetchClassesForQC(
   const data: PortfolioQCClass[] = lmsClasses.map((cls) => {
     const sortedSlots = sortSlots(cls.slots);
     // 1. Only active students (activeInClass === true)
-    const activeStudents = (cls.students ?? []).filter(
-      (s) => s.activeInClass !== false,
-    );
+    const activeStudents = (cls.students ?? []).filter(isActiveClassStudent);
     const totalStudents = activeStudents.length;
     const classWorks = classWorksMap.get(cls.id) || [];
 
@@ -747,7 +871,7 @@ export async function fetchClassesForQC(
       courseLineTag,
       centreName: cls.centre?.name || '',
       centreShortName: cls.centre?.shortName || '',
-      teacherName: getPrimaryTeacher(cls.teachers),
+      teacherName: getPrimaryTeacher(cls.teachers, sortedSlots),
       totalSessions: sortedSlots.length,
       totalStudents,
       submittedCount,
@@ -846,9 +970,7 @@ export async function getClassStudentDetails(
   classCache.set(cls.id, { data: cls, timestamp: Date.now() });
 
   const sortedSlots = sortSlots(cls.slots);
-  const activeStudents = (cls.students ?? []).filter(
-    (s) => s.activeInClass !== false,
-  );
+  const activeStudents = (cls.students ?? []).filter(isActiveClassStudent);
 
   // 3. Check in-memory worksCache for student works
   let classWorks: StudentWorkItem[] = [];
@@ -923,7 +1045,7 @@ export async function getClassStudentDetails(
     return {
       studentId,
       studentName: s.student?.fullName || '',
-      activeInClass: s.activeInClass !== false,
+      activeInClass: isActiveClassStudent(s),
       hasSubmission,
       submissionSession: null,
       submissionCount: hasSubmission ? 1 : 0,

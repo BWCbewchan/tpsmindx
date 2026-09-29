@@ -300,8 +300,42 @@ function normalizeToken(value: unknown): string {
     .replace(/[\u0300-\u036f]/g, '')
 }
 
-function isOneOnOneClass(className: string): boolean {
-  return /(?:^|[-_\s])1-(?:1|2|3)(?:$|[-_\s])/i.test(className)
+function hasSmallPrivateClassMarker(value: string): boolean {
+  return /(?:^|[^0-9])1\s*[:-]\s*[123](?:[^0-9]|$)/i.test(value)
+}
+
+function isSmallPrivateClass(record: {
+  className: string
+  course: string
+  courseLine: string
+}): boolean {
+  return [record.className, record.course, record.courseLine].some(
+    hasSmallPrivateClassMarker,
+  )
+}
+
+function isCancelledWithTeacherOnDuty(status: string): boolean {
+  return (
+    status.includes('huy') &&
+    status.includes('truc') &&
+    !status.includes('khong truc') &&
+    !status.includes('k truc')
+  )
+}
+
+function countsTowardTotalHours(record: {
+  type: string
+  roleType: string
+}): boolean {
+  const type = normalizeToken(record.type)
+  const role = normalizeToken(record.roleType)
+
+  return (
+    type === 'class' ||
+    role === 'makeup' ||
+    role === 'judge' ||
+    role === 'supply'
+  )
 }
 
 function trialOfflineSalary(record: {
@@ -310,19 +344,31 @@ function trialOfflineSalary(record: {
 }): Pick<CheckCongRecord, 'salaryAmount' | 'salaryRule' | 'payHours'> {
   const status = normalizeToken(record.confirmStatus)
   if (status.includes('gvien k truc') || status.includes('giao vien k truc')) {
-    return { salaryAmount: 0, salaryRule: 'Trial offline cancel - không trực', payHours: 0 }
+    return {
+      salaryAmount: 0,
+      salaryRule: 'OFFICE HOURS Fixed/Trial offline cancel - không trực',
+      payHours: 0,
+    }
   }
   if (status.includes('truc 30p')) {
-    return { salaryAmount: 50000, salaryRule: 'Trial offline cancel - trực 30 phút', payHours: 0.5 }
+    return {
+      salaryAmount: 50000,
+      salaryRule: 'OFFICE HOURS Fixed/Trial offline cancel - trực 30 phút, không cộng tổng giờ',
+      payHours: 0,
+    }
   }
-  if (status.includes('huy') && status.includes('truc het gio')) {
-    return { salaryAmount: 80000, salaryRule: 'Trial offline cancel - trực hết giờ', payHours: 0 }
+  if (isCancelledWithTeacherOnDuty(status) && status.includes('truc het gio')) {
+    return {
+      salaryAmount: 80000,
+      salaryRule: 'OFFICE HOURS Fixed/Trial offline cancel - trực hết giờ, không cộng tổng giờ',
+      payHours: 0,
+    }
   }
 
   const students = Math.max(0, record.studentCount ?? 0)
   return {
     salaryAmount: Math.min(300000, 80000 + students * 30000),
-    salaryRule: 'Trial offline/FIXED: 80k + 30k/học viên, tối đa 300k',
+    salaryRule: 'OFFICE HOURS Fixed/Trial offline: 80k + 30k/học viên, tối đa 300k',
     payHours: 0,
   }
 }
@@ -335,10 +381,15 @@ function trialOnlineSalary(record: {
   salaryRule: string
   payHours: number
 } {
-  if (normalizeToken(record.confirmStatus).includes('huy')) {
+  const status = normalizeToken(record.confirmStatus)
+  if (status.includes('huy')) {
+    const hasTeacherOnDuty = isCancelledWithTeacherOnDuty(status)
     return {
       salaryAmount: 40000,
-      salaryRule: 'Trial online cancel sát giờ: 40k',
+      salaryRule:
+        hasTeacherOnDuty
+          ? 'OFFICE HOURS Trial online cancel - giáo viên có trực, không cộng tổng giờ'
+          : 'OFFICE HOURS Trial online cancel sát giờ: 40k',
       payHours: 0,
     }
   }
@@ -347,7 +398,7 @@ function trialOnlineSalary(record: {
   const amount = students <= 1 ? 40000 : students === 2 ? 60000 : 80000
   return {
     salaryAmount: amount,
-    salaryRule: 'Trial online: 40k/1 HV, 60k/2 HV, 80k/3 HV',
+    salaryRule: 'OFFICE HOURS Trial online: 40k/1 HV, 60k/2 HV, 80k/3 HV',
     payHours: 0,
   }
 }
@@ -382,14 +433,16 @@ function calculateSalary(
     }
 
     if (role === 'lec') {
-      const multiplier =
-        students > 3 || isOneOnOneClass(record.className) ? 1 : 0.75
+      const smallPrivateClass = isSmallPrivateClass(record)
+      const multiplier = students > 3 || smallPrivateClass ? 1 : 0.75
       return {
         salaryAmount: Math.round(hourlyRate * hours * multiplier),
         salaryRule:
-          multiplier === 1
-            ? 'CLASS LEC: 100% x rate x giờ'
-            : 'CLASS LEC thiếu sĩ số: 75% x rate x giờ',
+          smallPrivateClass && students <= 3
+            ? 'CLASS LEC lớp 1:1/1:2/1:3: 100% x rate x giờ'
+            : multiplier === 1
+              ? 'CLASS LEC: 100% x rate x giờ'
+              : 'CLASS LEC thiếu sĩ số: 75% x rate x giờ',
         payHours: hours,
       }
     }
@@ -415,8 +468,8 @@ function calculateSalary(
         salaryAmount: Math.round(hourlyRate * payHours * multiplier),
         salaryRule:
           students > 3
-            ? 'MAKE UP > 3 HV: 100% x rate x giờ'
-            : 'MAKE UP <= 3 HV: 75% x rate x 1 giờ/ca',
+            ? 'OFFICE HOURS Makeup > 3 HV: 100% x rate x giờ'
+            : 'OFFICE HOURS Makeup <= 3 HV: 75% x rate x 1 giờ/ca',
         payHours,
       }
     }
@@ -426,7 +479,7 @@ function calculateSalary(
     }
     return {
       salaryAmount: Math.round(hourlyRate * hours),
-      salaryRule: 'Office hours khác: 100% x rate x giờ',
+      salaryRule: 'Office hours khác (Makeup/Trial/Fixed): 100% x rate x giờ',
       payHours: hours,
     }
   }
@@ -703,11 +756,12 @@ function buildSummary(records: CheckCongRecord[], month: string): CheckCongSumma
   const uncheckedRecords = records.filter((record) => record.status === 'UNCHECKED')
   const classSessions = records.filter((record) => record.type === 'CLASS')
   const officeHours = records.filter((record) => record.type === 'OFFICE_HOURS')
-  const totalEffectiveDuration = checked.reduce(
+  const recordsCountedInTotalHours = checked.filter(countsTowardTotalHours)
+  const totalEffectiveDuration = recordsCountedInTotalHours.reduce(
     (sum, record) => sum + record.payHours,
     0,
   )
-  const totalSlotDuration = checked.reduce(
+  const totalSlotDuration = recordsCountedInTotalHours.reduce(
     (sum, record) => sum + record.slotDuration,
     0,
   )

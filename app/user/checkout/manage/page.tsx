@@ -38,6 +38,7 @@ import {
   X,
 } from 'lucide-react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import type { ElementType } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
@@ -405,6 +406,7 @@ function SearchableFilterSelect({
 
 export default function UserCheckoutManagePage() {
   const { token, isLoading: authLoading } = useAuth()
+  const pathname = usePathname()
   const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS)
   const [sortBy, setSortBy] = useState<string>('trial_date_desc')
   const [debouncedTeacher, setDebouncedTeacher] = useState('')
@@ -664,6 +666,8 @@ export default function UserCheckoutManagePage() {
     filters.fromDate ||
     filters.toDate,
   )
+  const isPublicCheckoutList = pathname === '/public/checkout' || pathname === '/public/checkout/'
+  const showHeaderActions = !isPublicCheckoutList
 
   return (
     <PageLayout background="white" maxWidth="full" padding="responsive" className="px-4 sm:px-6 lg:px-8">
@@ -672,24 +676,26 @@ export default function UserCheckoutManagePage() {
           title="Quản Lý Phiếu Kết Quả Trải Nghiệm"
           description="Tìm kiếm và theo dõi các phiếu kết quả trải nghiệm đánh giá học viên"
           actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href="/public/checkout"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#f3b4bd] bg-white px-4 text-sm font-semibold text-[#b00020] shadow-sm transition-colors hover:bg-[#b00020]/5"
-              >
-                <ExternalLink className="h-4 w-4" />
-                Link public
-              </Link>
-              <Link
-                href="/user/checkout/create"
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#b00020] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#90001a]"
-              >
-                <FilePlus2 className="h-4 w-4" />
-                Tạo phiếu mới
-              </Link>
-            </div>
+            showHeaderActions ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <Link
+                  href="/public/checkout"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#f3b4bd] bg-white px-4 text-sm font-semibold text-[#b00020] shadow-sm transition-colors hover:bg-[#b00020]/5"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Link public
+                </Link>
+                <Link
+                  href="/user/checkout/create"
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#b00020] px-4 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#90001a]"
+                >
+                  <FilePlus2 className="h-4 w-4" />
+                  Tạo phiếu mới
+                </Link>
+              </div>
+            ) : null
           }
         />
 

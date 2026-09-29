@@ -131,4 +131,30 @@ export interface StudentPortfolioListItem {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  view_count?: number;
+  avg_view_duration_seconds?: number;
+  max_view_duration_seconds?: number;
+  project_view_count?: number;
+  last_viewed_at?: string | null;
+}
+
+export interface PortfolioAnalyticsSummary {
+  portfolioCount: number;
+  totalViews: number;
+  averageViewDurationSeconds: number;
+  maxViewDurationSeconds: number;
+  projectViewCount: number;
+  viewedPortfolioCount: number;
+  topPortfolios: Array<{
+    id: string | number;
+    student_name: string;
+    class_name: string | null;
+    centre_name: string | null;
+    public_slug: string | null;
+    view_count: number;
+  }>;
+  centreViews: Array<{
+    centre_name: string;
+    view_count: number;
+  }>;
 }

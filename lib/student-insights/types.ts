@@ -53,11 +53,12 @@ export interface Class {
     _id: string;
     isActive: boolean;
     teacher: { id: string; fullName: string };
-    role: { shortName: string };
+    role: { name?: string; shortName: string };
   }>;
   students: Array<{
     _id: string;
     activeInClass: boolean;
+    completionInfo?: { status?: string; note?: string; reason?: string };
     student: { id: string; fullName: string };
   }>;
   slots: Array<{
@@ -71,7 +72,7 @@ export interface Class {
     teachers: Array<{
       isActive: boolean;
       teacher: { id: string; fullName: string };
-      role: { shortName: string };
+      role: { name?: string; shortName: string };
     }>;
     teacherAttendance: Array<{
       _id: string;

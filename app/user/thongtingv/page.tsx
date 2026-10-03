@@ -693,6 +693,7 @@ export default function Page1() {
     useState<CheckCongStatusFilter>('all')
   const [selectedCheckCongRecord, setSelectedCheckCongRecord] =
     useState<CheckCongRecord | null>(null)
+  const [isSalaryRevealed, setIsSalaryRevealed] = useState(false)
   const [selectedCheckCongFeedbackRecord, setSelectedCheckCongFeedbackRecord] =
     useState<CheckCongRecord | null>(null)
   const [checkCongFeedbackText, setCheckCongFeedbackText] = useState('')
@@ -2075,17 +2076,31 @@ export default function Page1() {
                         </div>
                       </div>
                       <div className="rounded-lg border border-[#a1001f]/20 bg-red-50 p-3">
-                        <div className="flex items-center gap-1 text-xs text-[#a1001f]">
-                          <DollarSign className="h-3.5 w-3.5" />
-                          {Number(checkCongData.salaryTaxAmount || 0) > 0
-                            ? 'Lương dự tính (đã trừ thuế)'
-                            : 'Lương dự tính'}
+                        <div className="flex items-center justify-between text-xs text-[#a1001f]">
+                          <div className="flex items-center gap-1 font-medium">
+                            <DollarSign className="h-3.5 w-3.5" />
+                            {Number(checkCongData.salaryTaxAmount || 0) > 0
+                              ? 'Lương dự tính (đã trừ thuế)'
+                              : 'Lương dự tính'}
+                          </div>
+                          <Button
+                            type="button"
+                            onClick={() => setIsSalaryRevealed((v) => !v)}
+                            variant="ghost"
+                            size="icon-sm"
+                            className="h-6 w-6 shrink-0 text-[#a1001f] hover:bg-red-100"
+                            aria-label={isSalaryRevealed ? 'Ẩn mức lương' : 'Hiện mức lương'}
+                            title={isSalaryRevealed ? 'Ẩn mức lương' : 'Hiện mức lương'}
+                          >
+                            <Icon icon={isSalaryRevealed ? EyeOff : Eye} size="sm" />
+                          </Button>
                         </div>
                         <div className="mt-1">
-                          <SensitiveInlineValue
-                            value={formatVndAmount(checkCongData.estimatedSalary)}
-                            className="text-lg font-bold text-[#a1001f]"
-                          />
+                          <span className="text-lg font-bold text-[#a1001f] font-mono">
+                            {isSalaryRevealed
+                              ? formatVndAmount(checkCongData.estimatedSalary)
+                              : '••••••'}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -2093,10 +2108,11 @@ export default function Page1() {
                     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                       <div className="rounded-lg border border-gray-200 p-3 text-sm">
                         <span className="text-gray-500">Rate theo giờ:</span>{' '}
-                        <SensitiveInlineValue
-                          value={formatVndAmount(checkCongData.teacher.rate)}
-                          className="text-sm font-bold text-gray-900"
-                        />
+                        <span className="text-sm font-bold text-gray-900 font-mono">
+                          {isSalaryRevealed
+                            ? formatVndAmount(checkCongData.teacher.rate)
+                            : '••••••'}
+                        </span>
                       </div>
                       <div className="rounded-lg border border-gray-200 p-3 text-sm">
                         <span className="text-gray-500">Lớp học:</span>{' '}
@@ -2174,11 +2190,13 @@ export default function Page1() {
                                 {record.studentCount ?? '-'}
                               </TableCell>
                               <TableCell className="text-center font-semibold">
-                                {record.payHours ?? record.effectiveDuration ?? record.slotDuration}
+                                {record.payHours || record.effectiveDuration || record.slotDuration || 0}
                               </TableCell>
                               <TableCell>
-                                <div className="font-semibold text-gray-900">
-                                  {formatVndAmount(record.salaryAmount)}
+                                <div className="font-semibold text-gray-900 font-mono">
+                                  {isSalaryRevealed
+                                    ? formatVndAmount(record.salaryAmount)
+                                    : '••••••'}
                                 </div>
                               </TableCell>
                               <TableCell className="text-center">
@@ -2456,9 +2474,21 @@ export default function Page1() {
                       },
                       {
                         label: 'Rank lương',
-                        value:
-                          normalizeCheckCongText(checkCongData?.teacher.rank) ||
-                          '-',
+                        value: (() => {
+                          const origRank =
+                            normalizeCheckCongText(checkCongData?.teacher.rank) || '-'
+                          const isJudge =
+                            String(selectedCheckCongRecord.roleType || '')
+                              .trim()
+                              .toLowerCase() === 'judge'
+                          if (isJudge && origRank !== '-') {
+                            const match = origRank.match(/T(\d+)/i)
+                            if (match && Number(match[1]) > 5) {
+                              return `T5 (Tối đa cho Judge, gốc: ${origRank})`
+                            }
+                          }
+                          return origRank
+                        })(),
                       },
                     ].map((item) => (
                       <div key={item.label}>

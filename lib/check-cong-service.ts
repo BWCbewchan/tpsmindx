@@ -214,16 +214,124 @@ function serializeCSVRows(rows: string[][]): string {
     .join('\r\n')
 }
 
+function isDurationColumn(header: string): boolean {
+  const norm = normalizeToken(header)
+  return (
+    norm.includes('slot duration') ||
+    norm.includes('effective duration') ||
+    norm.includes('thoi luong') ||
+    norm.includes('so gio') ||
+    norm === 'duration'
+  )
+}
+
+function formatWorkbookDurationCell(value: unknown): string {
+  if (value == null) return ''
+
+  // 1. Nếu là số (number): giữ nguyên số thập phân, không làm tròn
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) return ''
+    // Mã serial ngày của Excel cho ngày 1/5/2026 (46143), 2/5 (46144), 3/5 (46145) do gõ 1/5, 2/5, 3/5
+    if (value === 46143) return '1.5'
+    if (value === 46144) return '2.5'
+    if (value === 46145) return '3.5'
+    // Nếu số rơi vào khoảng 23.9 đến 24.1 (lỗi múi giờ 23:59:30)
+    if (value >= 23.9 && value <= 24.1) return '1.5'
+    return String(value)
+  }
+
+  // 2. Nếu là Date (do Excel auto-convert từ 1/5, 2/5, 3/5 hoặc format time)
+  if (value instanceof Date) {
+    // Làm tròn phút gần nhất để xử lý lệch 30s timezone Việt Nam (+0700)
+    const roundedMs = Math.round(value.getTime() / 60000) * 60000
+    const vnDate = new Date(roundedMs + 7 * 3600000)
+    const vnMonth = vnDate.getUTCMonth() + 1
+    const vnDay = vnDate.getUTCDate()
+    const vnHour = vnDate.getUTCHours()
+    const vnMinute = vnDate.getUTCMinutes()
+
+    // Người dùng gõ 1/5, 2/5, 3/5 -> ngày 1, 2, 3 tháng 5
+    if (vnMonth === 5 && (vnDay === 1 || vnDay === 2 || vnDay === 3)) {
+      return String(vnDay + 0.5)
+    }
+
+    // Giờ gần nửa đêm (do ngày 01/05 bị lệch múi giờ thành 23h59)
+    if (vnHour >= 23) {
+      return '1.5'
+    }
+
+    // Nếu Date mang giá trị giờ:phút thực tế (<= 8 tiếng)
+    if ((vnHour > 0 || vnMinute > 0) && vnHour <= 8) {
+      const decHours = vnHour + vnMinute / 60
+      return String(Number(decHours.toFixed(2)))
+    }
+
+    return ''
+  }
+
+  // 3. Nếu là chuỗi
+  const str = String(value).trim()
+  if (!str) return ''
+
+  if (str === '23.99' || str === '23,99' || str === '23.98') {
+    return '1.5'
+  }
+
+  // Chuỗi số thập phân (chấp nhận cả dấu phẩy 1,5 -> 1.5)
+  const normalizedNumberStr = str.replace(',', '.')
+  const num = Number(normalizedNumberStr)
+  if (Number.isFinite(num)) {
+    if (num >= 23.9 && num <= 24.1) return '1.5'
+    return normalizedNumberStr
+  }
+
+  // Chuỗi date kiểu 2026-05-01 hoặc 2026-04-30
+  if (str.includes('2026-05-01') || str.includes('2026-04-30')) {
+    return '1.5'
+  }
+  if (str.includes('2026-05-02')) return '2.5'
+  if (str.includes('2026-05-03')) return '3.5'
+
+  // Chuỗi time 1:30 hoặc 01:30
+  const timeMatch = str.match(/^0?(\d+):([0-5]\d)(?::[0-5]\d)?$/)
+  if (timeMatch) {
+    const h = Number(timeMatch[1])
+    const m = Number(timeMatch[2])
+    if (h <= 8) {
+      return String(Number((h + m / 60).toFixed(2)))
+    }
+  }
+
+  return str
+}
+
 function formatWorkbookCell(value: unknown): string {
   if (value == null) return ''
   if (value instanceof Date) {
     const year = value.getFullYear()
-    const month = String(value.getMonth() + 1).padStart(2, '0')
-    const day = String(value.getDate()).padStart(2, '0')
-    const hour = String(value.getHours()).padStart(2, '0')
-    const minute = String(value.getMinutes()).padStart(2, '0')
-    const second = String(value.getSeconds()).padStart(2, '0')
-    return `${year}-${month}-${day} ${hour}:${minute}:${second}`
+    const month = value.getMonth() + 1
+    const day = value.getDate()
+    const hour = value.getHours()
+    const minute = value.getMinutes()
+    const second = value.getSeconds()
+
+    // Nếu ô Date thực chất do Excel tự động convert từ 1/5, 2/5, 3/5 (1.5h, 2.5h, 3.5h)
+    if (
+      month === 5 &&
+      (day === 1 || day === 2 || day === 3) &&
+      hour === 0 &&
+      minute === 0 &&
+      second === 0
+    ) {
+      return String(day + 0.5)
+    }
+
+    const monthStr = String(month).padStart(2, '0')
+    const dayStr = String(day).padStart(2, '0')
+    const hourStr = String(hour).padStart(2, '0')
+    const minuteStr = String(minute).padStart(2, '0')
+    const secondStr = String(second).padStart(2, '0')
+    return `${year}-${monthStr}-${dayStr} ${hourStr}:${minuteStr}:${secondStr}`
   }
   return String(value).trim()
 }
@@ -250,14 +358,38 @@ function workbookBufferToCsvText(buffer: Buffer): {
   }
 
   const worksheet = workbook.Sheets[sheetName]
-  const rows = XLSX.utils
-    .sheet_to_json<unknown[]>(worksheet, {
-      header: 1,
-      raw: true,
-      defval: '',
-      blankrows: false,
+  const rawRows = XLSX.utils.sheet_to_json<unknown[]>(worksheet, {
+    header: 1,
+    raw: true,
+    defval: '',
+    blankrows: false,
+  })
+
+  if (rawRows.length === 0) {
+    return { csvText: '', sheetName, recordCount: 0 }
+  }
+
+  const headerRow = (rawRows[0] || []).map((cell) => String(cell ?? '').trim())
+  const durationColumnIndices = new Set<number>()
+  headerRow.forEach((colName, index) => {
+    if (isDurationColumn(colName)) {
+      durationColumnIndices.add(index)
+    }
+  })
+
+  const rows = rawRows
+    .map((row, rowIndex) => {
+      // Dòng header giữ nguyên
+      if (rowIndex === 0) {
+        return row.map((cell) => String(cell ?? '').trim())
+      }
+      return row.map((cell, colIndex) => {
+        if (durationColumnIndices.has(colIndex)) {
+          return formatWorkbookDurationCell(cell)
+        }
+        return formatWorkbookCell(cell)
+      })
     })
-    .map((row) => row.map(formatWorkbookCell))
     .filter((row) => row.some((value) => value !== ''))
 
   const headers = rows[0] ?? []
@@ -285,6 +417,84 @@ function normalizeSearchText(value: unknown): string {
 function toNumber(value: string): number {
   const parsed = Number(value.replace(',', '.'))
   return Number.isFinite(parsed) ? parsed : 0
+}
+
+function fallbackDuration(recordHint?: {
+  className?: string
+  course?: string
+  type?: string
+}): number {
+  if (!recordHint) return 0
+  const cls = (recordHint.className || '').toUpperCase()
+  const course = (recordHint.course || '').toUpperCase()
+
+  // Các lớp Robotics Kindergarten MindX (ROB4B, ROB4I, KIND...) luôn có thời lượng chuẩn là 1.5 giờ
+  if (
+    cls.includes('KIND') ||
+    cls.includes('ROB4') ||
+    course.includes('KIND') ||
+    course.includes('ROB4')
+  ) {
+    return 1.5
+  }
+
+  return 0
+}
+
+function parseDuration(
+  value: unknown,
+  recordHint?: { className?: string; course?: string; type?: string },
+): number {
+  if (value == null) return fallbackDuration(recordHint)
+  const raw = String(value).trim()
+  if (!raw) return fallbackDuration(recordHint)
+
+  // Nhận diện lỗi múi giờ 23.99 (do ngày 01/05 bị lệch 30s thành 23:59:30)
+  if (raw === '23.99' || raw === '23,99' || raw === '23.98') {
+    return fallbackDuration(recordHint) || 1.5
+  }
+
+  // 1. Số chuẩn ("1.5", "1,5", "2", "3")
+  const standardNumber = Number(raw.replace(',', '.'))
+  if (Number.isFinite(standardNumber) && standardNumber > 0) {
+    if (standardNumber >= 23.9 && standardNumber <= 24.1) {
+      return fallbackDuration(recordHint) || 1.5
+    }
+    return standardNumber
+  }
+
+  // 2. Format Date do Excel tự convert từ "1/5", "2/5", "3/5" (tức 1.5h, 2.5h, 3.5h)
+  if (raw.includes('2026-05-01') || raw.includes('2026-04-30')) {
+    return 1.5
+  }
+  if (raw.includes('2026-05-02')) return 2.5
+  if (raw.includes('2026-05-03')) return 3.5
+  const dateMatch1 = raw.match(/^\d{4}-0?5-0?([123])(?:\s+00:00:00)?/)
+  if (dateMatch1) {
+    return Number(dateMatch1[1]) + 0.5
+  }
+
+  // Format Date đảo ngày/tháng: "2026-01-05" hoặc "2026-02-05", "2026-03-05"
+  const dateMatch2 = raw.match(/^\d{4}-0?([123])-0?5(?:\s+00:00:00)?/)
+  if (dateMatch2) {
+    return Number(dateMatch2[1]) + 0.5
+  }
+
+  // 3. Chuỗi dạng phân số hoặc viết nhầm: "1/5" -> 1.5, "2/5" -> 2.5, "3/5" -> 3.5
+  const fractionMatch = raw.match(/^([123])\/5$/)
+  if (fractionMatch) {
+    return Number(fractionMatch[1]) + 0.5
+  }
+
+  // 4. Chuỗi định dạng thời gian "1:30", "01:30", "01:30:00"
+  const timeMatch = raw.match(/^0?(\d+):([0-5]\d)(?::[0-5]\d)?$/)
+  if (timeMatch) {
+    const hours = Number(timeMatch[1])
+    const minutes = Number(timeMatch[2])
+    return Number((hours + minutes / 60).toFixed(2))
+  }
+
+  return fallbackDuration(recordHint)
 }
 
 function toNullableNumber(value: string): number | null {
@@ -416,8 +626,54 @@ function calculateSalary(
 
   const role = normalizeToken(record.roleType)
   const type = normalizeToken(record.type)
-  const hours = record.effectiveDuration || record.slotDuration || 0
+  let hours =
+    record.effectiveDuration ||
+    record.slotDuration ||
+    fallbackDuration({
+      className: record.className,
+      course: record.course,
+      type: record.type,
+    }) ||
+    0
+  if (hours >= 20) {
+    hours =
+      fallbackDuration({
+        className: record.className,
+        course: record.course,
+        type: record.type,
+      }) || 1.5
+  }
   const students = record.studentCount ?? 0
+
+  // ── XỬ LÝ VAI TRÒ JUDGE (GIÁM KHẢO) ──
+  // Nếu vai trò là Judge: rank lương tối đa chỉ là T5 (tương đương 150.000 VNĐ/giờ).
+  // Nếu giáo viên có rank từ T6 trở lên (rate > 150.000đ), hạ xuống T5 (150.000đ).
+  const isJudge = role === 'judge' || record.roleType?.toLowerCase().includes('judge')
+  let effectiveHourlyRate = hourlyRate
+  if (isJudge && effectiveHourlyRate !== null && effectiveHourlyRate !== undefined) {
+    const RATE_T5 = 150000 // Mức lương của rank T5 (150.000 VNĐ/giờ)
+    if (effectiveHourlyRate > RATE_T5) {
+      effectiveHourlyRate = RATE_T5
+    }
+  }
+
+  if (isJudge) {
+    if (!effectiveHourlyRate) {
+      return {
+        salaryAmount: null,
+        salaryRule: 'Judge: Thiếu rate theo giờ (tối đa rank T5)',
+        payHours: hours,
+      }
+    }
+    const isCapped = (hourlyRate ?? 0) > 150000
+    return {
+      salaryAmount: Math.round(effectiveHourlyRate * hours),
+      salaryRule: isCapped
+        ? 'Judge (hạ từ T6+ xuống rank T5): 100% x rate T5 (150k) x giờ'
+        : 'Judge (rank <= T5): 100% x rate x giờ',
+      payHours: hours,
+    }
+  }
 
   if (type === 'class') {
     if (!hourlyRate) {
@@ -519,11 +775,16 @@ function makeCheckCongKey(record: {
 }
 
 function rowToRecord(row: Record<string, string>): CheckCongRecord {
+  const className = row['Class name'] || ''
+  const course = row.Course || ''
+  const type = row.Type || ''
+  const recordHint = { className, course, type }
+
   const base = {
     centre: row['Centre shortname'] || '',
-    type: row.Type || '',
-    className: row['Class name'] || '',
-    course: row.Course || '',
+    type,
+    className,
+    course,
     courseLine: row['Course Line'] || '',
     teacherName: row['Teacher name'] || '',
     workEmail: row['Work email'] || '',
@@ -532,8 +793,8 @@ function rowToRecord(row: Record<string, string>): CheckCongRecord {
     roleType: row['Class role/Office hour type'] || '',
     status: row.Status || '',
     slotTime: row['Slot time'] || '',
-    slotDuration: toNumber(row['Slot duration'] || ''),
-    effectiveDuration: toNumber(row['Effective duration'] || ''),
+    slotDuration: parseDuration(row['Slot duration'] || '', recordHint),
+    effectiveDuration: parseDuration(row['Effective duration'] || '', recordHint),
     studentCount: toNullableNumber(row['Student count'] || ''),
     note: row.Note || '',
     managerNote: row['Manager Note'] || '',

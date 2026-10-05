@@ -530,10 +530,11 @@ function StatusControls({
           </button>
         )
       })}
-      <MessageSquareText
-        title={hasComment ? 'Có nhận xét' : 'Chưa có nhận xét'}
-        className={cn('h-5 w-5', hasComment ? 'text-orange-500' : 'text-gray-500')}
-      />
+      <span title={hasComment ? 'Có nhận xét' : 'Chưa có nhận xét'}>
+        <MessageSquareText
+          className={cn('h-5 w-5', hasComment ? 'text-orange-500' : 'text-gray-500')}
+        />
+      </span>
       <MoreVertical className="h-5 w-5 text-gray-500" />
     </div>
   )
@@ -946,6 +947,7 @@ function ClassAttendanceDrawer({
 
   if (!cls) return null
 
+  const classId = cls.id
   const slots = buildDisplaySlots(cls)
   const selectedSlot = selectedSessionIndex === null ? null : slots[selectedSessionIndex] || null
   const teacherRows = teacherRowsForClass(cls)
@@ -964,7 +966,7 @@ function ClassAttendanceDrawer({
   function setDraft(slot: ClassSlot, personId: string, status: AttendanceStatus) {
     setDraftStatuses((current) => ({
       ...current,
-      [attendanceKey(cls.id, slot.id, personId)]: status,
+      [attendanceKey(classId, slot.id, personId)]: status,
     }))
   }
 
@@ -1376,12 +1378,7 @@ export default function TeacherClassesPage() {
   )
 
   return (
-    <PageContainer
-      title="Lớp học"
-      description="Danh sách lớp LMS có dữ liệu giảng dạy hoặc điểm danh của giáo viên hiện tại."
-      headerActions={headerActions}
-      maxWidth="full"
-    >
+    <PageContainer maxWidth="full">
       <div className="space-y-5">
         <div className="grid gap-3 md:grid-cols-4">
           <StatTile icon={BookOpen} label="Lớp hiển thị" value={String(filteredClasses.length)} tone="bg-[#a1001f]/10 text-[#a1001f]" />
@@ -1391,9 +1388,12 @@ export default function TeacherClassesPage() {
         </div>
 
         <section className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
-          <div className="mb-4 flex items-center gap-2 border-b border-gray-100 pb-3">
-            <Filter className="h-4 w-4 text-[#a1001f]" />
-            <h2 className="text-sm font-semibold text-gray-800">Bộ lọc lớp học</h2>
+          <div className="mb-4 flex flex-col gap-3 border-b border-gray-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-[#a1001f]" />
+              <h2 className="text-sm font-semibold text-gray-800">Bộ lọc lớp học</h2>
+            </div>
+            {headerActions}
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">

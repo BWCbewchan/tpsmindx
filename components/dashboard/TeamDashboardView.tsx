@@ -4,37 +4,33 @@ import { useAuth } from '@/lib/auth-context'
 import { authHeaders } from '@/lib/auth-headers'
 import { cn } from '@/lib/utils'
 import {
+  Award,
+  BadgeCheck,
+  BarChart3,
   BookOpen,
   Building2,
-  Calendar,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Clock,
+  ClipboardCheck,
   Filter,
-  GraduationCap,
   Loader2,
+  Medal,
+  Percent,
   RefreshCw,
+  Repeat2,
   Search,
   Sparkles,
-  User,
+  Star,
+  TrendingUp,
+  UserCheck,
+  UserX,
   Users,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ClassDetailData, ClassDetailModal } from './ClassDetailModal'
 import { TeacherDetailData, TeacherDetailModal } from './TeacherDetailModal'
-
-interface SummaryData {
-  totalTeachers: number
-  totalClasses: number
-  totalRunningClasses: number
-  totalPreparingClasses: number
-  totalFinishedClasses: number
-  totalStudents: number
-  activeTeachersWithClasses: number
-}
 
 interface CenterOption {
   id: number
@@ -42,6 +38,93 @@ interface CenterOption {
   shortCode: string | null
   region: string | null
 }
+
+const KPI_ITEMS = [
+  {
+    label: 'CR46',
+    value: '46',
+    helper: 'Chỉ số CR mẫu trong kỳ',
+    icon: BarChart3,
+    iconTone: 'bg-rose-50 text-[#a1001f] border-rose-100',
+  },
+  {
+    label: 'TP',
+    value: '92',
+    helper: 'TP đang được theo dõi',
+    icon: Users,
+    iconTone: 'bg-sky-50 text-sky-700 border-sky-100',
+  },
+  {
+    label: 'Completion rate',
+    value: '87%',
+    helper: 'Tỷ lệ hoàn thành mẫu',
+    icon: BadgeCheck,
+    iconTone: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  },
+  {
+    label: 'Số lượng GV đạt chuẩn',
+    value: '128',
+    helper: 'Giáo viên đạt chuẩn mẫu',
+    icon: UserCheck,
+    iconTone: 'bg-violet-50 text-violet-700 border-violet-100',
+  },
+  {
+    label: 'Tỷ lệ Giáo viên đạt chuẩn',
+    value: '72%',
+    helper: 'Tạm chờ công thức chính thức',
+    icon: Percent,
+    iconTone: 'bg-pink-50 text-pink-700 border-pink-100',
+  },
+  {
+    label: 'Chỉ số thay đổi giáo viên',
+    value: '+5.4%',
+    helper: 'Biến động so với kỳ trước',
+    icon: TrendingUp,
+    iconTone: 'bg-teal-50 text-teal-700 border-teal-100',
+  },
+  {
+    label: 'Giáo viên không đạt chuẩn đi dạy',
+    value: '14',
+    helper: 'Cần rà soát thêm',
+    icon: UserX,
+    iconTone: 'bg-orange-50 text-orange-700 border-orange-100',
+  },
+  {
+    label: 'Re-upsale',
+    value: '36',
+    helper: 'Lớp có tín hiệu upsale mẫu',
+    icon: Repeat2,
+    iconTone: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+  },
+  {
+    label: 'Đánh giá từ Cơ sở',
+    value: '4.6',
+    helper: 'Điểm đánh giá mẫu',
+    icon: Star,
+    iconTone: 'bg-amber-50 text-amber-700 border-amber-100',
+  },
+  {
+    label: 'Điểm đánh giá (Max = 5)',
+    value: '4.3/5',
+    helper: 'Điểm tổng hợp mẫu',
+    icon: Award,
+    iconTone: 'bg-rose-50 text-[#a1001f] border-rose-100',
+  },
+  {
+    label: 'Xếp loại',
+    value: 'A',
+    helper: 'Xếp hạng tạm thời',
+    icon: Medal,
+    iconTone: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  },
+  {
+    label: 'Đánh giá cuối cùng',
+    value: '4.5',
+    helper: 'Kết quả mẫu chờ xác nhận',
+    icon: ClipboardCheck,
+    iconTone: 'bg-slate-100 text-slate-700 border-slate-200',
+  },
+]
 
 /** Component điều hướng phân trang */
 function PaginationBar({
@@ -178,15 +261,6 @@ export function TeamDashboardView() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [summary, setSummary] = useState<SummaryData>({
-    totalTeachers: 0,
-    totalClasses: 0,
-    totalRunningClasses: 0,
-    totalPreparingClasses: 0,
-    totalFinishedClasses: 0,
-    totalStudents: 0,
-    activeTeachersWithClasses: 0,
-  })
   const [centers, setCenters] = useState<CenterOption[]>([])
   const [classes, setClasses] = useState<ClassDetailData[]>([])
   const [teachers, setTeachers] = useState<TeacherDetailData[]>([])
@@ -208,9 +282,9 @@ export function TeamDashboardView() {
 
   // Pagination state
   const [classesPage, setClassesPage] = useState(1)
-  const [classesPageSize, setClassesPageSize] = useState(20)
+  const [classesPageSize, setClassesPageSize] = useState(10)
   const [teachersPage, setTeachersPage] = useState(1)
-  const [teachersPageSize, setTeachersPageSize] = useState(20)
+  const [teachersPageSize, setTeachersPageSize] = useState(10)
 
   // Selected item for modals
   const [selectedClass, setSelectedClass] = useState<ClassDetailData | null>(null)
@@ -237,7 +311,6 @@ export function TeamDashboardView() {
 
       const json = await res.json()
       if (json.success && json.data) {
-        setSummary(json.data.summary)
         setCenters(json.data.centers || [])
         setClasses(json.data.classes || [])
         setTeachers(json.data.teachers || [])
@@ -293,10 +366,23 @@ export function TeamDashboardView() {
       const emailMatch = t.email?.toLowerCase().includes(q)
       const centreMatch = t.mainCentre?.toLowerCase().includes(q)
       const lineMatch = t.courseLine?.toLowerCase().includes(q)
+      const teachingRoleMatch = t.teachingRole?.toLowerCase().includes(q)
+      const positionMatch =
+        t.position?.toLowerCase().includes(q) ||
+        t.currentRole?.toLowerCase().includes(q)
       const classMatch = (t.assignedClasses || []).some((c) =>
         c.name?.toLowerCase().includes(q),
       )
-      return nameMatch || codeMatch || emailMatch || centreMatch || lineMatch || classMatch
+      return (
+        nameMatch ||
+        codeMatch ||
+        emailMatch ||
+        centreMatch ||
+        lineMatch ||
+        teachingRoleMatch ||
+        positionMatch ||
+        classMatch
+      )
     })
   }, [searchQuery, teachers])
 
@@ -334,25 +420,6 @@ export function TeamDashboardView() {
   const hasActiveFilter = useMemo(() => {
     return selectedCenter !== 'all' || selectedStatus !== 'all' || searchQuery.trim() !== ''
   }, [selectedCenter, selectedStatus, searchQuery])
-
-  // Tính toán các thẻ tổng quan (KPI) động theo bộ lọc (nếu có)
-  const displayedSummary = useMemo(() => {
-    const runningClasses = searchedClasses.filter((c) => c.status === 'RUNNING')
-    const preparingClasses = searchedClasses.filter((c) => c.status === 'PREPARING')
-    const finishedClasses = searchedClasses.filter((c) => c.status === 'FINISHED')
-    const totalStudents = searchedClasses.reduce((sum, c) => sum + (c.studentCount || 0), 0)
-    const activeTeachersWithClasses = searchedTeachers.filter((t) => t.classesCount > 0).length
-
-    return {
-      totalTeachers: searchedTeachers.length,
-      activeTeachersWithClasses,
-      totalClasses: searchedClasses.length,
-      totalRunningClasses: runningClasses.length,
-      totalPreparingClasses: preparingClasses.length,
-      totalFinishedClasses: finishedClasses.length,
-      totalStudents,
-    }
-  }, [searchedClasses, searchedTeachers])
 
   const handleOpenClassById = (classId: string) => {
     const found = classes.find((c) => String(c.id) === String(classId))
@@ -405,72 +472,39 @@ export function TeamDashboardView() {
         </div>
       </div>
 
-      {/* ── 2. KPI CARDS ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Card 1: Tổng giáo viên */}
-        <div className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white shadow-2xs hover:border-slate-300 hover:shadow-xs transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Giáo viên phụ trách</span>
-            <div className="grid h-8 w-8 place-items-center rounded-xl bg-rose-50 text-[#a1001f] border border-rose-100">
-              <Users className="h-4 w-4" />
-            </div>
-          </div>
-          <p className="mt-2.5 text-2xl sm:text-3xl font-bold font-mono text-slate-900">
-            {displayedSummary.totalTeachers}
-          </p>
-          <p className="mt-1 text-[11px] text-slate-500 flex items-center gap-1">
-            <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            <span className="font-semibold text-emerald-700">{displayedSummary.activeTeachersWithClasses}</span> có lớp giảng dạy
-          </p>
-        </div>
+      {/* ── 2. KPI BLOCKS ──────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        {KPI_ITEMS.map((item) => {
+          const Icon = item.icon
 
-        {/* Card 2: Lớp đang học */}
-        <div className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white shadow-2xs hover:border-slate-300 hover:shadow-xs transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Lớp đang vận hành</span>
-            <div className="grid h-8 w-8 place-items-center rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100">
-              <CheckCircle2 className="h-4 w-4" />
-            </div>
-          </div>
-          <p className="mt-2.5 text-2xl sm:text-3xl font-bold font-mono text-slate-900">
-            {displayedSummary.totalRunningClasses}
-          </p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Trên tổng số <span className="font-semibold text-slate-700">{displayedSummary.totalClasses}</span> lớp
-          </p>
-        </div>
+          return (
+            <div
+              key={item.label}
+              className="min-h-[104px] rounded-2xl border border-slate-200/80 bg-white px-4 py-3.5 shadow-2xs transition hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-sm"
+            >
+              <div className="flex min-h-8 items-start justify-between gap-3">
+                <p className="min-w-0 pr-2 text-[12px] font-semibold leading-tight text-slate-500">
+                  {item.label}
+                </p>
+                <span
+                  className={cn(
+                    'grid h-8 w-8 shrink-0 place-items-center rounded-xl border',
+                    item.iconTone,
+                  )}
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
+              </div>
 
-        {/* Card 3: Lớp sắp mở */}
-        <div className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white shadow-2xs hover:border-slate-300 hover:shadow-xs transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Lớp chuẩn bị mở</span>
-            <div className="grid h-8 w-8 place-items-center rounded-xl bg-sky-50 text-sky-700 border border-sky-100">
-              <Calendar className="h-4 w-4" />
+              <p className="mt-2 text-2xl font-bold font-mono tracking-tight text-slate-900">
+                {item.value}
+              </p>
+              <p className="mt-1 truncate text-[11px] leading-relaxed text-slate-500">
+                {item.helper}
+              </p>
             </div>
-          </div>
-          <p className="mt-2.5 text-2xl sm:text-3xl font-bold font-mono text-slate-900">
-            {displayedSummary.totalPreparingClasses}
-          </p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Sắp khai giảng trong kỳ này
-          </p>
-        </div>
-
-        {/* Card 4: Tổng học viên */}
-        <div className="p-4 sm:p-5 rounded-2xl border border-slate-200/80 bg-white shadow-2xs hover:border-slate-300 hover:shadow-xs transition">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500">Tổng số học viên</span>
-            <div className="grid h-8 w-8 place-items-center rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-100">
-              <GraduationCap className="h-4 w-4" />
-            </div>
-          </div>
-          <p className="mt-2.5 text-2xl sm:text-3xl font-bold font-mono text-slate-900">
-            {displayedSummary.totalStudents}
-          </p>
-          <p className="mt-1 text-[11px] text-slate-500">
-            Học viên đang học trong các lớp
-          </p>
-        </div>
+          )
+        })}
       </div>
 
       {/* ── 3. FILTER BAR & TABS ───────────────────────────────────────────── */}
@@ -553,7 +587,7 @@ export function TeamDashboardView() {
                 placeholder={
                   activeTab === 'classes'
                     ? 'Tìm tên lớp, mã lớp, môn, GV...'
-                    : 'Tìm tên GV, mã GV, email, lớp...'
+                    : 'Tìm tên GV, mã GV, role, vị trí, email, lớp...'
                 }
                 className="w-full h-8 pl-8 pr-3 rounded-lg border border-slate-200 bg-white text-xs placeholder:text-slate-400 focus:border-[#a1001f] focus:outline-none focus:ring-1 focus:ring-[#a1001f]"
               />
@@ -747,6 +781,8 @@ export function TeamDashboardView() {
                     <tr>
                       <th className="px-4 py-3">Mã GV</th>
                       <th className="px-4 py-3">Họ và tên</th>
+                      <th className="px-4 py-3">Role</th>
+                      <th className="px-4 py-3">Vị trí</th>
                       <th className="px-4 py-3">Email liên hệ</th>
                       <th className="px-4 py-3">Cơ sở chính</th>
                       <th className="px-4 py-3">Khối giảng dạy</th>
@@ -771,6 +807,26 @@ export function TeamDashboardView() {
                           <p className="font-bold text-slate-900 group-hover:text-[#a1001f] transition">
                             {teacher.fullName}
                           </p>
+                        </td>
+
+                        <td className="px-4 py-3 text-slate-600">
+                          {teacher.teachingRole ? (
+                            <span className="inline-flex items-center rounded-md border border-rose-200/70 bg-rose-50 px-2 py-0.5 text-[10.5px] font-bold text-[#a1001f]">
+                              {teacher.teachingRole}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
+                        </td>
+
+                        <td className="px-4 py-3 text-slate-600">
+                          {teacher.position || teacher.currentRole ? (
+                            <span className="inline-flex max-w-32 items-center rounded-md border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10.5px] font-semibold text-slate-700">
+                              <span className="truncate">{teacher.position || teacher.currentRole}</span>
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">—</span>
+                          )}
                         </td>
 
                         <td className="px-4 py-3 text-slate-500 font-mono text-[11px]">

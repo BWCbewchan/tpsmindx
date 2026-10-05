@@ -17,6 +17,9 @@ export interface TeacherDetailData {
   email: string
   mainCentre: string
   courseLine?: string
+  teachingRole?: string
+  position?: string
+  currentRole?: string
   status?: string
   classesCount: number
   assignedClasses: Array<{
@@ -111,7 +114,7 @@ export function TeacherDetailModal({
         {/* Modal Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
           {/* Quick Metrics */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
               <span className="text-[11px] font-medium text-slate-400">Số lớp đang dạy</span>
               <p className="mt-0.5 text-xl font-bold font-mono text-slate-800">
@@ -122,6 +125,18 @@ export function TeacherDetailModal({
               <span className="text-[11px] font-medium text-slate-400">Khối giảng dạy</span>
               <p className="mt-0.5 text-sm font-semibold text-slate-800 truncate">
                 {teacher.courseLine || 'Đang cập nhật'}
+              </p>
+            </div>
+            <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+              <span className="text-[11px] font-medium text-slate-400">Role</span>
+              <p className="mt-0.5 text-sm font-semibold text-slate-800 truncate">
+                {teacher.teachingRole || 'Đang cập nhật'}
+              </p>
+            </div>
+            <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/50">
+              <span className="text-[11px] font-medium text-slate-400">Vị trí</span>
+              <p className="mt-0.5 text-sm font-semibold text-slate-800 truncate">
+                {teacher.position || teacher.currentRole || 'Đang cập nhật'}
               </p>
             </div>
           </div>

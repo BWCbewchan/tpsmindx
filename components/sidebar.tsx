@@ -436,7 +436,7 @@ export function Sidebar() {
       label: 'Thao tác vận hành',
       icon: ClipboardCheck,
       submenu: [
-        // { href: '/user/lop-hoc', label: 'Lớp học' },
+        { href: '/user/diem-danh-lop-hoc', label: 'Điểm danh lớp học' },
         {
           label: 'Phiếu kết quả trải nghiệm',
           submenu: [

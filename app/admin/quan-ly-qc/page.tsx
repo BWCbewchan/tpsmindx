@@ -5,7 +5,6 @@ import { Tabs } from '@/components/Tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/modal'
-import { FacilityEvaluationTab } from './components/FacilityEvaluationTab'
 import {
   Table,
   TableBody,
@@ -18,7 +17,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/lib/app-toast'
 import { authHeaders } from '@/lib/auth-headers'
 import { useAuth } from '@/lib/auth-context'
-import { FACILITY_EVALUATION_ALLOWED_ROLE_CODES } from '@/lib/facility-evaluation'
 import {
   Award,
   BarChart3,
@@ -399,7 +397,7 @@ export default function QuanLyQCPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<'classes' | 'records' | 'facility'>('classes')
+  const [activeTab, setActiveTab] = useState<'classes' | 'records'>('classes')
   const [currentPage, setCurrentPage] = useState(1)
   const [q, setQ] = useState('')
   const [fromDate, setFromDate] = useState('')
@@ -436,21 +434,6 @@ export default function QuanLyQCPage() {
       emailNorm.includes('hr-teaching')
     )
   }, [isSuperAdmin, user?.email, user?.role])
-
-  const canUseFacilityEvaluation = useMemo(() => {
-    const allowedRoles = new Set(FACILITY_EVALUATION_ALLOWED_ROLE_CODES)
-    const roleCodes = (user?.userRoles || []).map((role) =>
-      String(role || '').trim().toUpperCase(),
-    )
-    return (
-      isSuperOrHOTeaching ||
-      roleCodes.some((roleCode) =>
-        allowedRoles.has(
-          roleCode as (typeof FACILITY_EVALUATION_ALLOWED_ROLE_CODES)[number],
-        ),
-      )
-    )
-  }, [isSuperOrHOTeaching, user?.userRoles])
 
   const activeTemplate = useMemo(
     () => templates.find((template) => template.key === activeTemplateKey) ?? null,
@@ -894,16 +877,8 @@ export default function QuanLyQCPage() {
         label: isSuperOrHOTeaching ? 'Phiếu QC đã tạo' : 'Phiếu QC đã tạo gần đây',
         count: records.length,
       },
-      ...(canUseFacilityEvaluation
-        ? [{ id: 'facility', label: 'Điểm đánh giá cơ sở' }]
-        : []),
     ],
-    [
-      canUseFacilityEvaluation,
-      filteredClasses.length,
-      records.length,
-      isSuperOrHOTeaching,
-    ],
+    [filteredClasses.length, records.length, isSuperOrHOTeaching],
   )
 
   const handleClearFilters = useCallback(() => {
@@ -1092,9 +1067,7 @@ export default function QuanLyQCPage() {
         <Tabs
           tabs={mainTabs}
           activeTab={activeTab}
-          onChange={(tabId) =>
-            setActiveTab(tabId as 'classes' | 'records' | 'facility')
-          }
+          onChange={(tabId) => setActiveTab(tabId as 'classes' | 'records')}
         />
 
         {activeTab === 'classes' && (
@@ -1990,10 +1963,6 @@ export default function QuanLyQCPage() {
               )}
             </div>
           </div>
-        )}
-
-        {activeTab === 'facility' && canUseFacilityEvaluation && (
-          <FacilityEvaluationTab token={token} />
         )}
       </div>
 

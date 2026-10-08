@@ -11,7 +11,6 @@ export interface LmsTokenSession {
   newToken?: string;
   newRefresh?: string;
   expiresIn?: number;
-  isFallback?: boolean;
 }
 
 const FIREBASE_AUTH_URL = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`;
@@ -23,7 +22,7 @@ const FALLBACK_PASSWORD = process.env.LMS_FALLBACK_PASSWORD || 'MindX@2024';
  */
 export async function loginFallbackLmsAccount(): Promise<LmsTokenSession> {
   if (!FIREBASE_API_KEY || !FALLBACK_EMAIL || !FALLBACK_PASSWORD) {
-    return { token: null, isFallback: true };
+    return { token: null };
   }
 
   try {
@@ -49,7 +48,6 @@ export async function loginFallbackLmsAccount(): Promise<LmsTokenSession> {
         newToken: idToken,
         newRefresh: refreshToken,
         expiresIn,
-        isFallback: true,
       };
     } else {
       const err = await res.json().catch(() => ({}));
@@ -74,7 +72,7 @@ export async function getOrRefreshLmsToken(
 
   // If current token exists, return it
   if (currentToken) {
-    return { token: currentToken, isFallback: false };
+    return { token: currentToken };
   }
 
   // If current token is missing but refresh token is available, try refreshing
@@ -100,7 +98,6 @@ export async function getOrRefreshLmsToken(
           newToken: newIdToken,
           newRefresh: newRefreshToken,
           expiresIn,
-          isFallback: false,
         };
       }
     } catch (e) {
@@ -141,7 +138,6 @@ export async function refreshLmsToken(
           newToken: newIdToken,
           newRefresh: newRefreshToken,
           expiresIn,
-          isFallback: false,
         };
       }
     } catch (e) {

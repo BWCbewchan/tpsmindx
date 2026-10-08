@@ -41,7 +41,7 @@ export const GET = withApiProtection(async (request: NextRequest) => {
     String(r).toUpperCase().trim(),
   )
   const hasDashboardRole =
-    isSuperAdmin || roleCodes.some((code) => ['TM', 'TEGL', 'TEGL+'].includes(code))
+    isSuperAdmin || roleCodes.includes('TM') || roleCodes.includes('TEGL')
 
   if (!hasDashboardRole) {
     return NextResponse.json(

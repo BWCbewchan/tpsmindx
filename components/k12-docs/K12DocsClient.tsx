@@ -25,9 +25,14 @@ import {
   useRef,
   useCallback,
 } from 'react'
-import Markdown from 'react-markdown'
+import Markdown, { defaultUrlTransform } from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import remarkGfm from 'remark-gfm'
+
+function customUrlTransform(url: string) {
+  if (url.startsWith('data:image/')) return url
+  return defaultUrlTransform(url)
+}
 
 export interface K12ClientDocItem {
   id: number
@@ -304,6 +309,12 @@ function mapGitbookHref(href: string, basePath: string, documents: K12ClientDocI
   )
   if (caseInsensitiveMatch) {
     return `${basePath}?doc=${encodeURIComponent(caseInsensitiveMatch.slug)}${hash}`
+  }
+
+  // If the link starts with '/' and does not match any document slug,
+  // treat it as an internal application route (e.g., /user/checkout/create, /public/checkout)
+  if (cleanHref.startsWith('/') && !cleanHref.startsWith('/quy-trinh-quy-dinh-danh-cho-giao-vien/')) {
+    return href
   }
 
   // If still no match, use the extracted path as-is
@@ -1321,6 +1332,7 @@ export default function K12DocsClient({
                 <Markdown
                   remarkPlugins={[remarkGfm]}
                   rehypePlugins={[rehypeRaw]}
+                  urlTransform={customUrlTransform}
                   components={{
                     a: ({ href, children, ...props }) => {
                       if (!href) {

@@ -45,6 +45,7 @@ const adminSearchItems: SearchItem[] = [
   { label: 'Đào tạo đầu vào - Thư viện bài kiểm tra', href: '/admin/hr-candidates/input-training-tests', icon: GraduationCap, group: 'Đào tạo đầu vào', keywords: ['quiz dau vao', 'bai kiem tra dau vao'] },
   { label: 'Hồ sơ Giáo viên', href: '/admin/page1', icon: Users, group: 'Giáo viên & Vận hành' },
   { label: 'Quản Lý Kiểm Tra Chất Lượng', href: '/admin/quan-ly-qc', icon: ClipboardCheck, group: 'Giáo viên & Vận hành', keywords: ['qc', 'quality check', 'kiem tra chat luong', 'phieu qc'] },
+  { label: 'Phiếu đánh giá giáo viên', href: '/admin/phieu-danh-gia-giao-vien', icon: ClipboardCheck, group: 'Giáo viên & Vận hành', keywords: ['teacher point', 'khao sat giao vien', 'google forms', 'phieu danh gia'] },
   { label: 'Quản lý lịch làm việc', href: '/admin/page4/quan-ly-lich-lam-viec', icon: CalendarDays, group: 'Giáo viên & Vận hành' },
   { label: 'Lịch sự kiện', href: '/admin/page4/lich-danh-gia', icon: CalendarDays, group: 'Giáo viên & Vận hành' },
   { label: 'Tiếp nhận xin nghỉ 1 buổi', href: '/admin/xin-nghi-mot-buoi', icon: Users, group: 'Giáo viên & Vận hành' },

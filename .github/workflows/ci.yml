@@ -31,8 +31,6 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Lint
-        run: npm run lint
       - name: TypeScript
         run: npx --no-install tsc --noEmit --incremental false
       - name: Offline regression tests

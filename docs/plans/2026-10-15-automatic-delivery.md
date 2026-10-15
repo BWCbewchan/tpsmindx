@@ -2,7 +2,7 @@
 
 **Goal:** A personal branch push opens a PR to preview; passing CI merges it; a successful Vercel deployment of the latest preview commit plus passing release CI permits preview → main.
 
-**Architecture:** Unprivileged CI runs lint, TypeScript, offline tests and production build. A separate controller on the default branch only calls GitHub/Vercel APIs; it never executes PR code or downloads PR artifacts. Strict branch protection is mandatory for both targets. Existing Telegram webhook reports push, PR, workflow and deployment events.
+**Architecture:** Unprivileged CI runs TypeScript, offline tests and production build. Lint was removed from the CI gate at the user's explicit request. A separate controller on the default branch only calls GitHub/Vercel APIs; it never executes PR code or downloads PR artifacts. Strict branch protection is mandatory for both targets. Existing Telegram webhook reports push, PR, workflow and deployment events.
 
 **Tech stack:** GitHub Actions, Node 22, GitHub REST API, Vercel REST API, existing Next.js application.
 

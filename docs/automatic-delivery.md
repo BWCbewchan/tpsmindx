@@ -2,7 +2,7 @@
 
 ## Luồng hoạt động
 
-1. Push vào nhánh cá nhân có workflow CI → chạy lint, TypeScript, test offline và build. Sau lần CI đầu hoàn tất, controller tạo/cập nhật PR vào `preview`, kể cả khi CI thất bại để có chỗ theo dõi lỗi.
+1. Push vào nhánh cá nhân có workflow CI → chạy TypeScript, test offline và build. Lint không phải điều kiện CI theo quyết định của dự án; vẫn có thể chạy thủ công bằng `npm run lint`. Sau lần CI đầu hoàn tất, controller tạo/cập nhật PR vào `preview`, kể cả khi CI thất bại để có chỗ theo dõi lỗi.
 2. PR chạy CI trên kết quả merge thử của GitHub. Nếu nhánh cá nhân chậm hơn `preview`, controller cập nhật nhánh đó qua API Update branch rồi chờ CI mới. Conflict phải sửa thủ công.
 3. CI mới nhất của PR đạt, head vẫn đúng SHA, policy nhánh hợp lệ → merge vào `preview` bằng merge commit.
 4. Vercel Git integration deploy `preview`. Controller xác minh trực tiếp qua Vercel API: đúng project, repository, nhánh `preview`, SHA mới nhất, target Preview, deployment mới nhất READY. Nếu có redeploy mới đang chạy/lỗi thì không dùng READY cũ.
@@ -58,7 +58,7 @@ Giữ webhook Telegram ở `/api/github/webhook`; bật **Pushes, Pull requests,
 
 1. Merge bộ workflow/controller/test cùng nâng cấp Telegram vào `preview` và `main` qua PR thủ công đầu tiên, giữ controller tắt. `workflow_run`, deployment events và lịch đối soát phải có workflow trên default branch `main` mới hoạt động.
 2. Chạy CI lần đầu để GitHub nhận check **CI**, rồi thiết lập branch protection và secrets/variables.
-3. Sửa lỗi lint/typecheck/build còn tồn tại, xác nhận CI xanh trên code thật. Không bỏ qua lỗi hay đặt continue-on-error để mở cổng merge.
+3. Sửa lỗi TypeScript/tests/build còn tồn tại, xác nhận CI xanh trên code thật. Các bước kiểm tra này vẫn bắt buộc, không đặt continue-on-error để mở cổng merge.
 4. Merge `preview` mới nhất về các nhánh cá nhân đang dùng để các nhánh có file CI. Bật `AUTO_DELIVERY_ENABLED=true`.
 5. Thử một commit nhỏ trên nhánh cá nhân: kiểm tra PR tự mở, CI, merge preview, deployment Preview đúng SHA, release PR, CI và merge main, Production và các tin Telegram.
 6. Thử CI lỗi và conflict: xác nhận không merge và có thông báo. Chạy Actions → Automatic delivery → Run workflow khi cần đối soát lại, hoặc chờ lịch 10 phút.

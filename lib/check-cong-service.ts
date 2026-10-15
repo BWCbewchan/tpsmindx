@@ -1211,7 +1211,7 @@ async function loadLegacyCheckCongParsed(): Promise<
   ParsedCheckCongCsv & { mtimeMs: number }
 > {
   try {
-    const stat = await fs.stat(CSV_PATH)
+    const stat = await fs.stat(/* turbopackIgnore: true */ CSV_PATH)
     if (cached && cached.mtimeMs === stat.mtimeMs) {
       return {
         headers: [],
@@ -1222,7 +1222,10 @@ async function loadLegacyCheckCongParsed(): Promise<
       }
     }
 
-    const csvText = await fs.readFile(CSV_PATH, 'utf8')
+    const csvText = await fs.readFile(
+      /* turbopackIgnore: true */ CSV_PATH,
+      'utf8',
+    )
     const parsed = parseCheckCongCsvText(csvText)
     cached = {
       loadedAt: Date.now(),
@@ -1549,7 +1552,9 @@ export async function exportOriginalCheckCongRowsByKeys(
   }
 
   try {
-    csvSources.push(await fs.readFile(CSV_PATH, 'utf8'))
+    csvSources.push(
+      await fs.readFile(/* turbopackIgnore: true */ CSV_PATH, 'utf8'),
+    )
   } catch (error: unknown) {
     if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') throw error
   }

@@ -313,7 +313,8 @@ async function main() {
                 { name: 'V108_trial_checkout_excel_view', file: '../migrations/V108_trial_checkout_excel_view.sql' },
                 { name: 'V112_check_cong_import_files', file: '../migrations/V112_check_cong_import_files.sql' },
                 { name: 'V113_facility_evaluations', file: '../migrations/V113_facility_evaluations.sql' },
-                { name: 'V114_facility_evaluation_forms', file: '../migrations/V114_facility_evaluation_forms.sql' }
+                { name: 'V114_facility_evaluation_forms', file: '../migrations/V114_facility_evaluation_forms.sql' },
+                { name: 'V115_teacher_evaluation_screen', file: '../migrations/V115_teacher_evaluation_screen.sql' }
             ];
 
 

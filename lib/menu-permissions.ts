@@ -15,11 +15,54 @@ function hasExplicitGrant(user: any, path: string): boolean {
   )
 }
 
-// Editing is an explicit capability, independent of the role's display code.
-// A list-only Portfolio grant must not permit editing, deleting or publishing.
+const SPCK_MANAGEMENT_ROLE_CODES = new Set([
+  'tegl',
+  'tegl+',
+  'tm',
+  'ad',
+  'admin',
+])
+
+function getUserRoleTokens(user: any): Set<string> {
+  const tokens = new Set<string>()
+  const addRole = (value: unknown) => {
+    if (typeof value === 'string') {
+      const normalized = normalizeRoleToken(value)
+      if (normalized) tokens.add(normalized)
+      return
+    }
+    if (value && typeof value === 'object') {
+      const roleCode = (value as { role_code?: unknown }).role_code
+      if (typeof roleCode === 'string') {
+        const normalized = normalizeRoleToken(roleCode)
+        if (normalized) tokens.add(normalized)
+      }
+    }
+  }
+
+  addRole(user?.role)
+  if (Array.isArray(user?.userRoles)) {
+    user.userRoles.forEach(addRole)
+  }
+  return tokens
+}
+
+export function hasSpckManagementRole(user: any): boolean {
+  if (!user || user.isActive === false) return false
+  if (normalizeRoleToken(user.role) === 'super_admin') return true
+  return Array.from(getUserRoleTokens(user)).some((roleCode) =>
+    SPCK_MANAGEMENT_ROLE_CODES.has(roleCode),
+  )
+}
+
+// TEGL and higher teaching-management roles can manage SPCK by role.
+// Other users need an explicit editor grant; a list-only Portfolio grant stays read-only.
 export function isPortfolioEditorUser(user: any): boolean {
-  return hasExplicitGrant(user, '/admin/kiem-soat-spck') ||
+  return (
+    hasSpckManagementRole(user) ||
+    hasExplicitGrant(user, '/admin/kiem-soat-spck') ||
     hasExplicitGrant(user, '/admin/portfolio/builder')
+  )
 }
 
 export function isPortfolioReadOnlyLeaderUser(user: any): boolean {

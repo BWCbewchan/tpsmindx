@@ -14,7 +14,7 @@
     "dev": "next dev --port 3000 --turbopack",
     "dev:webpack": "next dev --port 3000 --webpack",
     "dev:turbo": "next dev --port 3000 --turbopack",
-    "build": "cross-env NODE_OPTIONS=\"--require=./scripts/suppress-baseline-warning.cjs\" BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true BROWSERSLIST_IGNORE_OLD_DATA=true next build",
+    "build": "cross-env NODE_OPTIONS=\"--max-old-space-size=4096 --require=./scripts/suppress-baseline-warning.cjs\" BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA=true BROWSERSLIST_IGNORE_OLD_DATA=true next build",
     "start": "next start",
     "lint": "eslint",
     "test:teacher-evaluations": "node scripts/test-teacher-evaluations.cjs",

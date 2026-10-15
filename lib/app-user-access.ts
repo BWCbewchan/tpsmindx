@@ -1,6 +1,7 @@
 import { getAccessibleCenters } from '@/lib/center-access'
 import { filterManagementPermissions } from '@/lib/admin-permission-routes'
 import pool from '@/lib/db'
+import { hasSpckManagementRole } from '@/lib/menu-permissions'
 import { getOrSetRequestCache } from '@/lib/request-cache'
 
 export type AppUserAccess = {
@@ -104,23 +105,43 @@ async function _resolveAppUserAccess(normalized: string): Promise<AppUserAccess>
       [appUser.id],
     )
 
+    const roleCodes = userRoles.rows.map((r: { role_code: string }) =>
+      (r.role_code || '').toUpperCase(),
+    )
+    const canManageSpckByRole = hasSpckManagementRole({
+      role: appUser.role,
+      userRoles: roleCodes,
+      isActive: appUser.is_active,
+    })
     const allPerms = new Set<string>()
     directPerms.rows.forEach((r: { route_path: string }) =>
       allPerms.add(r.route_path),
     )
-    rolePerms.rows.forEach((r: { route_path: string }) =>
-      allPerms.add(r.route_path),
-    )
+    rolePerms.rows.forEach((r: { route_path: string }) => {
+      if (r.route_path === '/admin/kiem-soat-spck' && !canManageSpckByRole) {
+        return
+      }
+      allPerms.add(r.route_path)
+    })
 
     const permissions = filterManagementPermissions(Array.from(allPerms))
-    const roleCodes = userRoles.rows.map((r: { role_code: string }) =>
-      (r.role_code || '').toUpperCase(),
-    )
     const hasTrainingInputRole = roleCodes.some(
       (code) => code === 'HR' || code === 'TE' || code === 'TF',
     )
     const hasManagementRole = roleCodes.some(
-      (code) => ['HR', 'TE', 'TF', 'LEADER', 'TC', 'MANAGER', 'ADMIN', 'SUPER_ADMIN'].includes(code),
+      (code) => [
+        'HR',
+        'TE',
+        'TF',
+        'LEADER',
+        'TC',
+        'TEGL',
+        'TEGL+',
+        'TM',
+        'MANAGER',
+        'ADMIN',
+        'SUPER_ADMIN',
+      ].includes(code),
     )
     const hasAdminPerms = permissions.some((p) => p.startsWith('/admin'))
     const effectiveRole =

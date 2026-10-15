@@ -271,6 +271,11 @@ export function Sidebar() {
           label: 'Quản Lý Kiểm Tra Chất Lượng',
           icon: ClipboardCheck,
         },
+        {
+          href: '/admin/phieu-danh-gia-giao-vien',
+          label: 'Phiếu đánh giá giáo viên',
+          icon: ClipboardCheck,
+        },
         { href: '/admin/check-cong', label: 'Kiểm tra công' },
         {
           href: '/admin/page4/quan-ly-lich-lam-viec',
@@ -436,7 +441,7 @@ export function Sidebar() {
       label: 'Thao tác vận hành',
       icon: ClipboardCheck,
       submenu: [
-        { href: '/user/diem-danh-lop-hoc', label: 'Điểm danh lớp học' },
+        { href: '/user/lop-hoc', label: 'Lớp học' },
         {
           label: 'Phiếu kết quả trải nghiệm',
           submenu: [

@@ -2,12 +2,15 @@
 
 import { PageContainer } from '@/components/PageContainer'
 import { StatCard } from '@/components/StatCard'
+import { TeamDashboardView } from '@/components/dashboard/TeamDashboardView'
 import { useAuth } from '@/lib/auth-context'
 import { authHeaders } from '@/lib/auth-headers'
+import { cn } from '@/lib/utils'
 import {
   Award,
   BarChart3,
   Building2,
+  LayoutDashboard,
   Loader2,
   TrendingUp,
   Users,
@@ -39,19 +42,47 @@ interface BUMetric {
 
 // ─── Permission check ─────────────────────────────────────────────────────────
 
+function isUserSuperAdmin(user: { role?: string; userRoles?: string[]; isAdmin?: boolean } | null): boolean {
+  if (!user) return false
+  const role = String(user.role || '').toLowerCase().trim()
+  if (role === 'super_admin' || role === 'superadmin') return true
+  const roleCodes = (user.userRoles || []).map((r) => String(r).toUpperCase().trim())
+  return roleCodes.includes('SUPER_ADMIN') || roleCodes.includes('SUPERADMIN')
+}
+
 function canViewBUDashboard(user: {
   role?: string
   userRoles?: string[]
   isAdmin?: boolean
 } | null): boolean {
   if (!user) return false
-  // super_admin (system role)
-  if (user.role === 'super_admin') return true
-  // TM / TEGL (role codes trong bảng user_roles)
+  if (isUserSuperAdmin(user)) return true
   const roleCodes = (user.userRoles || []).map((r) =>
     String(r).toUpperCase().trim(),
   )
-  return roleCodes.includes('TM') || roleCodes.includes('TEGL')
+  if (user.role) {
+    roleCodes.push(String(user.role).toUpperCase().trim())
+  }
+  // TEGL, TEGL+, TM
+  return roleCodes.some((code) => ['TM', 'TEGL', 'TEGL+'].includes(code))
+}
+
+function canViewTeamDashboard(user: {
+  role?: string
+  userRoles?: string[]
+  isAdmin?: boolean
+} | null): boolean {
+  if (!user) return false
+  if (isUserSuperAdmin(user)) return true
+  const roleCodes = (user.userRoles || []).map((r) =>
+    String(r).toUpperCase().trim(),
+  )
+  if (user.role) {
+    roleCodes.push(String(user.role).toUpperCase().trim())
+  }
+  // Hỗ trợ đầy đủ: TE, CL, AL, RL, TC (và fallback LEADER)
+  const allowed = ['TE', 'CL', 'AL', 'RL', 'TC', 'LEADER']
+  return roleCodes.some((code) => allowed.includes(code))
 }
 
 
@@ -170,13 +201,42 @@ export default function Dashboard() {
    * roleConfirmed = true sau khi user có email (tức /api/auth/me đã trả về).
    * authLoading = false báo hiệu /api/auth/me xong.
    */
-  const hasAccess = useMemo(() => {
-    // Nếu auth đang load → chưa biết role → không phán xét
+  const isSuperAdmin = useMemo(() => isUserSuperAdmin(user), [user])
+
+  const canViewBU = useMemo(() => {
     if (authLoading) return null
-    const res = canViewBUDashboard(user)
-    console.log("BU Dashboard Debug:", { user, authLoading, hasAccess: res })
-    return res
+    return canViewBUDashboard(user)
   }, [user, authLoading])
+
+  const canViewTeam = useMemo(() => {
+    if (authLoading) return null
+    return canViewTeamDashboard(user)
+  }, [user, authLoading])
+
+  const [activeViewMode, setActiveViewMode] = useState<'team' | 'bu'>('team')
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      // Super Admin có quyền xem cả 2, giữ view mode đã chọn hoặc mặc định team
+      return
+    }
+
+    const roleCodes = (user?.userRoles || []).map((r) => String(r).toUpperCase().trim())
+    if (user?.role) roleCodes.push(String(user.role).toUpperCase().trim())
+
+    const isBURole = roleCodes.some((code) => ['TM', 'TEGL', 'TEGL+'].includes(code))
+    const isTeamRole = roleCodes.some((code) => ['TE', 'CL', 'AL', 'RL', 'TC', 'LEADER'].includes(code))
+
+    if (isBURole && !isTeamRole) {
+      setActiveViewMode('bu')
+    } else if (isTeamRole && !isBURole) {
+      setActiveViewMode('team')
+    } else if (isBURole) {
+      setActiveViewMode('bu')
+    } else if (isTeamRole) {
+      setActiveViewMode('team')
+    }
+  }, [isSuperAdmin, user?.role, user?.userRoles])
 
   const [data, setData] = useState<BUMetric[]>([])
   const [loading, setLoading] = useState(false)
@@ -191,7 +251,7 @@ export default function Dashboard() {
   const [modalError, setModalError] = useState('')
 
   useEffect(() => {
-    if (!selectedBU) {
+    if (!selectedBU || activeViewMode !== 'bu') {
       setModalTeachers([])
       return
     }
@@ -219,10 +279,10 @@ export default function Dashboard() {
       })
       .catch(() => setModalError('Lỗi kết nối máy chủ'))
       .finally(() => setModalLoading(false))
-  }, [selectedBU, selectedMonth, token])
+  }, [activeViewMode, selectedBU, selectedMonth, token])
 
   useEffect(() => {
-    if (hasAccess !== true) return
+    if (canViewBU !== true || activeViewMode !== 'bu') return
     setLoading(true)
 
     let url = '/api/dashboard/bu-metrics'
@@ -255,7 +315,7 @@ export default function Dashboard() {
       })
       .catch(() => setError('Lỗi kết nối'))
       .finally(() => setLoading(false))
-  }, [hasAccess, token, selectedMonth, selectedTrendBU])
+  }, [canViewBU, activeViewMode, token, selectedMonth, selectedTrendBU])
 
 
   // Derived stats
@@ -311,7 +371,7 @@ export default function Dashboard() {
   }, [data])
 
   // ── Chờ auth context xác nhận role từ /api/auth/me (tránh flash placeholder) ──
-  if (hasAccess === null) {
+  if (canViewBU === null && canViewTeam === null) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-7 h-7 animate-spin text-[#a1001f] opacity-60" />
@@ -320,8 +380,7 @@ export default function Dashboard() {
   }
 
   // ── No permission view ──────────────────────────────────────────────────────
-  if (!hasAccess) {
-
+  if (!canViewBU && !canViewTeam) {
     return (
       <PageContainer
         title="Dashboard"
@@ -345,7 +404,7 @@ export default function Dashboard() {
               </svg>
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">
-              Chào mừng đến trang chủ
+              Chào mừng đến với trang chủ
             </h2>
             <p className="text-sm text-gray-500">
               Sử dụng menu bên trái để điều hướng
@@ -356,13 +415,59 @@ export default function Dashboard() {
     )
   }
 
-  // ── Authorized view ─────────────────────────────────────────────────────────
+  // View mode switcher: CHỈ HIỂN THỊ DUY NHẤT CHO SUPER ADMIN
+  const modeSwitcher = isSuperAdmin ? (
+    <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 border border-slate-200/80">
+      <button
+        type="button"
+        onClick={() => setActiveViewMode('team')}
+        className={cn(
+          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition',
+          activeViewMode === 'team'
+            ? 'bg-white text-[#a1001f] shadow-xs'
+            : 'text-slate-600 hover:text-slate-900',
+        )}
+      >
+        <Users className="h-3.5 w-3.5" />
+        <span>Vận hành nhóm (TE, Leader, TC)</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => setActiveViewMode('bu')}
+        className={cn(
+          'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition',
+          activeViewMode === 'bu'
+            ? 'bg-white text-[#a1001f] shadow-xs'
+            : 'text-slate-600 hover:text-slate-900',
+        )}
+      >
+        <BarChart3 className="h-3.5 w-3.5" />
+        <span>Chuyên môn BU (TM, TEGL, TEGL+)</span>
+      </button>
+    </div>
+  ) : null
+
+  // ── Team Dashboard View (cho TE, Leader, TC) ──────────────────────────────────
+  if (activeViewMode === 'team') {
+    return (
+      <PageContainer
+        title="Dashboard"
+        description="Tổng quan chỉ số và vận hành nhóm phụ trách"
+        headerActions={modeSwitcher || undefined}
+      >
+        <TeamDashboardView />
+      </PageContainer>
+    )
+  }
+
+  // ── Authorized BU View ───────────────────────────────────────────────────────
   return (
     <PageContainer
       title="Dashboard"
       description="Thống kê chất lượng giáo viên"
       headerActions={
         <div className="flex items-center gap-3">
+          {modeSwitcher}
           {/* Bộ lọc tháng */}
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5 shadow-sm">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Kỳ đánh giá:</span>

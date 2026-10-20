@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { ClassCommentsPanel } from './ClassCommentsPanel'
 
 const SESSION_COUNT = 14
 const PAGE_SIZE = 20
@@ -1343,9 +1344,10 @@ function ClassAttendanceModal({
 
         <div className="min-h-0 flex-1 overflow-auto bg-[#f6f7f9] px-4 py-4 sm:px-5">
           {activeTab === 'comments' ? (
-            <div className="flex min-h-[360px] items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white text-sm text-gray-500">
-              Mục nhận xét sẽ được hoàn thiện sau phần điểm danh.
-            </div>
+            <ClassCommentsPanel
+              classId={classId}
+              selectedClassSiteId={selectedClassSiteId}
+            />
           ) : (
             <>
           <SessionJourney

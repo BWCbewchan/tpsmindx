@@ -66,6 +66,10 @@ const GET_CLASSES_QC_QUERY = /* graphql */ `
             teacher { id fullName }
             role { name shortName }
           }
+          teacherAttendance {
+            status
+            teacher { id fullName email }
+          }
           studentAttendance {
             _id
             status
@@ -236,6 +240,19 @@ function isSupplyRole(role?: { name?: string; shortName?: string } | null) {
   );
 }
 
+function isPresentTeacherAttendance(status?: string | null) {
+  const normalized = normalizeStatusText(status);
+  if (!normalized) return true;
+  return ![
+    'absent',
+    'not attended',
+    'not_attended',
+    'cancelled',
+    'canceled',
+    'rejected',
+  ].some((value) => normalized.includes(value));
+}
+
 /**
  * Get the main classroom teacher.
  * Prefer the LEC/lecturer who appears in the most class sessions; Supply does not count as the main teacher.
@@ -276,6 +293,56 @@ function getPrimaryTeacher(
   const activeTeachers = (teachers || []).filter((teacher) => teacher.isActive !== false);
   const classLectureTeacher = activeTeachers.find((teacher) => isLectureRole(teacher.role));
   if (classLectureTeacher?.teacher?.fullName) return classLectureTeacher.teacher.fullName;
+
+  const explicitSupplyTeacherIds = new Set<string>();
+  const rememberSupplyTeacher = (
+    assignment: Class['slots'][number]['teachers'][number],
+  ) => {
+    if (!isSupplyRole(assignment.role)) return;
+    const teacherId = assignment.teacher?.id || assignment.teacher?.fullName;
+    if (teacherId) explicitSupplyTeacherIds.add(String(teacherId));
+  };
+  activeTeachers.forEach(rememberSupplyTeacher);
+  sortSlots(slots).forEach((slot) => {
+    (slot.teachers || [])
+      .filter((assignment) => assignment.isActive !== false)
+      .forEach(rememberSupplyTeacher);
+  });
+
+  const attendanceCounts = new Map<
+    string,
+    { name: string; count: number; firstIndex: number }
+  >();
+  sortSlots(slots).forEach((slot, slotIndex) => {
+    const seenInSlot = new Set<string>();
+    (slot.teacherAttendance || []).forEach((attendance) => {
+      if (!isPresentTeacherAttendance(attendance.status)) return;
+
+      const teacherId = attendance.teacher?.id || attendance.teacher?.fullName;
+      const teacherName = attendance.teacher?.fullName || '';
+      if (!teacherId || !teacherName) return;
+
+      const key = String(teacherId);
+      if (explicitSupplyTeacherIds.has(key) || seenInSlot.has(key)) return;
+      seenInSlot.add(key);
+
+      const existing = attendanceCounts.get(key);
+      if (existing) {
+        existing.count += 1;
+      } else {
+        attendanceCounts.set(key, {
+          name: teacherName,
+          count: 1,
+          firstIndex: slotIndex,
+        });
+      }
+    });
+  });
+
+  const [mostFrequentAttendee] = Array.from(attendanceCounts.values()).sort(
+    (a, b) => b.count - a.count || a.firstIndex - b.firstIndex || a.name.localeCompare(b.name),
+  );
+  if (mostFrequentAttendee) return mostFrequentAttendee.name;
 
   const nonSupplyTeacher = activeTeachers.find((teacher) => !isSupplyRole(teacher.role));
   return nonSupplyTeacher?.teacher?.fullName || '';

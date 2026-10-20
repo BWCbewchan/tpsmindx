@@ -208,6 +208,14 @@
     "is_active": true
   },
   {
+    "route_path": "/admin/phieu-danh-gia-giao-vien",
+    "label": "Phiếu đánh giá giáo viên",
+    "group_name": "Quản lý Giáo viên & Vận hành",
+    "sort_order": 25,
+    "description": "Theo dõi phiếu LMS, Google Forms và Teacher Point tại buổi 4/8",
+    "is_active": true
+  },
+  {
     "route_path": "/admin/truyenthong",
     "label": "Quản lý truyền thông",
     "group_name": "Nội dung",

@@ -214,6 +214,12 @@ function convertEditorHtmlToMarkdown(input: string) {
       return `\n\n${el.outerHTML}\n\n`;
     }
 
+    if (tag === "img") {
+      const src = el.getAttribute("src") || "";
+      const alt = el.getAttribute("alt") || "";
+      return src ? `![${alt}](${src})` : "";
+    }
+
     const children = Array.from(el.childNodes).map(toMarkdown).join("");
 
     if (tag === "strong" || tag === "b") return `**${children.trim()}**`;

@@ -1,0 +1,48 @@
+name: Automatic delivery
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  deployment_status:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/10 * * * *'
+
+permissions:
+  contents: read
+
+# Serial execution plus a reconciliation timer: concurrent events cannot race to merge.
+# GitHub may coalesce pending runs, so the controller always reconciles current state.
+concurrency:
+  group: automatic-delivery
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    if: vars.AUTO_DELIVERY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out trusted controller only
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - name: Reconcile PRs and release gates
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+        with:
+          github-token: ${{ secrets.AUTOMATION_TOKEN || github.token }}
+          script: |
+            if (!process.env.AUTOMATION_TOKEN) {
+              core.setFailed('Configure AUTOMATION_TOKEN before enabling automatic delivery.');
+              return;
+            }
+            const reconcile = require('./.github/scripts/automatic-delivery.cjs');
+            await reconcile({ github, context, core });

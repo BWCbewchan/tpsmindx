@@ -1,7 +1,19 @@
 import path from "path";
 import { requireBearerSession } from "@/lib/datasource-api-auth";
 import pool from "@/lib/db";
+import { persistEmbeddedQuestionImages } from "@/lib/question-image-storage";
 import { NextRequest, NextResponse } from "next/server";
+
+async function safelyPersistImages(content: string): Promise<string> {
+  if (!content || !content.includes('data:image/')) return content;
+  try {
+    const res = await persistEmbeddedQuestionImages(content);
+    return typeof res === 'string' ? res : content;
+  } catch (err) {
+    console.warn('[k12-docs] Failed to persist embedded images to storage:', err);
+    return content;
+  }
+}
 
 let k12SchemaEnsured = false;
 
@@ -299,7 +311,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as K12DocPayload;
     const type = body.type === "section" || body.sectionSlug === "__new__" ? "section" : "article";
     const title = (body.title || "").trim();
-    const content = body.content || "";
+    const content = await safelyPersistImages(body.content || "");
     const topic = (body.topic || "").trim();
     const excerpt = (body.excerpt || "").trim();
     const coverImageUrl = (body.coverImageUrl || "").trim();
@@ -605,7 +617,7 @@ export async function PATCH(request: NextRequest) {
     const sectionDoc = body.sectionSlug && body.sectionSlug !== "__new__" ? await getDocBySlug(normalizeSlugPath(body.sectionSlug)) : null;
     const parentDoc = body.parentSlug ? await getDocBySlug(normalizeSlugPath(body.parentSlug)) : null;
     const relativePath = buildRelativePathByHierarchy(finalType, nextSlug, sectionDoc, parentDoc).replace(/\\/g, "/").trim();
-    const content = body.content ?? current.rows[0].content;
+    const content = body.content !== undefined ? await safelyPersistImages(body.content) : current.rows[0].content;
     const topic = (body.topic ?? current.rows[0].topic ?? "").trim();
     const excerpt = (body.excerpt ?? current.rows[0].excerpt ?? "").trim();
     const coverImageUrl = (body.coverImageUrl ?? current.rows[0].cover_image_url ?? "").trim();

@@ -272,6 +272,11 @@ export function Sidebar() {
           label: 'Quản Lý Kiểm Tra Chất Lượng',
           icon: ClipboardCheck,
         },
+        {
+          href: '/admin/phieu-danh-gia-giao-vien',
+          label: 'Phiếu đánh giá giáo viên',
+          icon: ClipboardCheck,
+        },
         { href: '/admin/check-cong', label: 'Kiểm tra công' },
         {
           href: '/admin/page4/quan-ly-lich-lam-viec',

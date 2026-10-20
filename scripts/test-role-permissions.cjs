@@ -50,6 +50,12 @@ assert.equal(portfolioPolicy.isPortfolioEditorUser(user(['/admin/portfolio'])), 
 assert.equal(portfolioPolicy.isPortfolioReadOnlyLeaderUser(user(['/admin/portfolio'])), true);
 assert.equal(can('/admin/kiem-soat-spck', user(['/admin/portfolio'])), false);
 assert.equal(can('/admin/portfolio/builder/123', user(['/admin/portfolio'])), false);
+assert.equal(can('/admin/kiem-soat-spck', { ...user(), userRoles: ['TEGL'] }), true);
+assert.equal(can('/admin/kiem-soat-spck', { ...user(), userRoles: ['TEGL+'] }), true);
+assert.equal(can('/admin/kiem-soat-spck', { ...user(), userRoles: ['TM'] }), true);
+assert.equal(can('/admin/kiem-soat-spck', { ...user(), userRoles: ['AD'] }), true);
+assert.equal(can('/admin/kiem-soat-spck', { ...user(), role: 'admin' }), true);
+assert.equal(can('/admin/kiem-soat-spck', { ...user(), userRoles: ['CL', 'RL', 'AL', 'TE', 'TC'] }), false);
 assert.equal(can('/admin/portfolio', { ...user(), userRoles: ['TE', 'TC', 'TEGL'] }), false);
 const legacy = user(['/admin/page2', '/admin/portfolio', '/admin/portfolio/portfolios']);
 assert.deepEqual(menu(studentMenu, legacy), studentMenu);

@@ -27,8 +27,8 @@ test('notification route preserves legacy configuration and enforces configured 
   });
   process.env.GITHUB_TELEGRAM_BOT_TOKEN = 'test-token';
   process.env.GITHUB_TELEGRAM_CHAT_ID = 'test-chat';
-  const body = JSON.stringify({ repository: { full_name: 'BWCbewchan/tpsmindx' }, action: 'opened', pull_request: { number: 1, title: 'fix: notification regression', head: { ref: 'preview', sha: 'abcdef123' }, base: { ref: 'main' } } });
-  const request = (raw = body, event = 'pull_request', signature = '') => new Request('https://example.test/api/github/webhook', {
+  const body = JSON.stringify({ repository: { full_name: 'BWCbewchan/tpsmindx' }, ref: 'refs/heads/main', after: 'abcdef123', commits: [{ id: 'abcdef123', message: 'fix: notification regression' }] });
+  const request = (raw = body, event = 'push', signature = '') => new Request('https://example.test/api/github/webhook', {
     method: 'POST', body: raw, headers: { 'content-type': 'application/json', 'x-github-event': event, 'x-hub-signature-256': signature },
   });
   let sent = [];
@@ -36,7 +36,7 @@ test('notification route preserves legacy configuration and enforces configured 
     sent.push(JSON.parse(options.body));
     return Response.json({ ok: true });
   };
-  await t.test('legacy PR without a configured signing secret reaches Telegram', async () => {
+  await t.test('legacy push without a configured signing secret reaches Telegram', async () => {
     delete process.env.GITHUB_WEBHOOK_SECRET;
     assert.equal((await POST(request())).status, 200);
     assert.equal(sent.length, 1);
@@ -47,13 +47,13 @@ test('notification route preserves legacy configuration and enforces configured 
     process.env.GITHUB_WEBHOOK_SECRET = 'test-secret';
     sent = [];
     assert.equal((await POST(request())).status, 401);
-    assert.equal((await POST(request(body, 'pull_request', 'sha256=' + '0'.repeat(64)))).status, 401);
+    assert.equal((await POST(request(body, 'push', 'sha256=' + '0'.repeat(64)))).status, 401);
     assert.equal(sent.length, 0);
   });
   await t.test('valid signature sends; tampered body is rejected', async () => {
     const signature = 'sha256=' + createHmac('sha256', 'test-secret').update(body).digest('hex');
-    assert.equal((await POST(request(body, 'pull_request', signature))).status, 200);
-    assert.equal((await POST(request(body + ' ', 'pull_request', signature))).status, 401);
+    assert.equal((await POST(request(body, 'push', signature))).status, 200);
+    assert.equal((await POST(request(body + ' ', 'push', signature))).status, 401);
   });
   await t.test('ping and malformed JSON do not send messages', async () => {
     delete process.env.GITHUB_WEBHOOK_SECRET;

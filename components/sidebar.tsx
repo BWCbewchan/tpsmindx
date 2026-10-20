@@ -14,6 +14,7 @@ import {
   ChevronDown,
   ClipboardCheck,
   DollarSign,
+  FileSpreadsheet,
   FileText,
   GraduationCap,
   Home,
@@ -321,6 +322,11 @@ export function Sidebar() {
           label: 'Quản lý Portfolio',
           icon: FileText,
         },
+        {
+          href: '/admin/tieu-chi-cham-diem',
+          label: 'Tiêu chí chấm điểm demo',
+          icon: FileSpreadsheet,
+        },
       ],
     },
     {
@@ -436,7 +442,7 @@ export function Sidebar() {
       label: 'Thao tác vận hành',
       icon: ClipboardCheck,
       submenu: [
-        // { href: '/user/lop-hoc', label: 'Lớp học' },
+        { href: '/user/lop-hoc', label: 'Lớp học' },
         {
           label: 'Phiếu kết quả trải nghiệm',
           submenu: [

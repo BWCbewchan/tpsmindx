@@ -522,6 +522,7 @@ export function DockNav() {
       label: 'Vận hành',
       icon: ClipboardCheck,
       submenu: [
+        { href: '/user/lop-hoc', label: 'Lớp học' },
         {
           groupLabel: 'Phiếu kết quả trải nghiệm',
           items: [
@@ -529,7 +530,7 @@ export function DockNav() {
             { href: '/user/checkout/manage', label: 'Quản lý phiếu đã tạo' },
           ],
         },
-      ] as SubGroup[],
+      ] as any,
     },
     { id: 'thongbao',   label: 'Thông báo',     icon: Bell,      href: '/user/thong-bao', badge: unreadCount },
     {

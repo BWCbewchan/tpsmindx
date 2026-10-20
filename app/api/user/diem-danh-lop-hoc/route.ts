@@ -1,5 +1,6 @@
 import { requireBearerOrSessionCookie } from '@/lib/datasource-api-auth';
 import { callLmsApi } from '@/lib/lms-api';
+import { getOrRefreshLmsToken, applyRefreshedCookies, LmsTokenSession } from '@/lib/lms-token-helper';
 import { NextRequest, NextResponse } from 'next/server';
 
 const SESSION_COUNT = 14;
@@ -22,7 +23,7 @@ const GET_ATTENDANCE_CLASSES_QUERY = /* graphql */ `
       status_in: $statusIn,
       pageIndex: $pageIndex,
       itemsPerPage: $itemsPerPage,
-      orderBy: "startDate_asc"
+      orderBy: "startDate_desc"
     }) {
       pagination { total }
       data {
@@ -390,7 +391,7 @@ function mapSlot(slot: any, index: number, studentsCount: number) {
   };
 }
 
-function mapClass(cls: any, userEmail: string) {
+function mapClass(cls: any, userEmail: string, isSuperAdmin = false) {
   const students = (cls?.students || [])
     .filter((row: any) => row?.activeInClass !== false)
     .map(mapStudent)
@@ -454,6 +455,7 @@ function mapClass(cls: any, userEmail: string) {
     operationMethodName: cls?.operationMethod?.name || '',
     operatorName,
     centreId: cls?.centre?.id || null,
+    courseId: cls?.course?.id || null,
     courseName: cls?.course?.name || '',
     courseShortName: cls?.course?.shortName || '',
     courseLineName: cls?.course?.courseLine?.name || '',
@@ -464,18 +466,115 @@ function mapClass(cls: any, userEmail: string) {
     allTeachers,
     allTeacherNames: allTeachers.map(teacherDisplayName).filter(Boolean),
     lecTeachers: Array.from(new Set(lecTeachers)),
-    accessRoles: userRolesForClass(cls, userEmail),
+    accessRoles: isSuperAdmin
+      ? Array.from(new Set(['MANAGER', 'SUPER_ADMIN', ...userRolesForClass(cls, userEmail)]))
+      : userRolesForClass(cls, userEmail),
     students,
     slots,
   };
+}
+
+function getClassRecencyScore(cls: any, todayMs: number): number {
+  const slotDates: number[] = [];
+  if (Array.isArray(cls.slots)) {
+    for (const slot of cls.slots) {
+      if (slot.isPlaceholder) continue;
+      const rawDate = slot.date || slot.startTime;
+      if (rawDate) {
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime())) {
+          slotDates.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime());
+        }
+      }
+    }
+  }
+
+  if (slotDates.length === 0) {
+    if (cls.startDate) {
+      const d = new Date(cls.startDate);
+      if (!isNaN(d.getTime())) {
+        slotDates.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime());
+      }
+    }
+    if (cls.endDate) {
+      const d = new Date(cls.endDate);
+      if (!isNaN(d.getTime())) {
+        slotDates.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime());
+      }
+    }
+  }
+
+  if (slotDates.length === 0) {
+    return 999999999;
+  }
+
+  const oneDayMs = 24 * 60 * 60 * 1000;
+
+  // 1. Kiểm tra nếu có slot đúng hôm nay (chênh lệch < 12h so với 00:00 hôm nay)
+  const hasToday = slotDates.some((time) => Math.abs(time - todayMs) < 12 * 60 * 60 * 1000);
+  if (hasToday) {
+    return 0; // Ưu tiên cao nhất
+  }
+
+  // 2. Tìm slot tương lai gần nhất (>= todayMs)
+  const futureSlots = slotDates.filter((time) => time >= todayMs).sort((a, b) => a - b);
+  const nextFutureSlot = futureSlots.length > 0 ? futureSlots[0] : null;
+
+  // 3. Tìm slot quá khứ gần nhất (< todayMs)
+  const pastSlots = slotDates.filter((time) => time < todayMs).sort((a, b) => b - a);
+  const lastPastSlot = pastSlots.length > 0 ? pastSlots[0] : null;
+
+  if (nextFutureSlot !== null && lastPastSlot !== null) {
+    const futureDiffDays = (nextFutureSlot - todayMs) / oneDayMs;
+    const pastDiffDays = (todayMs - lastPastSlot) / oneDayMs;
+    if (futureDiffDays <= pastDiffDays) {
+      return futureDiffDays;
+    } else {
+      return pastDiffDays + 0.05;
+    }
+  } else if (nextFutureSlot !== null) {
+    return (nextFutureSlot - todayMs) / oneDayMs;
+  } else if (lastPastSlot !== null) {
+    return (todayMs - lastPastSlot) / oneDayMs + 0.05;
+  }
+
+  return 999999999;
+}
+
+function compareClassesByRecency(a: any, b: any, todayMs: number): number {
+  const scoreA = getClassRecencyScore(a, todayMs);
+  const scoreB = getClassRecencyScore(b, todayMs);
+
+  if (Math.abs(scoreA - scoreB) > 0.001) {
+    return scoreA - scoreB;
+  }
+
+  if (a.status === 'RUNNING' && b.status !== 'RUNNING') return -1;
+  if (b.status === 'RUNNING' && a.status !== 'RUNNING') return 1;
+
+  return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
 }
 
 export async function GET(request: NextRequest) {
   const auth = await requireBearerOrSessionCookie(request);
   if (!auth.ok) return auth.response;
 
+  const isSuperAdmin = auth.privileged || auth.resolvedAccess?.role === 'super_admin';
   const userEmail = normalizeEmail(auth.sessionEmail);
-  const firebaseToken = request.cookies.get('lms_firebase_token')?.value || '';
+
+  let tokenSession: LmsTokenSession | null = null;
+  let firebaseToken = request.cookies.get('lms_firebase_token')?.value || '';
+
+  if (isSuperAdmin) {
+    // Tài khoản Super Admin tự động dùng tài khoản LMS fallback trong .env (LMS_FALLBACK_EMAIL, LMS_FALLBACK_PASSWORD)
+    tokenSession = await getOrRefreshLmsToken(request);
+    firebaseToken = tokenSession.token || firebaseToken;
+  } else if (!firebaseToken) {
+    tokenSession = await getOrRefreshLmsToken(request);
+    if (!tokenSession.isFallback && tokenSession.token) {
+      firebaseToken = tokenSession.token;
+    }
+  }
 
   if (!firebaseToken) {
     return NextResponse.json({
@@ -489,7 +588,9 @@ export async function GET(request: NextRequest) {
   try {
     const searchParam = request.nextUrl.searchParams.get('q')?.trim() || undefined;
     const statusParam = request.nextUrl.searchParams.get('status')?.trim().toUpperCase();
-    const statusIn = statusParam && statusParam !== 'ALL' ? [statusParam] : undefined;
+    const statusIn = statusParam && statusParam !== 'ALL' && statusParam !== 'TAT_CA'
+      ? [statusParam]
+      : ['RUNNING', 'FINISHED', 'PREPARING'];
     const classIdParam = request.nextUrl.searchParams.get('classId')?.trim();
     const fromParam = request.nextUrl.searchParams.get('from');
     const toParam = request.nextUrl.searchParams.get('to');
@@ -518,7 +619,9 @@ export async function GET(request: NextRequest) {
     const total = Number(firstPage?.pagination?.total || allClasses.length);
     const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
-    for (let pageIndex = 1; pageIndex < totalPages && pageIndex < MAX_PAGES; pageIndex++) {
+    const maxPagesToFetch = isSuperAdmin && !searchParam && !classIdParam ? 10 : MAX_PAGES;
+
+    for (let pageIndex = 1; pageIndex < totalPages && pageIndex < maxPagesToFetch; pageIndex++) {
       const pageResult = await callLmsApi<any>(
         {
           query: GET_ATTENDANCE_CLASSES_QUERY,
@@ -540,25 +643,26 @@ export async function GET(request: NextRequest) {
       allClasses.push(...pageData);
     }
 
+    const ALLOWED_STATUSES = new Set(['RUNNING', 'FINISHED', 'PREPARING']);
     const uniqueClasses = Array.from(
       new Map(
         allClasses
-          .filter((cls: any) => hasTeacherAccessToClass(cls, userEmail))
+          .filter((cls: any) => ALLOWED_STATUSES.has(normalizeStatus(cls?.status)))
+          .filter((cls: any) => isSuperAdmin || hasTeacherAccessToClass(cls, userEmail))
           .filter((cls: any) => !classIdParam || String(cls?.id || '') === classIdParam)
           .map((cls: any) => [String(cls.id), cls]),
       ).values(),
     );
 
-    const classes = uniqueClasses
-      .map((cls) => mapClass(cls, userEmail))
-      .filter((cls) => cls.id)
-      .sort((a, b) => {
-        const aTime = new Date(a.startDate || a.slots[0]?.date || 0).getTime();
-        const bTime = new Date(b.startDate || b.slots[0]?.date || 0).getTime();
-        return bTime - aTime;
-      });
+    const nowVn = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
+    const todayMs = new Date(nowVn.getFullYear(), nowVn.getMonth(), nowVn.getDate()).getTime();
 
-    return NextResponse.json({
+    const classes = uniqueClasses
+      .map((cls) => mapClass(cls, userEmail, isSuperAdmin))
+      .filter((cls) => cls.id)
+      .sort((a, b) => compareClassesByRecency(a, b, todayMs));
+
+    const response = NextResponse.json({
       success: true,
       classes,
       meta: {
@@ -569,6 +673,12 @@ export async function GET(request: NextRequest) {
         sessionCount: SESSION_COUNT,
       },
     });
+
+    if (tokenSession) {
+      applyRefreshedCookies(response, tokenSession);
+    }
+
+    return response;
   } catch (error: unknown) {
     console.error('[diem-danh-lop-hoc] Error:', error);
     const message = error instanceof Error ? error.message : 'Không thể kết nối LMS API.';

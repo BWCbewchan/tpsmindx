@@ -5,9 +5,10 @@ export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   const secret = process.env.GITHUB_WEBHOOK_SECRET;
-  if (!secret) return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 503 });
   const body = await request.text();
-  if (!verifyGitHubSignature(body, request.headers.get('x-hub-signature-256') || '', secret)) {
+  // Preserve the existing notification webhook configuration: older installations
+  // have Telegram credentials but no signing secret. Enforce HMAC whenever set.
+  if (secret && !verifyGitHubSignature(body, request.headers.get('x-hub-signature-256') || '', secret)) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
   }
   let payload;

@@ -4,8 +4,13 @@ import { PageContainer } from '@/components/PageContainer'
 import { authHeaders } from '@/lib/auth-headers'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
+import { toast } from '@/lib/app-toast'
 import {
+  AlertCircle,
   AlertTriangle,
+  CheckCircle2,
+  Award,
+  Loader2,
   Bot,
   BookOpen,
   Building2,
@@ -30,7 +35,7 @@ import {
   X,
   type LucideIcon,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ClassCommentsPanel } from './ClassCommentsPanel'
 
@@ -146,6 +151,7 @@ type AttendanceClass = {
   centreName: string
   centreShortName: string
   classSites: ClassSiteOption[]
+  courseId?: string | null
   courseName: string
   courseShortName: string
   courseLineName: string
@@ -363,6 +369,23 @@ function formatShortDateWithYear(value: string | null | undefined): string {
   return `${day}/${month}/${year.slice(-2)}`
 }
 
+function formatDateTimeFull(value: string | number | Date | null | undefined): string {
+  if (!value) return ''
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return ''
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  return `${hours}:${minutes} ${day}/${month}/${d.getFullYear()}`
+}
+
+function formatDateFull(value: string | number | Date | null | undefined): string {
+  if (!value) return ''
+  const d = new Date(value)
+  if (isNaN(d.getTime())) return ''
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+}
 function formatTimeRange(slot: ClassSlot): string {
   const start = formatTime(slot.startTime)
   const end = formatTime(slot.endTime)
@@ -989,6 +1012,1156 @@ function StudentIdentity({
   )
 }
 
+type StudentDemoGradeItemState = {
+  level: 'Chưa đạt' | 'Hoàn thành' | 'Tốt'
+  earnedScore: number
+  note: string
+  noteJudge?: string
+}
+
+function toDDMMYYYY(val: string): string {
+  if (!val) return ''
+  if (val.includes('/')) return val
+  const parts = val.split('-')
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`
+  }
+  return val
+}
+
+function toYYYYMMDD(val: string): string {
+  if (!val) return ''
+  const parts = val.split('/')
+  if (parts.length === 3 && parts[2]?.length === 4) {
+    return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
+  }
+  return val
+}
+
+function formatScoreMax3(val: number | string): string {
+  const n = typeof val === 'number' ? val : parseFloat(String(val))
+  if (isNaN(n)) return '0'
+  return (Math.round(n * 1000) / 1000).toString()
+}
+
+function cleanGroupTitle(name: string): string {
+  if (!name) return ''
+  return name
+    .replace(/\s*\(\s*[\d.,]+\s*(?:đ|điểm|diem|pts?|points?)?\s*\)/gi, '')
+    .replace(/\s*-\s*[\d.,]+\s*(?:đ|điểm|diem|pts?|points?)\s*$/gi, '')
+    .trim()
+}
+
+function getGradingPermission(
+  cls: AttendanceClass,
+  user: any,
+): {
+  canGrade: boolean
+  canEdit: boolean
+  isManager: boolean
+  isLecOrJudge: boolean
+  reason: string
+  timeNotice?: string
+} {
+  // 1. Kiểm tra role Manager (manager, admin, super_admin, hoặc userRoles có manager/admin/leader)
+  const roleStr = (user?.role || '').toLowerCase()
+  const isAdmin = Boolean(user?.isAdmin)
+  const hasManagerRole =
+    isAdmin ||
+    roleStr === 'manager' ||
+    roleStr === 'admin' ||
+    roleStr === 'super_admin' ||
+    (Array.isArray(user?.userRoles) &&
+      user.userRoles.some((r: string) => {
+        const s = (r || '').toLowerCase()
+        return s.includes('manager') || s.includes('admin') || s.includes('leader')
+      }))
+
+  // 2. Kiểm tra role Lec hoặc Judge trong lớp này
+  const userEmail = (user?.email || '').toLowerCase().trim()
+  const userName = (user?.displayName || '').toLowerCase().trim()
+
+  const hasLecAccess =
+    cls.accessRoles?.includes('LEC') ||
+    cls.lecTeachers?.some((name) => name.toLowerCase().trim() === userName) ||
+    cls.classTeachers?.some((t) => {
+      const r = (t.roleShortName || t.roleName || '').toUpperCase()
+      const isLecRole = r === 'LEC' || r.includes('LECTURER') || r.includes('GIANG VIEN')
+      const match =
+        (t.email && t.email.toLowerCase() === userEmail) ||
+        (t.username && t.username.toLowerCase() === userEmail) ||
+        (t.fullName && t.fullName.toLowerCase().trim() === userName)
+      return isLecRole && match
+    })
+
+  const hasJudgeAccess =
+    cls.accessRoles?.includes('JUDGE_SESSION_14') ||
+    cls.allTeachers?.some((t) => {
+      const r = (t.roleShortName || t.roleName || '').toUpperCase()
+      const isJudgeRole = r === 'JUDGE' || r === 'BGK' || r.includes('GIAM KHAO')
+      const match =
+        (t.email && t.email.toLowerCase() === userEmail) ||
+        (t.username && t.username.toLowerCase() === userEmail) ||
+        (t.fullName && t.fullName.toLowerCase().trim() === userName)
+      return isJudgeRole && match
+    })
+
+  const isLecOrJudge = Boolean(hasLecAccess || hasJudgeAccess)
+
+  // Nếu không có quyền Manager và cũng không phải Lec/Judge của lớp
+  if (!hasManagerRole && !isLecOrJudge) {
+    return {
+      canGrade: false,
+      canEdit: false,
+      isManager: false,
+      isLecOrJudge: false,
+      reason: 'Chỉ Giảng viên phụ trách (Lec), Giám khảo (Judge) hoặc Quản lý mới có quyền chấm điểm lớp này.',
+    }
+  }
+
+  // 3. Mốc thời gian bắt đầu của buổi học cuối (buổi demo)
+  const slots = cls.slots || []
+  const lastSlot = slots.slice().reverse().find((s) => !s.isPlaceholder) || slots[slots.length - 1]
+  const rawStart = lastSlot?.startTime || lastSlot?.date || cls.startDate
+  let startMs = 0
+  let endOfDayMs = Infinity
+
+  if (rawStart) {
+    const dtStart = new Date(rawStart)
+    if (!isNaN(dtStart.getTime())) {
+      startMs = dtStart.getTime()
+      const dtEnd = new Date(dtStart.getFullYear(), dtStart.getMonth(), dtStart.getDate(), 23, 59, 59, 999)
+      endOfDayMs = dtEnd.getTime()
+    }
+  }
+
+  const now = Date.now()
+
+  // 3a. Trường hợp Role có Manager
+  if (hasManagerRole) {
+    if (startMs > 0 && now < startMs) {
+      const startStr = formatDateTimeFull(startMs)
+      return {
+        canGrade: true,
+        canEdit: false,
+        isManager: true,
+        isLecOrJudge,
+        reason: `Chưa đến thời gian bắt đầu buổi học (${startStr}). Quản lý chỉ được chấm điểm từ khi buổi học bắt đầu.`,
+        timeNotice: `Mở từ: ${startStr}`,
+      }
+    }
+    return {
+      canGrade: true,
+      canEdit: true,
+      isManager: true,
+      isLecOrJudge,
+      reason: '',
+      timeNotice: 'Role Quản lý: Được phép cập nhật bảng điểm lúc nào cũng được từ khi buổi học bắt đầu.',
+    }
+  }
+
+  // 3b. Trường hợp Lec / Judge (không có role Manager)
+  if (startMs > 0 && now < startMs) {
+    const startStr = formatDateTimeFull(startMs)
+    return {
+      canGrade: true,
+      canEdit: false,
+      isManager: false,
+      isLecOrJudge: true,
+      reason: `Chưa đến thời gian chấm điểm. Buổi học cuối bắt đầu lúc ${startStr}.`,
+      timeNotice: `Chưa mở (Bắt đầu từ: ${startStr})`,
+    }
+  }
+
+  if (endOfDayMs < Infinity && now > endOfDayMs) {
+    const endStr = `23:59 ngày ${formatDateFull(endOfDayMs)}`
+    return {
+      canGrade: true,
+      canEdit: false,
+      isManager: false,
+      isLecOrJudge: true,
+      reason: `Đã hết thời hạn chấm điểm cho Giảng viên/Giám khảo (${endStr}). Bảng điểm hiện ở chế độ chỉ xem. Vui lòng liên hệ Quản lý nếu cần điều chỉnh.`,
+      timeNotice: `Hết hạn lúc ${endStr}`,
+    }
+  }
+
+  const deadlineStr = endOfDayMs < Infinity ? `23:59 ngày ${formatDateFull(endOfDayMs)}` : ''
+  return {
+    canGrade: true,
+    canEdit: true,
+    isManager: false,
+    isLecOrJudge: true,
+    reason: '',
+    timeNotice: deadlineStr ? `Thời hạn chấm điểm: Đến ${deadlineStr}` : undefined,
+  }
+}
+
+function detectProjectType(cls: AttendanceClass): string {
+  const text = normalizeText(
+    [cls.courseName, cls.courseShortName, cls.courseLineName, cls.name]
+      .filter(Boolean)
+      .join(' ')
+  )
+
+  if (text.includes('scratch')) return 'Lập Trình Scratch'
+  if (text.includes('app') || text.includes('flutter') || text.includes('react native')) return 'Lập Trình App'
+  if (text.includes('game')) return 'Lập Trình Game'
+  if (text.includes('web')) return 'Lập Trình Web'
+  if (text.includes('robot')) return 'Lập Trình Robotics'
+  if (text.includes('python')) return 'Lập Trình Python'
+  if (text.includes('computer scientist') || text.includes('khoa hoc may tinh') || text.includes('cs0')) return 'Khoa Học Máy Tính'
+  if (text.includes('art') || text.includes('visual') || text.includes('illustrator')) return 'Mỹ Thuật Số'
+  if (text.includes('data')) return 'Khoa Học Dữ Liệu'
+
+  return cls.courseLineName || cls.courseName || 'Dự án demo'
+}
+
+function StudentDemoGradingModal({
+  cls,
+  student,
+  courseCriteria,
+  defaultDemoDate,
+  onClose,
+  onSaved,
+  token,
+}: {
+  cls: AttendanceClass
+  student: Student
+  courseCriteria: {
+    hasCriteria?: boolean
+    hasCourseCriteria?: boolean
+    hasCommonCriteria?: boolean
+    weights?: {
+      courseWeight?: number
+      commonWeight?: number
+      courseWeightPercent: number
+      commonWeightPercent: number
+    }
+    courseCriteria?: any
+    commonCriteria?: any
+    courseRubric?: {
+      weightPercent: number
+      totalMaxScore: number
+      groups: any[]
+      itemsCount: number
+    }
+    commonRubric?: {
+      weightPercent: number
+      totalMaxScore: number
+      groups: any[]
+      itemsCount: number
+    }
+    totalMaxScore: number
+    groups: Array<{ groupName: string; rubricType?: string; weight?: number; weightPercent?: number; totalGroupScore: number; items: any[] }>
+    data: any[]
+  }
+  defaultDemoDate?: string
+  onClose: () => void
+  onSaved?: (studentId: string) => void
+  token?: string | null
+}) {
+  const { user } = useAuth()
+  const perm = useMemo(() => getGradingPermission(cls, user), [cls, user])
+
+  // Xác định tên GV phụ trách (Lec) của lớp
+  const lecName = useMemo(() => {
+    if (cls.lecTeachers && cls.lecTeachers.length > 0) {
+      return cls.lecTeachers.join(', ')
+    }
+    const foundLec = cls.classTeachers?.find((t) => {
+      const r = (t.roleShortName || t.roleName || '').toUpperCase()
+      return r === 'LEC' || r.includes('LECTURER') || r.includes('GIANG VIEN')
+    })
+    if (foundLec?.fullName) return foundLec.fullName
+    return cls.allTeacherNames?.[0] || cls.operatorName || ''
+  }, [cls])
+
+  // Xác định user hiện tại có phải là Lec và/hoặc Judge của lớp không
+  const { isCurrentLec, isCurrentJudge } = useMemo(() => {
+    const userEmail = (user?.email || '').trim().toLowerCase()
+    const userName = (user?.displayName || (user as any)?.name || '').trim().toLowerCase()
+
+    const hasLecAccess = Boolean(
+      cls.accessRoles?.some((r) => r === 'LEC' || r.includes('LECTURER') || r.includes('GIANG_VIEN'))
+    )
+    const hasJudgeAccess = Boolean(
+      cls.accessRoles?.some((r) => r === 'JUDGE' || r.includes('JUDGE') || r.includes('BGK'))
+    )
+
+    const isLecMatch = Boolean(
+      hasLecAccess ||
+      (userName && cls.lecTeachers?.some((name) => name.toLowerCase() === userName)) ||
+      cls.allTeachers?.some((t) => {
+        const email = (t.email || '').toLowerCase()
+        const name = (t.fullName || '').toLowerCase()
+        const role = (t.roleShortName || t.roleName || '').toUpperCase()
+        const isLecRole = role === 'LEC' || role.includes('LECTURER') || role.includes('GIANG VIEN')
+        return isLecRole && (email === userEmail || (userName && name === userName))
+      })
+    )
+
+    const isJudgeMatch = Boolean(
+      hasJudgeAccess ||
+      cls.allTeachers?.some((t) => {
+        const email = (t.email || '').toLowerCase()
+        const name = (t.fullName || '').toLowerCase()
+        const role = (t.roleShortName || t.roleName || '').toUpperCase()
+        const isJudgeRole = role === 'JUDGE' || role === 'BGK' || role.includes('GIAM KHAO')
+        return isJudgeRole && (email === userEmail || (userName && name === userName))
+      })
+    )
+
+    return { isCurrentLec: isLecMatch, isCurrentJudge: isJudgeMatch }
+  }, [cls, user])
+
+  // Phân quyền sửa cho Lec và Judge:
+  // Nếu là Manager: được sửa cả 2
+  // Nếu không có role manager: Lec chỉ sửa được phần của Lec, Judge chỉ sửa được phần của Judge
+  const canEditLec = useMemo(() => {
+    if (!perm.canEdit) return false
+    if (perm.isManager) return true
+    return isCurrentLec
+  }, [perm.canEdit, perm.isManager, isCurrentLec])
+
+  const canEditJudge = useMemo(() => {
+    if (!perm.canEdit) return false
+    if (perm.isManager) return true
+    return isCurrentJudge
+  }, [perm.canEdit, perm.isManager, isCurrentJudge])
+
+  const todayStr = useMemo(() => {
+    const d = new Date()
+    const dd = String(d.getDate()).padStart(2, '0')
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const yyyy = d.getFullYear()
+    return `${dd}/${mm}/${yyyy}`
+  }, [])
+
+  // Hình thức dự án: Tự động nhận diện (Lập Trình App, Lập Trình Game, Lập Trình Scratch,...)
+  const projectType = detectProjectType(cls)
+
+  const [demoDate, setDemoDate] = useState(() => toDDMMYYYY(defaultDemoDate || '') || todayStr)
+  const [evalDate, setEvalDate] = useState(todayStr)
+  const [bgk1Note, setBgk1Note] = useState('')
+  const [bgk2Note, setBgk2Note] = useState('')
+  const [lastUpdatedInfo, setLastUpdatedInfo] = useState<{ by: string; at: string } | null>(null)
+  const [items, setItems] = useState<Record<string | number, StudentDemoGradeItemState>>({})
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Kiểm tra xem có GV chấm (Judge) / BGK2 hay không
+  const judgeInfo = useMemo(() => {
+    const isJudgeRole = (r: string) => {
+      const s = (r || '').toUpperCase()
+      return (
+        s === 'JUDGE' ||
+        s === 'BGK' ||
+        s.includes('GIAM KHAO') ||
+        s.includes('GIÁM KHẢO') ||
+        s.includes('JUDGE')
+      )
+    }
+
+    // 1. Tìm trong allTeachers hoặc classTeachers giáo viên có vai trò Judge / BGK
+    const foundJudge = cls.allTeachers?.find((t) => isJudgeRole(t.roleShortName || t.roleName))
+    if (foundJudge?.fullName) {
+      return { hasJudge: true, name: foundJudge.fullName }
+    }
+
+    // 2. Tìm trong slot cuối cùng (buổi demo)
+    const lastSlot = cls.slots?.[cls.slots.length - 1]
+    if (lastSlot?.teachers && lastSlot.teachers.length > 0) {
+      const slotJudge = lastSlot.teachers.find((t) => isJudgeRole(t.roleShortName || t.roleName))
+      if (slotJudge?.fullName) {
+        return { hasJudge: true, name: slotJudge.fullName }
+      }
+
+      // Có giáo viên khác với Lec và không phải là Trợ giảng (TA)
+      const isTaRole = (r: string) => {
+        const s = (r || '').toUpperCase()
+        return s === 'TA' || s.includes('TRO GIANG') || s.includes('TRỢ GIẢNG')
+      }
+      const otherTeacher = lastSlot.teachers.find(
+        (t) => t.fullName && t.fullName !== lecName && !isTaRole(t.roleShortName || t.roleName)
+      )
+      if (otherTeacher?.fullName) {
+        return { hasJudge: true, name: otherTeacher.fullName }
+      }
+    }
+
+    // 3. Nếu người dùng đang đăng nhập có quyền JUDGE_SESSION_14 trên lớp và khác với Lec
+    if (cls.accessRoles?.includes('JUDGE_SESSION_14') && user?.displayName && user.displayName !== lecName) {
+      return { hasJudge: true, name: user.displayName }
+    }
+
+    // 4. Nếu trước đó đã có nhận xét BGK2 được lưu trong DB
+    if (bgk2Note && bgk2Note.trim().length > 0) {
+      return { hasJudge: true, name: '' }
+    }
+
+    return { hasJudge: false, name: '' }
+  }, [cls, lecName, user, bgk2Note])
+
+  // Flattened list of items
+  const allItems = useMemo(() => {
+    return courseCriteria.groups.flatMap((g) =>
+      g.items.map((it) => ({
+        ...it,
+        groupName: g.groupName,
+        rubricType: g.rubricType || 'course',
+      }))
+    )
+  }, [courseCriteria])
+
+  const totalItemsCount = allItems.length
+
+  useEffect(() => {
+    let active = true
+
+    // Initialize defaults
+    const initial: Record<string | number, StudentDemoGradeItemState> = {}
+    allItems.forEach((it) => {
+      const max = Math.round((Number(it.maxScore) || 0) * 1000) / 1000
+      initial[it.id] = {
+        level: 'Tốt',
+        earnedScore: max,
+        note: '',
+        noteJudge: '',
+      }
+    })
+    setItems(initial)
+
+    // Load from DB
+    fetch(`/api/user/student-demo-grade?classId=${encodeURIComponent(cls.id)}&studentId=${encodeURIComponent(student.id)}`, {
+      headers: { ...authHeaders(token) },
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        if (!active) return
+        if (res?.success && res?.data) {
+          const d = res.data
+          if (d.demoDate) setDemoDate(toDDMMYYYY(d.demoDate))
+          if (d.evalDate) setEvalDate(toDDMMYYYY(d.evalDate))
+          if (d.note) setBgk1Note(d.note)
+          if (d.bgk2Note) setBgk2Note(d.bgk2Note)
+
+          if (d.updatedAt) {
+            const dt = new Date(d.updatedAt)
+            const atStr = !isNaN(dt.getTime())
+              ? `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')} ${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`
+              : ''
+            const byStr = d.updatedByName || d.updatedByEmail || d.teacherEmail || ''
+            if (byStr || atStr) {
+              setLastUpdatedInfo({ by: byStr || 'Giảng viên', at: atStr })
+            }
+          }
+
+          if (Array.isArray(d.criteriaScores) && d.criteriaScores.length > 0) {
+            setItems((prev) => {
+              const next = { ...prev }
+              d.criteriaScores.forEach((saved: any) => {
+                const idKey = saved.itemId ?? saved.id
+                if (idKey !== undefined && next[idKey]) {
+                  const savedScore = typeof saved.earnedScore === 'number'
+                    ? saved.earnedScore
+                    : parseFloat(saved.earnedScore) || 0
+                  next[idKey] = {
+                    level: saved.level || next[idKey].level,
+                    earnedScore: Math.round(savedScore * 1000) / 1000,
+                    note: saved.noteLec || saved.note || '',
+                    noteJudge: saved.noteJudge || '',
+                  }
+                }
+              })
+              return next
+            })
+          }
+        }
+      })
+      .catch((err) => console.error('Error loading student demo grade:', err))
+      .finally(() => {
+        if (active) setIsLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [cls.id, student.id, allItems, token])
+
+  const handleLevelChange = (
+    itemId: string | number,
+    maxScore: number,
+    level: 'Chưa đạt' | 'Hoàn thành' | 'Tốt'
+  ) => {
+    let earned = Math.round(Number(maxScore) * 1000) / 1000
+    if (level === 'Chưa đạt') earned = 0
+    else if (level === 'Hoàn thành') earned = Math.round(maxScore * 0.5 * 1000) / 1000
+
+    setItems((prev) => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        level,
+        earnedScore: earned,
+      },
+    }))
+  }
+
+  const handleScoreChange = (itemId: string | number, score: number) => {
+    const rounded = isNaN(score) ? 0 : Math.round(score * 1000) / 1000
+    setItems((prev) => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        earnedScore: rounded,
+      },
+    }))
+  }
+
+  const handleNoteChange = (
+    itemId: string | number,
+    field: 'note' | 'noteJudge',
+    value: string
+  ) => {
+    setItems((prev) => ({
+      ...prev,
+      [itemId]: {
+        ...prev[itemId],
+        [field]: value,
+      },
+    }))
+  }
+
+  const isDualRubric = Boolean(
+    courseCriteria.weights &&
+      courseCriteria.weights.courseWeightPercent < 100 &&
+      courseCriteria.weights.commonWeightPercent > 0
+  )
+
+  const { totalScore, maxPossibleScore } = useMemo(() => {
+    if (isDualRubric) {
+      const courseItems = allItems.filter((it) => it.rubricType !== 'common')
+      const commonItems = allItems.filter((it) => it.rubricType === 'common')
+
+      const courseMax = courseItems.reduce((s, it) => s + (Number(it.maxScore) || 0), 0)
+      const commonMax = commonItems.reduce((s, it) => s + (Number(it.maxScore) || 0), 0)
+
+      const courseEarned = courseItems.reduce(
+        (s, it) => s + (Number(items[it.id]?.earnedScore) || 0),
+        0
+      )
+      const commonEarned = commonItems.reduce(
+        (s, it) => s + (Number(items[it.id]?.earnedScore) || 0),
+        0
+      )
+
+      const courseWeighted = courseMax > 0 ? (courseEarned / courseMax) * 5.0 * 0.6 : 0
+      const commonWeighted = commonMax > 0 ? (commonEarned / commonMax) * 5.0 * 0.4 : 0
+
+      return {
+        totalScore: Math.round((courseWeighted + commonWeighted) * 1000) / 1000,
+        maxPossibleScore: 5.0,
+      }
+    } else {
+      const earnedTotal = allItems.reduce(
+        (s, it) => s + (Number(items[it.id]?.earnedScore) || 0),
+        0
+      )
+      const maxTotal = allItems.reduce(
+        (s, it) => s + (Number(it.maxScore) || 0),
+        0
+      )
+      return {
+        totalScore: Math.round(earnedTotal * 1000) / 1000,
+        maxPossibleScore: maxTotal > 0 ? Math.round(maxTotal * 1000) / 1000 : 5.0,
+      }
+    }
+  }, [allItems, items, isDualRubric])
+
+  const handleSave = async () => {
+    if (!perm.canEdit) {
+      toast.error(perm.reason || 'Bạn không có quyền chỉnh sửa bảng điểm này.')
+      return
+    }
+    setIsSaving(true)
+    try {
+      const payloadCriteria = allItems.map((it) => {
+        const cur = items[it.id]
+        return {
+          itemId: it.id,
+          groupName: it.groupName,
+          content: it.content,
+          maxScore: Number(it.maxScore) || 0,
+          rubricType: it.rubricType,
+          level: cur?.level || 'Tốt',
+          earnedScore: cur?.earnedScore ?? (Number(it.maxScore) || 0),
+          note: cur?.note || '',
+          noteLec: cur?.note || '',
+          noteJudge: cur?.noteJudge || '',
+        }
+      })
+
+      const res = await fetch('/api/user/student-demo-grade', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders(token),
+        },
+        body: JSON.stringify({
+          classId: cls.id,
+          studentId: student.id,
+          courseId: cls.courseId || '',
+          projectType,
+          criteriaScores: payloadCriteria,
+          totalScore,
+          maxPossibleScore,
+          note: bgk1Note,
+          bgk2Note,
+          demoDate,
+          evalDate,
+          updatedByName: user?.displayName || user?.email || 'Giảng viên',
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        toast.error(data.error || 'Lỗi khi lưu bảng điểm học viên')
+        return
+      }
+
+      if (data?.data?.updatedAt) {
+        const dt = new Date(data.data.updatedAt)
+        const atStr = `${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')} ${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`
+        setLastUpdatedInfo({
+          by: user?.displayName || user?.email || 'Bạn',
+          at: atStr,
+        })
+      }
+
+      toast.success(`Đã lưu bảng điểm demo cho học viên ${student.fullName}`)
+      onSaved?.(student.id)
+      onClose()
+    } catch (err: any) {
+      toast.error(err.message || 'Lỗi kết nối khi lưu bảng điểm')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  let globalRowCounter = 0
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-2 md:p-4 backdrop-blur-xs">
+      <div className="bg-white rounded-xl w-full max-w-7xl max-h-[94vh] flex flex-col shadow-2xl overflow-hidden border border-gray-300">
+        {/* Header Title */}
+        <div className="pt-5 pb-3 px-6 text-center border-b border-gray-200 bg-white relative">
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-4 p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
+            title="Đóng"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <h2 className="text-xl md:text-2xl font-black text-[#a1001f] tracking-wide uppercase">
+            Bảng chấm điểm buổi demo {cls.courseName || cls.name}
+          </h2>
+          {isDualRubric && (
+            <div className="mt-1 flex items-center justify-center gap-2 text-xs">
+              <span className="font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-full">
+                🎯 Chuyên môn: 60%
+              </span>
+              <span className="font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                🌐 Tiêu chí chung: 40%
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Thông báo quyền chấm điểm / Thời hạn */}
+        {perm.reason ? (
+          <div className="px-6 py-2.5 bg-amber-50 border-b border-amber-200 flex items-center gap-2 text-xs text-amber-900">
+            <AlertCircle className="h-4 w-4 text-amber-700 shrink-0" />
+            <span className="font-medium">{perm.reason}</span>
+          </div>
+        ) : perm.timeNotice ? (
+          <div className="px-6 py-2 bg-emerald-50 border-b border-emerald-200 flex items-center justify-between text-xs text-emerald-900">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-emerald-700 shrink-0" />
+              <span className="font-medium">{perm.timeNotice}</span>
+            </div>
+            {perm.isManager && (
+              <span className="font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[11px]">
+                Quyền Quản lý
+              </span>
+            )}
+          </div>
+        ) : null}
+
+        {/* Info Grid (Matches screenshot format) */}
+        <div className="px-6 py-4 bg-gray-50/70 border-b border-gray-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2.5 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-gray-700 min-w-[130px]">Họ và tên Học viên:</span>
+            <span className="font-bold text-gray-950 text-base">{student.fullName}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-gray-700 min-w-[120px]">Ngày Demo:</span>
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                placeholder="dd/mm/yyyy"
+                value={demoDate}
+                onChange={(e) => setDemoDate(e.target.value)}
+                className="h-8 w-32 px-2.5 rounded border border-gray-300 bg-white text-sm font-medium text-gray-800 focus:border-[#a1001f] focus:outline-none"
+              />
+              <div className="relative ml-1">
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="h-8 w-8 flex items-center justify-center rounded border border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-600 transition"
+                  title="Chọn ngày Demo"
+                >
+                  <CalendarDays className="h-4 w-4 text-gray-600" />
+                </button>
+                <input
+                  type="date"
+                  value={toYYYYMMDD(demoDate)}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setDemoDate(toDDMMYYYY(e.target.value))
+                    }
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-gray-700 min-w-[120px]">Ngày đánh giá:</span>
+            <div className="relative flex items-center">
+              <input
+                type="text"
+                placeholder="dd/mm/yyyy"
+                value={evalDate}
+                onChange={(e) => setEvalDate(e.target.value)}
+                className="h-8 w-32 px-2.5 rounded border border-gray-300 bg-white text-sm font-medium text-gray-800 focus:border-[#a1001f] focus:outline-none"
+              />
+              <div className="relative ml-1">
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="h-8 w-8 flex items-center justify-center rounded border border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-600 transition"
+                  title="Chọn ngày đánh giá"
+                >
+                  <CalendarDays className="h-4 w-4 text-gray-600" />
+                </button>
+                <input
+                  type="date"
+                  value={toYYYYMMDD(evalDate)}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setEvalDate(toDDMMYYYY(e.target.value))
+                    }
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <label htmlFor="projectTypeInput" className="font-bold text-gray-700 min-w-[130px]">Hình thức dự án:</label>
+            <input
+              id="projectTypeInput"
+              type="text"
+              readOnly
+              value={projectType}
+              className="h-8 px-2.5 rounded border border-gray-300 bg-gray-100 text-sm font-medium text-gray-800 focus:outline-none cursor-default"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 md:col-span-2">
+            <span className="font-bold text-gray-700 min-w-[130px]">Tổng điểm đạt được:</span>
+            <span className="font-black text-xl text-[#a1001f] font-mono">
+              {formatScoreMax3(totalScore)} / {formatScoreMax3(maxPossibleScore)}
+            </span>
+          </div>
+
+          {/* Phần cập nhật lần cuối */}
+          <div className="col-span-full flex items-center justify-between gap-2 pt-2 border-t border-gray-200/80 text-xs text-gray-600">
+            {lastUpdatedInfo ? (
+              <div className="flex items-center gap-1.5 text-amber-900 bg-amber-50/80 border border-amber-200 px-3 py-1 rounded-md">
+                <Clock className="h-3.5 w-3.5 text-amber-700 shrink-0" />
+                <span>
+                  Cập nhật lần cuối: <strong className="text-gray-950 font-semibold">{lastUpdatedInfo.by}</strong> vào lúc <strong className="text-gray-950 font-semibold">{lastUpdatedInfo.at}</strong>
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-gray-500 bg-gray-50 px-3 py-1 rounded-md border border-gray-200">
+                <Clock className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                <span>Chưa có dữ liệu chấm điểm trước đó cho học viên này</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-16 text-gray-500">
+              <Loader2 className="h-8 w-8 animate-spin text-[#a1001f]" />
+              <p className="mt-2 text-sm">Đang tải bảng điểm học viên...</p>
+            </div>
+          ) : (
+            <>
+              {/* Bảng tiêu chí đúng theo thiết kế */}
+              <div className="border border-red-900 rounded-md overflow-hidden shadow-xs">
+                <table className="w-full table-fixed text-left text-xs border-collapse">
+                  <colgroup>
+                    <col className="w-[160px]" />
+                    <col />
+                    <col className="w-[75px]" />
+                    <col className="w-[195px]" />
+                    <col className="w-[85px]" />
+                    {judgeInfo.hasJudge ? (
+                      <>
+                        <col className="w-[135px]" />
+                        <col className="w-[135px]" />
+                      </>
+                    ) : (
+                      <col className="w-[180px]" />
+                    )}
+                    <col className="w-[105px]" />
+                  </colgroup>
+                  <thead>
+                    <tr className="bg-[#a1001f] text-white font-bold text-center border-b border-red-900 divide-x divide-red-800">
+                      <th className="py-2.5 px-3 text-center">Tiêu chí đầu ra</th>
+                      <th className="py-2.5 px-3 text-center">Nội dung</th>
+                      <th className="py-2.5 px-2 text-center">Điểm tối đa</th>
+                      <th className="py-2.5 px-2 text-center">
+                        <div>Mức độ đạt được</div>
+                        <div className="text-[10px] font-normal opacity-90">(Chưa đạt - Hoàn thành - Tốt)</div>
+                      </th>
+                      <th className="py-2.5 px-2 text-center">
+                        <div>Điểm đạt được</div>
+                        <div className="text-[10px] font-normal opacity-90">(Tự động tính)</div>
+                      </th>
+                      {judgeInfo.hasJudge ? (
+                        <>
+                          <th className="py-2.5 px-2 text-center">
+                            <div>Ghi chú Lec</div>
+                            {lecName && <div className="text-[10px] font-normal opacity-90 truncate max-w-[125px] mx-auto">({lecName})</div>}
+                          </th>
+                          <th className="py-2.5 px-2 text-center">
+                            <div>Ghi chú Judge</div>
+                            {judgeInfo.name && <div className="text-[10px] font-normal opacity-90 truncate max-w-[125px] mx-auto">({judgeInfo.name})</div>}
+                          </th>
+                        </>
+                      ) : (
+                        <th className="py-2.5 px-2 text-center">
+                          <div>Ghi chú</div>
+                          {lecName && <div className="text-[10px] font-normal opacity-90 truncate max-w-[170px] mx-auto">({lecName})</div>}
+                        </th>
+                      )}
+                      <th className="py-2.5 px-2 text-center">Tổng Điểm</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {courseCriteria.groups.map((group, gIdx) => {
+                      const isCommon = group.rubricType === 'common'
+                      const isFirstInType =
+                        gIdx === 0 || courseCriteria.groups[gIdx - 1]?.rubricType !== group.rubricType
+
+                      return (
+                        <Fragment key={group.groupName || gIdx}>
+                          {isFirstInType && isDualRubric && (
+                            <tr className={isCommon ? 'bg-emerald-50 text-emerald-900 font-bold border-t-2 border-emerald-300 divide-x divide-emerald-200' : 'bg-indigo-50 text-indigo-900 font-bold border-t-2 border-indigo-300 divide-x divide-indigo-200'}>
+                              <td colSpan={judgeInfo.hasJudge ? 8 : 7} className="py-1.5 px-3 text-xs uppercase tracking-wider">
+                                {isCommon
+                                  ? `🌐 TIÊU CHÍ CHẤM ĐIỂM CHUNG (TRỌNG SỐ ${courseCriteria.weights?.commonWeightPercent}%)`
+                                  : `🎯 TIÊU CHÍ CHUYÊN MÔN THEO KHÓA (TRỌNG SỐ ${courseCriteria.weights?.courseWeightPercent}%)`}
+                              </td>
+                            </tr>
+                          )}
+
+                          {group.items.map((item, iIdx) => {
+                            const isGlobalFirst = globalRowCounter === 0
+                            globalRowCounter++
+                            const cur = items[item.id] || {
+                              level: 'Tốt',
+                              earnedScore: Number(item.maxScore) || 0,
+                              note: '',
+                              noteJudge: '',
+                            }
+
+                            return (
+                              <tr key={item.id || `${gIdx}-${iIdx}`} className="hover:bg-red-50/20 divide-x divide-gray-200">
+                                {/* Cột 1: Tiêu chí đầu ra (gộp theo nhóm) */}
+                                {iIdx === 0 && (
+                                  <td
+                                    rowSpan={group.items.length}
+                                    className="py-3 px-3 font-bold text-gray-950 bg-gray-50/80 align-top text-xs"
+                                  >
+                                    <div className="font-bold text-gray-900 leading-snug">
+                                      {cleanGroupTitle(group.groupName)}
+                                    </div>
+                                    <div className="text-[11px] text-gray-500 font-mono mt-1 font-normal">
+                                      ({formatScoreMax3(
+                                        group.items.reduce((sum: number, it: any) => sum + (Number(it.maxScore) || 0), 0)
+                                      )} điểm)
+                                    </div>
+                                  </td>
+                                )}
+
+                                {/* Cột 2: Nội dung */}
+                                <td className="py-2.5 px-3 text-gray-800 align-middle text-xs break-words leading-relaxed">
+                                  {item.content}
+                                </td>
+
+                                {/* Cột 3: Điểm tối đa */}
+                                <td className="py-2.5 px-2 text-center font-mono font-semibold text-gray-900 align-middle">
+                                  {formatScoreMax3(item.maxScore)}
+                                </td>
+
+                                {/* Cột 4: Mức độ đạt được (3 nút) */}
+                                <td className="py-2 px-1 text-center align-middle">
+                                  <div className="inline-flex rounded-md border border-gray-300 overflow-hidden text-[11px] font-semibold shadow-xs">
+                                    <button
+                                      type="button"
+                                      disabled={!perm.canEdit}
+                                      onClick={() => handleLevelChange(item.id, Number(item.maxScore) || 0, 'Chưa đạt')}
+                                      className={cn(
+                                        'px-2 py-1 transition-colors whitespace-nowrap disabled:cursor-not-allowed',
+                                        cur.level === 'Chưa đạt'
+                                          ? 'bg-rose-600 text-white font-bold'
+                                          : 'bg-white text-gray-600 hover:bg-rose-50'
+                                      )}
+                                    >
+                                      Chưa đạt
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={!perm.canEdit}
+                                      onClick={() => handleLevelChange(item.id, Number(item.maxScore) || 0, 'Hoàn thành')}
+                                      className={cn(
+                                        'px-2 py-1 border-x border-gray-300 transition-colors whitespace-nowrap disabled:cursor-not-allowed',
+                                        cur.level === 'Hoàn thành'
+                                          ? 'bg-amber-500 text-white font-bold'
+                                          : 'bg-white text-gray-600 hover:bg-amber-50'
+                                      )}
+                                    >
+                                      Hoàn thành
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={!perm.canEdit}
+                                      onClick={() => handleLevelChange(item.id, Number(item.maxScore) || 0, 'Tốt')}
+                                      className={cn(
+                                        'px-2 py-1 transition-colors whitespace-nowrap disabled:cursor-not-allowed',
+                                        cur.level === 'Tốt'
+                                          ? 'bg-emerald-600 text-white font-bold'
+                                          : 'bg-white text-gray-600 hover:bg-emerald-50'
+                                      )}
+                                    >
+                                      Tốt
+                                    </button>
+                                  </div>
+                                </td>
+
+                                {/* Cột 5: Điểm đạt được (Tự tính, không cho nhập) */}
+                                <td className="py-2 px-1 text-center align-middle">
+                                  <div
+                                    className={cn(
+                                      'inline-flex items-center justify-center min-w-[50px] px-2 py-1 rounded text-xs font-mono font-bold border',
+                                      cur.level === 'Tốt'
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                        : cur.level === 'Hoàn thành'
+                                          ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                          : 'bg-rose-50 text-rose-800 border-rose-300'
+                                    )}
+                                    title="Điểm tự động tính theo Mức độ đạt được"
+                                  >
+                                    {formatScoreMax3(cur.earnedScore)}
+                                  </div>
+                                </td>
+
+                                {judgeInfo.hasJudge ? (
+                                  <>
+                                    {/* Cột 6: Ghi chú Lec */}
+                                    <td className="py-2 px-1.5 align-middle">
+                                      <input
+                                        type="text"
+                                        placeholder={canEditLec ? (lecName ? `Ghi chú ${lecName}...` : 'Ghi chú Lec...') : ''}
+                                        disabled={!canEditLec}
+                                        value={cur.note || ''}
+                                        onChange={(e) => handleNoteChange(item.id, 'note', e.target.value)}
+                                        className="w-full h-7 px-2 text-xs border border-gray-300 rounded focus:border-[#a1001f] focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                        title={!canEditLec ? 'Chỉ GV phụ trách (Lec) hoặc Quản lý được nhập ghi chú này' : undefined}
+                                      />
+                                    </td>
+
+                                    {/* Cột 7: Ghi chú Judge */}
+                                    <td className="py-2 px-1.5 align-middle">
+                                      <input
+                                        type="text"
+                                        placeholder={canEditJudge ? (judgeInfo.name ? `Ghi chú ${judgeInfo.name}...` : 'Ghi chú Judge...') : ''}
+                                        disabled={!canEditJudge}
+                                        value={cur.noteJudge || ''}
+                                        onChange={(e) => handleNoteChange(item.id, 'noteJudge', e.target.value)}
+                                        className="w-full h-7 px-2 text-xs border border-gray-300 rounded focus:border-[#a1001f] focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                        title={!canEditJudge ? 'Chỉ GV chấm (Judge) hoặc Quản lý được nhập ghi chú này' : undefined}
+                                      />
+                                    </td>
+                                  </>
+                                ) : (
+                                  /* Cột 6: Ghi chú (chỉ có Lec) */
+                                  <td className="py-2 px-1.5 align-middle">
+                                    <input
+                                      type="text"
+                                      placeholder={canEditLec ? (lecName ? `Ghi chú ${lecName}...` : 'Ghi chú...') : ''}
+                                      disabled={!canEditLec}
+                                      value={cur.note || ''}
+                                      onChange={(e) => handleNoteChange(item.id, 'note', e.target.value)}
+                                      className="w-full h-7 px-2 text-xs border border-gray-300 rounded focus:border-[#a1001f] focus:outline-none disabled:bg-gray-100 disabled:cursor-not-allowed"
+                                      title={!canEditLec ? 'Chỉ GV phụ trách (Lec) hoặc Quản lý được nhập ghi chú này' : undefined}
+                                    />
+                                  </td>
+                                )}
+
+                                {/* Cột cuối: Tổng Điểm (Gộp toàn bảng thành 1 ô lớn như ảnh mẫu) */}
+                                {isGlobalFirst && (
+                                  <td
+                                    rowSpan={totalItemsCount}
+                                    className="text-center align-middle bg-red-50/20 p-2 border-l border-red-900"
+                                  >
+                                    <div className="font-black font-mono text-2xl md:text-3xl text-gray-950">
+                                      {formatScoreMax3(totalScore)}
+                                    </div>
+                                    <div className="text-[11px] text-gray-500 font-semibold mt-1">
+                                      / {formatScoreMax3(maxPossibleScore)}
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            )
+                          })}
+                        </Fragment>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Bảng Nhận xét (BGK1 và BGK2 nếu có, hoặc chỉ BGK nếu chỉ có Lec) */}
+              <div className="border border-red-900 rounded-md overflow-hidden shadow-xs">
+                <div className="bg-[#a1001f] text-white font-bold text-center py-2 text-sm uppercase tracking-wide">
+                  Nhận xét
+                </div>
+                {judgeInfo.hasJudge ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-red-900 bg-white">
+                    <div className="p-3">
+                      <label htmlFor="bgk1Textarea" className="block text-center font-bold text-xs uppercase tracking-wide text-[#a1001f] mb-1.5">
+                        BGK1 (Lec){lecName ? ` (${lecName})` : ''}
+                      </label>
+                      <textarea
+                        id="bgk1Textarea"
+                        rows={4}
+                        disabled={!canEditLec}
+                        value={bgk1Note}
+                        onChange={(e) => setBgk1Note(e.target.value)}
+                        placeholder={canEditLec ? (lecName ? `Nhập nhận xét của ${lecName}...` : 'Nhập nhận xét của BGK1...') : 'Chỉ GV phụ trách (Lec) hoặc Quản lý được nhập nhận xét này'}
+                        className="w-full p-2.5 text-xs border border-gray-300 rounded-md focus:border-[#a1001f] focus:outline-none resize-y disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                    <div className="p-3">
+                      <label htmlFor="bgk2Textarea" className="block text-center font-bold text-xs uppercase tracking-wide text-[#a1001f] mb-1.5">
+                        BGK2 (Judge){judgeInfo.name ? ` (${judgeInfo.name})` : ''}
+                      </label>
+                      <textarea
+                        id="bgk2Textarea"
+                        rows={4}
+                        disabled={!canEditJudge}
+                        value={bgk2Note}
+                        onChange={(e) => setBgk2Note(e.target.value)}
+                        placeholder={canEditJudge ? (judgeInfo.name ? `Nhập nhận xét của ${judgeInfo.name}...` : 'Nhập nhận xét của BGK2...') : 'Chỉ GV chấm (Judge) hoặc Quản lý được nhập nhận xét này'}
+                        className="w-full p-2.5 text-xs border border-gray-300 rounded-md focus:border-[#a1001f] focus:outline-none resize-y disabled:bg-gray-100 disabled:cursor-not-allowed"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-white p-3">
+                    <label htmlFor="bgk1Textarea" className="block text-center font-bold text-xs uppercase tracking-wide text-[#a1001f] mb-1.5">
+                      BGK{lecName ? ` (${lecName})` : ''}
+                    </label>
+                    <textarea
+                      id="bgk1Textarea"
+                      rows={4}
+                      disabled={!canEditLec}
+                      value={bgk1Note}
+                      onChange={(e) => setBgk1Note(e.target.value)}
+                      placeholder={canEditLec ? (lecName ? `Nhập nhận xét của ${lecName}...` : 'Nhập nhận xét của BGK...') : 'Chỉ GV phụ trách (Lec) hoặc Quản lý được nhập nhận xét này'}
+                      className="w-full p-2.5 text-xs border border-gray-300 rounded-md focus:border-[#a1001f] focus:outline-none resize-y disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    />
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Modal Footer Actions */}
+        <div className="p-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+          <div className="text-xs text-gray-500">
+            {!perm.canEdit ? (
+              <span className="text-amber-800 font-medium flex items-center gap-1.5">
+                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                {perm.reason || 'Bảng điểm đang ở chế độ xem, không được chỉnh sửa.'}
+              </span>
+            ) : isDualRubric ? (
+              'Điểm tổng kết = (Chuyên môn × 60%) + (Chung × 40%) quy về thang 5.'
+            ) : (
+              'Điểm tổng kết tính theo tổng điểm các tiêu chí của khóa học.'
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSaving}
+              className="px-4 py-2 rounded-lg border border-gray-300 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition"
+            >
+              {perm.canEdit ? 'Hủy' : 'Đóng'}
+            </button>
+            {perm.canEdit && (
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={isSaving || isLoading}
+                className="px-6 py-2 rounded-lg bg-[#a1001f] hover:bg-red-800 text-xs font-bold text-white shadow-sm transition inline-flex items-center gap-1.5 disabled:opacity-60"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Đang lưu...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    Lưu bảng điểm
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
 function ClassAttendanceModal({
   cls,
   currentUserEmail,
@@ -1002,7 +2175,7 @@ function ClassAttendanceModal({
   onRefresh: () => void
   onClassUpdated: (nextClass: AttendanceClass) => void
 }) {
-  const { token: authToken } = useAuth()
+  const { token: authToken, user } = useAuth()
   const [activeTab, setActiveTab] = useState<'attendance' | 'comments'>('attendance')
   const [selectedSessionIndex, setSelectedSessionIndex] = useState<number | null>(null)
   const [selectedClassSiteId, setSelectedClassSiteId] = useState('')
@@ -1010,6 +2183,14 @@ function ClassAttendanceModal({
   const [showUpdateNote, setShowUpdateNote] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [saveResult, setSaveResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [courseCriteria, setCourseCriteria] = useState<any>(null)
+  const [gradingStudent, setGradingStudent] = useState<Student | null>(null)
+  const [gradedStudentIds, setGradedStudentIds] = useState<Set<string>>(new Set())
+  const gradePermission = useMemo(() => cls ? getGradingPermission(cls, user) : { canGrade: false, canEdit: false, isManager: false, isLecOrJudge: false, reason: '' }, [cls, user])
+  useEffect(() => { setGradingStudent(null); setCourseCriteria(null); setGradedStudentIds(new Set()) }, [cls?.id])
+  useEffect(() => { if (!cls?.id) return; let active=true; fetch('/api/user/student-demo-grade?classId='+encodeURIComponent(cls.id),{headers:{...authHeaders(authToken)}}).then(r=>r.json()).then(d=>{if(active&&d?.success&&Array.isArray(d.data))setGradedStudentIds(new Set(d.data.map((x:any)=>String(x.studentId))))}).catch(e=>console.error('Error fetching graded student summary:',e)); return()=>{active=false} },[cls?.id,authToken])
+  useEffect(() => { if (!cls?.courseId&&!cls?.courseName){setCourseCriteria(null);return}; let active=true; const q=new URLSearchParams(); if(cls.courseId)q.append('courseId',cls.courseId.trim()); if(cls.courseName)q.append('courseName',cls.courseName.trim()); if(cls.courseShortName)q.append('courseShortName',cls.courseShortName.trim()); if(cls.courseLineName)q.append('courseLineName',cls.courseLineName.trim()); if(cls.name)q.append('className',cls.name.trim()); fetch('/api/user/course-grading-criteria?'+q.toString(),{headers:{...authHeaders(authToken)}}).then(r=>r.json()).then(d=>{if(active)setCourseCriteria(d?.success&&d?.hasCriteria?d:null)}).catch(()=>{if(active)setCourseCriteria(null)}); return()=>{active=false} },[cls?.courseId,cls?.courseName,cls?.courseShortName,cls?.courseLineName,cls?.name,authToken])
+
 
   useEffect(() => {
     setActiveTab('attendance')
@@ -1522,7 +2703,7 @@ function ClassAttendanceModal({
                 {visibleStudents.map((student) => (
                   <tr key={student.id}>
                     <td className="sticky left-0 z-10 border-b border-gray-100 bg-white px-4 py-3 align-middle">
-                      <StudentIdentity cls={cls} student={student} />
+                      <div className="flex items-center gap-2"><StudentIdentity cls={cls} student={student} />{courseCriteria?.hasCriteria && slots.some((slot) => !slot.isPlaceholder) && <button type="button" onClick={() => setGradingStudent(student)} className={cn('shrink-0 rounded px-2 py-1 text-xs font-semibold text-white',gradedStudentIds.has(student.id)?'bg-indigo-600':gradePermission.canEdit?'bg-amber-600':'bg-slate-700')} title={gradePermission.canEdit?'Chấm điểm demo':gradePermission.reason}>{gradedStudentIds.has(student.id)?'Xem điểm':gradePermission.canEdit?'Chấm điểm':'Xem điểm'}</button>}</div>
                     </td>
                     {slots.map((slot, index) => {
                       const key = attendanceKey(cls.id, slot.id, student.id)
@@ -1593,6 +2774,7 @@ function ClassAttendanceModal({
           )}
         </div>
       </section>
+      {gradingStudent && courseCriteria && (<StudentDemoGradingModal cls={cls} student={gradingStudent} courseCriteria={courseCriteria} defaultDemoDate={dateKey(slots.filter((slot)=>!slot.isPlaceholder).slice(-1)[0]?.date||slots.filter((slot)=>!slot.isPlaceholder).slice(-1)[0]?.startTime)} token={authToken} onClose={()=>setGradingStudent(null)} onSaved={(id)=>setGradedStudentIds((prior)=>new Set([...prior,id]))} />)}
     </div>,
     document.body,
   )

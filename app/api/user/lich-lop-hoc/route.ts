@@ -1,4 +1,6 @@
 import { TPS_SESSION_COOKIE, verifySessionCookieValue } from '@/lib/session-cookie';
+import { resolveAppUserAccessForEmail } from '@/lib/app-user-access';
+import { getOrRefreshLmsToken, applyRefreshedCookies, LmsTokenSession } from '@/lib/lms-token-helper';
 import { NextRequest, NextResponse } from 'next/server';
 import { callLmsApi } from '@/lib/lms-api';
 
@@ -106,8 +108,21 @@ export async function GET(request: NextRequest) {
   }
 
   const userEmail = normalizeEmail(session.email);
+  const access = await resolveAppUserAccessForEmail(session.email);
+  const isSuperAdmin = access.role === 'super_admin';
 
-  const firebaseToken = request.cookies.get('lms_firebase_token')?.value || '';
+  let tokenSession: LmsTokenSession | null = null;
+  let firebaseToken = request.cookies.get('lms_firebase_token')?.value || '';
+
+  if (isSuperAdmin) {
+    tokenSession = await getOrRefreshLmsToken(request);
+    firebaseToken = tokenSession.token || firebaseToken;
+  } else if (!firebaseToken) {
+    tokenSession = await getOrRefreshLmsToken(request);
+    if (!tokenSession.isFallback && tokenSession.token) {
+      firebaseToken = tokenSession.token;
+    }
+  }
 
   if (!firebaseToken) {
     return NextResponse.json({
@@ -221,7 +236,7 @@ export async function GET(request: NextRequest) {
           // skip non-LEC classes
         }
 
-        return hasLecRole || hasAttendedSlot;
+        return isSuperAdmin || hasLecRole || hasAttendedSlot;
       })
       .flatMap((cls: any) => {
         const classSlots = (cls.slots || [])
@@ -235,7 +250,11 @@ export async function GET(request: NextRequest) {
         }));
       });
 
-    return NextResponse.json({ success: true, slots });
+    const response = NextResponse.json({ success: true, slots });
+    if (tokenSession) {
+      applyRefreshedCookies(response, tokenSession);
+    }
+    return response;
 
   } catch (error: any) {
     console.error('[lich-lop-hoc] Error:', error?.message || error);

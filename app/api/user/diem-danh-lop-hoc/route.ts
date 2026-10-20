@@ -111,7 +111,7 @@ const GET_ATTENDANCE_CLASSES_QUERY = /* graphql */ `
       status_in: $statusIn,
       pageIndex: $pageIndex,
       itemsPerPage: $itemsPerPage,
-      orderBy: "startDate_asc"
+      orderBy: "startDate_desc"
     }) {
       pagination { total }
       data { ${ATTENDANCE_CLASS_FIELDS} }
@@ -523,6 +523,7 @@ function mapClass(cls: any, userEmail: string) {
     operationMethodName: cls?.operationMethod?.name || '',
     operatorName,
     centreId: cls?.centre?.id || null,
+    courseId: cls?.course?.id ? String(cls.course.id) : null,
     courseName: cls?.course?.name || '',
     courseShortName: cls?.course?.shortName || '',
     courseLineName: cls?.course?.courseLine?.name || '',
@@ -736,6 +737,87 @@ async function fetchAttendanceClassById(classId: string, authHeader: string): Pr
     variables: { id: classId },
   }, authHeader);
   return result?.data?.classesById || null;
+}
+
+function getClassRecencyScore(cls: any, todayMs: number): number {
+  const slotDates: number[] = [];
+  if (Array.isArray(cls.slots)) {
+    for (const slot of cls.slots) {
+      if (slot.isPlaceholder) continue;
+      const rawDate = slot.date || slot.startTime;
+      if (rawDate) {
+        const d = new Date(rawDate);
+        if (!isNaN(d.getTime())) {
+          slotDates.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime());
+        }
+      }
+    }
+  }
+
+  if (slotDates.length === 0) {
+    if (cls.startDate) {
+      const d = new Date(cls.startDate);
+      if (!isNaN(d.getTime())) {
+        slotDates.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime());
+      }
+    }
+    if (cls.endDate) {
+      const d = new Date(cls.endDate);
+      if (!isNaN(d.getTime())) {
+        slotDates.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime());
+      }
+    }
+  }
+
+  if (slotDates.length === 0) {
+    return 999999999;
+  }
+
+  const oneDayMs = 24 * 60 * 60 * 1000;
+
+  // 1. Kiểm tra nếu có slot đúng hôm nay (chênh lệch < 12h so với 00:00 hôm nay)
+  const hasToday = slotDates.some((time) => Math.abs(time - todayMs) < 12 * 60 * 60 * 1000);
+  if (hasToday) {
+    return 0; // Ưu tiên cao nhất
+  }
+
+  // 2. Tìm slot tương lai gần nhất (>= todayMs)
+  const futureSlots = slotDates.filter((time) => time >= todayMs).sort((a, b) => a - b);
+  const nextFutureSlot = futureSlots.length > 0 ? futureSlots[0] : null;
+
+  // 3. Tìm slot quá khứ gần nhất (< todayMs)
+  const pastSlots = slotDates.filter((time) => time < todayMs).sort((a, b) => b - a);
+  const lastPastSlot = pastSlots.length > 0 ? pastSlots[0] : null;
+
+  if (nextFutureSlot !== null && lastPastSlot !== null) {
+    const futureDiffDays = (nextFutureSlot - todayMs) / oneDayMs;
+    const pastDiffDays = (todayMs - lastPastSlot) / oneDayMs;
+    if (futureDiffDays <= pastDiffDays) {
+      return futureDiffDays;
+    } else {
+      return pastDiffDays + 0.05;
+    }
+  } else if (nextFutureSlot !== null) {
+    return (nextFutureSlot - todayMs) / oneDayMs;
+  } else if (lastPastSlot !== null) {
+    return (todayMs - lastPastSlot) / oneDayMs + 0.05;
+  }
+
+  return 999999999;
+}
+
+function compareClassesByRecency(a: any, b: any, todayMs: number): number {
+  const scoreA = getClassRecencyScore(a, todayMs);
+  const scoreB = getClassRecencyScore(b, todayMs);
+
+  if (Math.abs(scoreA - scoreB) > 0.001) {
+    return scoreA - scoreB;
+  }
+
+  if (a.status === 'RUNNING' && b.status !== 'RUNNING') return -1;
+  if (b.status === 'RUNNING' && a.status !== 'RUNNING') return 1;
+
+  return String(a.name || '').localeCompare(String(b.name || ''), 'vi');
 }
 
 export async function GET(request: NextRequest) {

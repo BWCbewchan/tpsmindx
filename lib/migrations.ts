@@ -2918,7 +2918,6 @@ const migrations: Migration[] = [
     `,
   },
   {
-  {
     name: 'V113_facility_evaluations',
     version: 113,
     sql: `

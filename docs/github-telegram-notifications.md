@@ -1,15 +1,25 @@
 # Telegram cho quy trình phát hành
 
+## Chính sách thông báo hiện tại
+
+Đăng ký **Pushes**, **Pull requests** và **Deployment statuses**. Tắt Workflow runs.
+Mỗi push báo người push, nhánh, SHA, tối đa 5 commit (tác giả và tiêu đề), kèm link xem toàn bộ thay đổi. Push vào `preview`/`main` được ghi rõ là nhánh có thay đổi và đang chờ build. Push tag bị bỏ qua.
+Bot báo tiến trình PR/merge vào `preview` hoặc `main`; bỏ qua PR đóng chưa merge và các sự kiện không phục vụ merge.
+Chỉ báo deploy `success` của `preview`/`main`, kèm SHA và link chạy phiên bản tiếp theo. Không báo deploy đang chạy/lỗi hoặc build nhánh cá nhân.
+Khi Vercel gửi SHA trong deployment.ref, endpoint đối chiếu SHA hiện tại của nhánh qua GitHub API trước khi thông báo.
+Tin Preview dùng câu "sẵn sàng chạy thử"; tin main dùng câu "sẵn sàng sử dụng trên Production". Không tự tăng số phiên bản.
+
+
+
 Endpoint hiện có: `/api/github/webhook`. Giữ nguyên bot GitHub và nhóm chat hiện có; không dùng bot cảnh báo bảo mật.
 
 ## Kích hoạt sau khi deploy
 
 Trong GitHub repository Settings → Webhooks, sửa webhook đang trỏ tới endpoint này (không tạo webhook thứ hai gây tin trùng). Content type: `application/json`. Chọn các sự kiện:
 
-- Pushes: commit mới, tạo/xóa nhánh hoặc tag.
 - Pull requests: mở/cập nhật PR, sẵn sàng duyệt, chuyển nháp, đóng/merge; nhận diện riêng `preview` → `main`.
-- Workflow runs: CI chờ/chạy/hoàn tất, lỗi, hủy, hết giờ; kèm link log và lần chạy lại.
-- Deployment statuses: Preview/Production chờ/chạy/thành công/lỗi; kèm SHA, môi trường, link deploy và log.
+- Pushes: người push và danh sách commit; thông báo thay đổi của preview/main.
+- Deployment statuses: chỉ Preview/main build thành công, kèm SHA và link mở phiên bản mới.
 
 Vercel Git integration phải gửi deployment status về GitHub. Tên môi trường lấy từ payload, không suy luận từ tên nhánh vì ref có thể là SHA.
 

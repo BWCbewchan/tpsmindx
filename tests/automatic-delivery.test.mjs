@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import reconcile from '../.github/scripts/automatic-delivery.cjs';
-const { personal, protectedForCI, latestPreview } = reconcile;
+const { personal } = reconcile;
 
 const fullName = 'BWCbewchan/tpsmindx';
 const policy = { required_status_checks: { strict: true, contexts: ['CI'] }, enforce_admins: { enabled: true } };
@@ -27,7 +27,8 @@ function fixture(options = {}) {
       },
       repos: {
         getBranch: endpoint('branch', ({ branch }) => ({ commit: { sha: branch === pr.base.ref ? 'base' : 'head' } })),
-        getBranchProtection: endpoint('protection', options.policy || policy),
+        listDeployments: 'deployments',
+        listDeploymentStatuses: endpoint('deploymentStatuses', options.statuses || []),
         merge: endpoint('syncMerge', {}),
         compareCommitsWithBasehead: endpoint('compare', { behind_by: options.behind || 0, ahead_by: 1, files: options.files || [{ filename: 'app/page.tsx' }] }),
       },
@@ -35,110 +36,44 @@ function fixture(options = {}) {
       actions: { listWorkflowRuns: endpoint('ci', { workflow_runs: options.runs || [{ id: 10, path: '.github/workflows/ci.yml', head_sha: 'head', head_repository: { full_name: fullName }, pull_requests: [{ number: 1 }], status: 'completed', conclusion: 'success' }] }) },
       issues: { addLabels: endpoint('label', {}), getLabel: endpoint('getLabel', {}), createLabel: endpoint('createLabel', {}) },
     },
-    paginate: async (_method, { base }) => !options.empty && base === pr.base.ref ? [pr] : [],
+    paginate: async (method, { base }) => method === 'deployments' ? (options.deployments || []) : (!options.empty && base === pr.base.ref ? [pr] : []),
   };
-  const context = { repo: { owner: 'BWCbewchan', repo: 'tpsmindx' }, payload: options.payload || {} };
+  const context = { repo: { owner: 'BWCbewchan', repo: 'tpsmindx' }, eventName: options.eventName || '', payload: options.payload || {} };
   const core = { info: m => notes.push(m), setFailed: m => errors.push(m) };
   const env = { VERCEL_TOKEN: 'fake', VERCEL_PROJECT_ID: 'prj_test', ...options.env };
   const fetchImpl = async () => ({ ok: options.vercelStatus ? false : true, status: options.vercelStatus || 200, json: async () => ({ deployments: options.deployments || [] }) });
   return { calls, errors, notes, run: () => reconcile({ github, context, core, env, fetchImpl }), github };
 }
 
-test('personal branches exclude release branches and dependency bots', () => {
-  for (const branch of ['kydai', 'codex/fix', 'feature/x']) assert.equal(personal(branch), true);
-  for (const branch of ['main', 'preview', 'dependabot/x', 'renovate/x', null]) assert.equal(personal(branch), false);
+
+const successfulDeployment = { id: 5, sha: 'head', environment: 'Preview', creator: { login: 'vercel[bot]' } };
+test('personal branch merges without CI, protection or Vercel success', async () => {
+ const f=fixture();await f.run();assert.ok(f.calls.some(([n])=>n==='merge'));assert.ok(!f.calls.some(([n])=>n==='ci'||n==='protection'));
 });
-test('strict protection and admin enforcement are mandatory', () => {
-  assert.equal(protectedForCI(policy), true);
-  assert.equal(protectedForCI({ ...policy, enforce_admins: { enabled: false } }), false);
-  assert.equal(protectedForCI({ ...policy, required_status_checks: { contexts: ['CI'], strict: false } }), false);
+test('personal branch behind preview can merge without forced synchronization',async()=>{
+ const f=fixture({behind:2});await f.run();assert.ok(f.calls.some(([n])=>n==='merge'));assert.ok(!f.calls.some(([n])=>n==='updateBranch'));
 });
-test('only the exact Vercel project, repository, branch and SHA qualify', () => {
-  const config = { sha: 'head', projectId: 'prj_test', repository: fullName };
-  assert.ok(latestPreview([deployment()], config));
-  for (const d of [deployment({ projectId: 'other' }), deployment({ target: 'production' }), deployment({ customEnvironment: { slug: 'staging' } }), deployment({ meta: { ...deployment().meta, githubCommitSha: 'old' } }), deployment({ meta: { ...deployment().meta, githubCommitRepo: 'other' } })]) assert.equal(latestPreview([d], config), null);
-  for (const readyState of ['BUILDING', 'ERROR', 'CANCELED']) {
-    assert.equal(latestPreview([deployment(), deployment({ createdAt: 2, readyState })], config), null);
-  }
+test('release requires latest trusted Vercel deployment for exact SHA',async()=>{
+ for(const options of [{},{deployments:[successfulDeployment],statuses:[{id:1,state:'failure'}]},{deployments:[{...successfulDeployment,sha:'old'}],statuses:[{id:1,state:'success'}]},{deployments:[{...successfulDeployment,creator:{login:'someone'}}],statuses:[{id:1,state:'success'}]}]){
+  const f=fixture({release:true,...options});await f.run();assert.ok(!f.calls.some(([n])=>n==='merge'));
+ }
+ const f=fixture({release:true,deployments:[successfulDeployment],statuses:[{id:1,state:'success'}]});await f.run();assert.ok(f.calls.some(([n])=>n==='merge'));
 });
-test('passing latest PR CI merges personal branch using expected head SHA', async () => {
-  const f = fixture(); await f.run();
-  assert.deepEqual(f.calls.find(([name]) => name === 'merge')[1], { owner: 'BWCbewchan', repo: 'tpsmindx', pull_number: 1, sha: 'head', merge_method: 'merge' });
-  assert.deepEqual(f.errors, []);
+test('new deployment pending cannot reuse old success',async()=>{
+ const f=fixture({release:true,deployments:[successfulDeployment,{...successfulDeployment,id:6}],statuses:[{id:2,state:'pending'},{id:1,state:'success'}]});await f.run();assert.ok(!f.calls.some(([n])=>n==='merge'));
 });
-test('a newer failed or pending CI run prevents reuse of old success', async () => {
-  const successful = { id: 1, path: '.github/workflows/ci.yml', head_sha: 'head', head_repository: { full_name: fullName }, pull_requests: [{ number: 1 }], status: 'completed', conclusion: 'success' };
-  for (const latest of [{ conclusion: 'failure' }, { status: 'in_progress', conclusion: null }]) {
-    const f = fixture({ runs: [successful, { ...successful, id: 2, ...latest }] }); await f.run();
-    assert.ok(!f.calls.some(([name]) => name === 'merge'));
-  }
+test('forks, conflicts, drafts and manual labels never auto merge',async()=>{
+ for(const pr of [{draft:true},{mergeable:false},{head:{ref:'fork',sha:'head',repo:{full_name:'other/fork'}}},{labels:[{name:'manual-merge'}]}]){const f=fixture({pr});await f.run();assert.ok(!f.calls.some(([n])=>n==='merge'));}
 });
-test('CI for an old SHA, another PR or a fork cannot authorize merge', async () => {
-  for (const mismatch of [{ head_sha: 'old' }, { pull_requests: [{ number: 99 }] }, { head_repository: { full_name: 'attacker/fork' } }]) {
-    const f = fixture({ runs: [{ id: 1, path: '.github/workflows/ci.yml', status: 'completed', conclusion: 'success', head_sha: 'head', head_repository: { full_name: fullName }, pull_requests: [{ number: 1 }], ...mismatch }] });
-    await f.run(); assert.ok(!f.calls.some(([name]) => name === 'merge'));
-  }
+test('head and base movement stop merge',async()=>{
+ for(const fresh of [pr=>({...pr,head:{...pr.head,sha:'new'}}),pr=>({...pr,base:{...pr.base,sha:'new'}})]){const f=fixture({fresh});await f.run();assert.ok(!f.calls.some(([n])=>n==='merge'));}
 });
-test('outdated branch updates then waits for fresh CI', async () => {
-  const f = fixture({ behind: 1 }); await f.run();
-  assert.equal(f.calls.find(([name]) => name === 'updateBranch')[1].expected_head_sha, 'head');
-  assert.ok(!f.calls.some(([name]) => name === 'merge'));
+test('direct source push creates PR without waiting for CI',async()=>{
+ const f=fixture({empty:true,eventName:'push',payload:{repository:{full_name:fullName},ref:'refs/heads/kydai',after:'head'}});await f.run();assert.ok(f.calls.some(([n])=>n==='createPR'));
 });
-test('outdated release syncs main through a separate PR instead of pushing protected preview', async () => {
-  const f = fixture({ release: true, behind: 1 }); await f.run();
-  assert.ok(f.calls.some(([name]) => name === 'syncMerge'));
-  assert.ok(f.calls.some(([name, args]) => name === 'createPR' && args.base === 'preview' && args.head.startsWith('automation/sync-main-')));
-  assert.ok(!f.calls.some(([name]) => name === 'updateBranch' || name === 'merge'));
+test('stale and deleted push do not create PR',async()=>{
+ for(const extra of [{after:'old'},{after:'head',deleted:true}]){const f=fixture({empty:true,eventName:'push',payload:{repository:{full_name:fullName},ref:'refs/heads/kydai',...extra}});await f.run();assert.ok(!f.calls.some(([n])=>n==='createPR'));}
 });
-test('history-only synchronization PRs still merge to satisfy strict protection', async () => {
-  const f = fixture({ files: [], pr: { head: { ref: 'automation/sync-main-abc', sha: 'head', repo: { full_name: fullName } } } });
-  await f.run(); assert.ok(f.calls.some(([name]) => name === 'merge'));
-});
-test('forks, drafts, manual PRs, conflicts and missing policy do not merge', async () => {
-  for (const options of [{ pr: { draft: true } }, { pr: { labels: [{ name: 'manual-merge' }, { name: 'auto-delivery' }] } }, { pr: { head: { ref: 'fork', sha: 'head', repo: { full_name: 'attacker/fork' } } } }, { pr: { mergeable: false } }, { policy: {} }]) {
-    const f = fixture(options); await f.run(); assert.ok(!f.calls.some(([name]) => name === 'merge'));
-  }
-});
-test('head or base movement and a newly added manual label stop merge', async () => {
-  for (const fresh of [pr => ({ ...pr, head: { ...pr.head, sha: 'new' } }), pr => ({ ...pr, base: { ...pr.base, sha: 'new-base' } }), pr => ({ ...pr, labels: [{ name: 'manual-merge' }] })]) {
-    const f = fixture({ fresh }); await f.run(); assert.ok(!f.calls.some(([name]) => name === 'merge'));
-  }
-});
-test('release waits for exact preview deployment; READY permits merge', async () => {
-  const waiting = fixture({ release: true }); await waiting.run(); assert.ok(!waiting.calls.some(([name]) => name === 'merge'));
-  const ready = fixture({ release: true, deployments: [deployment()] }); await ready.run();
-  assert.ok(ready.calls.some(([name]) => name === 'merge'));
-});
-test('deleted/stale source branch event does not enroll a PR', async () => {
-  const f = fixture({ payload: { workflow_run: { path: '.github/workflows/ci.yml', head_repository: { full_name: fullName }, head_branch: 'kydai', head_sha: 'stale' } } });
-  await f.run(); assert.ok(!f.calls.some(([name]) => name === 'createPR'));
-});
-test('personal push creates and labels exactly one PR; existing PR is reused', async () => {
-  const payload = { workflow_run: { path: '.github/workflows/ci.yml', head_repository: { full_name: fullName }, head_branch: 'kydai', head_sha: 'head' } };
-  const fresh = fixture({ payload, empty: true }); await fresh.run();
-  assert.equal(fresh.calls.filter(([name]) => name === 'createPR').length, 1);
-  assert.ok(fresh.calls.some(([name]) => name === 'label'));
-  const existing = fixture({ payload }); await existing.run();
-  assert.ok(!existing.calls.some(([name]) => name === 'createPR'));
-});
-test('source branches deleted before reconciliation are not recreated', async () => {
-  const payload = { workflow_run: { path: '.github/workflows/ci.yml', head_repository: { full_name: fullName }, head_branch: 'deleted', head_sha: 'head' } };
-  const f = fixture({ payload, empty: true });
-  const getBranch = f.github.rest.repos.getBranch;
-  f.github.rest.repos.getBranch = async args => {
-    if (args.branch === 'deleted') throw Object.assign(new Error('missing'), { status: 404 });
-    return getBranch(args);
-  };
-  await f.run(); assert.ok(!f.calls.some(([name]) => name === 'createPR'));
-});
-test('Vercel API errors or missing credentials block production promotion', async () => {
-  for (const options of [{ vercelStatus: 403 }, { env: { VERCEL_TOKEN: '' } }]) {
-    const f = fixture({ release: true, ...options }); await f.run();
-    assert.ok(!f.calls.some(([name]) => name === 'merge'));
-    assert.ok(f.errors.length > 0);
-  }
-});
-test('GitHub merge rejection is reported as a failure', async () => {
-  const f = fixture({ mergeAccepted: false }); await f.run();
-  assert.match(f.errors.join(' '), /declined merge/);
+test('outdated release synchronizes main through preview before building again',async()=>{
+ const f=fixture({release:true,behind:1});await f.run();assert.ok(f.calls.some(([n])=>n==='syncMerge'));assert.ok(!f.calls.some(([n])=>n==='merge'));
 });

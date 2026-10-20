@@ -40,7 +40,13 @@ test('merge messages retain branch names, PR links and escaped titles',()=>{
 test('only successful preview and main deployments announce the next version',()=>{
  for(const branch of ['preview','main']){
  const p=wrap({deployment:{ref:branch,sha:'abcdef123',environment:branch==='main'?'Production':'Preview'},deployment_status:{state:'success',environment_url:'https://example.test'}});
- const message=format('deployment_status',p);assert.match(message,/build thành công/);assert.match(message,/Phiên bản tiếp theo/);assert.ok(message.includes('https://example.test'));
+ const message=format('deployment_status',p);assert.match(message,/build thành công/);assert.match(message,/Phiên bản tiếp theo/);
+ if(branch==='main') {
+  assert.ok(message.includes('href="https://tmsmindx.vercel.app/"'));
+  assert.ok(!message.includes('https://example.test'));
+  assert.match(message,/staging.*Thành viên thực hiện chức năng vui lòng test lại/);
+  assert.equal(format('deployment_status',{...p,deployment_status:{state:'success'}}),message);
+ } else assert.ok(message.includes('https://example.test'));
  for(const state of ['pending','in_progress','failure','error','inactive'])assert.equal(format('deployment_status',{...p,deployment_status:{state}}),null);
  }
  assert.equal(format('deployment_status',wrap({deployment:{ref:'kydai',environment:'Preview'},deployment_status:{state:'success'}})),null);

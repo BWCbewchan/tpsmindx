@@ -36,6 +36,7 @@ test('merge messages retain branch names, PR links and escaped titles',()=>{
  const message=format('pull_request',wrap({action:'closed',pull_request:pr}));
  assert.match(message,/Đã merge PR/);assert.match(message,/kydai/);assert.match(message,/preview/);assert.match(message,/&lt;script&gt;/);
  assert.equal(format('pull_request',wrap({action:'closed',pull_request:{...pr,merged:false}})),null);
+ assert.equal(format('pull_request',wrap({action:'closed',pull_request:{...pr,head:{ref:'preview'},base:{ref:'main'}}})),null);
 });
 test('only successful preview and main deployments announce the next version',()=>{
  for(const branch of ['preview','main']){

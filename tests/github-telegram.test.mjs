@@ -31,13 +31,15 @@ test('push reports actor, branch, escaped commits and release branch changes', (
  }
  assert.equal(format('push',wrap({ref:'refs/tags/v1'})),null);
 });
-test('merge messages retain branch names, PR links and escaped titles',()=>{
- const pr={number:12,title:'Fix <script>',html_url:'https://github.com/pr/12',head:{ref:'kydai',sha:'abcdef1'},base:{ref:'preview'},merged:true};
- const message=format('pull_request',wrap({action:'closed',pull_request:pr}));
- assert.match(message,/Đã merge PR/);assert.match(message,/kydai/);assert.match(message,/preview/);assert.match(message,/&lt;script&gt;/);
- assert.equal(format('pull_request',wrap({action:'closed',pull_request:{...pr,merged:false}})),null);
- assert.equal(format('pull_request',wrap({action:'closed',pull_request:{...pr,head:{ref:'preview'},base:{ref:'main'}}})),null);
+test('all PR lifecycle events are silent', () => {
+ for (const action of ['opened','reopened','synchronize','ready_for_review','converted_to_draft','closed']) {
+  for (const merged of [false,true]) {
+   assert.equal(format('pull_request',wrap({action,pull_request:{number:1,merged,head:{ref:'preview'},base:{ref:'main'}}})),null);
+   assert.equal(format('pull_request',wrap({action,pull_request:{number:2,merged,head:{ref:'personal'},base:{ref:'preview'}}})),null);
+  }
+ }
 });
+
 test('only successful preview and main deployments announce the next version',()=>{
  for(const branch of ['preview','main']){
  const p=wrap({deployment:{ref:branch,sha:'abcdef123',environment:branch==='main'?'Production':'Preview'},deployment_status:{state:'success',environment_url:'https://example.test'}});

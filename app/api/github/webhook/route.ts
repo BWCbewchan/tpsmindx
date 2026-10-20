@@ -19,6 +19,25 @@ export async function POST(request: NextRequest) {
   }
   const event = request.headers.get('x-github-event') || '';
   if (event === 'ping') return NextResponse.json({ success: true, message: 'pong' });
+  // Vercel sometimes sends a commit SHA as deployment.ref. Resolve only the
+  // current release branches, never infer a personal branch from "Preview".
+  if (event === 'deployment_status' && payload?.deployment_status?.state === 'success'
+    && /^[a-f0-9]{40}$/i.test(payload?.deployment?.ref || '')
+    && payload?.repository?.full_name === 'BWCbewchan/tpsmindx') {
+    try {
+      const production = payload.deployment.production_environment === true
+        || /^production$/i.test(payload.deployment_status.environment || payload.deployment.environment || '');
+      const branch = production ? 'main' : 'preview';
+      const response = await fetch(`https://api.github.com/repos/BWCbewchan/tpsmindx/branches/${branch}`, {
+        headers: { Accept: 'application/vnd.github+json' }, signal: AbortSignal.timeout(5000),
+      });
+      if (!response.ok) return NextResponse.json({ error: 'Cannot resolve deployment branch' }, { status: 502 });
+      const current = await response.json();
+      if (current.commit?.sha === payload.deployment.sha) payload.deployment.ref = branch;
+    } catch {
+      return NextResponse.json({ error: 'Cannot resolve deployment branch' }, { status: 502 });
+    }
+  }
   const message = formatGitHubNotification(event, payload);
   if (!message) return NextResponse.json({ success: true, message: 'Event ignored' });
   const token = process.env.GITHUB_TELEGRAM_BOT_TOKEN;

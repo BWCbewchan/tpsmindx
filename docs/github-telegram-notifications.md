@@ -7,7 +7,7 @@ Mỗi push báo người push, nhánh, SHA, tối đa 5 commit (tác giả và t
 Bot báo tiến trình PR/merge vào `preview` hoặc `main`; bỏ qua PR đóng chưa merge và các sự kiện không phục vụ merge.
 Chỉ báo deploy `success` của `preview`/`main`, kèm SHA và link chạy phiên bản tiếp theo. Không báo deploy đang chạy/lỗi hoặc build nhánh cá nhân.
 Khi Vercel gửi SHA trong deployment.ref, endpoint đối chiếu SHA hiện tại của nhánh qua GitHub API trước khi thông báo.
-Tin Preview dùng câu "sẵn sàng chạy thử"; tin main dùng câu "sẵn sàng sử dụng trên Production". Không tự tăng số phiên bản.
+Tin Preview dùng câu "sẵn sàng chạy thử" và URL deployment. Tin main ghi rõ đây là staging, nhắc thành viên thực hiện chức năng test lại và luôn dùng link cố định `https://tmsmindx.vercel.app/`, kể cả khi payload không có URL. Không tự tăng số phiên bản.
 
 
 

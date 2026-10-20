@@ -311,6 +311,11 @@ function userRolesForClass(cls: any, userEmail: string): string[] {
   return Array.from(roles);
 }
 
+function hasTeacherAccessToClass(cls: any, userEmail: string): boolean {
+  const email = normalizeEmail(userEmail);
+  return Boolean(email) && userRolesForClass(cls, email).length > 0;
+}
+
 function dateInputToIso(value: string | null, endOfDay: boolean): string | undefined {
   if (!value) return undefined;
   return new Date(`${value}T${endOfDay ? '23:59:59.999' : '00:00:00.000'}+07:00`).toISOString();

@@ -15,7 +15,7 @@ Vercel Git integration phải gửi deployment status về GitHub. Tên môi tr�
 
 Biến môi trường trên Vercel của endpoint nhận webhook:
 
-- `GITHUB_WEBHOOK_SECRET`: bắt buộc; phải trùng Secret trong GitHub webhook. Nếu chưa có, cấu hình cùng một giá trị ở cả hai nơi trước khi triển khai bản mới.
+- `GITHUB_WEBHOOK_SECRET`: khuyến nghị; nếu có thì phải trùng Secret trong GitHub webhook và mọi request phải có chữ ký hợp lệ. Nếu chưa có, giữ chế độ tương thích webhook cũ để thông báo không bị ngắt. Trong chế độ này endpoint không xác thực nguồn gửi; chỉ dùng để thông báo, không dùng nội dung tin làm căn cứ cấp quyền hoặc thực thi thao tác. Nên cấu hình cùng một secret ở cả hai nơi khi chuyển sang xác minh chữ ký.
 - `GITHUB_TELEGRAM_BOT_TOKEN`: giữ token bot hiện có.
 - `GITHUB_TELEGRAM_CHAT_ID`: giữ nhóm chat hiện có.
 

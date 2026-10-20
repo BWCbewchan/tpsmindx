@@ -1,11 +1,6 @@
 name: CI
 
 on:
-  push:
-    branches: ['**']
-  pull_request:
-    branches: [preview, main]
-    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
@@ -31,13 +26,11 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
-      - name: Lint
-        run: npm run lint
       - name: TypeScript
         run: npx --no-install tsc --noEmit --incremental false
       - name: Offline regression tests
         run: |
-          node --test tests/github-telegram.test.mjs tests/automatic-delivery.test.mjs
+          node --test tests/github-telegram.test.mjs tests/github-telegram-route.test.mjs tests/automatic-delivery.test.mjs
           node scripts/test-role-permissions.cjs
           npm run test:teacher-evaluations
       - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4

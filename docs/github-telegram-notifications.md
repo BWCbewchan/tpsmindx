@@ -2,7 +2,8 @@
 
 ## Chính sách thông báo hiện tại
 
-Chỉ đăng ký **Pull requests** và **Deployment statuses**. Tắt Pushes và Workflow runs.
+Đăng ký **Pushes**, **Pull requests** và **Deployment statuses**. Tắt Workflow runs.
+Mỗi push báo người push, nhánh, SHA, tối đa 5 commit (tác giả và tiêu đề), kèm link xem toàn bộ thay đổi. Push vào `preview`/`main` được ghi rõ là nhánh có thay đổi và đang chờ build. Push tag bị bỏ qua.
 Bot báo tiến trình PR/merge vào `preview` hoặc `main`; bỏ qua PR đóng chưa merge và các sự kiện không phục vụ merge.
 Chỉ báo deploy `success` của `preview`/`main`, kèm SHA và link chạy phiên bản tiếp theo. Không báo deploy đang chạy/lỗi hoặc build nhánh cá nhân.
 Khi Vercel gửi SHA trong deployment.ref, endpoint đối chiếu SHA hiện tại của nhánh qua GitHub API trước khi thông báo.
@@ -17,6 +18,7 @@ Endpoint hiện có: `/api/github/webhook`. Giữ nguyên bot GitHub và nhóm c
 Trong GitHub repository Settings → Webhooks, sửa webhook đang trỏ tới endpoint này (không tạo webhook thứ hai gây tin trùng). Content type: `application/json`. Chọn các sự kiện:
 
 - Pull requests: mở/cập nhật PR, sẵn sàng duyệt, chuyển nháp, đóng/merge; nhận diện riêng `preview` → `main`.
+- Pushes: người push và danh sách commit; thông báo thay đổi của preview/main.
 - Deployment statuses: chỉ Preview/main build thành công, kèm SHA và link mở phiên bản mới.
 
 Vercel Git integration phải gửi deployment status về GitHub. Tên môi trường lấy từ payload, không suy luận từ tên nhánh vì ref có thể là SHA.

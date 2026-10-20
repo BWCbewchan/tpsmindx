@@ -42,7 +42,8 @@ function fixture(options = {}) {
   const core = { info: m => notes.push(m), setFailed: m => errors.push(m) };
   const env = { VERCEL_TOKEN: 'fake', VERCEL_PROJECT_ID: 'prj_test', ...options.env };
   const fetchImpl = async () => ({ ok: options.vercelStatus ? false : true, status: options.vercelStatus || 200, json: async () => ({ deployments: options.deployments || [] }) });
-  return { calls, errors, notes, run: () => reconcile({ github, context, core, env, fetchImpl }), github };
+  return { calls, errors, notes, run: () => reconcile({ github, context, core, env, fetchImpl,
+    sleep: async ms => calls.push(['sleep', ms]) }), github };
 }
 
 
@@ -76,4 +77,31 @@ test('stale and deleted push do not create PR',async()=>{
 });
 test('outdated release synchronizes main through preview before building again',async()=>{
  const f=fixture({release:true,behind:1});await f.run();assert.ok(f.calls.some(([n])=>n==='syncMerge'));assert.ok(!f.calls.some(([n])=>n==='merge'));
+});
+
+test('new synchronization ref retries merge API propagation and then enrolls PR', async () => {
+  const f = fixture({ release: true, behind: 1 });
+  f.github.rest.git.getRef = async () => { throw Object.assign(new Error('Not Found'), { status: 404 }); };
+  let attempts = 0;
+  f.github.rest.repos.merge = async () => {
+    if (++attempts < 3) throw Object.assign(new Error('Base does not exist'), { status: 404 });
+    return { data: {} };
+  };
+  await f.run();
+  assert.equal(attempts, 3);
+  assert.deepEqual(f.calls.filter(([n]) => n === 'sleep').map(([, ms]) => ms), [1000, 2000]);
+  assert.ok(f.calls.some(([n]) => n === 'createPR'));
+  assert.deepEqual(f.errors, []);
+});
+
+test('synchronization retries are bounded and conflicts are never retried', async () => {
+  for (const [status, message, expected] of [[404, 'Base does not exist', 4], [409, 'Merge conflict', 1], [403, 'Forbidden', 1]]) {
+    const f = fixture({ release: true, behind: 1 });
+    let attempts = 0;
+    f.github.rest.repos.merge = async () => { attempts++; throw Object.assign(new Error(message), { status }); };
+    await f.run();
+    assert.equal(attempts, expected);
+    assert.match(f.errors.join('\n'), /Synchronize main into automation\/sync-main-/);
+    assert.ok(!f.calls.some(([n]) => n === 'merge'));
+  }
 });

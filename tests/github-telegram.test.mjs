@@ -15,8 +15,21 @@ test('signature accepts exact raw body and rejects tampering, malformed signatur
   assert.equal(verify(body, signature, ''), false);
 });
 
-test('push and Actions events are silent',()=>{
- for(const event of ['push','workflow_run','workflow_job']) assert.equal(format(event,wrap({ref:'refs/heads/main',workflow_run:{status:'completed',conclusion:'success'}})),null);
+test('Actions events are silent',()=>{
+ for(const event of ['workflow_run','workflow_job']) assert.equal(format(event,wrap({ref:'refs/heads/main',workflow_run:{status:'completed',conclusion:'success'}})),null);
+});
+
+test('push reports actor, branch, escaped commits and release branch changes', () => {
+ for (const branch of ['kydai', 'preview', 'main']) {
+  const message = format('push', wrap({ref:`refs/heads/${branch}`,after:'abcdef123',compare:'https://github.com/compare',
+   commits: Array.from({length:7},()=>({id:'123456789',message:'Fix <script>\nprivate body',author:{name:'A & B'}}))}));
+  assert.match(message,/Người push: developer/);
+  assert.ok(message.includes(branch)); assert.match(message,/Fix &lt;script&gt;/);
+  assert.match(message,/A &amp; B/); assert.match(message,/2 commit khác/);
+  assert.ok(!message.includes('private body'));
+  if(branch !== 'kydai') assert.match(message,/có thay đổi/);
+ }
+ assert.equal(format('push',wrap({ref:'refs/tags/v1'})),null);
 });
 test('merge messages retain branch names, PR links and escaped titles',()=>{
  const pr={number:12,title:'Fix <script>',html_url:'https://github.com/pr/12',head:{ref:'kydai',sha:'abcdef1'},base:{ref:'preview'},merged:true};

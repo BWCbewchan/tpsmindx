@@ -7,7 +7,8 @@ function personal(branch) {
 }
 
 
-module.exports = async function reconcile({ github, context, core, env = process.env }) {
+module.exports = async function reconcile({ github, context, core, env = process.env,
+  sleep = ms => new Promise(resolve => setTimeout(resolve, ms)) }) {
   const repo = context.repo;
   const fullName = `${repo.owner}/${repo.repo}`;
   const note = message => core.info(message);
@@ -62,8 +63,22 @@ module.exports = async function reconcile({ github, context, core, env = process
       if (error.status !== 404) throw error;
       await github.rest.git.createRef({ ...repo, ref: `refs/heads/${sync}`, sha: head.commit.sha });
     }
-    await github.rest.repos.merge({ ...repo, base: sync, head: base.commit.sha,
-      commit_message: 'chore: synchronize main into preview for the next release' });
+    // A new ref can be readable by the refs API before the merge API sees it.
+    // Retry only that specific propagation error, never conflicts or permissions.
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await github.rest.repos.merge({ ...repo, base: sync, head: base.commit.sha,
+          commit_message: 'chore: synchronize main into preview for the next release' });
+        break;
+      } catch (error) {
+        if (error.status === 404 && /base does not exist/i.test(error.message) && attempt < 3) {
+          note(`Waiting for synchronization branch ${sync} to become available (${attempt + 1}/3).`);
+          await sleep(1000 * 2 ** attempt);
+          continue;
+        }
+        throw new Error(`Synchronize main into ${sync}: ${error.message}`, { cause: error });
+      }
+    }
     await ensurePR(sync, 'preview');
     note('Waiting for merge of the main → preview synchronization PR and its new Vercel deployment.');
   }

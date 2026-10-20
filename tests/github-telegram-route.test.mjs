@@ -9,6 +9,7 @@ const routePath = new URL('../app/api/github/webhook/route.ts', import.meta.url)
 const helperUrl = new URL('../lib/github-telegram.mjs', import.meta.url).href;
 const source = fs.readFileSync(routePath, 'utf8')
   .replace("'next/server'", JSON.stringify(import.meta.resolve('next/server.js')))
+  .replace("'@/lib/telegram-delivery.mjs'", JSON.stringify(new URL('../lib/telegram-delivery.mjs', import.meta.url).href))
   .replace("'@/lib/github-telegram.mjs'", JSON.stringify(helperUrl));
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText;
 const { POST } = await import('data:text/javascript;base64,' + Buffer.from(compiled).toString('base64'));

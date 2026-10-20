@@ -1,6 +1,7 @@
 import pool from './db';
 import { getPublicBaseUrl } from './public-base-url';
 import { sendWebPush } from './web-push';
+import { sendTelegramMessage } from './telegram-delivery.mjs';
 
 interface NotificationPayload {
   recipientEmail: string;
@@ -209,13 +210,8 @@ export async function sendTelegramNotification(message: string): Promise<void> {
   try {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     const chatId = process.env.TELEGRAM_CHAT_ID;
-    if (!token || !chatId) return;
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: 'Markdown' }),
-    });
+    await sendTelegramMessage({ token, chatId, text: message, parseMode: 'Markdown' });
   } catch (err) {
-    console.error('[NotificationService] Telegram send failed:', err);
+    console.error('[NotificationService] Telegram send failed:', err instanceof Error ? err.message : 'UNKNOWN');
   }
 }

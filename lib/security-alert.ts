@@ -13,6 +13,7 @@
  */
 
 import type { AuditEvent } from '@/lib/audit-logger';
+import { sendTelegramMessage, telegramHtml } from './telegram-delivery.mjs';
 
 // ─── Config ──────────────────────────────────────────────────
 
@@ -99,47 +100,28 @@ async function sendTelegramAlert(event: AuditEvent & { id?: number }): Promise<v
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
 
   const sevIcon   = SEVERITY_ICON[event.severity]   ?? '⚠️';
-  const eventIcon = EVENT_ICON[event.event_type]     ?? 'ℹ️';
   const now       = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
-
-  // Build old/new data display
-  let dataLines = '';
-  if (event.old_data && Object.keys(event.old_data).length > 0) {
-    dataLines += `\n📤 *Trước:* \`${JSON.stringify(event.old_data).slice(0, 200)}\``;
-  }
-  if (event.new_data && Object.keys(event.new_data).length > 0) {
-    dataLines += `\n📥 *Sau:* \`${JSON.stringify(event.new_data).slice(0, 200)}\``;
-  }
 
   const flags = event.threat_flags?.length ? event.threat_flags.join(', ') : 'none';
 
-  const message = [
-    `${sevIcon} *SECURITY ALERT — ${event.severity}*`,
-    `🏢 *App:* ${APP_NAME}`,
-    '',
-    `${eventIcon} *Event:* \`${event.action}\``,
-    `👤 *User:* \`${eventActorLabel(event)}\``,
-    `🎭 *Role:* ${event.user_role ?? 'N/A'}`,
-    `🌐 *IP:* \`${event.ip_address ?? 'unknown'}\``,
-    `🔗 *Endpoint:* \`${event.endpoint ?? 'N/A'}\``,
-    `⚠️ *Flags:* \`${flags}\``,
-    `📊 *Risk Score:* ${event.risk_score}/100`,
-    dataLines,
-    '',
-    `🕐 *Thời gian:* ${now}`,
-    event.id ? `🆔 *Log ID:* #${event.id}` : '',
-  ]
-    .filter((l) => l !== undefined)
-    .join('\n')
-    .trim();
+  // Dynamic audit data must not be interpreted as Telegram markup.
+  const safeMessage = [
+    `${sevIcon} <b>SECURITY ALERT — ${telegramHtml(event.severity)}</b>`,
+    `App: ${telegramHtml(APP_NAME)}`,
+    `Event: <code>${telegramHtml(event.action)}</code>`,
+    `User: <code>${telegramHtml(eventActorLabel(event))}</code>`,
+    `Role: ${telegramHtml(event.user_role ?? 'N/A')}`,
+    `IP: <code>${telegramHtml(event.ip_address ?? 'unknown')}</code>`,
+    `Endpoint: <code>${telegramHtml(event.endpoint ?? 'N/A')}</code>`,
+    `Flags: ${telegramHtml(flags)}`,
+    `Risk: ${telegramHtml(event.risk_score)}/100`,
+    event.old_data ? `Trước: <code>${telegramHtml(JSON.stringify(event.old_data), 200)}</code>` : '',
+    event.new_data ? `Sau: <code>${telegramHtml(JSON.stringify(event.new_data), 200)}</code>` : '',
+    `Thời gian: ${telegramHtml(now)}`,
+    event.id ? `Log ID: #${telegramHtml(event.id)}` : '',
+  ].filter(Boolean).join('\n');
 
-  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-
-  const bodyPayload: Record<string, unknown> = {
-    chat_id:    TELEGRAM_CHAT_ID,
-    text:       message,
-    parse_mode: 'Markdown',
-  };
+  const bodyPayload: Record<string, unknown> = {};
 
   // Đính kèm các nút tương tác thông minh (Inline Keyboard Buttons) nếu có IP nguồn
   if (event.ip_address && event.ip_address !== 'unknown') {
@@ -153,16 +135,8 @@ async function sendTelegramAlert(event: AuditEvent & { id?: number }): Promise<v
     };
   }
 
-  const response = await fetch(url, {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify(bodyPayload),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Telegram API error ${response.status}: ${err}`);
-  }
+  await sendTelegramMessage({ token: TELEGRAM_BOT_TOKEN, chatId: TELEGRAM_CHAT_ID,
+    text: safeMessage, parseMode: 'HTML', replyMarkup: bodyPayload.reply_markup });
 }
 
 // ─── Email alert (backup nếu không dùng Telegram) ─────────────

@@ -1,6 +1,7 @@
 import pool from '@/lib/db';
 import { unblockIp } from '@/lib/brute-force-guard';
 import { NextRequest, NextResponse } from 'next/server';
+import { sendTelegramMessage } from '@/lib/telegram-delivery.mjs';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const AUTHORIZED_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -47,19 +48,8 @@ interface TelegramWebhookBody {
 
 /** Gửi phản hồi ngược lại nhóm Telegram */
 async function sendTelegramReply(chatId: number, text: string, replyToMessageId?: number): Promise<void> {
-  if (!TELEGRAM_BOT_TOKEN) return;
-  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
-  
-  await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: 'Markdown',
-      reply_to_message_id: replyToMessageId,
-    }),
-  });
+  await sendTelegramMessage({ token: TELEGRAM_BOT_TOKEN, chatId, text,
+    parseMode: 'Markdown', replyToMessageId });
 }
 
 /** Trả lời callback query của Telegram */

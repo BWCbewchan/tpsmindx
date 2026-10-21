@@ -88,4 +88,20 @@ test('notification route preserves legacy configuration and enforces configured 
     globalThis.fetch = async () => Response.json({ ok: false, error_code: 400 }, { status: 400 });
     assert.equal((await POST(request())).status, 502);
   });
+  await t.test('failed CI reaches Telegram with branch and annotation; successful CI stays silent', async () => {
+    sent = [];
+    globalThis.fetch = async (url, options) => {
+      if (String(url).includes('/annotations')) return Response.json([{ annotation_level: 'failure', path: 'app/page.tsx', start_line: 16, message: 'Cannot find module logo.jpg' }]);
+      if (String(url).startsWith('https://api.github.com/')) return Response.json({ jobs: [{ name: 'CI', conclusion: 'failure', check_run_url: 'https://api.github.com/repos/BWCbewchan/tpsmindx/check-runs/99' }] });
+      sent.push(JSON.parse(options.body)); return Response.json({ ok: true });
+    };
+    const payload = { repository: { full_name: 'BWCbewchan/tpsmindx' }, action: 'completed',
+      workflow_run: { id: 123, name: 'CI', conclusion: 'failure', head_branch: 'haibang', head_sha: 'abcdef123' } };
+    assert.equal((await POST(request(JSON.stringify(payload), 'workflow_run'))).status, 200);
+    assert.equal(sent.length, 1);
+    assert.match(sent[0].text, /haibang/); assert.match(sent[0].text, /Cannot find module logo.jpg/);
+    payload.workflow_run.conclusion = 'success';
+    assert.equal((await POST(request(JSON.stringify(payload), 'workflow_run'))).status, 200);
+    assert.equal(sent.length, 1);
+  });
 });

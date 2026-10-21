@@ -31,6 +31,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci
+      - name: Generate Next.js types
+        run: npx --no-install next typegen
       - name: TypeScript
         run: npx --no-install tsc --noEmit --incremental false
       - name: Offline regression tests

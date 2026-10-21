@@ -3074,6 +3074,162 @@ const migrations: Migration[] = [
       END $$;
     `,
   },
+  {
+    name: 'V120_course_grading_criteria',
+    version: 120,
+    sql: `
+      CREATE TABLE IF NOT EXISTS course_grading_criteria (
+        id SERIAL PRIMARY KEY,
+        course_id VARCHAR(255) NOT NULL,
+        course_name VARCHAR(255) NOT NULL,
+        course_code VARCHAR(100),
+        group_name VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        max_score NUMERIC(6, 3) NOT NULL DEFAULT 0.25,
+        order_index INTEGER DEFAULT 0,
+        created_by VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_course_grading_criteria_course_id ON course_grading_criteria(course_id);
+      CREATE INDEX IF NOT EXISTS idx_course_grading_criteria_course_name ON course_grading_criteria(course_name);
+
+      CREATE TABLE IF NOT EXISTS student_demo_grades (
+        id SERIAL PRIMARY KEY,
+        class_id VARCHAR(255) NOT NULL,
+        student_id VARCHAR(255) NOT NULL,
+        course_id VARCHAR(255) NOT NULL,
+        teacher_id VARCHAR(255),
+        teacher_email VARCHAR(255),
+        criteria_scores JSONB NOT NULL DEFAULT '[]'::jsonb,
+        total_score NUMERIC(6, 3) DEFAULT 0,
+        max_possible_score NUMERIC(6, 3) DEFAULT 5.0,
+        note TEXT,
+        graded_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT uq_student_demo_grade_class_student UNIQUE (class_id, student_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_student_demo_grades_class_student ON student_demo_grades(class_id, student_id);
+
+      INSERT INTO app_screens (route_path, label, group_name, sort_order, description, is_active)
+      VALUES (
+        '/admin/tieu-chi-cham-diem',
+        'Quản lý Tiêu chí Chấm điểm',
+        'Quản lý Chuyên môn',
+        85,
+        'Quản lý bảng tiêu chí chấm điểm buổi demo theo từng khóa học',
+        true
+      ) ON CONFLICT (route_path) DO NOTHING;
+
+      INSERT INTO role_permissions (role_code, route_path)
+      VALUES ('AD', '/admin/tieu-chi-cham-diem')
+      ON CONFLICT DO NOTHING;
+    `,
+  },
+  {
+    name: 'V121_multi_course_and_common_rubrics',
+    version: 121,
+    sql: `
+      -- 1. Bảng bộ tiêu chí / rubric templates (hỗ trợ cả tiêu chí khóa học và tiêu chí chung)
+      CREATE TABLE IF NOT EXISTS grading_rubrics (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        type VARCHAR(50) NOT NULL DEFAULT 'course', -- 'course' (theo khóa) hoặc 'common' (tiêu chí chung)
+        description TEXT,
+        apply_to_all_courses BOOLEAN DEFAULT false, -- Áp dụng cho tất cả khóa học (đặc biệt cho tiêu chí chung)
+        created_by VARCHAR(255),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_grading_rubrics_type ON grading_rubrics(type);
+
+      -- 2. Bảng các mục tiêu chí thuộc bộ rubric
+      CREATE TABLE IF NOT EXISTS grading_rubric_items (
+        id SERIAL PRIMARY KEY,
+        rubric_id INTEGER NOT NULL REFERENCES grading_rubrics(id) ON DELETE CASCADE,
+        group_name VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        max_score NUMERIC(6, 3) NOT NULL DEFAULT 0.25,
+        order_index INTEGER DEFAULT 0,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_grading_rubric_items_rubric_id ON grading_rubric_items(rubric_id);
+
+      -- 3. Bảng liên kết bộ tiêu chí với nhiều khóa học LMS
+      CREATE TABLE IF NOT EXISTS grading_rubric_courses (
+        id SERIAL PRIMARY KEY,
+        rubric_id INTEGER NOT NULL REFERENCES grading_rubrics(id) ON DELETE CASCADE,
+        course_id VARCHAR(255) NOT NULL,
+        course_name VARCHAR(255) NOT NULL,
+        course_code VARCHAR(100),
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT uq_grading_rubric_course UNIQUE (rubric_id, course_id)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_grading_rubric_courses_course_id ON grading_rubric_courses(course_id);
+      CREATE INDEX IF NOT EXISTS idx_grading_rubric_courses_rubric_id ON grading_rubric_courses(rubric_id);
+
+      -- 4. Chuyển dữ liệu cũ từ course_grading_criteria sang bảng mới (nếu có)
+      DO $$
+      DECLARE
+        r RECORD;
+        new_rubric_id INT;
+      BEGIN
+        IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'course_grading_criteria') THEN
+          FOR r IN (SELECT DISTINCT course_id, course_name, course_code FROM course_grading_criteria) LOOP
+            IF NOT EXISTS (SELECT 1 FROM grading_rubric_courses WHERE course_id = r.course_id) THEN
+              INSERT INTO grading_rubrics (name, type, created_by)
+              VALUES ('Tiêu chí demo ' || r.course_name, 'course', 'system')
+              RETURNING id INTO new_rubric_id;
+
+              INSERT INTO grading_rubric_courses (rubric_id, course_id, course_name, course_code)
+              VALUES (new_rubric_id, r.course_id, r.course_name, r.course_code);
+
+              INSERT INTO grading_rubric_items (rubric_id, group_name, content, max_score, order_index)
+              SELECT new_rubric_id, group_name, content, max_score, order_index
+              FROM course_grading_criteria
+              WHERE course_id = r.course_id;
+            END IF;
+          END LOOP;
+        END IF;
+      END $$;
+    `,
+  },
+  {
+    name: 'V122_alter_rubric_columns_to_text',
+    version: 122,
+    sql: `
+      ALTER TABLE grading_rubrics ALTER COLUMN name TYPE TEXT;
+      ALTER TABLE grading_rubrics ALTER COLUMN type TYPE TEXT;
+      ALTER TABLE grading_rubrics ALTER COLUMN created_by TYPE TEXT;
+      ALTER TABLE grading_rubric_items ALTER COLUMN group_name TYPE TEXT;
+      ALTER TABLE grading_rubric_courses ALTER COLUMN course_id TYPE TEXT;
+      ALTER TABLE grading_rubric_courses ALTER COLUMN course_name TYPE TEXT;
+      ALTER TABLE grading_rubric_courses ALTER COLUMN course_code TYPE TEXT;
+    `,
+  },
+  {
+    name: 'V123_demo_grade_enhancements',
+    version: 123,
+    sql: `
+      ALTER TABLE student_demo_grades ADD COLUMN IF NOT EXISTS project_type TEXT;
+      ALTER TABLE student_demo_grades ADD COLUMN IF NOT EXISTS bgk2_note TEXT;
+      ALTER TABLE student_demo_grades ADD COLUMN IF NOT EXISTS demo_date TEXT;
+      ALTER TABLE student_demo_grades ADD COLUMN IF NOT EXISTS eval_date TEXT;
+    `,
+  },
+  {
+    name: 'V124_demo_grade_updated_by',
+    version: 124,
+    sql: `
+      ALTER TABLE student_demo_grades ADD COLUMN IF NOT EXISTS updated_by_name TEXT;
+      ALTER TABLE student_demo_grades ADD COLUMN IF NOT EXISTS updated_by_email TEXT;
+    `,
+  },
 ]
 
 // ========== HÀM CHẠY MIGRATIONS ==========

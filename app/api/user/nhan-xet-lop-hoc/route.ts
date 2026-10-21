@@ -930,37 +930,31 @@ function normalizeSubmittedRichText(value: string): string {
 }
 
 function buildLmsAreaContent(area: any, value: any): string {
-  const enteredContent = String(value?.content || '').trim();
-  if (enteredContent) return normalizeSubmittedRichText(enteredContent);
-
   const type = normalizeStatus(value?.type);
   const areaName = String(area?.name || area?.fieldName || 'Nhận xét');
+  const enteredContent = String(value?.content || '').trim();
 
   if (type === 'RATE') {
+    // LMS stores RATE samples as plain text. Sending editor HTML makes LMS show
+    // literal <p> tags and prevents it from matching the selected rate sample.
+    const plainContent = richTextToPlain(enteredContent);
+    if (plainContent) return plainContent;
+
     const grade = finiteNumber(value?.grade);
     const selectedRate = asAreaList(area?.rates).find(
       (rate) => finiteNumber(rate?.value) === grade,
     );
     const sample = asAreaList(selectedRate?.commentSamples)
       .find((comment) => typeof comment === 'string' && richTextToPlain(comment));
-    if (sample) return normalizeSubmittedRichText(String(sample));
+    if (sample) return richTextToPlain(sample);
     return grade === undefined
       ? ''
-      : `<p>${escapeHtml(areaName)}: ${grade} điểm</p>`;
+      : `${areaName}: ${grade} điểm`;
   }
 
   if (type === 'CHECKPOINT' && value?.checkpoint) {
     const checkpoint = value.checkpoint;
-    const questions = asAreaList(checkpoint.checkpointQuestions)
-      .map((question) =>
-        `<li>${escapeHtml(question?.title)}: ${question?.result ? question?.score : 0} điểm</li>`,
-      )
-      .join('');
-    return [
-      `<p>Điểm thực hành: ${escapeHtml(checkpoint.practiceScore)}</p>`,
-      `<p>Điểm trắc nghiệm: ${escapeHtml(checkpoint.checkpointScore)}</p>`,
-      questions ? `<ul>${questions}</ul>` : '',
-    ].join('');
+    return `Điểm thực hành: ${checkpoint.practiceScore}\n    <p>Điểm trắc nghiệm: ${checkpoint.checkpointScore}</p>`;
   }
 
   if (type === 'DEMO' && Array.isArray(value?.demoQuestions)) {
@@ -973,6 +967,8 @@ function buildLmsAreaContent(area: any, value: any): string {
       .join('');
     return `<div><p><strong>${escapeHtml(areaName)}:</strong> <strong>${total} điểm</strong></p>${details ? `<ul>${details}</ul>` : ''}</div>`;
   }
+
+  if (enteredContent) return normalizeSubmittedRichText(enteredContent);
 
   const grade = finiteNumber(value?.grade);
   return grade === undefined
@@ -987,9 +983,11 @@ function prepareCommentAreasForLms(
   const areaById = new Map(areas.map((area) => [String(area?.id || ''), area]));
   const prepared = values.map((value) => {
     const area = areaById.get(String(value?.commentAreaId || ''));
+    const type = normalizeStatus(value?.type);
     return {
       ...value,
       content: buildLmsAreaContent(area, value),
+      ...(type === 'CHECKPOINT' && finiteNumber(value?.grade) === undefined ? { grade: 0 } : {}),
     };
   });
 
@@ -1022,9 +1020,18 @@ function buildCommentHtml(areas: any[], values: any[]): string {
       ).join('');
       return `<li><strong>${title}</strong>${details ? `<ul>${details}</ul>` : ''}</li>`;
     }
-    return `- ${title}: ${String(value.content || '')}`;
-  }).join('<br>');
-  return rows;
+    if (value.type === 'RATE') {
+      const content = richTextToPlain(value.content);
+      const renderedContent = content
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => `<div>${escapeHtml(line)}</div>`)
+        .join('');
+      return `<li><strong>${title}: ${escapeHtml(value.grade)} điểm</strong>${renderedContent}</li>`;
+    }
+    return `<li><strong>${title}</strong>${normalizeSubmittedRichText(String(value.content || ''))}</li>`;
+  }).join('');
+  return `<ul>${rows}</ul>`;
 }
 
 function normalizedAreaSnapshot(values: any[]): string {
@@ -1309,10 +1316,8 @@ export async function POST(request: NextRequest) {
           studentAttendanceId: attendanceId,
           studentId,
           content: combinedComment,
-          byAreas: {
-            comment: combinedComment,
-            commentByAreas: valuesForLms,
-          },
+          // LMS expects CommentByAreaCommand[] directly at this field.
+          byAreas: valuesForLms,
         },
       };
       verification = (verifiedSlot) => studentCommentMatches(verifiedSlot, studentId, valuesForLms);

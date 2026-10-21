@@ -97,6 +97,7 @@ export async function POST(request: NextRequest) {
         fileType: isCsv ? 'csv' : 'excel',
         sheetName: result.sheetName || null,
         files: result.files,
+        ignoredMonths: result.ignoredMonths,
       },
       ...data,
     })

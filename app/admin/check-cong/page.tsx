@@ -417,6 +417,23 @@ export default function AdminCheckCongPage() {
         throw new Error(result.error || 'Upload file thất bại')
       }
       toast.success(`Đã upload ${formatNumber(result.uploaded.recordCount)} dòng`)
+      const ignoredMonths = Array.isArray(result.uploaded.ignoredMonths)
+        ? result.uploaded.ignoredMonths
+        : []
+      if (ignoredMonths.length > 0) {
+        const ignoredCount = ignoredMonths.reduce(
+          (sum: number, item: { recordCount?: number }) =>
+            sum + Number(item.recordCount || 0),
+          0,
+        )
+        const monthLabels = ignoredMonths
+          .map((item: { month?: string }) => item.month)
+          .filter(Boolean)
+          .join(', ')
+        toast.warning('Đã bỏ qua dữ liệu lệch tháng', {
+          message: `${formatNumber(ignoredCount)} dòng thuộc ${monthLabels} không được dùng để ghi đè dữ liệu các tháng đã lưu.`,
+        })
+      }
       setLoadedRecords([])
       tableScrollRef.current?.scrollTo({ top: 0 })
       await fetchPage(1, 'reset')

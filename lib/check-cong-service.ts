@@ -104,6 +104,10 @@ type CheckCongImportResult = {
     recordCount: number
     storagePath: string
   }>
+  ignoredMonths: Array<{
+    month: string
+    recordCount: number
+  }>
   sheetName?: string
 }
 
@@ -884,6 +888,41 @@ function splitParsedCsvByMonth(parsed: ParsedCheckCongCsv): Map<string, string[]
   return byMonth
 }
 
+function selectPrimaryImportMonth(groupedRows: Map<string, string[][]>): {
+  month: string
+  rows: string[][]
+  ignoredMonths: Array<{ month: string; recordCount: number }>
+} {
+  const groups = Array.from(groupedRows, ([month, rows]) => ({
+    month,
+    rows,
+    recordCount: Math.max(0, rows.length - 1),
+  })).sort(
+    (left, right) =>
+      right.recordCount - left.recordCount || right.month.localeCompare(left.month),
+  )
+
+  const primary = groups[0]
+  if (!primary) {
+    throw new Error('File không có dòng công hợp lệ để import')
+  }
+
+  if (groups[1]?.recordCount === primary.recordCount) {
+    throw new Error(
+      'Không xác định được tháng chính vì file có nhiều tháng với số dòng bằng nhau. Vui lòng tách thành từng file theo tháng.',
+    )
+  }
+
+  return {
+    month: primary.month,
+    rows: primary.rows,
+    ignoredMonths: groups.slice(1).map(({ month, recordCount }) => ({
+      month,
+      recordCount,
+    })),
+  }
+}
+
 function parseSlotDate(slotTime: string): Date | null {
   const raw = slotTime.trim()
   if (!raw) return null
@@ -1373,6 +1412,9 @@ async function persistCheckCongImport(input: {
   await ensureCheckCongImportTable()
 
   const groupedRows = splitParsedCsvByMonth(input.parsed)
+  // Báo cáo theo tháng đôi khi có vài ca bù thuộc tháng liền kề. Chỉ snapshot
+  // tháng chiếm đa số được phép thay thế manifest đang active của tháng đó.
+  const primaryImport = selectPrimaryImportMonth(groupedRows)
   const uploadedFiles: Array<{
     month: string
     recordCount: number
@@ -1384,7 +1426,9 @@ async function persistCheckCongImport(input: {
   }> = []
 
   const client = createSupabaseS3Client()
-  for (const [month, rows] of groupedRows) {
+  for (const [month, rows] of [
+    [primaryImport.month, primaryImport.rows],
+  ] as const) {
     const csvText = `\uFEFF${serializeCSVRows(rows)}`
     const body = Buffer.from(csvText, 'utf8')
     const sha256 = createHash('sha256').update(body).digest('hex')
@@ -1497,6 +1541,7 @@ async function persistCheckCongImport(input: {
       recordCount: file.recordCount,
       storagePath: file.storagePath,
     })),
+    ignoredMonths: primaryImport.ignoredMonths,
     sheetName: input.sheetName || undefined,
   }
 }

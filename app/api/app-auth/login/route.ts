@@ -203,11 +203,6 @@ export async function POST(request: NextRequest) {
       userAgent,
     });
 
-    // ── Kiểm tra lưu lượng session so với số lượng Mentor ──
-    import('@/lib/session-monitor').then(({ checkSessionTraffic }) => {
-      checkSessionTraffic();
-    }).catch(() => {/* non-blocking */});
-
     return res;
   } catch (error: unknown) {
     console.error('App auth login error:', error);

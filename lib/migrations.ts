@@ -1,5 +1,6 @@
 import { Pool } from 'pg'
 import { DEFAULT_SCREEN_CATALOG_JSON } from './default-screen-catalog'
+import { TRAFFIC_MONITOR_SCHEMA } from './traffic-monitor.mjs'
 
 // ============================================================
 // Hệ thống Migration tự động cho TPS
@@ -3230,6 +3231,7 @@ const migrations: Migration[] = [
       ALTER TABLE student_demo_grades ADD COLUMN IF NOT EXISTS updated_by_email TEXT;
     `,
   },
+  { name: 'V125_traffic_monitor_state', version: 125, sql: TRAFFIC_MONITOR_SCHEMA },
 ]
 
 // ========== HÀM CHẠY MIGRATIONS ==========

@@ -2,7 +2,9 @@ import pool from '@/lib/db'
 import { requireBearerSession } from '@/lib/datasource-api-auth'
 import { clientIpFromRequest, rateLimitOr429Async } from '@/lib/rate-limit-memory'
 import { withTracking } from '@/lib/withTracking'
-import { NextRequest, NextResponse } from 'next/server'
+import { after, NextRequest, NextResponse } from 'next/server'
+
+export const maxDuration = 60
 
 interface TrackEventPayload {
   event_name: string
@@ -75,6 +77,11 @@ async function postTrack(request: NextRequest) {
     `
 
     await pool.query(sql, values)
+
+    after(async () => {
+      const { checkSessionTraffic } = await import('@/lib/session-monitor')
+      await checkSessionTraffic()
+    })
 
     return NextResponse.json({ success: true, count: batch.length })
   } catch (error: any) {

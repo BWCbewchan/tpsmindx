@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { formatGitHubNotification as format, verifyGitHubSignature as verify } from '../lib/github-telegram.mjs';
+import { formatGitHubNotification as format, verifyGitHubSignature as verify, getCIFailures } from '../lib/github-telegram.mjs';
 
 const repository = { full_name: 'BWCbewchan/tpsmindx', html_url: 'https://github.com/BWCbewchan/tpsmindx' };
 const wrap = extra => ({ repository, sender: { login: 'developer' }, ...extra });
@@ -15,8 +15,27 @@ test('signature accepts exact raw body and rejects tampering, malformed signatur
   assert.equal(verify(body, signature, ''), false);
 });
 
-test('Actions events are silent',()=>{
+test('ordinary Actions events are silent',()=>{
  for(const event of ['workflow_run','workflow_job']) assert.equal(format(event,wrap({ref:'refs/heads/main',workflow_run:{status:'completed',conclusion:'success'}})),null);
+});
+
+test('only completed failed CI announces branch, commit author and actionable errors', async () => {
+ const p=wrap({action:'completed',workflow_run:{id:123,run_attempt:2,name:'CI',conclusion:'failure',head_branch:'haibang',head_sha:'abcdef123',
+  head_commit:{author:{name:'Hai Bang'}},actor:{login:'developer'},html_url:'https://github.com/run/123'}});
+ const requests=[];
+ p.ci_failures=await getCIFailures(p,{token:'test-read-token',fetchImpl:async(url,options)=>{
+  requests.push(url);assert.equal(options.headers.Authorization,'Bearer test-read-token');
+  return Response.json(url.includes('/annotations')?[{annotation_level:'failure',path:'app/page.tsx',start_line:16,message:"Cannot find module '<image>.jpg'"}]:
+   {jobs:[{name:'CI',conclusion:'failure',check_run_url:'https://api.github.com/repos/BWCbewchan/tpsmindx/check-runs/99'}]});
+ }});
+ assert.match(requests[0],/attempts\/2\/jobs/);
+ const message=format('workflow_run',p);assert.match(message,/haibang/);assert.match(message,/Hai Bang/);
+ assert.match(message,/app\/page.tsx:16/);assert.match(message,/&lt;image&gt;/);assert.match(message,/sửa và push lại/);
+ for(const conclusion of ['success','cancelled','skipped',null])assert.equal(format('workflow_run',{...p,workflow_run:{...p.workflow_run,conclusion}}),null);
+ assert.equal(format('workflow_run',{...p,action:'requested'}),null);
+ assert.equal(format('workflow_run',{...p,workflow_run:{...p.workflow_run,name:'Automatic delivery'}}),null);
+ assert.deepEqual(await getCIFailures(p,{fetchImpl:async()=>{throw new Error('unavailable');}}),[]);
+ assert.match(format('workflow_run',{...p,ci_failures:[]}),/Không lấy được chi tiết lỗi/);
 });
 
 test('push reports actor, branch, escaped commits and release branch changes', () => {

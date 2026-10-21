@@ -18,6 +18,7 @@ import { buildBrowserLoginRedirectPath } from '@/lib/auth-redirect'
 import { useAuth } from '@/lib/auth-context'
 import { authHeaders } from '@/lib/auth-headers'
 import { lockBodyScroll, unlockBodyScroll } from '@/lib/body-scroll-lock'
+import { computeCycleScore, SCORE_CYCLE_MONTHS } from '@/lib/score-cycle'
 import { setVideo } from '@/lib/redux/features/trainingSlice'
 import { useAppDispatch } from '@/lib/redux/hooks'
 import { mapTeachersDbRowToTeacher } from '@/lib/teacher-db-mapper'
@@ -51,7 +52,6 @@ import useSWR, { useSWRConfig } from 'swr'
 // Cache for processed data
 const dataCache = new Map()
 const CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
-const SCORE_CYCLE_MONTHS = 12
 
 interface TeacherAvailability {
   timestamp: string
@@ -1528,66 +1528,13 @@ export default function Page1() {
     }
   }
 
-  // Tính điểm theo chu kỳ 1 năm:
-  // - Khi có điểm tháng X → áp dụng cho tháng X đến X+11
-  // - Nếu trong chu kỳ có điểm MỚI CAO HƠN → reset chu kỳ từ tháng đó
-  // - Sau khi hết chu kỳ mà không có điểm mới → trả về "N/A"
-  const computeCycleScore = useCallback(
-    (data: MonthlyAverage[], viewMonth: number, viewYear: number): string => {
-      const currentIdx = viewYear * 12 + viewMonth
-
-      // Lấy các tháng có điểm thực tế, sắp xếp tăng dần theo thời gian
-      const scoredMonths = data
-        .filter((d) => d.count > 0)
-        .map((d) => {
-          const [mStr, yStr] = d.month.split('/')
-          return { idx: parseInt(yStr) * 12 + parseInt(mStr), score: d.average }
-        })
-        .filter((entry) => entry.idx <= currentIdx)
-        .sort((a, b) => a.idx - b.idx)
-
-      if (scoredMonths.length === 0) return 'N/A'
-
-      // Duyệt qua từng tháng có điểm, áp dụng logic chu kỳ
-      let hasCycle = false
-      let cycleScore = 0
-      let cycleEnd = 0
-
-      for (const entry of scoredMonths) {
-        if (!hasCycle) {
-          hasCycle = true
-          cycleScore = entry.score
-          cycleEnd = entry.idx + SCORE_CYCLE_MONTHS - 1
-        } else if (entry.idx <= cycleEnd) {
-          // Trong chu kỳ: chỉ reset nếu điểm CAO HƠN
-          if (entry.score > cycleScore) {
-            cycleScore = entry.score
-            cycleEnd = entry.idx + SCORE_CYCLE_MONTHS - 1
-          }
-        } else {
-          // Đã qua chu kỳ: bắt đầu chu kỳ mới
-          cycleScore = entry.score
-          cycleEnd = entry.idx + SCORE_CYCLE_MONTHS - 1
-        }
-      }
-
-      // Kiểm tra tháng hiện tại có nằm trong chu kỳ active không
-      const cycleStart = cycleEnd - SCORE_CYCLE_MONTHS + 1
-      if (hasCycle && currentIdx >= cycleStart && currentIdx <= cycleEnd) {
-        return cycleScore.toFixed(1)
-      }
-      return 'N/A'
-    },
-    [],
-  )
-
   const expertiseScore = useMemo(() => {
     return computeCycleScore(
       expertiseData as MonthlyAverage[],
       parseInt(selectedMonth),
       parseInt(selectedYear),
     )
-  }, [selectedMonth, selectedYear, expertiseData, computeCycleScore])
+  }, [selectedMonth, selectedYear, expertiseData])
 
   const experienceScore = useMemo(() => {
     return computeCycleScore(
@@ -1595,7 +1542,7 @@ export default function Page1() {
       parseInt(selectedMonth),
       parseInt(selectedYear),
     )
-  }, [selectedMonth, selectedYear, experienceData, computeCycleScore])
+  }, [selectedMonth, selectedYear, experienceData])
 
   // Memoize highlighted months
   const highlightedMonths = useMemo(() => {

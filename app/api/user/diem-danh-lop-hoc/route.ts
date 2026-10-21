@@ -351,7 +351,8 @@ function userRolesForClass(cls: any, userEmail: string): string[] {
 }
 
 function hasTeacherAccessToClass(cls: any, userEmail: string): boolean {
-  return userRolesForClass(cls, userEmail).length > 0;
+  const email = normalizeEmail(userEmail);
+  return Boolean(email) && userRolesForClass(cls, email).length > 0;
 }
 
 function dateInputToIso(value: string | null, endOfDay: boolean): string | undefined {

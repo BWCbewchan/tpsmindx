@@ -17,6 +17,7 @@ interface TrackEvent {
 let buffer: TrackEvent[] = []
 let flushTimer: ReturnType<typeof setInterval> | null = null
 let sessionId: string | null = null
+let lastHeartbeat = 0
 
 // ── Session management ───────────────────────────────
 
@@ -156,6 +157,10 @@ export function startTracker() {
 
   flushTimer = setInterval(() => {
     if (document.visibilityState === 'visible') {
+      if (Date.now() - lastHeartbeat >= 60_000) {
+        lastHeartbeat = Date.now()
+        trackEvent('session_heartbeat')
+      }
       void flush()
     }
   }, FLUSH_INTERVAL)

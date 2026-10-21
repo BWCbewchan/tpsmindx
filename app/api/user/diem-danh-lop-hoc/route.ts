@@ -1,5 +1,5 @@
 import { requireBearerOrSessionCookie } from '@/lib/datasource-api-auth';
-import { callLmsApi } from '@/lib/lms-api';
+import { callLmsApiAllowPartial, type GraphQLRequest } from '@/lib/lms-api';
 import { getOrRefreshLmsToken, applyRefreshedCookies, LmsTokenSession } from '@/lib/lms-token-helper';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -133,6 +133,45 @@ const UPDATE_SLOT_ATTENDANCE_MUTATION = /* graphql */ `
     }
   }
 `;
+
+type LmsGraphqlError = {
+  message?: unknown;
+  path?: unknown;
+};
+
+function isLegacyClassRoleCastError(error: LmsGraphqlError): boolean {
+  const message = String(error?.message || '');
+  return message.includes('Cast to ObjectId failed for value "main"') &&
+    message.includes('model "classRoles"');
+}
+
+function graphqlErrorMessage(errors: LmsGraphqlError[]): string {
+  return errors
+    .map((error) => String(error?.message || '').trim())
+    .filter(Boolean)
+    .join('; ');
+}
+
+async function callAttendanceRead<T>(request: GraphQLRequest, authHeader: string): Promise<T> {
+  const result = await callLmsApiAllowPartial<T & {
+    data?: unknown;
+    errors?: LmsGraphqlError[];
+  }>(request, authHeader);
+  const errors = Array.isArray(result?.errors) ? result.errors : [];
+
+  if (errors.length > 0) {
+    const blockingErrors = errors.filter((error) => !isLegacyClassRoleCastError(error));
+    if (blockingErrors.length > 0 || !result?.data) {
+      throw new Error(`GraphQL error: ${graphqlErrorMessage(blockingErrors.length > 0 ? blockingErrors : errors)}`);
+    }
+
+    console.warn(
+      `[diem-danh-lop-hoc] LMS returned ${errors.length} legacy classRoles/main error(s); using the available class data.`,
+    );
+  }
+
+  return result;
+}
 
 function normalizeEmail(value: unknown): string {
   return String(value ?? '').trim().toLowerCase();
@@ -769,6 +808,7 @@ async function callLmsOnce<T>(
   request: { query: string; variables?: Record<string, unknown>; operationName?: string },
   authHeader: string,
   timeoutMs = WRITE_TIMEOUT_MS,
+  options: { allowLegacyClassRoleErrors?: boolean } = {},
 ): Promise<T> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
@@ -800,8 +840,19 @@ async function callLmsOnce<T>(
     }
     if (!result) throw new LmsRequestError('LMS trả về dữ liệu không hợp lệ.');
     if (result.errors?.length) {
-      const message = result.errors.map((error) => error.message).filter(Boolean).join('; ');
-      throw new LmsRequestError(message || 'LMS không chấp nhận dữ liệu điểm danh.');
+      const canUsePartialData = Boolean(
+        options.allowLegacyClassRoleErrors &&
+        result.data &&
+        result.errors.every(isLegacyClassRoleCastError),
+      );
+      if (!canUsePartialData) {
+        const message = result.errors.map((error) => error.message).filter(Boolean).join('; ');
+        throw new LmsRequestError(message || 'LMS không chấp nhận dữ liệu điểm danh.');
+      }
+
+      console.warn(
+        `[diem-danh-lop-hoc] LMS returned ${result.errors.length} legacy classRoles/main error(s) while verifying attendance; using the available class data.`,
+      );
     }
     return result as T;
   } catch (error: unknown) {
@@ -824,7 +875,7 @@ async function fetchAttendanceClassById(classId: string, authHeader: string): Pr
     query: GET_ATTENDANCE_CLASS_BY_ID_QUERY,
     operationName: 'GetAttendanceClassById',
     variables: { id: classId },
-  }, authHeader);
+  }, authHeader, WRITE_TIMEOUT_MS, { allowLegacyClassRoleErrors: true });
   return result?.data?.classesById || null;
 }
 
@@ -871,7 +922,7 @@ export async function GET(request: NextRequest) {
     const haveSlotTo = dateInputToIso(toParam, true);
     const authHeader = `Bearer ${firebaseToken}`;
 
-    const firstResult = await callLmsApi<any>(
+    const firstResult = await callAttendanceRead<any>(
       {
         query: GET_ATTENDANCE_CLASSES_QUERY,
         operationName: 'GetAllClasses',
@@ -895,7 +946,7 @@ export async function GET(request: NextRequest) {
     const maxPagesToFetch = isSuperAdmin && !searchParam && !classIdParam ? 10 : MAX_PAGES;
 
     for (let pageIndex = 1; pageIndex < totalPages && pageIndex < maxPagesToFetch; pageIndex++) {
-      const pageResult = await callLmsApi<any>(
+      const pageResult = await callAttendanceRead<any>(
         {
           query: GET_ATTENDANCE_CLASSES_QUERY,
           operationName: 'GetAllClasses',

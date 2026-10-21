@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { formatGitHubNotification, verifyGitHubSignature } from '@/lib/github-telegram.mjs';
+import { formatGitHubNotification, verifyGitHubSignature, getCIFailures } from '@/lib/github-telegram.mjs';
 import { sendTelegramMessage } from '@/lib/telegram-delivery.mjs';
 
 export const runtime = 'nodejs';
@@ -19,6 +19,9 @@ export async function POST(request: NextRequest) {
   }
   const event = request.headers.get('x-github-event') || '';
   if (event === 'ping') return NextResponse.json({ success: true, message: 'pong' });
+  if (event === 'workflow_run' && payload && typeof payload === 'object') {
+    payload.ci_failures = await getCIFailures(payload, { token: process.env.GITHUB_READ_TOKEN });
+  }
   // Vercel sometimes sends a commit SHA as deployment.ref. Resolve only the
   // current release branches, never infer a personal branch from "Preview".
   if (event === 'deployment_status' && payload?.deployment_status?.state === 'success'

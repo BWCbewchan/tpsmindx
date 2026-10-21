@@ -1,6 +1,7 @@
 'use client'
 
 import { PageContainer } from '@/components/PageContainer'
+import DateRangePicker from '@/components/portfolio/DateRangePicker'
 import { authHeaders } from '@/lib/auth-headers'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
@@ -8,6 +9,7 @@ import {
   AlertCircle,
   AlertTriangle,
   Award,
+  Bot,
   BookOpen,
   Building2,
   CalendarDays,
@@ -17,14 +19,17 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Code2,
   Eye,
   FileSpreadsheet,
   Filter,
+  LockKeyhole,
   Loader2,
+  MapPin,
   MessageSquareText,
   MoreVertical,
+  PenTool,
   RefreshCcw,
-  RotateCcw,
   Save,
   Search,
   ShieldCheck,
@@ -34,9 +39,12 @@ import {
 } from 'lucide-react'
 import { toast } from '@/lib/app-toast'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { ClassCommentsPanel } from './ClassCommentsPanel'
 
 const SESSION_COUNT = 14
 const PAGE_SIZE = 20
+const LEADER_ROLE_CODES = new Set(['CL', 'AL', 'RL', 'TC', 'TE'])
 
 type AttendanceStatus =
   | 'PRESENT'
@@ -64,6 +72,14 @@ type Student = {
   customer?: CustomerInfo | null
   imageUrl: string | null
   activeInClass: boolean
+  classSiteId?: string
+  classSiteName?: string
+}
+
+type ClassSiteOption = {
+  id: string
+  name: string
+  slotTeacherIds: Record<string, string[]>
 }
 
 type CustomerInfo = {
@@ -138,6 +154,7 @@ type AttendanceClass = {
   centreId: string | null
   centreName: string
   centreShortName: string
+  classSites: ClassSiteOption[]
   courseId?: string | null
   courseName: string
   courseShortName: string
@@ -162,6 +179,35 @@ type AttendanceApiResponse = {
     totalMatched?: number
     sessionCount?: number
   }
+}
+
+type SaveAttendanceApiResponse = {
+  success?: boolean
+  noLmsToken?: boolean
+  ambiguous?: boolean
+  unchanged?: boolean
+  verified?: boolean
+  message?: string
+  class?: AttendanceClass
+}
+
+type TeacherRow = {
+  id: string
+  fullName: string
+  email: string
+  imageUrl: string | null
+  roleShortName: string
+  roleName: string
+}
+
+function accessRoleLabels(roles: string[]): string[] {
+  const labels: string[] = []
+  if (roles.includes('LEC')) labels.push('LEC')
+  if (roles.includes('TA')) labels.push('TA')
+  if (roles.includes('JUDGE') || roles.includes('JUDGE_SESSION_14')) labels.push('Judge')
+  if (labels.length === 0 && roles.includes('ASSIGNED_TEACHER')) labels.push('Giảng dạy')
+  if (labels.length === 0 && roles.includes('TEACHER_ATTENDANCE')) labels.push('Đã tham gia')
+  return labels
 }
 
 type FiltersState = {
@@ -437,13 +483,8 @@ function studentInfoForTooltip(cls: AttendanceClass, student: Student) {
   }
 }
 
-function teacherRowsForClass(cls: AttendanceClass) {
-  const rows = new Map<string, {
-    id: string
-    fullName: string
-    email: string
-    imageUrl: string | null
-  }>()
+function teacherRowsForClass(cls: AttendanceClass): TeacherRow[] {
+  const rows = new Map<string, TeacherRow>()
 
   cls.allTeachers.forEach((teacher) => {
     const name = teacherName(teacher)
@@ -453,17 +494,22 @@ function teacherRowsForClass(cls: AttendanceClass) {
       fullName: name,
       email: teacher.email,
       imageUrl: null,
+      roleShortName: teacher.roleShortName,
+      roleName: teacher.roleName,
     })
   })
 
   cls.slots.flatMap((slot) => slot.teacherAttendance).forEach((attendance, index) => {
     const name = teacherAttendanceName(attendance)
     const key = String(attendance.teacher?.id || attendance.teacher?.email || attendance._id || `${name}-${index}`)
+    const existing = rows.get(key)
     rows.set(key, {
       id: key,
       fullName: name,
       email: String(attendance.teacher?.email || ''),
       imageUrl: attendance.teacher?.imageUrl || null,
+      roleShortName: existing?.roleShortName || '',
+      roleName: existing?.roleName || '',
     })
   })
 
@@ -478,6 +524,33 @@ function teacherStatus(slot: ClassSlot, teacherId: string, teacherEmail: string)
   })
 
   return normalizeAttendanceStatus(attendance?.status)
+}
+
+function teacherIsAssignedToSlot(slot: ClassSlot, teacher: TeacherRow): boolean {
+  const email = teacher.email.trim().toLowerCase()
+  return slot.teachers.some((assignment) => {
+    return assignment.id === teacher.id || (
+      Boolean(email) && assignment.email.trim().toLowerCase() === email
+    )
+  })
+}
+
+function slotStartTimestamp(slot: ClassSlot): number | null {
+  const value = new Date(slot.startTime || slot.date || '').getTime()
+  return Number.isFinite(value) ? value : null
+}
+
+function isSlotOpen(slot: ClassSlot): boolean {
+  if (slot.isPlaceholder) return false
+  const startTime = slotStartTimestamp(slot)
+  return startTime !== null && startTime <= Date.now()
+}
+
+function automaticTeacherStatus(slot: ClassSlot): AttendanceStatus {
+  const startTime = slotStartTimestamp(slot)
+  if (startTime === null) return 'PRESENT'
+
+  return Date.now() > startTime + 15 * 60 * 1000 ? 'LATE' : 'PRESENT'
 }
 
 const ATTENDANCE_META: Record<AttendanceStatus, {
@@ -560,6 +633,161 @@ function StatusControls({
         )
       })}
     </div>
+  )
+}
+
+function courseVisual(cls: AttendanceClass): {
+  label: string
+  icon: LucideIcon
+  iconClass: string
+  surfaceClass: string
+} {
+  const courseText = normalizeText([
+    cls.courseName,
+    cls.courseShortName,
+    cls.courseLineName,
+  ].join(' '))
+
+  if (
+    courseText.includes('robot') ||
+    courseText.includes('arduino') ||
+    courseText.includes('lego') ||
+    courseText.includes('vex')
+  ) {
+    return {
+      label: 'Robotics',
+      icon: Bot,
+      iconClass: 'text-amber-700',
+      surfaceClass: 'border-amber-200 bg-amber-50',
+    }
+  }
+
+  if (
+    courseText.includes('art') ||
+    courseText.includes('drawing') ||
+    courseText.includes('painting') ||
+    courseText.includes('my thuat')
+  ) {
+    return {
+      label: 'Art',
+      icon: PenTool,
+      iconClass: 'text-fuchsia-700',
+      surfaceClass: 'border-fuchsia-200 bg-fuchsia-50',
+    }
+  }
+
+  return {
+    label: 'Coding',
+    icon: Code2,
+    iconClass: 'text-blue-700',
+    surfaceClass: 'border-blue-200 bg-blue-50',
+  }
+}
+
+function SessionJourney({
+  cls,
+  slots,
+  selectedSessionIndex,
+  onSelect,
+}: {
+  cls: AttendanceClass
+  slots: ClassSlot[]
+  selectedSessionIndex: number | null
+  onSelect: (slot: ClassSlot, index: number) => void
+}) {
+  const progress = classProgress(cls)
+  const visual = courseVisual(cls)
+  const SubjectIcon = visual.icon
+  const slotCount = Math.max(slots.length, 1)
+  const reachedIndex = progress.done > 0 && slots.length > 0
+    ? Math.min(slots.length - 1, progress.done - 1)
+    : -1
+  const pointInsetPercent = 50 / slotCount
+  const trackLengthPercent = 100 - pointInsetPercent * 2
+  const reachedPercent = reachedIndex >= 0
+    ? ((reachedIndex + 0.5) / slotCount) * 100
+    : pointInsetPercent
+  const completedTrackPercent = reachedIndex > 0 && slots.length > 1
+    ? (reachedIndex / (slots.length - 1)) * trackLengthPercent
+    : 0
+
+  return (
+    <section className="mb-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-medium text-gray-950">Hành trình buổi học</h3>
+          <p className="mt-0.5 text-xs text-gray-500">{cls.courseName || cls.courseShortName || 'Khóa học'}</p>
+        </div>
+        <span className="text-xs font-medium text-gray-600">
+          {progress.done}/{progress.total} buổi đã diễn ra
+        </span>
+      </div>
+
+      <nav aria-label="Tiến trình buổi học" className="overflow-x-auto overflow-y-hidden [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1">
+        <div className="h-10 min-w-[620px] px-5">
+          <div className="relative h-full">
+            <span
+              className="absolute top-[19px] h-px bg-gray-200"
+              style={{ left: `${pointInsetPercent}%`, right: `${pointInsetPercent}%` }}
+              aria-hidden="true"
+            />
+            <span
+              className="absolute top-[19px] h-px bg-[#a1001f] transition-[width] duration-500"
+              style={{ left: `${pointInsetPercent}%`, width: `${completedTrackPercent}%` }}
+              aria-hidden="true"
+            />
+
+            {reachedIndex >= 0 ? (
+              <div
+                className={cn(
+                  'pointer-events-none absolute top-[5px] z-20 flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full border shadow-sm ring-2 ring-white transition-[left] duration-500',
+                  visual.surfaceClass,
+                  selectedSessionIndex === reachedIndex && 'ring-[#a1001f]/20',
+                )}
+                style={{ left: `${reachedPercent}%` }}
+                title={`${visual.label} · Đã tới buổi ${reachedIndex + 1}`}
+              >
+                <SubjectIcon className={cn('h-3.5 w-3.5', visual.iconClass)} />
+              </div>
+            ) : null}
+
+            <ol
+              className="absolute inset-x-0 top-[14px] grid h-3 items-center"
+              style={{ gridTemplateColumns: `repeat(${slotCount}, minmax(0, 1fr))` }}
+              role="list"
+            >
+              {slots.map((slot, index) => {
+                const completed = index < progress.done
+                const selected = index === selectedSessionIndex
+                const opened = isSlotOpen(slot)
+                return (
+                  <li key={`journey-${slot.id}`} className="relative z-10 flex items-center justify-center">
+                    <button
+                      type="button"
+                      disabled={!opened}
+                      onClick={() => onSelect(slot, index)}
+                      title={slot.isPlaceholder
+                        ? `Buổi ${slot.sessionNumber} chưa có lịch`
+                        : !opened
+                          ? `Buổi ${slot.sessionNumber} mở lúc ${formatTime(slot.startTime)} ngày ${formatDate(slot.startTime || slot.date)}`
+                          : `Buổi ${slot.sessionNumber} - ${formatShortDateWithYear(slot.date || slot.startTime)}`}
+                      aria-label={`Chọn buổi ${slot.sessionNumber}`}
+                      className={cn(
+                        'h-3 w-3 rounded-full border-2 transition-[background-color,border-color,box-shadow,transform] hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a1001f]/30 focus-visible:ring-offset-2',
+                        completed ? 'border-[#a1001f] bg-[#a1001f]' : 'border-gray-300 bg-white',
+                        selected && 'border-[#a1001f] bg-white ring-4 ring-[#a1001f]/15',
+                        !opened && 'cursor-not-allowed hover:scale-100',
+                        reachedIndex === index && 'opacity-0',
+                      )}
+                    />
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+        </div>
+      </nav>
+    </section>
   )
 }
 
@@ -2105,10 +2333,12 @@ function ClassAttendanceDrawer({
   cls,
   onClose,
   onRefresh,
+  onClassUpdated,
 }: {
   cls: AttendanceClass | null
   onClose: () => void
   onRefresh: () => void
+  onClassUpdated: (nextClass: AttendanceClass) => void
 }) {
   const { token, user } = useAuth()
   const perm = useMemo(() => {
@@ -2117,8 +2347,11 @@ function ClassAttendanceDrawer({
   }, [cls, user])
   const [activeTab, setActiveTab] = useState<'attendance' | 'comments'>('attendance')
   const [selectedSessionIndex, setSelectedSessionIndex] = useState<number | null>(null)
+  const [selectedClassSiteId, setSelectedClassSiteId] = useState('')
   const [draftStatuses, setDraftStatuses] = useState<Record<string, AttendanceStatus>>({})
   const [showUpdateNote, setShowUpdateNote] = useState(true)
+  const [isSavingAttendance, setIsSavingAttendance] = useState(false)
+  const [saveResult, setSaveResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   // Tiêu chí chấm điểm khóa học của lớp này (hỗ trợ phân loại chuyên môn 60% / chung 40%)
   const [courseCriteria, setCourseCriteria] = useState<{
@@ -2161,11 +2394,31 @@ function ClassAttendanceDrawer({
   useEffect(() => {
     setActiveTab('attendance')
     setSelectedSessionIndex(null)
+    setSelectedClassSiteId(cls?.classSites?.[0]?.id || '')
     setDraftStatuses({})
     setShowUpdateNote(true)
+    setIsSavingAttendance(false)
+    setSaveResult(null)
     setGradingStudent(null)
     setGradedStudentIds(new Set())
   }, [cls?.id])
+
+  useEffect(() => {
+    if (!cls) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [cls, onClose])
 
   // Lấy danh sách tóm tắt học viên đã có điểm trong lớp
   useEffect(() => {
@@ -2214,79 +2467,274 @@ function ClassAttendanceDrawer({
   if (!cls) return null
 
   const classId = cls.id
+  const visual = courseVisual(cls)
+  const CourseIcon = visual.icon
   const slots = buildDisplaySlots(cls)
   const realSlots = slots.filter((s) => !s.isPlaceholder)
   const lastRealSlotIndex = realSlots.length > 0 ? realSlots.length - 1 : -1
   const selectedSlot = selectedSessionIndex === null ? null : slots[selectedSessionIndex] || null
+  const classSites = cls.classSites || []
+  const selectedClassSite = classSites.find((classSite) => classSite.id === selectedClassSiteId)
+  const visibleStudents = cls.students.filter((student) => {
+    if (!selectedClassSiteId) return classSites.length <= 1
+    return student.classSiteId === selectedClassSiteId || (!student.classSiteId && classSites.length <= 1)
+  })
   const teacherRows = teacherRowsForClass(cls)
-  const teacherRecorded = selectedSlot ? teacherRows.filter((teacher) => {
-    const status = selectedSlot ? teacherStatus(selectedSlot, teacher.id, teacher.email) : 'NOT_RECORDED'
+  const normalizedCurrentUserEmail = String(user?.email || '').trim().toLowerCase()
+  const currentTeacher = teacherRows.find(
+    (teacher) => teacher.email.trim().toLowerCase() === normalizedCurrentUserEmail,
+  )
+  const selectedTeacherRows = selectedSlot
+    ? teacherRows.filter((teacher) => teacherIsAssignedForSelectedSite(selectedSlot, teacher))
+    : []
+  const teacherRecorded = selectedSlot ? selectedTeacherRows.filter((teacher) => {
+    const key = attendanceKey(cls.id, selectedSlot.id, teacher.id)
+    const status = draftStatuses[key] || teacherStatus(selectedSlot, teacher.id, teacher.email)
     return status !== 'NOT_RECORDED'
   }).length : 0
   const studentRecorded = selectedSlot
-    ? cls.students.filter((student) => {
+    ? visibleStudents.filter((student) => {
         const key = attendanceKey(cls.id, selectedSlot.id, student.id)
         const status = draftStatuses[key] || studentStatus(selectedSlot, student.id)
         return status !== 'NOT_RECORDED'
       }).length
     : 0
+  const teacherRowsToSubmit = selectedTeacherRows.filter((teacher) => currentTeacher?.id !== teacher.id)
+  const selectedSlotPrefix = selectedSlot ? `${classId}:${selectedSlot.id}:` : ''
+  const hasDraftChanges = Boolean(selectedSlotPrefix) && Object.keys(draftStatuses).some(
+    (key) => key.startsWith(selectedSlotPrefix),
+  )
+  const allStudentsRecorded = Boolean(selectedSlot) && visibleStudents.length > 0 && visibleStudents.every((student) => {
+    const key = attendanceKey(classId, selectedSlot!.id, student.id)
+    return (draftStatuses[key] || studentStatus(selectedSlot!, student.id)) !== 'NOT_RECORDED'
+  })
+  const allOtherTeachersRecorded = Boolean(selectedSlot) && teacherRowsToSubmit.every((teacher) => {
+    const key = attendanceKey(classId, selectedSlot!.id, teacher.id)
+    return (draftStatuses[key] || teacherStatus(selectedSlot!, teacher.id, teacher.email)) !== 'NOT_RECORDED'
+  })
+  const canSaveAttendance = Boolean(
+    selectedSlot &&
+    selectedClassSiteId &&
+    isSlotOpen(selectedSlot) &&
+    hasDraftChanges &&
+    allStudentsRecorded &&
+    allOtherTeachersRecorded &&
+    !isSavingAttendance,
+  )
 
-  function setDraft(slot: ClassSlot, personId: string, status: AttendanceStatus) {
+  function teacherIsAssignedForSelectedSite(slot: ClassSlot, teacher: TeacherRow): boolean {
+    const siteTeacherIds = selectedClassSite?.slotTeacherIds?.[slot.id]
+    if (siteTeacherIds) return siteTeacherIds.includes(teacher.id)
+    return teacherIsAssignedToSlot(slot, teacher)
+  }
+
+  function addAutomaticTeacherAttendance(
+    current: Record<string, AttendanceStatus>,
+    slot: ClassSlot,
+  ): Record<string, AttendanceStatus> {
+    if (
+      !currentTeacher ||
+      !teacherIsAssignedForSelectedSite(slot, currentTeacher) ||
+      visibleStudents.length === 0
+    ) return current
+
+    const studentsComplete = visibleStudents.every((student) => {
+      const key = attendanceKey(classId, slot.id, student.id)
+      return (current[key] || studentStatus(slot, student.id)) !== 'NOT_RECORDED'
+    })
+    if (!studentsComplete) return current
+
+    const teacherKey = attendanceKey(classId, slot.id, currentTeacher.id)
+    const currentStatus = current[teacherKey] || teacherStatus(slot, currentTeacher.id, currentTeacher.email)
+    if (currentStatus !== 'NOT_RECORDED') return current
+
+    return {
+      ...current,
+      [teacherKey]: automaticTeacherStatus(slot),
+    }
+  }
+
+  function selectSession(slot: ClassSlot, index: number) {
+    if (!isSlotOpen(slot)) {
+      setSaveResult({
+        type: 'error',
+        message: slot.isPlaceholder
+          ? 'Buổi học này chưa có lịch trên LMS.'
+          : `Điểm danh sẽ mở lúc ${formatTime(slot.startTime)} ngày ${formatDate(slot.startTime || slot.date)}.`,
+      })
+      return
+    }
+
+    setSelectedSessionIndex((current) => current === index ? null : index)
+    setDraftStatuses((current) => addAutomaticTeacherAttendance(current, slot))
+    setSaveResult(null)
+  }
+
+  function setTeacherDraft(slot: ClassSlot, teacher: TeacherRow, status: AttendanceStatus) {
+    if (currentTeacher?.id === teacher.id) return
+
+    setSaveResult(null)
     setDraftStatuses((current) => ({
       ...current,
-      [attendanceKey(classId, slot.id, personId)]: status,
+      [attendanceKey(classId, slot.id, teacher.id)]: status,
     }))
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex bg-black/45">
-      <button type="button" className="hidden flex-1 cursor-default md:block" aria-label="Đóng chi tiết lớp" onClick={onClose} />
-      <aside className="ml-auto flex h-full w-full flex-col bg-white shadow-2xl md:w-[min(1180px,calc(100vw-280px))]">
-        <header className="shrink-0 border-b border-gray-200 px-6 py-5">
+  function setStudentDraft(slot: ClassSlot, studentId: string, status: AttendanceStatus) {
+    setSaveResult(null)
+    setDraftStatuses((current) => addAutomaticTeacherAttendance({
+      ...current,
+      [attendanceKey(classId, slot.id, studentId)]: status,
+    }, slot))
+  }
+
+  async function saveAttendance() {
+    if (!selectedSlot || !canSaveAttendance) return
+
+    setIsSavingAttendance(true)
+    setSaveResult(null)
+    try {
+      const response = await fetch('/api/user/diem-danh-lop-hoc', {
+        method: 'POST',
+        cache: 'no-store',
+        headers: {
+          ...authHeaders(token),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          classId,
+          classSiteId: selectedClassSiteId,
+          slotId: selectedSlot.id,
+          expectedStartTime: selectedSlot.startTime,
+          students: visibleStudents.map((student) => ({
+            personId: student.id,
+            status: draftStatuses[attendanceKey(classId, selectedSlot.id, student.id)] || studentStatus(selectedSlot, student.id),
+          })),
+          teachers: teacherRowsToSubmit.map((teacher) => ({
+            personId: teacher.id,
+            status: draftStatuses[attendanceKey(classId, selectedSlot.id, teacher.id)] || teacherStatus(selectedSlot, teacher.id, teacher.email),
+          })),
+        }),
+      })
+      const payload = await response.json() as SaveAttendanceApiResponse
+      if (!response.ok || !payload.success) {
+        throw new Error(payload.message || 'Không thể xác nhận dữ liệu điểm danh trên LMS.')
+      }
+
+      if (payload.class) onClassUpdated(payload.class)
+      setDraftStatuses((current) => Object.fromEntries(
+        Object.entries(current).filter(([key]) => !key.startsWith(selectedSlotPrefix)),
+      ))
+      setSaveResult({
+        type: 'success',
+        message: payload.message || 'Đã lưu và xác nhận dữ liệu trên LMS.',
+      })
+    } catch (saveError: unknown) {
+      setSaveResult({
+        type: 'error',
+        message: saveError instanceof Error ? saveError.message : 'Không thể lưu điểm danh lên LMS.',
+      })
+    } finally {
+      setIsSavingAttendance(false)
+    }
+  }
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-5"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.currentTarget === event.target) onClose()
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="attendance-modal-title"
+        className="flex h-[min(90dvh,840px)] w-[min(94vw,1180px)] flex-col overflow-hidden rounded-lg border border-white/80 bg-white shadow-2xl"
+      >
+        <header className="shrink-0 border-b border-gray-200 bg-white px-5 py-4 sm:px-6">
           <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="truncate text-xl font-semibold text-gray-950">{cls.name}</h2>
-                <span className={cn('text-sm font-medium', classStatusTextClass(cls.status))}>
-                  {classStatusLabel(cls.status)}
-                </span>
+            <div className="flex min-w-0 items-start gap-3.5">
+              <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border', visual.surfaceClass)}>
+                <CourseIcon className={cn('h-5 w-5', visual.iconClass)} />
               </div>
-              <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-gray-700">
-                <span>{cls.operatorName || cls.allTeacherNames[0] || 'Chưa có phụ trách'}</span>
-                <span className="inline-flex h-9 min-w-[210px] items-center justify-between border border-gray-300 px-3 text-gray-600">
-                  Mặc định
-                  <ChevronDown className="h-4 w-4 text-gray-400" />
-                </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 id="attendance-modal-title" className="truncate text-xl font-semibold text-gray-950">{cls.name}</h2>
+                  <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                    {classStatusLabel(cls.status)}
+                  </span>
+                </div>
+                <p className="mt-1 truncate text-sm text-gray-700">
+                  {cls.courseName || cls.courseShortName || 'Khóa học'}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                  <span className="inline-flex items-center gap-1.5">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {cls.centreShortName || cls.centreName || 'Chưa có cơ sở'}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    {formatDate(cls.startDate)} - {formatDate(cls.endDate)}
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5" />
+                    {cls.operatorName || cls.allTeacherNames[0] || 'Chưa có phụ trách'}
+                  </span>
+                  {classSites.length > 0 ? (
+                    <label className="inline-flex items-center gap-1.5">
+                      <span>Class site</span>
+                      <select
+                        value={selectedClassSiteId}
+                        onChange={(event) => {
+                          setSelectedClassSiteId(event.target.value)
+                          setSelectedSessionIndex(null)
+                          setDraftStatuses({})
+                          setSaveResult(null)
+                        }}
+                        className="h-7 rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-700 outline-none focus:border-[#3156d4]"
+                      >
+                        {classSites.map((classSite) => (
+                          <option key={classSite.id} value={classSite.id}>{classSite.name}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : null}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={onRefresh}
-                className="flex h-9 w-9 items-center justify-center text-gray-600 hover:text-gray-950"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-950"
                 title="Làm mới"
+                aria-label="Làm mới dữ liệu lớp"
               >
-                <RefreshCcw className="h-5 w-5" />
+                <RefreshCcw className="h-4 w-4" />
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-9 w-9 items-center justify-center text-gray-600 hover:text-gray-950"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-500 transition-colors hover:bg-gray-50 hover:text-gray-950"
                 title="Đóng"
+                aria-label="Đóng chi tiết lớp"
               >
-                <X className="h-6 w-6" />
+                <X className="h-5 w-5" />
               </button>
             </div>
           </div>
 
-          <nav className="mt-5 flex gap-6 border-b border-gray-200 text-sm font-semibold text-gray-500">
+          <nav className="mt-4 flex gap-1 border-t border-gray-100 bg-gray-50/70 px-1 text-sm text-gray-500" aria-label="Nội dung lớp học">
             <button
               type="button"
               onClick={() => setActiveTab('attendance')}
               className={cn(
-                'pb-3 transition-colors',
+                'border-b-2 px-3 py-3 font-medium transition-colors',
                 activeTab === 'attendance'
-                  ? 'border-b-2 border-[#4556d6] text-[#4556d6]'
+                  ? 'border-[#a1001f] text-[#a1001f]'
                   : 'border-b-2 border-transparent hover:text-gray-900',
               )}
             >
@@ -2296,9 +2744,9 @@ function ClassAttendanceDrawer({
               type="button"
               onClick={() => setActiveTab('comments')}
               className={cn(
-                'pb-3 transition-colors',
+                'border-b-2 px-3 py-3 font-medium transition-colors',
                 activeTab === 'comments'
-                  ? 'border-b-2 border-[#4556d6] text-[#4556d6]'
+                  ? 'border-[#a1001f] text-[#a1001f]'
                   : 'border-b-2 border-transparent hover:text-gray-900',
               )}
             >
@@ -2307,15 +2755,37 @@ function ClassAttendanceDrawer({
           </nav>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-auto px-6 py-4">
+        <div className="min-h-0 flex-1 overflow-auto bg-[#f6f7f9] px-4 py-4 sm:px-5">
           {activeTab === 'comments' ? (
-            <div className="flex min-h-[360px] items-center justify-center border border-dashed border-gray-300 bg-gray-50 text-sm text-gray-500">
-              Mục nhận xét sẽ được hoàn thiện sau phần điểm danh.
-            </div>
+            <ClassCommentsPanel
+              classId={classId}
+              selectedClassSiteId={selectedClassSiteId}
+            />
           ) : (
             <>
-          {showUpdateNote ? (
-            <div className="relative mb-4 bg-gray-100 px-3 py-3 text-sm text-gray-950">
+          <SessionJourney
+            cls={cls}
+            slots={slots}
+            selectedSessionIndex={selectedSessionIndex}
+            onSelect={selectSession}
+          />
+          {saveResult ? (
+            <div className={cn(
+              'mb-3 flex items-start gap-2 rounded-md border px-3 py-2 text-sm',
+              saveResult.type === 'success'
+                ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                : 'border-amber-200 bg-amber-50 text-amber-900',
+            )}>
+              {saveResult.type === 'success' ? (
+                <Check className="mt-0.5 h-4 w-4 shrink-0" />
+              ) : (
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              )}
+              <span>{saveResult.message}</span>
+            </div>
+          ) : null}
+          {showUpdateNote && selectedSlot && (!currentTeacher || !teacherIsAssignedForSelectedSite(selectedSlot, currentTeacher)) ? (
+            <div className="relative mb-4 rounded-lg border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-gray-800">
               <button
                 type="button"
                 onClick={() => setShowUpdateNote(false)}
@@ -2324,21 +2794,22 @@ function ClassAttendanceDrawer({
               >
                 <X className="h-5 w-5" />
               </button>
-              <p className="pr-8 text-base font-normal">Không thể cập nhật điểm danh vì những lý do sau:</p>
-              <ul className="mt-2 list-disc space-y-1 pl-6">
+              <p className="pr-8 font-medium text-gray-900">Không thể cập nhật điểm danh vì những lý do sau:</p>
+              <ul className="mt-1.5 list-disc space-y-1 pl-5 text-gray-700">
                 <li>User không phải là giảng viên được phân công dạy slot hiện tại</li>
                 <li>User không phải là vận hành của lớp</li>
               </ul>
             </div>
           ) : null}
 
-          <div className="overflow-x-auto custom-scrollbar">
-            <table className="min-w-[1060px] w-full border-separate border-spacing-0 text-left text-sm">
+          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white custom-scrollbar [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5">
+            <table className="w-full min-w-max border-separate border-spacing-0 text-left text-sm">
               <thead>
                 <tr>
                   <th className="sticky left-0 z-20 w-[210px] bg-white px-0 py-2" />
                   {slots.map((slot, index) => {
                     const active = index === selectedSessionIndex
+                    const opened = isSlotOpen(slot)
                     const isLastSlot = !slot.isPlaceholder && (
                       index === lastRealSlotIndex ||
                       (cls.numberOfSessions && slot.sessionNumber === cls.numberOfSessions) ||
@@ -2357,17 +2828,18 @@ function ClassAttendanceDrawer({
                       >
                         <button
                           type="button"
-                          onClick={() => {
-                            if (!slot.isPlaceholder) setSelectedSessionIndex(index)
-                          }}
-                          disabled={slot.isPlaceholder}
+                          onClick={() => selectSession(slot, index)}
+                          disabled={!opened}
+                          title={!opened && !slot.isPlaceholder
+                            ? `Mở điểm danh lúc ${formatTime(slot.startTime)} ngày ${formatDate(slot.startTime || slot.date)}`
+                            : undefined}
                           className={cn(
-                            'h-[54px] w-full border-0 px-3 py-1 text-center transition-colors',
+                            'h-[56px] w-full rounded-md border px-3 py-1 text-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a1001f]/25',
                             active
-                              ? 'bg-[#1300ff] text-white'
-                              : slot.isPlaceholder
-                                ? 'cursor-not-allowed bg-gray-50 text-gray-400'
-                                : 'bg-gray-100 text-gray-900 hover:bg-gray-200',
+                              ? 'border-[#a1001f] bg-[#a1001f] text-white shadow-sm'
+                              : !opened
+                                ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-400'
+                                : 'border-gray-200 bg-gray-50 text-gray-900 hover:border-gray-300 hover:bg-gray-100',
                           )}
                         >
                           <span className="block text-sm font-semibold">
@@ -2378,7 +2850,8 @@ function ClassAttendanceDrawer({
                               </span>
                             )}
                           </span>
-                          <span className={cn('mt-1 block truncate text-xs font-semibold', active ? 'text-white' : 'text-gray-500')}>
+                          <span className={cn('mt-1 flex items-center justify-center gap-1 truncate text-xs font-medium', active ? 'text-white' : 'text-gray-500')}>
+                            {!opened && !slot.isPlaceholder ? <LockKeyhole className="h-3 w-3" /> : null}
                             {slot.isPlaceholder
                               ? '--/--'
                               : `${formatTime(slot.startTime) ? `${formatTime(slot.startTime)} ` : ''}${formatShortDateWithYear(slot.date || slot.startTime)}`}
@@ -2399,7 +2872,7 @@ function ClassAttendanceDrawer({
                         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#5b6fd8] text-sm font-semibold text-white">1</span>
                       </div>
                       <p className="text-sm font-semibold text-green-700">
-                        {selectedSlot ? `${teacherRecorded}/${teacherRows.length} Đã ghi nhận` : 'Chưa chọn buổi'}
+                        {selectedSlot ? `${teacherRecorded}/${selectedTeacherRows.length} đã ghi nhận` : 'Chọn một buổi để thực hiện điểm danh'}
                       </p>
                     </div>
                   </td>
@@ -2417,19 +2890,42 @@ function ClassAttendanceDrawer({
                             getInitials(teacher.fullName)
                           )}
                         </div>
-                        <span className="truncate text-sm font-normal text-gray-900">{teacher.fullName}</span>
+                        <div className="min-w-0">
+                          <span className="block truncate text-sm font-normal text-gray-900">
+                            {teacher.fullName}
+                            {currentTeacher?.id === teacher.id ? (
+                              <span className="ml-1.5 text-[11px] text-gray-400">(Bạn)</span>
+                            ) : null}
+                          </span>
+                          {teacher.roleShortName || teacher.roleName ? (
+                            <span className="mt-0.5 block truncate text-[11px] text-gray-500">
+                              {teacher.roleShortName || teacher.roleName}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </td>
                     {slots.map((slot, index) => {
                       const key = attendanceKey(cls.id, slot.id, teacher.id)
                       const status = draftStatuses[key] || teacherStatus(slot, teacher.id, teacher.email)
+                      const isCurrentTeacher = currentTeacher?.id === teacher.id
+                      const assignedToSlot = teacherIsAssignedForSelectedSite(slot, teacher)
+                      const opened = isSlotOpen(slot)
                       return (
                         <td key={`${teacher.id}-${slot.id}`} className="px-1 py-3 text-center align-middle">
-                          {index === selectedSessionIndex ? (
-                            <StatusControls value={status} onChange={(nextStatus) => setDraft(slot, teacher.id, nextStatus)} />
+                          {index === selectedSessionIndex && assignedToSlot && !isCurrentTeacher ? (
+                            <StatusControls
+                              value={status}
+                              onChange={(nextStatus) => setTeacherDraft(slot, teacher, nextStatus)}
+                            />
                           ) : (
-                            <div className="flex h-8 items-center justify-center">
-                              <AttendanceMark status={status} />
+                            <div
+                              className="flex h-8 items-center justify-center"
+                              title={isCurrentTeacher && index === selectedSessionIndex
+                                ? 'Trạng thái của bạn được tự động ghi nhận khi đã điểm danh đủ học viên'
+                                : ATTENDANCE_META[status].label}
+                            >
+                              <AttendanceMark status={opened && assignedToSlot ? status : 'NOT_RECORDED'} />
                             </div>
                           )}
                         </td>
@@ -2447,14 +2943,14 @@ function ClassAttendanceDrawer({
                         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#5b6fd8] text-sm font-semibold text-white">2</span>
                       </div>
                       <p className="text-sm font-semibold text-green-700">
-                        {selectedSlot ? `${studentRecorded}/${cls.students.length} Đã ghi nhận` : 'Chưa chọn buổi'}
+                        {selectedSlot ? `${studentRecorded}/${visibleStudents.length} đã ghi nhận` : 'Chọn một buổi để thực hiện điểm danh'}
                       </p>
                     </div>
                   </td>
                   <td colSpan={slots.length} className="bg-white" />
                 </tr>
 
-                {cls.students.map((student) => (
+                {visibleStudents.map((student) => (
                   <tr key={student.id}>
                     <td className="sticky left-0 z-10 bg-white px-0 py-3 align-middle">
                       <StudentIdentity cls={cls} student={student} />
@@ -2463,6 +2959,7 @@ function ClassAttendanceDrawer({
                       const attendance = findAttendance(slot, student.id)
                       const key = attendanceKey(cls.id, slot.id, student.id)
                       const status = draftStatuses[key] || studentStatus(slot, student.id)
+                      const opened = isSlotOpen(slot)
 
                       // Buổi cuối cùng: slot thực tế cuối cùng của lớp hoặc sessionNumber bằng tổng số buổi của lớp
                       const isLastSlot = !slot.isPlaceholder && (
@@ -2470,7 +2967,7 @@ function ClassAttendanceDrawer({
                         (cls.numberOfSessions && slot.sessionNumber === cls.numberOfSessions) ||
                         (cls.sessionCount && slot.sessionNumber === cls.sessionCount)
                       )
-                      const canGradeStudent = isLastSlot && Boolean(courseCriteria?.hasCriteria)
+                      const canGradeStudent = isLastSlot && opened && Boolean(courseCriteria?.hasCriteria)
                       const isGraded = gradedStudentIds.has(student.id)
                       const buttonText = isGraded ? 'Xem điểm' : perm.canEdit ? 'Chấm điểm' : 'Xem điểm'
                       const buttonClass = isGraded
@@ -2486,7 +2983,7 @@ function ClassAttendanceDrawer({
                               <StatusControls
                                 value={status}
                                 hasComment={Boolean(attendance?.comment)}
-                                onChange={(nextStatus) => setDraft(slot, student.id, nextStatus)}
+                                onChange={(nextStatus) => setStudentDraft(slot, student.id, nextStatus)}
                               />
                               {canGradeStudent && (
                                 <button
@@ -2512,7 +3009,7 @@ function ClassAttendanceDrawer({
                           ) : (
                             <div className="flex items-center justify-center gap-2">
                               <div className="flex h-8 items-center justify-center">
-                                <AttendanceMark status={status} />
+                                <AttendanceMark status={opened ? status : 'NOT_RECORDED'} />
                               </div>
                               {canGradeStudent && (
                                 <button
@@ -2545,12 +3042,53 @@ function ClassAttendanceDrawer({
                   </tr>
                 ))}
               </tbody>
+              {selectedSlot ? (
+                <tfoot>
+                  <tr>
+                    <td className="sticky left-0 z-20 border-t border-gray-200 bg-white px-4 py-3 align-middle">
+                      <p className="text-sm font-medium text-gray-900">
+                        Buổi {selectedSlot.sessionNumber} · {formatTimeRange(selectedSlot)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        {!allStudentsRecorded
+                          ? `Còn ${Math.max(0, visibleStudents.length - studentRecorded)} học viên chưa ghi nhận`
+                          : !allOtherTeachersRecorded
+                            ? 'Còn giáo viên được phân công chưa ghi nhận'
+                            : hasDraftChanges
+                              ? 'Đã đủ thông tin, có thể lưu điểm danh'
+                              : 'Chưa có thay đổi cần lưu'}
+                      </p>
+                    </td>
+                    {slots.map((slot, index) => (
+                      <td
+                        key={`save-${slot.id}`}
+                        className={cn(
+                          'border-t border-gray-200 bg-white px-2 py-3 text-center align-middle',
+                          index === selectedSessionIndex && 'bg-[#a1001f]/[0.025]',
+                        )}
+                      >
+                        {index === selectedSessionIndex ? (
+                          <button
+                            type="button"
+                            onClick={saveAttendance}
+                            disabled={!canSaveAttendance}
+                            className="mx-auto inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#a1001f] px-5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#850019] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a1001f]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none"
+                          >
+                            {isSavingAttendance ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            {isSavingAttendance ? 'Đang lưu...' : 'Lưu'}
+                          </button>
+                        ) : null}
+                      </td>
+                    ))}
+                  </tr>
+                </tfoot>
+              ) : null}
             </table>
           </div>
             </>
           )}
         </div>
-      </aside>
+      </section>
 
       {/* Modal Chấm điểm demo cho học viên */}
       {gradingStudent && courseCriteria && (
@@ -2566,7 +3104,8 @@ function ClassAttendanceDrawer({
           }}
         />
       )}
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -2652,29 +3191,63 @@ function compareClassesByRecency(a: AttendanceClass, b: AttendanceClass, todayMs
 }
 
 export default function TeacherClassesPage() {
-  const { token, isLoading: authLoading } = useAuth()
+  const { user, token, isLoading: authLoading } = useAuth()
   const [classes, setClasses] = useState<AttendanceClass[]>([])
   const [filters, setFilters] = useState<FiltersState>(INITIAL_FILTERS)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [noLmsToken, setNoLmsToken] = useState(false)
   const [refreshSignal, setRefreshSignal] = useState(0)
+  const [hasRequestedLoad, setHasRequestedLoad] = useState(false)
   const [page, setPage] = useState(1)
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
+  const requestedFiltersRef = useRef<FiltersState>(INITIAL_FILTERS)
+
+  const isLeaderRole = useMemo(() => {
+    const roleCodes = [...(user?.userRoles || []), user?.role || '']
+      .map((role) => String(role).trim().toUpperCase())
+      .filter(Boolean)
+    return roleCodes.some((role) => LEADER_ROLE_CODES.has(role))
+  }, [user?.role, user?.userRoles])
+
+  const hasActiveFilters = useMemo(
+    () => Object.values(filters).some(Boolean),
+    [filters],
+  )
 
   const loadClasses = useCallback(() => {
+    if (isLeaderRole && !hasActiveFilters) return
+    requestedFiltersRef.current = { ...filters }
+    setHasRequestedLoad(true)
+    setIsLoading(true)
     setRefreshSignal((current) => current + 1)
-  }, [])
+  }, [filters, hasActiveFilters, isLeaderRole])
 
   useEffect(() => {
     if (authLoading) return
 
+    if (isLeaderRole && !hasRequestedLoad) {
+      setClasses([])
+      setError('')
+      setNoLmsToken(false)
+      setIsLoading(false)
+      return
+    }
+
     const controller = new AbortController()
+    const requestedFilters = requestedFiltersRef.current
+    const params = new URLSearchParams()
+    if (requestedFilters.search.trim()) params.set('q', requestedFilters.search.trim())
+    if (requestedFilters.status) params.set('status', requestedFilters.status)
+    if (requestedFilters.slotFrom) params.set('from', requestedFilters.slotFrom)
+    if (requestedFilters.slotTo) params.set('to', requestedFilters.slotTo)
+    const query = params.toString()
+
     setIsLoading(true)
     setError('')
     setNoLmsToken(false)
 
-    fetch('/api/user/diem-danh-lop-hoc', {
+    fetch(`/api/user/diem-danh-lop-hoc${query ? `?${query}` : ''}`, {
       cache: 'no-store',
       headers: authHeaders(token),
       signal: controller.signal,
@@ -2701,11 +3274,17 @@ export default function TeacherClassesPage() {
       })
 
     return () => controller.abort()
-  }, [authLoading, refreshSignal, token])
+  }, [authLoading, hasRequestedLoad, isLeaderRole, refreshSignal, token])
 
   const centreOptions = useMemo(
-    () => buildOptions(classes.map((cls) => cls.centreShortName || cls.centreName), 'Tất cả cơ sở'),
-    [classes],
+    () => buildOptions(
+      [
+        ...(user?.assignedCenters || []).map((centre) => centre.short_code || centre.full_name),
+        ...classes.map((cls) => cls.centreShortName || cls.centreName),
+      ],
+      'Tất cả cơ sở',
+    ),
+    [classes, user?.assignedCenters],
   )
 
   const statusOptions = useMemo(
@@ -2794,22 +3373,11 @@ export default function TeacherClassesPage() {
     [filteredClasses],
   )
 
-  const preparingCount = useMemo(
-    () => filteredClasses.filter((cls) => cls.status === 'PREPARING').length,
-    [filteredClasses],
-  )
-
-  const finishedCount = useMemo(
-    () => filteredClasses.filter((cls) => cls.status === 'FINISHED').length,
-    [filteredClasses],
-  )
-
   const centreCount = useMemo(
     () => new Set(filteredClasses.map((cls) => cls.centreShortName || cls.centreName).filter(Boolean)).size,
     [filteredClasses],
   )
 
-  const hasActiveFilters = Object.values(filters).some(Boolean)
   const totalPages = Math.max(1, Math.ceil(filteredClasses.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
   const pagedClasses = useMemo(
@@ -2840,39 +3408,84 @@ export default function TeacherClassesPage() {
     setFilters((current) => ({ ...current, [key]: value }))
   }
 
+  function updateSlotRange(range: { dateFrom: string; dateTo: string }) {
+    setPage(1)
+    setFilters((current) => ({
+      ...current,
+      slotFrom: range.dateFrom,
+      slotTo: range.dateTo,
+    }))
+  }
+
   function clearFilters() {
     setPage(1)
     setFilters(INITIAL_FILTERS)
+    requestedFiltersRef.current = INITIAL_FILTERS
+    if (isLeaderRole) {
+      setClasses([])
+      setError('')
+      setNoLmsToken(false)
+      setHasRequestedLoad(false)
+      setIsLoading(false)
+    }
   }
 
-  const headerActions = (
+  const headerActions = !isLeaderRole || hasRequestedLoad ? (
     <div className="flex flex-wrap justify-end gap-2">
       <HeaderButton icon={RefreshCcw} onClick={loadClasses} disabled={isLoading}>
         Làm mới
       </HeaderButton>
-      <HeaderButton icon={RotateCcw} onClick={clearFilters} disabled={!hasActiveFilters}>
-        Xóa lọc
-      </HeaderButton>
     </div>
-  )
+  ) : null
 
   return (
-    <PageContainer maxWidth="full">
+    <PageContainer
+      title="Lớp học"
+      description="Theo dõi các lớp được LMS phân quyền và thực hiện điểm danh theo từng buổi."
+      headerActions={headerActions}
+      maxWidth="full"
+    >
       <div className="space-y-5">
-        <div className="grid gap-3 md:grid-cols-4">
+        <section className="grid overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm divide-y divide-gray-100 md:grid-cols-4 md:divide-x md:divide-y-0">
           <StatTile icon={BookOpen} label="Lớp hiển thị" value={String(filteredClasses.length)} tone="bg-[#a1001f]/10 text-[#a1001f]" />
           <StatTile icon={Users} label="Học viên" value={String(totalStudents)} tone="bg-emerald-50 text-emerald-700" />
-          <StatTile icon={CalendarDays} label="Đang học / Sắp / Kết thúc" value={`${runningCount} / ${preparingCount} / ${finishedCount}`} tone="bg-blue-50 text-blue-700" />
+          <StatTile icon={CalendarDays} label="Đang học" value={String(runningCount)} tone="bg-blue-50 text-blue-700" />
           <StatTile icon={Building2} label="Cơ sở" value={String(centreCount)} tone="bg-amber-50 text-amber-700" />
-        </div>
+        </section>
 
-        <section className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
+        <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex flex-col gap-3 border-b border-gray-100 pb-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-[#a1001f]" />
               <h2 className="text-sm font-semibold text-gray-800">Bộ lọc lớp học</h2>
             </div>
-            {headerActions}
+            <div className="flex flex-wrap items-center gap-2">
+              {hasActiveFilters ? (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-[#a1001f]"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Xóa bộ lọc
+                </button>
+              ) : null}
+              {isLeaderRole ? (
+                <button
+                  type="button"
+                  onClick={loadClasses}
+                  disabled={!hasActiveFilters || isLoading}
+                  className="inline-flex h-9 items-center gap-2 rounded-md bg-[#a1001f] px-3.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#87001a] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:shadow-none"
+                >
+                  {isLoading && hasRequestedLoad ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                  Tìm lớp
+                </button>
+              ) : null}
+            </div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -2910,23 +3523,13 @@ export default function TeacherClassesPage() {
               />
             </FilterField>
 
-            <FilterField label="Có buổi học từ">
-              <input
-                type="date"
-                value={filters.slotFrom}
-                max={filters.slotTo || undefined}
-                onChange={(event) => updateFilter('slotFrom', event.target.value)}
-                className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm font-normal text-gray-800 outline-none transition-colors focus:border-[#3156d4] focus:ring-2 focus:ring-[#3156d4]/10"
-              />
-            </FilterField>
-
-            <FilterField label="Có buổi học đến">
-              <input
-                type="date"
-                value={filters.slotTo}
-                min={filters.slotFrom || undefined}
-                onChange={(event) => updateFilter('slotTo', event.target.value)}
-                className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm font-normal text-gray-800 outline-none transition-colors focus:border-[#3156d4] focus:ring-2 focus:ring-[#3156d4]/10"
+            <FilterField label="Có buổi học trong khoảng">
+              <DateRangePicker
+                dateFrom={filters.slotFrom}
+                dateTo={filters.slotTo}
+                onChange={updateSlotRange}
+                placeholder="Chọn khoảng ngày"
+                className="w-full"
               />
             </FilterField>
 
@@ -2947,6 +3550,12 @@ export default function TeacherClassesPage() {
 
         {authLoading || isLoading ? (
           <LoadingTable />
+        ) : isLeaderRole && !hasRequestedLoad ? (
+          <EmptyState
+            icon={Filter}
+            title="Chọn bộ lọc để tải lớp học"
+            description="Với tài khoản Leader, hãy chọn ít nhất một điều kiện ở phía trên rồi nhấn Tìm lớp. Danh sách sẽ không tự tải khi vừa mở trang."
+          />
         ) : noLmsToken ? (
           <EmptyState
             icon={AlertTriangle}
@@ -2975,7 +3584,7 @@ export default function TeacherClassesPage() {
             }
           />
         ) : (
-          <section className="rounded-md border border-gray-200 bg-white shadow-sm">
+          <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
             <div className="flex flex-col gap-2 border-b border-gray-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-base font-semibold text-gray-950">Danh sách lớp học</h2>
@@ -2985,13 +3594,10 @@ export default function TeacherClassesPage() {
               </div>
             </div>
 
-            <div className="overflow-x-auto custom-scrollbar">
+            <div className="overflow-x-auto custom-scrollbar [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5">
               <table className="min-w-[1080px] w-full border-separate border-spacing-0 text-left text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-xs font-semibold text-gray-700">
-                    <th className="w-12 border-b border-gray-200 px-4 py-3">
-                      <input type="checkbox" aria-label="Chọn tất cả lớp" className="h-4 w-4 rounded border-gray-300" />
-                    </th>
                     <th className="border-b border-gray-200 px-4 py-3">Tên</th>
                     <th className="border-b border-gray-200 px-4 py-3">Khóa học</th>
                     <th className="border-b border-gray-200 px-4 py-3">Cơ sở</th>
@@ -3011,21 +3617,30 @@ export default function TeacherClassesPage() {
                     return (
                       <tr key={cls.id} className="group border-b border-gray-100 odd:bg-white even:bg-gray-50/40 hover:bg-[#fff8fa]">
                         <td className="border-b border-gray-100 px-4 py-4">
-                          <input type="checkbox" aria-label={`Chọn lớp ${cls.name}`} className="h-4 w-4 rounded border-gray-300" />
-                        </td>
-                        <td className="border-b border-gray-100 px-4 py-4">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <span className="max-w-[170px] truncate font-medium text-gray-950" title={cls.name}>
-                              {cls.name}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setSelectedClassId(cls.id)}
-                              className="text-gray-400 transition-colors hover:text-[#a1001f]"
-                              title="Xem chi tiết"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
+                          <div className="min-w-[155px]">
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="max-w-[170px] truncate font-medium text-gray-950" title={cls.name}>
+                                {cls.name}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedClassId(cls.id)}
+                                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-gray-400 transition-colors hover:bg-[#a1001f]/5 hover:text-[#a1001f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a1001f]/20"
+                                title="Xem chi tiết và điểm danh"
+                                aria-label={`Xem chi tiết lớp ${cls.name}`}
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
+                            </div>
+                            {accessRoleLabels(cls.accessRoles).length > 0 ? (
+                              <div className="mt-1.5 flex flex-wrap gap-1">
+                                {accessRoleLabels(cls.accessRoles).map((role) => (
+                                  <span key={role} className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                                    {role}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : null}
                           </div>
                         </td>
                         <td className="border-b border-gray-100 px-4 py-4">
@@ -3052,31 +3667,14 @@ export default function TeacherClassesPage() {
                             {classStatusLabel(cls.status)}
                           </span>
                         </td>
-                        <td className="border-b border-gray-100 px-4 py-4 font-normal text-gray-700 whitespace-nowrap">
+                        <td className="border-b border-gray-100 px-4 py-4 font-normal text-gray-700">
                           {formatDate(cls.startDate)}
                         </td>
-                        <td className="border-b border-gray-100 px-4 py-4 font-normal text-gray-700 whitespace-nowrap">
+                        <td className="border-b border-gray-100 px-4 py-4 font-normal text-gray-700">
                           {formatDate(cls.endDate)}
                         </td>
                         <td className="border-b border-gray-100 px-4 py-4 text-xs font-normal text-gray-700">
-                          {(() => {
-                            const list = getScheduleList(cls)
-                            if (list.length === 0) return '-'
-                            return (
-                              <div className="flex flex-col gap-1">
-                                {list.slice(0, 2).map((item, idx) => (
-                                  <span key={idx} className="whitespace-nowrap font-medium text-gray-800">
-                                    {item}
-                                  </span>
-                                ))}
-                                {list.length > 2 && (
-                                  <span className="text-[11px] font-medium text-gray-500 whitespace-nowrap">
-                                    +{list.length - 2} buổi khác
-                                  </span>
-                                )}
-                              </div>
-                            )
-                          })()}
+                          {scheduleText(cls)}
                         </td>
                         <td className="border-b border-gray-100 px-4 py-4">
                           <div className="w-24">
@@ -3084,7 +3682,7 @@ export default function TeacherClassesPage() {
                               <span>{progress.done}/{progress.total}</span>
                               <span className="text-gray-400">{progress.percent}%</span>
                             </div>
-                            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-gray-100">
+                            <div className="mt-1 h-1 overflow-hidden rounded-full bg-gray-100">
                               <div className="h-full rounded-full bg-[#a1001f]" style={{ width: `${progress.percent}%` }} />
                             </div>
                           </div>
@@ -3127,6 +3725,9 @@ export default function TeacherClassesPage() {
         cls={selectedClass}
         onClose={() => setSelectedClassId(null)}
         onRefresh={loadClasses}
+        onClassUpdated={(nextClass) => {
+          setClasses((current) => current.map((item) => item.id === nextClass.id ? nextClass : item))
+        }}
       />
     </PageContainer>
   )

@@ -4,6 +4,10 @@ process.env.BASELINE_BROWSER_MAPPING_IGNORE_OLD_DATA ??= 'true';
 process.env.BROWSERSLIST_IGNORE_OLD_DATA ??= 'true';
 
 const isProduction = process.env.NODE_ENV === 'production';
+const buildWorkerCount = Math.max(
+  1,
+  Number.parseInt(process.env.NEXT_BUILD_CPUS || '2', 10) || 2,
+);
 
 const scriptSrc = [
   "'self'",
@@ -81,6 +85,8 @@ const nextConfig: NextConfig = {
   },
 
   experimental: {
+    cpus: buildWorkerCount,
+    staticGenerationMaxConcurrency: 2,
     webpackBuildWorker: false,
     serverSourceMaps: false,
     proxyClientMaxBodySize: "512mb",

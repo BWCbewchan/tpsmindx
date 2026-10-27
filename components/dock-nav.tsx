@@ -1,5 +1,7 @@
 'use client'
 
+import { canSwitchInterface } from '@/lib/teacher-session-routing'
+
 import { useAuth } from '@/lib/auth-context'
 import { useSidebar } from '@/lib/sidebar-context'
 import { isTempHiddenUserRoute } from '@/lib/temp-hidden-user-routes'
@@ -974,7 +976,7 @@ export function DockNav() {
                     </button>
 
                     {/* Switch Admin ↔ User */}
-                    {user?.isAdmin && (
+                    {canSwitchInterface(user) && (
                       isUserArea ? (
                         <Link
                           href="/admin/dashboard"

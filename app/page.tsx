@@ -50,6 +50,7 @@ export default function Home() {
       userRole: user.role,
       isAdmin: Boolean(user.isAdmin),
       teacherSync: user.teacherSync,
+      permissions: user.permissions,
     })
 
     logger.info('Root: Redirecting authenticated user', {

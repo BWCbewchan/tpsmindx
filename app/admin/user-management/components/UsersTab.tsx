@@ -2,6 +2,7 @@
 import { toast } from "@/lib/app-toast";
 import { useAuth } from "@/lib/auth-context";
 import { authHeaders } from "@/lib/auth-headers";
+import { INTERFACE_SWITCH_DISABLED } from "@/lib/teacher-session-routing";
 import { Building2, Check, Eye, EyeOff, Filter, Key, Loader2, Lock, Plus, Save, Search, Trash2, UserCheck, UserPlus, Users, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import ConfirmDialog from "./ConfirmDialog";
@@ -36,6 +37,7 @@ export default function UsersTab() {
     const [adding, setAdding] = useState(false);
     // Roles assignment
     const [selRoles, setSelRoles] = useState<string[]>([]); const [savingRoles, setSavingRoles] = useState(false);
+    const [allowInterfaceSwitch, setAllowInterfaceSwitch] = useState(true);
     // Center assignment
     const [selCenterIds, setSelCenterIds] = useState<Set<number>>(new Set());
     const [assignedCenters, setAssignedCenters] = useState<AssignedCenterInfo[]>([]);
@@ -125,16 +127,20 @@ export default function UsersTab() {
         } catch { toast.error("Lỗi mạng"); } finally { setAdding(false); }
     };
 
-    const openRoles = (u: AppUser) => { setSel(u); setSelRoles(u.user_roles || []); setPanel('roles'); };
+    const openRoles = (u: AppUser) => {
+        setSel(u); setSelRoles(u.user_roles || []);
+        setAllowInterfaceSwitch(u.role === 'super_admin' || !u.permissions?.some(p => p.route_path === INTERFACE_SWITCH_DISABLED && p.can_access));
+        setPanel('roles');
+    };
     const handleSaveRoles = async () => {
         if (!sel) return; setSavingRoles(true);
         try {
             const r = await fetch("/api/app-auth/user-roles", {
                 method: "POST", headers: { "Content-Type": "application/json", ...authHeaders(token) },
-                body: JSON.stringify({ userId: sel.id, roleCodes: selRoles })
+                body: JSON.stringify({ userId: sel.id, roleCodes: selRoles, allowInterfaceSwitch })
             });
             const d = await r.json();
-            if (d.success) { toast.success(`Đã gán ${d.count} role`); close(); loadReferenceData(); }
+            if (d.success) { toast.success('Đã cập nhật vai trò và quyền chuyển giao diện'); close(); loadReferenceData(); }
             else toast.error(d.error || "Lỗi");
         } catch { toast.error("Lỗi") } finally { setSavingRoles(false) }
     };
@@ -683,6 +689,16 @@ export default function UsersTab() {
                         </div>
                         <p className="text-sm text-gray-500 mb-5 border-b pb-3">Mỗi role chứa một tập hợp các quyền truy cập màn hình. User sẽ được cấp quyền tổng hợp từ những role được chỉ định.</p>
 
+                        <label className="mb-4 flex items-start gap-3 rounded-lg border border-indigo-200 bg-indigo-50/50 p-3">
+                            <input type="checkbox" checked={allowInterfaceSwitch}
+                                onChange={e => setAllowInterfaceSwitch(e.target.checked)} disabled={sel.role === 'super_admin' || savingRoles}
+                                className="mt-1 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                            <span>
+                                <span className="block text-sm font-semibold text-gray-900">Cho phép chuyển qua lại giữa Quản lý và Giáo viên</span>
+                                <span className="block mt-1 text-xs text-gray-600">Bỏ chọn để tài khoản chỉ sử dụng giao diện Quản lý. Quyền truy cập các màn hình quản lý vẫn theo vai trò đã cấp.</span>
+                                {sel.role === 'super_admin' && <span className="block mt-1 text-xs text-gray-500">Super Admin luôn được chuyển giao diện.</span>}
+                            </span>
+                        </label>
                         <div className="space-y-4 max-h-[50vh] overflow-y-auto p-1">
                             {depts.map(dept => (
                                 <div key={dept}>

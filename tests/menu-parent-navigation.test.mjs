@@ -68,3 +68,23 @@ test('heading-only groups retain their toggle behavior and inaccessible groups d
 test('super administrators retain the parent route', () => {
   assert.equal(getFilteredAdminMenuItems([training], { role: 'super_admin' })[0].href, '/admin/hr-candidates');
 });
+
+test('teacher evaluations require an explicit screen grant for managers and admins', () => {
+  const href = '/admin/phieu-danh-gia-giao-vien';
+  for (const role of ['manager', 'admin']) {
+    const account = { ...manager, role, userRoles: ['HOMINDX'] };
+    assert.equal(checkHrefPermission(href, account), false);
+    assert.equal(getFilteredAdminMenuItems([{ label: 'Evaluation', href }], account).length, 0);
+    assert.equal(checkHrefPermission(href, { ...account, permissions: [href] }), true);
+  }
+});
+
+test('teacher evaluation catalog migrations never auto-grant user or role permissions', () => {
+  const standalone = fs.readFileSync(new URL('../migrations/V115_teacher_evaluation_screen.sql', import.meta.url), 'utf8');
+  const runtime = fs.readFileSync(new URL('../lib/migrations.ts', import.meta.url), 'utf8');
+  const runtimeSql = runtime.split("name: 'V115_teacher_evaluation_screen'")[1].split("name: 'V116_")[0];
+  for (const sql of [standalone, runtimeSql]) {
+    assert.match(sql, /INSERT INTO app_screens/i);
+    assert.doesNotMatch(sql, /INSERT INTO (?:app_permissions|role_permissions)/i);
+  }
+});

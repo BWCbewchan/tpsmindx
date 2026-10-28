@@ -43,7 +43,7 @@ const adminSearchItems: SearchItem[] = [
   { label: 'Đào tạo đầu vào - Miền Bắc (HN + Tỉnh Bắc + Tỉnh Trung)', href: '/admin/hr-candidates/gen-planner?region=north', icon: Users, group: 'Giáo viên & Vận hành' },
   { label: 'Đào tạo đầu vào - Quản lý video đào tạo', href: '/admin/hr-onboarding/videos', icon: Video, group: 'Đào tạo đầu vào', keywords: ['video onboarding', 'video dau vao'] },
   { label: 'Đào tạo đầu vào - Thư viện bài kiểm tra', href: '/admin/hr-candidates/input-training-tests', icon: GraduationCap, group: 'Đào tạo đầu vào', keywords: ['quiz dau vao', 'bai kiem tra dau vao'] },
-  { label: 'Hồ sơ Giáo viên', href: '/admin/page1', icon: Users, group: 'Giáo viên & Vận hành' },
+  { label: 'Hồ sơ Giáo viên', href: '/admin/ho-so-giao-vien', icon: Users, group: 'Giáo viên & Vận hành' },
   { label: 'Quản Lý Kiểm Tra Chất Lượng', href: '/admin/quan-ly-qc', icon: ClipboardCheck, group: 'Giáo viên & Vận hành', keywords: ['qc', 'quality check', 'kiem tra chat luong', 'phieu qc'] },
   { label: 'Phiếu đánh giá giáo viên', href: '/admin/phieu-danh-gia-giao-vien', icon: ClipboardCheck, group: 'Giáo viên & Vận hành', keywords: ['teacher point', 'khao sat giao vien', 'google forms', 'phieu danh gia'] },
   { label: 'Quản lý lịch làm việc', href: '/admin/page4/quan-ly-lich-lam-viec', icon: CalendarDays, group: 'Giáo viên & Vận hành' },

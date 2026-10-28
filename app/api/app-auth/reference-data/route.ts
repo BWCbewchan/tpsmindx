@@ -87,6 +87,7 @@ export async function GET(request: NextRequest) {
       pool.query(`
         SELECT u.id, u.email, u.display_name, u.role, u.is_active, u.created_by, u.created_at,
           COALESCE(u.auth_type, 'app') as auth_type,
+          (u.password_hash IS NOT NULL) as has_tps_password,
           COALESCE(
             (SELECT json_agg(json_build_object('route_path', p.route_path, 'can_access', p.can_access))
              FROM app_permissions p WHERE p.user_id = u.id),

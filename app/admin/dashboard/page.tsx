@@ -1,4 +1,7 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
+
 
 import { PageContainer } from '@/components/PageContainer'
 import { StatCard } from '@/components/StatCard'
@@ -213,7 +216,7 @@ export default function Dashboard() {
     return canViewTeamDashboard(user)
   }, [user, authLoading])
 
-  const [activeViewMode, setActiveViewMode] = useState<'team' | 'bu'>('team')
+  const [activeViewMode, setActiveViewMode] = useQueryState<'team' | 'bu'>('view', 'team', { values: ["team","bu"] })
 
   useEffect(() => {
     if (isSuperAdmin) {
@@ -241,11 +244,11 @@ export default function Dashboard() {
   const [data, setData] = useState<BUMetric[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [selectedMonth, setSelectedMonth] = useState<string>('all')
+  const [selectedMonth, setSelectedMonth] = useQueryState<string>('month', 'all')
   const [availableMonths, setAvailableMonths] = useState<Array<{ month: number; year: number }>>([])
   const [trendData, setTrendData] = useState<Array<{ month: string; avg_score: number | null; participant_count: number }>>([])
   const [selectedBU, setSelectedBU] = useState<BUMetric | null>(null)
-  const [selectedTrendBU, setSelectedTrendBU] = useState<string>('all')
+  const [selectedTrendBU, setSelectedTrendBU] = useQueryState<string>('trendBU', 'all')
   const [modalTeachers, setModalTeachers] = useState<Array<{ code: string; email: string; score: number | null }>>([])
   const [modalLoading, setModalLoading] = useState(false)
   const [modalError, setModalError] = useState('')

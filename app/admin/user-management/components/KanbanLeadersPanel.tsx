@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useAuth } from '@/lib/auth-context'
 import { authHeaders } from '@/lib/auth-headers'
@@ -134,7 +136,7 @@ export default function KanbanLeadersPanel() {
   const { token } = useAuth()
   const [leaders, setLeaders] = useState<KanbanLeader[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useQueryState<string>('kanbanSearch', '')
   const [busyCode, setBusyCode] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
 

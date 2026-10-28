@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { PageContainer } from '@/components/PageContainer';
 import { useAuth } from '@/lib/auth-context';
@@ -39,11 +41,12 @@ export default function AdminCloudinaryPage() {
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [resourceType, setResourceType] = useState<ResourceTypeFilter>('all');
+  const [resourceType, setResourceType] = useQueryState<ResourceTypeFilter>('type', 'all', { values: ["all","image","video","raw"] });
   const [prefix, setPrefix] = useState('');
-  const [appliedPrefix, setAppliedPrefix] = useState('');
-  const [limit, setLimit] = useState(30);
-  const [bucket, setBucket] = useState('mindx-videos');
+  const [appliedPrefix, setAppliedPrefix] = useQueryState<string>('prefix', '');
+  useEffect(() => { setPrefix(appliedPrefix) }, [appliedPrefix]);
+  const [limit, setLimit] = useQueryState<number>('limit', 30, {min:1,max:100});
+  const [bucket, setBucket] = useQueryState<string>('bucket', 'mindx-videos');
   const [buckets, setBuckets] = useState<string[]>([]);
 
   const fetchResources = useCallback(

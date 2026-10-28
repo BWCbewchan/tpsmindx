@@ -1,4 +1,7 @@
 'use client'
+import { useQueryState, isQueryUserEdit, resetQueryPage } from '@/lib/use-query-state'
+
+
 
 import { PageContainer } from '@/components/PageContainer'
 import { Tabs } from '@/components/Tabs'
@@ -399,13 +402,13 @@ export default function QuanLyQCPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<'classes' | 'records' | 'facility'>('classes')
-  const [currentPage, setCurrentPage] = useState(1)
-  const [q, setQ] = useState('')
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
-  const [selectedCourseLine, setSelectedCourseLine] = useState('')
-  const [selectedCentre, setSelectedCentre] = useState('')
+  const [activeTab, setActiveTab] = useQueryState<'classes' | 'records' | 'facility'>('tab', 'classes', { values: ["classes","records","facility"], history: 'push' })
+  const [currentPage, setCurrentPage] = useQueryState<number>('page', 1)
+  const [q, setQ] = useQueryState<string>('search', '')
+  const [fromDate, setFromDate] = useQueryState<string>('dateFrom', '', { kind: 'date' })
+  const [toDate, setToDate] = useQueryState<string>('dateTo', '', { kind: 'date' })
+  const [selectedCourseLine, setSelectedCourseLine] = useQueryState<string>('course', '')
+  const [selectedCentre, setSelectedCentre] = useQueryState<string>('centre', '')
   const [availableCourseLines, setAvailableCourseLines] = useState<string[]>([])
   const [accessibleCenters, setAccessibleCenters] = useState<
     Array<{ id: number; full_name: string; short_code: string | null }>
@@ -418,11 +421,11 @@ export default function QuanLyQCPage() {
 
   // State quản lý bộ lọc và xem chi tiết phiếu QC đã tạo (dành cho Super Admin & Leader)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)
-  const [recordSearch, setRecordSearch] = useState('')
-  const [recordCentre, setRecordCentre] = useState('all')
-  const [recordLevel, setRecordLevel] = useState<string>('all')
-  const [recordLeader, setRecordLeader] = useState<string>('all')
-  const [recordPage, setRecordPage] = useState(1)
+  const [recordSearch, setRecordSearch] = useQueryState<string>('recordSearch', '')
+  const [recordCentre, setRecordCentre] = useQueryState<string>('recordCentre', 'all')
+  const [recordLevel, setRecordLevel] = useQueryState<string>('recordLevel', 'all')
+  const [recordLeader, setRecordLeader] = useQueryState<string>('recordLeader', 'all')
+  const [recordPage, setRecordPage] = useQueryState<number>('recordPage', 1)
   const [selectedViewRecord, setSelectedViewRecord] = useState<QCRecord | null>(null)
   const [showDashboard, setShowDashboard] = useState(true)
 
@@ -619,7 +622,7 @@ export default function QuanLyQCPage() {
 
   // Tự động về trang 1 khi thay đổi bộ lọc
   useEffect(() => {
-    setCurrentPage(1)
+    void (isQueryUserEdit() && resetQueryPage(setCurrentPage))
   }, [q, selectedCourseLine, selectedCentre, fromDate, toDate])
 
   const hasActiveFilters = Boolean(
@@ -883,7 +886,7 @@ export default function QuanLyQCPage() {
   }, [filteredRecords, recordPage, totalRecordPages])
 
   useEffect(() => {
-    setRecordPage(1)
+    void (isQueryUserEdit() && resetQueryPage(setRecordPage))
   }, [recordSearch, recordCentre, recordLeader, recordLevel])
 
   const mainTabs = useMemo(

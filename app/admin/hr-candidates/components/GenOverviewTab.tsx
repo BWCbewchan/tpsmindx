@@ -1,4 +1,7 @@
 'use client';
+import { useQueryDate } from '@/lib/use-query-date'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -133,11 +136,11 @@ export default function GenOverviewTab({
   hideInfoBox = false,
 }: GenOverviewTabProps) {
   const { token } = useAuth();
-  const [focusDate, setFocusDate] = useState(new Date());
+  const [focusDate, setFocusDate] = useQueryDate('date', () => new Date());
   const [apiSchedules, setApiSchedules] = useState<TrainingScheduleEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<TrainingScheduleEvent | null>(null);
-  const [viewMode, setViewMode] = useState<CalendarViewMode>('month');
+  const [viewMode, setViewMode] = useQueryState<CalendarViewMode>('calendarView', 'month', { values: ["day","week","month"] });
 
   const selectedGen = useMemo(() => {
     if (!activeGenKey) return null;

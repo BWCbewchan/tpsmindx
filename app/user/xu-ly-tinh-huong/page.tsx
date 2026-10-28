@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useEffect, useState } from 'react'
 import { BookOpen, ChevronRight, Lightbulb } from 'lucide-react'
@@ -34,7 +36,7 @@ export default function XuLyTinhHuongPage() {
 
   const [studies, setStudies] = useState<CaseStudy[]>([])
   const [selectedCase, setSelectedCase] = useState<CaseStudy | null>(null)
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [activeCategory, setActiveCategory] = useQueryState<string | null>('category', null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 

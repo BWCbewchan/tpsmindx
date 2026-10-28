@@ -1,4 +1,6 @@
 "use client";
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { PageSkeleton } from '@/components/skeletons/PageSkeleton';
@@ -154,7 +156,7 @@ CalendarCell.displayName = 'CalendarCell';
 export default function Page2() {
   const { token } = useAuth();
   const [selectedPrograms, setSelectedPrograms] = useState<string[]>([]);
-  const [selectedRegion, setSelectedRegion] = useState<string>('Tất cả');
+  const [selectedRegion, setSelectedRegion] = useQueryState<string>('region', 'Tất cả');
   const [centers, setCenters] = useState<Center[]>([]);
   const [centersLoading, setCentersLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);

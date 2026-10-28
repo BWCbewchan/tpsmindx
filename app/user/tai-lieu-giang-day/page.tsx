@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { PageContainer } from '@/components/PageContainer'
 import { SecureDocViewer } from '@/components/secure-viewer/SecureDocViewer'
@@ -42,7 +44,7 @@ export default function TaiLieuGiangDayPage() {
   const [documents, setDocuments] = useState<TeachingDocument[]>([])
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [activeLesson, setActiveLesson] = useState('')
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useQueryState<string>('search', '')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 

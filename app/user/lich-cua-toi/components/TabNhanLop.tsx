@@ -1,4 +1,7 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
+
 
 import { Modal } from '@/components/ui/modal'
 import { Tabs } from '@/components/Tabs'
@@ -70,10 +73,10 @@ export default function TabNhanLop({ onRefreshBadge }: TabNhanLopProps) {
   const [submittingKind, setSubmittingKind] = useState<null | 'confirm' | 'decline'>(null)
   const [declineReason, setDeclineReason] = useState('')
   const busy = submittingKind !== null
-  const [activeTab, setActiveTab] = useState('all')
-  const [campusFilter, setCampusFilter] = useState<string[]>([])
-  const [fromDate, setFromDate] = useState<string>('')
-  const [toDate, setToDate] = useState<string>('')
+  const [activeTab, setActiveTab] = useQueryState<string>('receiveTab', 'all', { history: 'push' })
+  const [campusFilter, setCampusFilter] = useQueryState<string[]>('receiveCampus', [])
+  const [fromDate, setFromDate] = useQueryState<string>('receiveDateFrom', '', { kind: 'date' })
+  const [toDate, setToDate] = useQueryState<string>('receiveDateTo', '', { kind: 'date' })
   const [showCampusDropdown, setShowCampusDropdown] = useState(false)
   const [campusSearchText, setCampusSearchText] = useState('')
   const [declineConfirmOpen, setDeclineConfirmOpen] = useState(false)

@@ -1,4 +1,7 @@
 'use client'
+import { useQueryFilters } from '@/lib/use-query-filters'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { PageHeader } from '@/components/PageHeader'
 import { PageLayout, PageLayoutContent } from '@/components/ui/page-layout'
@@ -272,7 +275,7 @@ function SearchableFilterSelect({
   disabled?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
-  const [search, setSearch] = useState('')
+  const [search, setSearch] = useQueryState<string>('search', '')
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -407,17 +410,17 @@ function SearchableFilterSelect({
 export default function UserCheckoutManagePage() {
   const { token, isLoading: authLoading } = useAuth()
   const pathname = usePathname()
-  const [filters, setFilters] = useState<Filters>(INITIAL_FILTERS)
-  const [sortBy, setSortBy] = useState<string>('trial_date_desc')
+  const [filters, setFilters] = useQueryFilters<Filters>(INITIAL_FILTERS, {"center":"centre","track":"track","subject":"subject","fromDate":"dateFrom","toDate":"dateTo"})
+  const [sortBy, setSortBy] = useQueryState<string>('sort', 'trial_date_desc')
   const [debouncedTeacher, setDebouncedTeacher] = useState('')
   const [debouncedLmsCode, setDebouncedLmsCode] = useState('')
   const [debouncedStudent, setDebouncedStudent] = useState('')
   const [debouncedFromDate, setDebouncedFromDate] = useState('')
   const [debouncedToDate, setDebouncedToDate] = useState('')
-  const [activeQuickFilter, setActiveQuickFilter] = useState<string>('')
+  const [activeQuickFilter, setActiveQuickFilter] = useQueryState<string>('quickFilter', '')
   const [rows, setRows] = useState<CheckoutRow[]>([])
   const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useQueryState<number>('page', 1)
   const [totalPages, setTotalPages] = useState(1)
   const [context, setContext] = useState<CheckoutContext | null>(null)
   const [isLoading, setIsLoading] = useState(true)

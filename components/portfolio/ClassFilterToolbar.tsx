@@ -1,4 +1,6 @@
 'use client';
+import { useQueryRestore } from '@/lib/use-query-restore'
+import { useQueryFilters } from '@/lib/use-query-filters'
 
 import { Search, X, Filter } from 'lucide-react';
 import { useState, useCallback, useEffect, useMemo } from 'react';
@@ -53,7 +55,7 @@ export default function ClassFilterToolbar({
   isLoading = false,
   isLoadingCentres = false,
 }: ClassFilterToolbarProps) {
-  const [filters, setFilters] = useState<FilterState>(INITIAL_FILTERS);
+  const [filters, setFilters] = useQueryFilters<FilterState>(INITIAL_FILTERS, {selectedCentres:'centre',dateFrom:'dateFrom',dateTo:'dateTo',qcStatus:'qcStatus',teacherSearch:'teacher',classSearch:'search'});
   const [isCentreDropdownOpen, setIsCentreDropdownOpen] = useState(false);
   const [centreSearch, setCentreSearch] = useState('');
 
@@ -91,6 +93,8 @@ export default function ClassFilterToolbar({
   const handleSearch = useCallback(() => {
     onFilter(filters);
   }, [filters, onFilter]);
+
+  useQueryRestore(() => onFilter(filters), ['centre','dateFrom','dateTo','qcStatus','teacher','search']);
 
   const handleClear = useCallback(() => {
     setFilters(INITIAL_FILTERS);

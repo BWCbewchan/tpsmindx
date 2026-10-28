@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from '@/lib/app-toast'
@@ -180,7 +182,7 @@ export default function GenTrackingTab({
   const [assessmentCriteria, setAssessmentCriteria] = useState<AssessmentCriterion[]>(INPUT_ASSESSMENT_CRITERIA)
   const [assessmentProfiles, setAssessmentProfiles] = useState<AssessmentProfile[]>(INPUT_ASSESSMENT_PROFILES)
 
-  const [candidateSearch, setCandidateSearch] = useState('')
+  const [candidateSearch, setCandidateSearch] = useQueryState<string>('candidateSearch', '')
 
   useEffect(() => {
     try {

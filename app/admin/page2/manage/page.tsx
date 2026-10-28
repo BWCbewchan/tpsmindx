@@ -1,4 +1,6 @@
 "use client";
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { PageContainer } from "@/components/PageContainer";
@@ -584,9 +586,9 @@ function buildSidebarTreeByRelativePath(documents: K12DocRow[]): SidebarTreeNode
 export default function ManageK12DocsPage() {
   const { user, token, isLoading } = useAuth();
   const [documents, setDocuments] = useState<K12DocRow[]>([]);
-  const [selectedSlug, setSelectedSlug] = useState("");
+  const [selectedSlug, setSelectedSlug] = useQueryState<string>('doc', "");
   const [pendingParentSlug, setPendingParentSlug] = useState<string | null>(null);
-  const [sidebarQuery, setSidebarQuery] = useState("");
+  const [sidebarQuery, setSidebarQuery] = useQueryState<string>('search', "");
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({});
   const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
@@ -600,7 +602,7 @@ export default function ManageK12DocsPage() {
   const [draftPreviewToken, setDraftPreviewToken] = useState(0);
   const [latestPublishSnapshot, setLatestPublishSnapshot] = useState<PublishSnapshotInfo | null>(null);
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
-  const [editorMode, setEditorMode] = useState<EditorMode>("markdown");
+  const [editorMode, setEditorMode] = useQueryState<EditorMode>('editor', "markdown", { values: ["markdown","visual"] });
   const [visualContent, setVisualContent] = useState("");
   const sidebarScrollRef = useRef<HTMLElement | null>(null);
 

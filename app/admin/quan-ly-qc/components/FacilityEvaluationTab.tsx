@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -209,7 +211,7 @@ function ScoreRadio({
 
 export function FacilityEvaluationTab({ token }: { token: string | null }) {
   const currentMonthKey = getVietnamMonthKey()
-  const [selectedMonth, setSelectedMonth] = useState('')
+  const [selectedMonth, setSelectedMonth] = useQueryState<string>('month', '')
   const [historyMonth, setHistoryMonth] = useState(currentMonthKey)
   const [centers, setCenters] = useState<CenterOption[]>([])
   const [recipients, setRecipients] = useState<RecipientOption[]>([])
@@ -226,7 +228,7 @@ export function FacilityEvaluationTab({ token }: { token: string | null }) {
     useState<FacilityEvaluationRecord | null>(null)
   const [historyCenterId, setHistoryCenterId] = useState('')
   const [historyLeaderRole, setHistoryLeaderRole] = useState('all')
-  const [historySearch, setHistorySearch] = useState('')
+  const [historySearch, setHistorySearch] = useQueryState<string>('historySearch', '')
 
   const [selectedCenterId, setSelectedCenterId] = useState('')
   const [selectedRecipientId, setSelectedRecipientId] = useState('')

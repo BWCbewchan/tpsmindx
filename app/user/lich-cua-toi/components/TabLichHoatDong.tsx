@@ -1,4 +1,7 @@
 'use client'
+import { useQueryDate } from '@/lib/use-query-date'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Card } from '@/components/Card'
 import { useAuth } from '@/lib/auth-context'
@@ -96,8 +99,8 @@ interface Props { onRefreshBadge?:()=>void; onOpenLeaveRequest?:(date:string)=>v
 
 export default function TabLichHoatDong({ onRefreshBadge, onOpenLeaveRequest }:Props) {
   const { user } = useAuth()
-  const [focusDate,setFocusDate]=useState(()=>new Date())
-  const [view,setView]=useState<CalendarView>('month')
+  const [focusDate,setFocusDate]=useQueryDate('date', () => new Date())
+  const [view,setView]=useQueryState<CalendarView>('calendarView', 'month', { values: ["day","week","month"] })
   const [lichRanhByDate,setLichRanhByDate]=useState<LichRanhByDate>({})
   const [selectedDate,setSelectedDate]=useState<Date|null>(null)
   const [dayDetailDate,setDayDetailDate]=useState<Date|null>(null)

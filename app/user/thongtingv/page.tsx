@@ -1,4 +1,7 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
+
 
 import {
     Table,
@@ -17,6 +20,7 @@ import { toast } from '@/lib/app-toast'
 import { buildBrowserLoginRedirectPath } from '@/lib/auth-redirect'
 import { useAuth } from '@/lib/auth-context'
 import { authHeaders } from '@/lib/auth-headers'
+import { useTeacher } from '@/lib/teacher-context'
 import { lockBodyScroll, unlockBodyScroll } from '@/lib/body-scroll-lock'
 import { setVideo } from '@/lib/redux/features/trainingSlice'
 import { useAppDispatch } from '@/lib/redux/hooks'
@@ -30,10 +34,12 @@ import {
     Eye,
     EyeOff,
     Hash,
+    Info,
     Mail,
     MapPin,
     MessageSquare,
     Phone,
+    RefreshCw,
     Search,
     Send,
     Shield,
@@ -669,6 +675,9 @@ function AvailabilitySkeleton() {
 
 export default function Page1() {
   const { user, token } = useAuth()
+  const { refreshProfile } = useTeacher()
+  const [updatingProfile, setUpdatingProfile] = useState(false)
+  const profileRefreshLock = useRef(false)
   const { mutate: globalMutate } = useSWRConfig()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -677,20 +686,16 @@ export default function Page1() {
   const [submitCode, setSubmitCode] = useState('')
   const [hasAutoSearched, setHasAutoSearched] = useState(false)
   const [error, setError] = useState('')
-  const [selectedMonth, setSelectedMonth] = useState(
-    String(new Date().getMonth() + 1),
-  )
-  const [selectedYear, setSelectedYear] = useState(
-    String(new Date().getFullYear()),
-  )
+  const [selectedMonth, setSelectedMonth] = useQueryState<string>('month', String(new Date().getMonth() + 1))
+  const [selectedYear, setSelectedYear] = useQueryState<string>('year', String(new Date().getFullYear()))
   const [selectedTableYear, setSelectedTableYear] = useState(
     String(new Date().getFullYear()),
   )
   const [teacherInfoTab, setTeacherInfoTab] =
-    useState<TeacherInfoTab>('profile')
+    useQueryState<TeacherInfoTab>('tab', 'profile', { values: ["profile","checkCong","checkCongFeedback"], history: 'push' })
   const [checkCongMonth, setCheckCongMonth] = useState('all')
   const [checkCongStatusFilter, setCheckCongStatusFilter] =
-    useState<CheckCongStatusFilter>('all')
+    useQueryState<CheckCongStatusFilter>('attendanceStatus', 'all', { values: ["all","CHECKED","UNCHECKED"] })
   const [selectedCheckCongRecord, setSelectedCheckCongRecord] =
     useState<CheckCongRecord | null>(null)
   const [isSalaryRevealed, setIsSalaryRevealed] = useState(false)
@@ -744,7 +749,7 @@ export default function Page1() {
     }
   }
   const [availabilityPeriod, setAvailabilityPeriod] =
-    useState<AvailabilityPeriod>('month')
+    useQueryState<AvailabilityPeriod>('period', 'month', { values: ["week","month","year"] })
   const [notFoundModalOpen, setNotFoundModalOpen] = useState(false)
   const [registrationCheckModalOpen, setRegistrationCheckModalOpen] =
     useState(false)
@@ -1809,6 +1814,31 @@ export default function Page1() {
   ])
 
   // Show skeleton while loading initial profile
+  const handleRefreshProfile = async () => {
+    if (!user?.email || profileRefreshLock.current) return
+    profileRefreshLock.current = true
+    setUpdatingProfile(true)
+    let persisted = false
+    try {
+      const response = await fetch('/api/user/teacher-profile/refresh', {
+        method: 'POST', headers: authHeaders(token),
+      })
+      const result = await response.json()
+      if (!response.ok || !result.success) throw new Error(result.error || 'Không thể cập nhật thông tin')
+      persisted = true
+      dataCache.clear()
+      await mutateProfile()
+      await Promise.allSettled([refreshProfile(), ...(scoresUrl ? [scoresMutate()] : [])])
+      toast.success('Đã cập nhật thông tin giáo viên mới nhất')
+    } catch (refreshError) {
+      toast.error(persisted ? 'Đã lưu dữ liệu mới nhưng chưa tải lại được hồ sơ. Vui lòng tải lại trang.'
+        : refreshError instanceof Error ? refreshError.message : 'Không thể cập nhật thông tin. Vui lòng thử lại sau.')
+    } finally {
+      profileRefreshLock.current = false
+      setUpdatingProfile(false)
+    }
+  }
+
   if (isLoadingProfile && !teacher) {
     return <PageSkeleton variant="default" itemCount={6} showHeader={true} />
   }
@@ -1817,12 +1847,29 @@ export default function Page1() {
     <PageLayout maxWidth="7xl" padding="md">
       <PageLayoutContent spacing="lg">
         {/* Header */}
-        <div className="border-b border-gray-200 pb-2 sm:pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-2 sm:pb-3">
+          <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
             Thông Tin Của Tôi
           </h1>
           <div className="text-xs text-gray-600 mt-1">
             {user?.displayName ? `Xin chào ${user.displayName}` : 'Thông tin giáo viên'}
+          </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={handleRefreshProfile} disabled={updatingProfile || !user?.email} aria-busy={updatingProfile}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${updatingProfile ? 'animate-spin' : ''}`} />
+              {updatingProfile ? 'Đang cập nhật…' : 'Cập nhật thông tin'}
+            </Button>
+            <span className="group relative inline-flex">
+              <button type="button" aria-label="Khi nào cần cập nhật thông tin giáo viên?" aria-describedby="teacher-profile-refresh-help" className="rounded-full p-1 text-gray-500 hover:text-[#a1001f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a1001f]">
+                <Info className="h-4 w-4" />
+              </button>
+              <span id="teacher-profile-refresh-help" role="tooltip" className="absolute right-0 top-full z-50 mt-2 hidden w-72 max-w-[85vw] rounded-lg border border-gray-200 bg-white p-3 text-left text-xs leading-5 text-gray-700 shadow-lg group-hover:block group-focus-within:block">
+                <strong>Giáo viên mới:</strong> Thông tin sẽ đầy đủ sau khi có bảng công.<br />
+                <strong>Giáo viên đang giảng dạy:</strong> Thông tin có thể thay đổi sau mỗi đợt review. Bấm “Cập nhật thông tin” để lấy dữ liệu mới nhất.
+              </span>
+            </span>
           </div>
         </div>
 

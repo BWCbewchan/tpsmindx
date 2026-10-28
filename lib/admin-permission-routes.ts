@@ -1,9 +1,10 @@
 const MANAGEMENT_EXCLUDED_ROUTES = new Set(['/checkdatasource', '/user/checkdatasource'])
 
-function normalizeRoutePath(routePath: string): string {
+export function normalizeRoutePath(routePath: string): string {
   const [path] = routePath.trim().split('?')
   const normalized = path.replace(/\/+$/, '')
-  return normalized || '/'
+  // Keep legacy stored grants compatible with the descriptive teacher URL.
+  return normalized.replace(/^\/admin\/ho-so-giao-vien(?=\/|$)/, '/admin/page1') || '/'
 }
 
 export function isManagementPermissionRoute(routePath: string): boolean {

@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { PageContainer } from '@/components/PageContainer'
 import {
@@ -96,7 +98,7 @@ export default function QuanLyTaiLieuGiangDayPage() {
   const [uploadSourceType, setUploadSourceType] = useState<UploadSourceType>('file')
   const [materialUrl, setMaterialUrl] = useState('')
   const [isUploadOpen, setIsUploadOpen] = useState(false)
-  const [activeStatus, setActiveStatus] = useState<DocumentStatus>('published')
+  const [activeStatus, setActiveStatus] = useQueryState<DocumentStatus>('status', 'published', {values:['published','draft','disabled']})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [form, setForm] = useState<UploadFormState>({

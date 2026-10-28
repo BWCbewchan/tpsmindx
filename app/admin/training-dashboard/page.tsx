@@ -1,4 +1,7 @@
 'use client';
+import { useQueryFilters } from '@/lib/use-query-filters'
+import { useQueryState, isQueryUserEdit, resetQueryPage } from '@/lib/use-query-state'
+
 
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
@@ -476,7 +479,7 @@ function FilterPanel({
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function TrainingDashboardPage() {
-  const [tab, setTab] = useState<'teacher_stats' | 'video_stats'>('teacher_stats');
+  const [tab, setTab] = useQueryState<'teacher_stats' | 'video_stats'>('tab', 'teacher_stats', { values: ["teacher_stats","video_stats"], history: 'push' });
 
   // Teacher stats state
   const [teacherData, setTeacherData] = useState<TeacherStats[]>([]);
@@ -492,12 +495,12 @@ export default function TrainingDashboardPage() {
   const [error, setError] = useState('');
 
   // Filter state
-  const [filters, setFilters] = useState<FilterState>({
+  const [filters, setFilters] = useQueryFilters<FilterState>({
     selectedCenters: [],
     centerQuery: '',
     teacherCodeQuery: '',
     block: '',
-  });
+  }, {"selectedCenters":"centre","teacherCodeQuery":"search","block":"block"});
 
   // Derived: all unique centers and blocks from teacher data
   const allCenters = useMemo(() => Array.from(new Set(teacherData.map(d => d.center).filter(Boolean))).sort(), [teacherData]);
@@ -516,10 +519,10 @@ export default function TrainingDashboardPage() {
 
   // Pagination for teacher list
   const PAGE_SIZE = 20;
-  const [teacherPage, setTeacherPage] = useState(1);
+  const [teacherPage, setTeacherPage] = useQueryState<number>('teacherPage', 1);
   useEffect(() => {
     // Reset to first page whenever filters or data change
-    setTeacherPage(1);
+    void (isQueryUserEdit() && resetQueryPage(setTeacherPage));
   }, [filters, teacherData]);
   const teacherTotalPages = Math.max(1, Math.ceil(filteredTeachers.length / PAGE_SIZE));
   const pagedTeachers = filteredTeachers.slice((teacherPage - 1) * PAGE_SIZE, teacherPage * PAGE_SIZE);

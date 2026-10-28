@@ -1,4 +1,7 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
+
 
 import { Question } from '@/types/assignment';
 import { CheckCircle, Download, FileText, Filter, Plus, Search, Smile, SortAsc, Target, Upload } from 'lucide-react';
@@ -24,9 +27,9 @@ export function QuestionList({
   onImportCSV,
   onExportCSV
 }: QuestionListProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<string>('all');
-  const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useQueryState<string>('questionSearch', '');
+  const [filterType, setFilterType] = useQueryState<string>('questionType', 'all');
+  const [filterDifficulty, setFilterDifficulty] = useQueryState<string>('difficulty', 'all');
   const [draggedItem, setDraggedItem] = useState<number | null>(null);
   const [bulkAction, setBulkAction] = useState<string>('');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);

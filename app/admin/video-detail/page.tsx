@@ -1,4 +1,6 @@
 "use client";
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
@@ -66,7 +68,7 @@ function VideoDetailContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [questions, setQuestions] = useState<InteractiveQuestion[]>([]);
-  const [tab, setTab] = useState<'student' | 'question'>('student');
+  const [tab, setTab] = useQueryState<'student' | 'question'>('tab', 'student', { values: ["student","question"], history: 'push' });
   const [newQuestion, setNewQuestion] = useState("");
   const [newOptions, setNewOptions] = useState(["", ""]);
   const [newAnswer, setNewAnswer] = useState(0);

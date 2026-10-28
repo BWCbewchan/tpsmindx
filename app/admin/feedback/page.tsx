@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Modal } from '@/components/ui/modal'
 import { PageContainer } from '@/components/PageContainer'
@@ -130,8 +132,8 @@ export default function AdminFeedbackPage() {
   const [loadingError, setLoadingError] = useState<string | null>(null)
   const [savingId, setSavingId] = useState<number | null>(null)
 
-  const [filterStatus, setFilterStatus] = useState<StatusFilter>('all')
-  const [searchText, setSearchText] = useState('')
+  const [filterStatus, setFilterStatus] = useQueryState<StatusFilter>('status', 'all', {values:['all','new','in_progress','done']})
+  const [searchText, setSearchText] = useQueryState<string>('search', '')
 
   const [detailItem, setDetailItem] = useState<FeedbackItem | null>(null)
   const [detailReply, setDetailReply] = useState('')

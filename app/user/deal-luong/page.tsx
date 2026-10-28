@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
@@ -103,7 +105,7 @@ export default function DealLuongPage() {
 
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<DealTab>('bonus');
+  const [activeTab, setActiveTab] = useQueryState<DealTab>('tab', 'bonus', { values: ["bonus","salary_reduction","salary_deal"], history: 'push' });
   const [selectedDeal, setSelectedDeal] = useState<SalaryDeal | null>(null);
   const [showRateTable, setShowRateTable] = useState(false);
 

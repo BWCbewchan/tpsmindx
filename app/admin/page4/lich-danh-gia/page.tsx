@@ -1,4 +1,7 @@
 "use client";
+import { useQueryState } from '@/lib/use-query-state'
+
+import { useQueryDate } from '@/lib/use-query-date'
 
 import { Card } from "@/components/Card";
 import { PageContainer } from "@/components/PageContainer";
@@ -383,8 +386,8 @@ function buildCalendarCells(focusDate: Date, view: CalendarView): CalendarCell[]
 export default function ProfessionalEvaluationSchedulePage() {
   const { user } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [view, setView] = useState<CalendarView>("month");
-  const [focusDate, setFocusDate] = useState(new Date());
+  const [view, setView] = useQueryState<CalendarView>('view', "month", { values: ["day","week","month","year"] });
+  const [focusDate, setFocusDate] = useQueryDate('date', () => new Date());
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showDayEventsModal, setShowDayEventsModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);

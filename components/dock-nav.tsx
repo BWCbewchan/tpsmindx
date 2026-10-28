@@ -598,7 +598,7 @@ export function DockNav() {
     {
       id: 'giaovien', label: 'Giáo viên', icon: Users,
       submenu: [
-        { href: '/admin/page1', label: 'Hồ sơ Giáo viên' },
+        { href: '/admin/ho-so-giao-vien', label: 'Hồ sơ Giáo viên' },
         { href: '/admin/quan-ly-qc', label: 'Quản Lý Kiểm Tra Chất Lượng' },
         { href: '/admin/phieu-danh-gia-giao-vien', label: 'Phiếu đánh giá giáo viên' },
         { href: '/admin/dang-ky-duyet-giang', label: 'Đăng Ký Duyệt Giảng' },
@@ -676,7 +676,7 @@ export function DockNav() {
     {
       id: 'giaovien', label: 'Giáo viên', icon: Users,
       submenu: [
-        { href: '/admin/page1', label: 'Hồ sơ Giáo viên' },
+        { href: '/admin/ho-so-giao-vien', label: 'Hồ sơ Giáo viên' },
         { href: '/admin/quan-ly-qc', label: 'Quản lý QC' },
         { href: '/admin/phieu-danh-gia-giao-vien', label: 'Phiếu đánh giá GV' },
         { href: '/admin/dang-ky-duyet-giang', label: 'Đăng ký duyệt giảng' },

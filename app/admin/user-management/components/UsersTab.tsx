@@ -1,4 +1,6 @@
 "use client";
+import { useQueryState } from '@/lib/use-query-state'
+
 import { toast } from "@/lib/app-toast";
 import { useAuth } from "@/lib/auth-context";
 import { authHeaders } from "@/lib/auth-headers";
@@ -11,6 +13,7 @@ interface AppUser {
     id: number; email: string; display_name: string; role: string;
     is_active: boolean; created_by: string; created_at: string;
     auth_type: 'app' | 'firebase';
+    has_tps_password?: boolean;
     permissions: { route_path: string; can_access: boolean }[];
     user_roles: string[];
 }
@@ -49,13 +52,13 @@ export default function UsersTab() {
     const [chPwing, setChPwing] = useState(false);
     // Confirm dialog
     const [confirmDlg, setConfirmDlg] = useState<{ open: boolean; userId: number; name: string }>({ open: false, userId: 0, name: "" });
-    const [userSearch, setUserSearch] = useState("");
+    const [userSearch, setUserSearch] = useQueryState<string>('search', "");
     // Filters
-    const [roleFilter, setRoleFilter] = useState<string[]>([]);
-    const [areaFilter, setAreaFilter] = useState<string[]>([]);
-    const [authTypeFilter, setAuthTypeFilter] = useState<string[]>([]);
-    const [statusFilter, setStatusFilter] = useState<string[]>([]);
-    const [createdByFilter, setCreatedByFilter] = useState<string[]>([]);
+    const [roleFilter, setRoleFilter] = useQueryState<string[]>('role', []);
+    const [areaFilter, setAreaFilter] = useQueryState<string[]>('area', []);
+    const [authTypeFilter, setAuthTypeFilter] = useQueryState<string[]>('authType', []);
+    const [statusFilter, setStatusFilter] = useQueryState<string[]>('status', []);
+    const [createdByFilter, setCreatedByFilter] = useQueryState<string[]>('createdBy', []);
     const [showFilters, setShowFilters] = useState(false);
     // Filter searches
     const [roleSearch, setRoleSearch] = useState("");
@@ -88,6 +91,8 @@ export default function UsersTab() {
     function close() {
         setPanel('none');
         setSel(null);
+        setChPw('');
+        setShowChPw(false);
         setSelCenterIds(new Set());
         setAssignedCenters([]);
         setCenterSearch("");
@@ -209,7 +214,10 @@ export default function UsersTab() {
 
     const openChPw = (u: AppUser) => { setSel(u); setChPw(""); setShowChPw(false); setPanel('password'); };
     const handleChPw = async (e: React.FormEvent) => {
-        e.preventDefault(); if (!sel || !chPw) return; if (chPw.length < 6) { toast.error("Tối thiểu 6 ký tự"); return; }
+        e.preventDefault(); if (!sel || !chPw) return;
+        if (chPw.length < 6 || new TextEncoder().encode(chPw).length > 72) {
+            toast.error('Mật khẩu cần ít nhất 6 ký tự và tối đa 72 byte UTF-8'); return;
+        }
         setChPwing(true);
         try {
             const r = await fetch("/api/app-auth/users", {
@@ -217,8 +225,23 @@ export default function UsersTab() {
                 body: JSON.stringify({ id: sel.id, password: chPw })
             });
             const d = await r.json();
-            if (d.success) { toast.success("Đã đổi MK"); close(); } else toast.error(d.error || "Lỗi");
+            if (d.success) { toast.success("Đã cập nhật mật khẩu TPS"); close(); loadReferenceData(); } else toast.error(d.error || "Lỗi");
         } catch { toast.error("Lỗi") } finally { setChPwing(false) }
+    };
+
+    const handleRemoveBackupPassword = async () => {
+        if (!sel || sel.auth_type !== 'firebase') return;
+        setChPwing(true);
+        try {
+            const response = await fetch('/api/app-auth/users', {
+                method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHeaders(token) },
+                body: JSON.stringify({ id: sel.id, password: null }),
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.error || 'Không thể gỡ mật khẩu phụ');
+            toast.success('Đã gỡ mật khẩu phụ TPS'); close(); loadReferenceData();
+        } catch (error) { toast.error(error instanceof Error ? error.message : 'Lỗi mạng'); }
+        finally { setChPwing(false); }
     };
 
     const handleToggle = async (id: number, active: boolean) => {
@@ -868,19 +891,17 @@ export default function UsersTab() {
                 <div className="cursor-pointer fixed inset-0 z-modal-backdrop-custom flex items-center justify-center p-4 bg-black/50 overflow-y-auto" onClick={close}>
                     <div className="cursor-pointer bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center justify-between mb-4 border-b pb-3">
-                            <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900"><Lock className="h-5 w-5 text-amber-500" />Đổi mật khẩu</h3>
+                            <h3 className="text-lg font-bold flex items-center gap-2 text-gray-900"><Lock className="h-5 w-5 text-amber-500" />{sel.auth_type === 'firebase' ? 'Mật khẩu phụ TPS' : 'Đổi mật khẩu'}</h3>
                             <button onClick={close} className="text-gray-400 hover:text-gray-600 rounded-full p-1 hover:bg-gray-100 transition-colors"><X className="h-5 w-5" /></button>
                         </div>
                         <p className="text-sm font-medium text-amber-600 mb-4 truncate" title={sel.display_name}>{sel.display_name}</p>
 
-                        {sel.auth_type === 'firebase' ? (
-                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
-                                <p className="text-sm text-amber-800">⚠️ Tài khoản TMS — Mật khẩu được quản lý và đặt lại qua hệ thống TMS Auth.</p>
-                            </div>
-                        ) : (
+                        {sel.auth_type === 'firebase' && (
+                            <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">Mật khẩu phụ chỉ dùng đăng nhập TPS. Bạn vẫn có thể đăng nhập bằng mật khẩu chính LMS.</p>
+                        )}
                             <form onSubmit={handleChPw} className="space-y-4">
                                 <div><label className="block text-sm font-medium text-gray-700 mb-1">Mật khẩu mới</label>
-                                    <div className="relative"><input type={showChPw ? "text" : "password"} value={chPw} onChange={e => setChPw(e.target.value)} placeholder="Tối thiểu 6 ký tự" required minLength={6} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500" />
+                                    <div className="relative"><input type={showChPw ? "text" : "password"} autoComplete="new-password" value={chPw} onChange={e => setChPw(e.target.value)} placeholder="Tối thiểu 6 ký tự" required minLength={6} className="w-full border border-gray-300 rounded-lg px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500" />
                                         <button type="button" onClick={() => setShowChPw(!showChPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 p-1 hover:bg-gray-100 rounded-full transition-colors">{showChPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
                                 <div className="flex justify-end gap-3 pt-3 mt-4 border-t font-medium">
                                     <button type="button" onClick={close} className="px-5 py-2 text-sm border rounded-lg hover:bg-gray-50 transition-colors">Hủy</button>
@@ -889,6 +910,8 @@ export default function UsersTab() {
                                     </button>
                                 </div>
                             </form>
+                        {sel.auth_type === 'firebase' && sel.has_tps_password && (
+                            <button type="button" disabled={chPwing} onClick={handleRemoveBackupPassword} className="mt-4 text-sm text-red-700 hover:underline disabled:opacity-50">Gỡ mật khẩu phụ TPS</button>
                         )}
                     </div>
                 </div>
@@ -949,10 +972,8 @@ export default function UsersTab() {
                                                         <Building2 className="h-3.5 w-3.5" />Gán cơ sở
                                                     </button>
                                                 )}
-                                                {u.auth_type !== 'firebase' && (
-                                                    <button onClick={() => openChPw(u)} className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-3 py-2 text-xs font-medium transition-all sm:flex-none ${isSel && panel === 'password' ? 'bg-amber-500 text-white border-amber-500' : 'border-amber-200 text-amber-700 hover:bg-amber-50'}`}>
-                                                        <Lock className="h-3.5 w-3.5" />Đổi MK</button>
-                                                )}
+                                                <button onClick={() => openChPw(u)} className={`flex flex-1 items-center justify-center gap-1 rounded-lg border px-3 py-2 text-xs font-medium transition-all sm:flex-none ${isSel && panel === 'password' ? 'bg-amber-500 text-white border-amber-500' : 'border-amber-200 text-amber-700 hover:bg-amber-50'}`}>
+                                                        <Lock className="h-3.5 w-3.5" />{u.auth_type === 'firebase' ? (u.has_tps_password ? 'Đổi mật khẩu phụ TPS' : 'Thiết lập mật khẩu phụ TPS') : 'Đổi MK'}</button>
                                                 <button onClick={() => handleToggle(u.id, u.is_active)} title={u.is_active ? "Vô hiệu" : "Kích hoạt"}
                                                     className={`flex h-10 w-10 items-center justify-center rounded-lg border transition-colors ${u.is_active ? 'border-gray-200 hover:border-orange-400 hover:bg-orange-50' : 'border-gray-200 hover:border-green-400 hover:bg-green-50'}`}>
                                                     {u.is_active ? <X className="h-3.5 w-3.5 text-gray-400" /> : <Check className="h-3.5 w-3.5 text-gray-400" />}</button>

@@ -268,7 +268,7 @@ export function Sidebar() {
       label: 'Quản lý Giáo viên & Vận hành',
       icon: Users,
       submenu: [
-        { href: '/admin/page1', label: 'Hồ sơ Giáo viên' },
+        { href: '/admin/ho-so-giao-vien', label: 'Hồ sơ Giáo viên' },
         {
           href: '/admin/quan-ly-qc',
           label: 'Quản Lý Kiểm Tra Chất Lượng',

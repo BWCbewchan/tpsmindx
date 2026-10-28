@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useAuth } from '@/lib/auth-context'
@@ -77,7 +79,7 @@ export default function GradingCriteriaAdminPage() {
   const { user, token, isLoading: authLoading } = useAuth()
 
   // Tab: 'course' (Tiêu chí theo khóa học) | 'common' (Tiêu chí chấm điểm chung)
-  const [activeTab, setActiveTab] = useState<'course' | 'common'>('course')
+  const [activeTab, setActiveTab] = useQueryState<'course' | 'common'>('tab', 'course', { values: ["course","common"], history: 'push' })
 
   // Danh sách rubrics từ DB
   const [rubrics, setRubrics] = useState<RubricItem[]>([])
@@ -89,7 +91,7 @@ export default function GradingCriteriaAdminPage() {
   const [loadingLmsCourses, setLoadingLmsCourses] = useState(false)
 
   // Tìm kiếm trong danh sách rubrics
-  const [searchTerm, setSearchTerm] = useState('')
+  const [searchTerm, setSearchTerm] = useQueryState<string>('search', '')
 
   // Modal Xem chi tiết
   const [selectedRubricForView, setSelectedRubricForView] = useState<RubricItem | null>(null)

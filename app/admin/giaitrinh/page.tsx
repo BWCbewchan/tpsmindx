@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Card } from '@/components/Card';
 import { EmptyState } from '@/components/EmptyState';
@@ -55,12 +57,12 @@ export default function AdminGiaiThichPage() {
   const { user } = useAuth();
   const [allExplanations, setAllExplanations] = useState<Explanation[]>([]); // Lưu tất cả để tính số thống kê
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useQueryState<string>('status', 'all');
   
   // Advanced filters
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterCampuses, setFilterCampuses] = useState<string[]>([]);
-  const [filterSubjects, setFilterSubjects] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useQueryState<string>('search', '');
+  const [filterCampuses, setFilterCampuses] = useQueryState<string[]>('campus', []);
+  const [filterSubjects, setFilterSubjects] = useQueryState<string[]>('subject', []);
 
   const [selectedExplanation, setSelectedExplanation] = useState<Explanation | null>(null);
   const [adminNote, setAdminNote] = useState('');

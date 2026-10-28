@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { PageContainer } from '@/components/PageContainer';
 import { DevicePushSetting } from '@/components/notifications/DevicePushSetting';
@@ -182,8 +184,8 @@ function formatContentText(text: string): string {
 export default function NotificationCenterPage() {
   const { token, user } = useAuth();
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'all' | 'unread' | 'read' | 'settings'>('all');
-  const [activeCategory, setActiveCategory] = useState<'all' | keyof typeof categoriesMap>('all');
+  const [activeTab, setActiveTab] = useQueryState<'all' | 'unread' | 'read' | 'settings'>('tab', 'all', { values: ["all","unread","read","settings"], history: 'push' });
+  const [activeCategory, setActiveCategory] = useQueryState<'all' | keyof typeof categoriesMap>('category', 'all', {values:['all', ...Object.keys(categoriesMap)]});
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('settings') === 'device') {

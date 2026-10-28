@@ -1,0 +1,38 @@
+[
+  {
+    "file": "app/admin/page4/thu-vien-de/page.tsx",
+    "currentErrors": 1,
+    "baselineErrors": 1,
+    "newErrors": []
+  },
+  {
+    "file": "app/admin/page5/page.tsx",
+    "currentErrors": 1,
+    "baselineErrors": 1,
+    "newErrors": []
+  },
+  {
+    "file": "app/admin/video-detail/page.tsx",
+    "currentErrors": 3,
+    "baselineErrors": 3,
+    "newErrors": []
+  },
+  {
+    "file": "app/admin/video-setup/page.tsx",
+    "currentErrors": 1,
+    "baselineErrors": 1,
+    "newErrors": []
+  },
+  {
+    "file": "app/user/assignments/page.tsx",
+    "currentErrors": 1,
+    "baselineErrors": 1,
+    "newErrors": []
+  },
+  {
+    "file": "app/user/lich-cua-toi/components/XinNghiContent.tsx",
+    "currentErrors": 2,
+    "baselineErrors": 2,
+    "newErrors": []
+  }
+]

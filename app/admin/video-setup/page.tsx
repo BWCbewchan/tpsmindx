@@ -1,4 +1,6 @@
 "use client";
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -155,7 +157,7 @@ function VideoSetupContent() {
   const [shouldAutoPlayNextPart, setShouldAutoPlayNextPart] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState<'questions' | 'assignment'>('questions');
+  const [activeTab, setActiveTab] = useQueryState<'questions' | 'assignment'>('tab', 'questions', { values: ["questions","assignment"], history: 'push' });
   const [saving, setSaving] = useState(false);
   const [thumbnailPreview, setThumbnailPreview] = useState<string>("");
   const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);

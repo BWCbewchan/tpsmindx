@@ -1,4 +1,6 @@
 "use client";
+import { useQueryState } from '@/lib/use-query-state'
+
 import { useAuth } from "@/lib/auth-context";
 import { Database, LayoutGrid, Settings, Shield, ShieldCheck, Users } from "lucide-react";
 import { useState } from "react";
@@ -16,7 +18,7 @@ export default function UserManagementPage() {
     const searchParams = useSearchParams();
     const requestedTab = searchParams.get('tab');
     const initialTab: Tab = ['users', 'roles', 'screens', 'data'].includes(requestedTab || '') ? requestedTab as Tab : 'users';
-    const [tab, setTab] = useState<Tab>(initialTab);
+    const [tab, setTab] = useQueryState<Tab>('tab', 'users', { values: ["users","roles","screens","data"], history: 'push' });
 
     if (user?.role !== 'super_admin') {
         return (

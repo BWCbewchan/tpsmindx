@@ -1,4 +1,8 @@
 "use client";
+import { useQueryDate } from '@/lib/use-query-date'
+import { useQueryState } from '@/lib/use-query-state'
+
+
 
 import { Card } from "@/components/Card";
 import { ExamFeedbackStatsPanel } from "@/components/admin/exam-feedback/ExamFeedbackStatsPanel";
@@ -302,7 +306,7 @@ const buildProcessBlockCode = (customName: string): BlockCode => {
 
 
 export default function ProfessionalAssignmentLibraryPage() {
-  const [activePageTab, setActivePageTab] = useState<"library" | "feedback">("library");
+  const [activePageTab, setActivePageTab] = useQueryState<"library" | "feedback">('tab', "library", { values: ["library","feedback"], history: 'push' });
   const [subjectConfigs, setSubjectConfigs] = useState<SubjectConfig[]>([]);
   const [sets, setSets] = useState<ExamSetRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -355,7 +359,7 @@ export default function ProfessionalAssignmentLibraryPage() {
   const dragOverRafRef = useRef<number | null>(null);
   const pendingDragOverDateKeyRef = useRef<string | null>(null);
   const [selectedCalendarEventIds, setSelectedCalendarEventIds] = useState<string[]>([]);
-  const [leftPanelTab, setLeftPanelTab] = useState<"both" | "setup" | "queue">("both");
+  const [leftPanelTab, setLeftPanelTab] = useQueryState<"both" | "setup" | "queue">('panel', "both", { values: ["both","setup","queue"], history: 'push' });
   const [leftTopSectionHeight, setLeftTopSectionHeight] = useState(320);
   const [isLeftPanelResizing, setIsLeftPanelResizing] = useState(false);
   const leftPanelRef = useRef<HTMLDivElement | null>(null);
@@ -364,7 +368,7 @@ export default function ProfessionalAssignmentLibraryPage() {
   const liveLeftTopSectionHeightRef = useRef(320);
   const resizeGrabOffsetYRef = useRef(0);
   const autoCreatePrepareTokenRef = useRef(0);
-  const [focusDate, setFocusDate] = useState(new Date());
+  const [focusDate, setFocusDate] = useQueryDate('date', () => new Date());
 
   const examDurationConfigSubjects = useMemo(() => {
     return subjectConfigs.filter((s) => s.examType === "expertise" || s.examType === "experience");

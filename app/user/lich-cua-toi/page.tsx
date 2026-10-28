@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -17,7 +19,7 @@ type TabId = (typeof TAB_IDS)[number];
 export default function LichCuaToiPage() {
   const searchParams = useSearchParams();
   const currentTab = searchParams.get('tab') as TabId || 'lich';
-  const [activeTab, setActiveTab] = useState<TabId>(currentTab);
+  const [activeTab, setActiveTab] = useQueryState<TabId>('tab', 'lich', { values: ["lich","lich-lop-hoc","xin-nghi","nhan-lop","office-hours"], history: 'push' });
 
   const tabs = [
     { id: 'lich', label: 'Lịch hoạt động' },

@@ -1,4 +1,4 @@
-import { filterManagementPermissions } from '@/lib/admin-permission-routes'
+import { filterManagementPermissions, normalizeRoutePath } from '@/lib/admin-permission-routes'
 
 export function normalizeRoleToken(value?: string): string {
   return (value || '')
@@ -116,7 +116,7 @@ export function canAccessPortfolioPath(user: any, path: string): boolean {
  */
 export function checkHrefPermission(href: string, user: any): boolean {
   if (!user || user.isActive === false) return false
-  const path = href.split(/[?#]/)[0].replace(/\/+$/, '') || '/'
+  const path = normalizeRoutePath(href.split('#')[0])
   if (path === '/user' || path.startsWith('/user/') ||
       path === '/candidate-portal' || path.startsWith('/candidate-portal/')) return true
   if (normalizeRoleToken(user.role) === 'super_admin') return true

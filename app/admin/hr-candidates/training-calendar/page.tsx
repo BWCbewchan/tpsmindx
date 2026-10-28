@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -32,8 +34,8 @@ function toGenEntry(row: GenCatalogRow): GenEntry {
 export default function HrTrainingCalendarPage() {
   const { token } = useAuth();
   const [genEntries, setGenEntries] = useState<GenEntry[]>([]);
-  const [regionFilter, setRegionFilter] = useState<RegionFilter>('all');
-  const [activeGenKey, setActiveGenKey] = useState('');
+  const [regionFilter, setRegionFilter] = useQueryState<RegionFilter>('region', 'all', { values: ["all","south","north"] });
+  const [activeGenKey, setActiveGenKey] = useQueryState<string>('gen', '');
   const [activeGenInfo, setActiveGenInfo] = useState<{ genCode: string; regionCode: string } | null>(null);
 
   useEffect(() => {
@@ -138,7 +140,7 @@ export default function HrTrainingCalendarPage() {
           genEntries={genEntries}
           regionFilter={regionFilter}
           activeGenKey={activeGenKey}
-          activeGenInfo={activeGenInfo}
+          activeGenInfo={selectedGen ? {genCode: selectedGen.genCode, regionCode: selectedGen.regionCode} : activeGenInfo}
           onSelectGen={handleSelectGen}
           scopeLabel={activeGenInfo ? `Lịch training GEN ${activeGenInfo.genCode}` : 'Lịch training tất cả GEN'}
           hideInfoBox

@@ -1,4 +1,5 @@
 'use client';
+import { useQueryDate } from '@/lib/use-query-date'
 
 import StudentInsightsPanel from './StudentInsightsPanel';
 import Modal from '@/components/Modal';
@@ -384,7 +385,7 @@ function ClassDetailPanel({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function TabLichLopHoc() {
-  const [weekMonday, setWeekMonday] = useState<Date>(() => getWeekMonday(new Date()));
+  const [weekMonday, setWeekMonday] = useQueryDate('week', () => getWeekMonday(new Date()));
   const [slots, setSlots] = useState<ClassSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);

@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Card } from '@/components/Card';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -107,9 +109,9 @@ export default function OnboardingVideosPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [videos, setVideos] = useState<OnboardingVideo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [tab, setTab] = useState<VideoTab>('active');
-  const [stageFilter, setStageFilter] = useState<TrainingStageFilter>('all');
+  const [searchTerm, setSearchTerm] = useQueryState<string>('search', '');
+  const [tab, setTab] = useQueryState<VideoTab>('tab', 'active', { values: ["active","draft","inactive"], history: 'push' });
+  const [stageFilter, setStageFilter] = useQueryState<TrainingStageFilter>('stage', 'all', { values: ["all","centralized_training","pedagogy_training"] });
   const [editingVideo, setEditingVideo] = useState<OnboardingVideo | null>(null);
   const [form, setForm] = useState<EditForm>(emptyForm);
   const [setupTab, setSetupTab] = useState<SetupTab>('info');

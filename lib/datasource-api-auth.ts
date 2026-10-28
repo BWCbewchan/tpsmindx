@@ -4,6 +4,7 @@ import {
 } from '@/lib/app-user-access'
 import { getAccessibleCenters } from '@/lib/center-access'
 import pool from '@/lib/db'
+import { checkHrefPermission } from '@/lib/menu-permissions'
 import {
     TPS_SESSION_COOKIE,
     verifySessionCookieValue,
@@ -296,7 +297,12 @@ export async function rejectIfDatasourceLookupForbidden(
     }
   }
 
-  const lookupByEmail = Boolean(e)
+    // The teacher-profile screen grant covers teachers across all centers.
+    // Keep candidate checks above and do not widen the session's privileged role.
+    const access = await resolveAppUserAccessForEmail(sessionEmail)
+    if (checkHrefPermission('/admin/ho-so-giao-vien', access)) return null
+
+    const lookupByEmail = Boolean(e)
   const row = lookupByEmail
     ? await findTeacherRowByEmailOrCode(pool, { email: e })
     : (await findTeacherRowByLookupQuery(pool, c)).row

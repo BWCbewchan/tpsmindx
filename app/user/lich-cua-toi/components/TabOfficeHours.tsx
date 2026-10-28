@@ -1,4 +1,7 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
+
 
 import { useEffect, useState, useRef } from 'react'
 import { useAuth } from '@/lib/auth-context'
@@ -74,11 +77,11 @@ export default function TabOfficeHours() {
   const [selectedOH, setSelectedOH] = useState<OfficeHour | null>(null)
 
   // Filters
-  const [selectedCentres, setSelectedCentres] = useState<string[]>([])
+  const [selectedCentres, setSelectedCentres] = useQueryState<string[]>('officeCentre', [])
   const [centreSearchTerm, setCentreSearchTerm] = useState('')
-  const [dateFrom, setDateFrom] = useState<string>('')
-  const [dateTo, setDateTo] = useState<string>('')
-  const [appointmentStatus, setAppointmentStatus] = useState<'all' | AppointmentStatus>('all')
+  const [dateFrom, setDateFrom] = useQueryState<string>('officeDateFrom', '', { kind: 'date' })
+  const [dateTo, setDateTo] = useQueryState<string>('officeDateTo', '', { kind: 'date' })
+  const [appointmentStatus, setAppointmentStatus] = useQueryState<'all' | AppointmentStatus>('appointmentStatus', 'all')
 
   // Available centres list - fetch from LMS or hardcode
   const allCentres = [

@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -562,7 +564,7 @@ export default function Comments({
   const [loading, setLoading] = useState(false)
   const [loadingComments, setLoadingComments] = useState(true)
   const [displayCount, setDisplayCount] = useState(5)
-  const [sortBy, setSortBy] = useState<'newest' | 'most_reactions'>('newest')
+  const [sortBy, setSortBy] = useQueryState<'newest' | 'most_reactions'>('commentOrder', 'newest', { values: ["newest","most_reactions"] })
   const [commentImages, setCommentImages] = useState<string[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)

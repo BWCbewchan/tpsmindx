@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Button } from '@/components/ui/button'
 import {
@@ -109,7 +111,7 @@ function CandidateTestsContent() {
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [assignments, setAssignments] = useState<Assignment[]>([])
-  const [stageTab, setStageTab] = useState<'centralized_training' | 'pedagogy_training'>('centralized_training')
+  const [stageTab, setStageTab] = useQueryState<'centralized_training' | 'pedagogy_training'>('stage', 'centralized_training', { values: ["centralized_training","pedagogy_training"], history: 'push' })
   const [loading, setLoading] = useState(true)
   const [activeAssignment, setActiveAssignment] = useState<Assignment | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])

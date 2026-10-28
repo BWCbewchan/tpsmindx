@@ -1,4 +1,7 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
+
 
 import { Modal } from '@/components/ui/modal'
 import { Tabs } from '@/components/Tabs'
@@ -119,15 +122,15 @@ export default function AdminXinNghiMotBuoiPage() {
   const { user, token } = useAuth()
 
   const [items, setItems] = useState<LeaveRequest[]>([])
-  const [searchQuery, setSearchQuery] = useState('')
-  const [campusFilter, setCampusFilter] = useState<string[]>([])
-  const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
+  const [searchQuery, setSearchQuery] = useQueryState<string>('search', '')
+  const [campusFilter, setCampusFilter] = useQueryState<string[]>('campus', [])
+  const [fromDate, setFromDate] = useQueryState<string>('dateFrom', '', { kind: 'date' })
+  const [toDate, setToDate] = useQueryState<string>('dateTo', '', { kind: 'date' })
   const [showCampusDropdown, setShowCampusDropdown] = useState(false)
   const [campusSearchText, setCampusSearchText] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadingError, setLoadingError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = useQueryState<string>('tab', 'all', { history: 'push' })
 
   const [selected, setSelected] = useState<LeaveRequest | null>(null)
   const [adminNote, setAdminNote] = useState('')

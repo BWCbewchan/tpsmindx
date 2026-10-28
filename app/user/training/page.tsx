@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { PageContainer } from '@/components/PageContainer'
 import { PageSkeleton } from '@/components/skeletons/PageSkeleton'
@@ -118,7 +120,7 @@ export default function TrainingPage() {
   const startAssignmentId = searchParams.get('start_assignment_id')
   const { mutate } = useSWRConfig()
 
-  const [tab, setTab] = useState<'lessons' | 'stats' | 'tests'>('lessons')
+  const [tab, setTab] = useQueryState<'lessons' | 'stats' | 'tests'>('tab', 'lessons', { values: ["lessons","stats","tests"], history: 'push' })
   const [submitCode, setSubmitCode] = useState('')
   const [hasAutoSearched, setHasAutoSearched] = useState(false)
   const [isResolvingCode, setIsResolvingCode] = useState(false)

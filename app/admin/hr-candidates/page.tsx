@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState, isQueryUserEdit, resetQueryPage } from '@/lib/use-query-state'
+
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageContainer } from '@/components/PageContainer';
@@ -17,13 +19,13 @@ export default function HrCandidatesPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
-  const [searchInput, setSearchInput] = useState('');
+  const [searchInput, setSearchInput] = useQueryState<string>('search', '');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [regionFilter, setRegionFilter] = useState('all');
-  const [genFilter, setGenFilter] = useState('all');
-  const [genSort, setGenSort] = useState<'none' | 'asc' | 'desc'>('none');
-  const [page, setPage] = useState(1);
+  const [statusFilter, setStatusFilter] = useQueryState<string>('status', 'all');
+  const [regionFilter, setRegionFilter] = useQueryState<string>('region', 'all');
+  const [genFilter, setGenFilter] = useQueryState<string>('gen', 'all');
+  const [genSort, setGenSort] = useQueryState<'none' | 'asc' | 'desc'>('sort', 'none', { values: ["none","asc","desc"] });
+  const [page, setPage] = useQueryState<number>('page', 1);
 
   const [availableGens, setAvailableGens] = useState<string[]>([]);
   const [summary, setSummary] = useState<HrSummary>({
@@ -39,7 +41,7 @@ export default function HrCandidatesPage() {
 
   // Search debounce
   useEffect(() => {
-    const t = setTimeout(() => { setSearch(searchInput.trim()); setPage(1); setSelectedKeys(new Set()); }, 300);
+    const t = setTimeout(() => { setSearch(searchInput.trim()); void (isQueryUserEdit() && resetQueryPage(setPage)); setSelectedKeys(new Set()); }, 300);
     return () => clearTimeout(t);
   }, [searchInput]);
 

@@ -1,4 +1,6 @@
 'use client'
+import { useQueryDate } from '@/lib/use-query-date'
+import { useQueryFilters } from '@/lib/use-query-filters'
 
 import { CalendarDays, ChevronLeft, ChevronRight, Filter, Users, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -369,12 +371,12 @@ function DetailModal({ detail, filter, areas, isSuperAdmin, onClose }: {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function QuanLyLichLamViecPage() {
-  const [focusDate, setFocusDate] = useState(() => new Date())
+  const [focusDate, setFocusDate] = useQueryDate('date', () => new Date())
   const [cache, setCache] = useState<Record<CellKey, CellData>>({})
   const [loading, setLoading] = useState<Record<CellKey, boolean>>({})
   const [detail, setDetail] = useState<DetailModalData | null>(null)
   const [showFilter, setShowFilter] = useState(false)
-  const [filter, setFilter] = useState<FilterState>({ khungGio: null, coSo: null, khoi: null, linhHoat: null })
+  const [filter, setFilter] = useQueryFilters<FilterState>({ khungGio: null, coSo: null, khoi: null, linhHoat: null }, {"khungGio":"slot","coSo":"centre","khoi":"block","linhHoat":"flexible"}, ['linhHoat'])
   const [allCenters, setAllCenters] = useState<{ short_code: string; full_name: string }[]>([])
   const [myAreas, setMyAreas] = useState<string[] | null>(null)
   const [isSuperAdmin, setIsSuperAdmin] = useState(false)

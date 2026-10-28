@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Modal } from '@/components/ui/modal';
 import { checkHrefPermission } from '@/lib/menu-permissions';
@@ -106,8 +108,8 @@ export default function AdminDealLuongPage() {
   const dealTypeTab = (searchParams.get('type') as SalaryDeal['deal_type']) || 'bonus';
   const [deals, setDeals] = useState<SalaryDeal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useQueryState<StatusFilter>('status', 'all', { values: ["all","pending","tegl_approved","admin_approved","rejected"] });
+  const [searchQuery, setSearchQuery] = useQueryState<string>('search', '');
   const [selectedDeal, setSelectedDeal] = useState<SalaryDeal | null>(null);
   const [reviewNote, setReviewNote] = useState('');
   const [submitting, setSubmitting] = useState(false);

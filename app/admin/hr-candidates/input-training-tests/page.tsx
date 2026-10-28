@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -108,8 +110,8 @@ export default function InputTrainingTestsPage() {
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [stageFilter, setStageFilter] = useState<TrainingStage>('centralized_training');
-  const [search, setSearch] = useState('');
+  const [stageFilter, setStageFilter] = useQueryState<TrainingStage>('stage', 'centralized_training', { values: ["centralized_training","pedagogy_training"] });
+  const [search, setSearch] = useQueryState<string>('search', '');
   const [formData, setFormData] = useState({
     video_id: '',
     assignment_title: '',

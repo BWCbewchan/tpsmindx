@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -74,7 +76,7 @@ export default function TrainingDetailPage() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'log'>('overview');
+  const [activeTab, setActiveTab] = useQueryState<'overview' | 'log'>('tab', 'overview', { values: ["overview","log"], history: 'push' });
   const videoScores = data?.video_scores || [];
 
   const allAttemptLogs = useMemo(() => {

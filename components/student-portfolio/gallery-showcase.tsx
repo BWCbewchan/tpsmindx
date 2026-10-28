@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -65,12 +67,12 @@ export function GalleryShowcase({
   }, [gallery]);
 
   // Determine initial active tab (defaulting to the first category with items, or 'certificates')
-  const [activeTab, setActiveTab] = useState<TabType>(() => {
+  const [activeTab, setActiveTab] = useQueryState<TabType>('galleryTab', () => {
     if (certificates.length > 0) return 'certificates';
     if (activities.length > 0) return 'activities';
     if (events.length > 0) return 'events';
     return 'certificates';
-  });
+  }, { values: ["certificates","activities","events"], history: 'push' });
 
   const [activeImageIndex, setActiveImageIndex] = useState<number | null>(null);
   const [touchStart, setTouchStart] = useState<number | null>(null);

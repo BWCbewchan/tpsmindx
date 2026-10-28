@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { authHeaders } from '@/lib/auth-headers';
 import { toast } from '@/lib/app-toast';
@@ -263,7 +265,7 @@ export default function PortfolioBuilderPage() {
   const params = useParams<{ portfolioKey: string }>();
   const [portfolio, setPortfolio] = useState<StudentPortfolioRecord | null>(null);
   const [data, setData] = useState<StudentPortfolioData>(() => emptyData(searchParams));
-  const [active, setActive] = useState<SectionId>('profile');
+  const [active, setActive] = useQueryState<SectionId>('tab', 'profile', { values: ["profile","journey","skills","dna","projects","gallery","awards","rewards"] });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [hardSkillDraft, setHardSkillDraft] = useState('');

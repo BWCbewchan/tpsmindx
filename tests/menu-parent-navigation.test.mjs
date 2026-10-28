@@ -79,6 +79,15 @@ test('teacher evaluations require an explicit screen grant for managers and admi
   }
 });
 
+test('descriptive teacher profile URLs preserve legacy grants without granting sibling screens', () => {
+  const user = { ...manager, permissions: ['/admin/page1'] };
+  assert.equal(checkHrefPermission('/admin/ho-so-giao-vien?search=GV123', user), true);
+  assert.equal(checkHrefPermission('/admin/page1', user), true);
+  assert.equal(checkHrefPermission('/admin/ho-so-giao-vien', manager), false);
+  assert.equal(checkHrefPermission('/admin/ho-so-giao-vien-extra', user), false);
+  assert.equal(checkHrefPermission('/admin/page1', { ...user, permissions: ['/admin/ho-so-giao-vien'] }), true);
+});
+
 test('teacher evaluation catalog migrations never auto-grant user or role permissions', () => {
   const standalone = fs.readFileSync(new URL('../migrations/V115_teacher_evaluation_screen.sql', import.meta.url), 'utf8');
   const runtime = fs.readFileSync(new URL('../lib/migrations.ts', import.meta.url), 'utf8');

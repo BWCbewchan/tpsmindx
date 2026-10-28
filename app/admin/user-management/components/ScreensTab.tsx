@@ -1,4 +1,6 @@
 "use client";
+import { useQueryState } from '@/lib/use-query-state'
+
 import {
     Table,
     TableBody,
@@ -65,9 +67,9 @@ export default function ScreensTab() {
     const [screens, setScreens] = useState<ScreenRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [search, setSearch] = useState('');
-    const [groupFilter, setGroupFilter] = useState('all');
-    const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+    const [search, setSearch] = useQueryState<string>('screenSearch', '');
+    const [groupFilter, setGroupFilter] = useQueryState<string>('screenGroup', 'all');
+    const [statusFilter, setStatusFilter] = useQueryState<'all' | 'active' | 'inactive'>('screenStatus', 'all', { values: ["all","active","inactive"] });
     const [displayMode, setDisplayMode] = useState<'table' | 'cards'>('table');
     const [showForm, setShowForm] = useState(false);
     const [mode, setMode] = useState<'create' | 'edit'>('create');

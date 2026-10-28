@@ -1,0 +1,4569 @@
+{
+  "routes": [
+    {
+      "route": "/admin/assignment-questions",
+      "shared": [],
+      "existing": [
+        "assignment_id",
+        "return_to"
+      ]
+    },
+    {
+      "route": "/admin/assignments",
+      "shared": [],
+      "existing": [
+        "from_video"
+      ]
+    },
+    {
+      "route": "/admin/check-cong",
+      "shared": [
+        {
+          "state": "[month, setMonth]",
+          "key": "month",
+          "kind": "navigation state",
+          "file": "app/admin/check-cong/page.tsx"
+        },
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"records\",\"feedback\",\"analytics\"], history: 'push' }",
+          "file": "app/admin/check-cong/page.tsx"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"CHECKED\",\"UNCHECKED\"] }",
+          "file": "app/admin/check-cong/page.tsx"
+        },
+        {
+          "state": "[queryInput, setQueryInput]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/check-cong/page.tsx"
+        },
+        {
+          "state": "[feedbackFilter, setFeedbackFilter]",
+          "key": "feedback",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"pending\",\"approved\",\"rejected\"] }",
+          "file": "app/admin/check-cong/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/cloudinary",
+      "shared": [
+        {
+          "state": "[resourceType, setResourceType]",
+          "key": "type",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"image\",\"video\",\"raw\"] }",
+          "file": "app/admin/cloudinary/page.tsx"
+        },
+        {
+          "state": "[appliedPrefix, setAppliedPrefix]",
+          "key": "prefix",
+          "kind": "navigation state",
+          "file": "app/admin/cloudinary/page.tsx"
+        },
+        {
+          "state": "[limit, setLimit]",
+          "key": "limit",
+          "kind": "navigation state",
+          "options": "{min:1,max:100}",
+          "file": "app/admin/cloudinary/page.tsx"
+        },
+        {
+          "state": "[bucket, setBucket]",
+          "key": "bucket",
+          "kind": "navigation state",
+          "file": "app/admin/cloudinary/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/dashboard",
+      "shared": [
+        {
+          "state": "[activeViewMode, setActiveViewMode]",
+          "key": "view",
+          "kind": "navigation state",
+          "options": "{ values: [\"team\",\"bu\"] }",
+          "file": "app/admin/dashboard/page.tsx"
+        },
+        {
+          "state": "[selectedMonth, setSelectedMonth]",
+          "key": "month",
+          "kind": "navigation state",
+          "file": "app/admin/dashboard/page.tsx"
+        },
+        {
+          "state": "[selectedTrendBU, setSelectedTrendBU]",
+          "key": "trendBU",
+          "kind": "navigation state",
+          "file": "app/admin/dashboard/page.tsx"
+        },
+        {
+          "state": "[selectedCenter, setSelectedCenter]",
+          "key": "teamCentre",
+          "kind": "navigation state",
+          "file": "components/dashboard/TeamDashboardView.tsx"
+        },
+        {
+          "state": "[selectedStatus, setSelectedStatus]",
+          "key": "teamStatus",
+          "kind": "navigation state",
+          "file": "components/dashboard/TeamDashboardView.tsx"
+        },
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "teamSearch",
+          "kind": "navigation state",
+          "file": "components/dashboard/TeamDashboardView.tsx"
+        },
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "teamTab",
+          "kind": "navigation state",
+          "options": "{ values: [\"classes\",\"teachers\"], history: 'push' }",
+          "file": "components/dashboard/TeamDashboardView.tsx"
+        },
+        {
+          "state": "[classesPage, setClassesPage]",
+          "key": "classesPage",
+          "kind": "navigation state",
+          "file": "components/dashboard/TeamDashboardView.tsx"
+        },
+        {
+          "state": "[classesPageSize, setClassesPageSize]",
+          "key": "classesPageSize",
+          "kind": "navigation state",
+          "options": "{min:1,max:100}",
+          "file": "components/dashboard/TeamDashboardView.tsx"
+        },
+        {
+          "state": "[teachersPage, setTeachersPage]",
+          "key": "teachersPage",
+          "kind": "navigation state",
+          "file": "components/dashboard/TeamDashboardView.tsx"
+        },
+        {
+          "state": "[teachersPageSize, setTeachersPageSize]",
+          "key": "teachersPageSize",
+          "kind": "navigation state",
+          "options": "{min:1,max:100}",
+          "file": "components/dashboard/TeamDashboardView.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/database",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"tables\",\"sql\",\"migrations\"], history: 'push' }",
+          "file": "app/admin/database/page.tsx"
+        },
+        {
+          "state": "[detailTab, setDetailTab]",
+          "key": "detailTab",
+          "kind": "navigation state",
+          "options": "{ values: [\"data\",\"structure\"], history: 'push' }",
+          "file": "app/admin/database/page.tsx"
+        },
+        {
+          "state": "[searchTerm, setSearchTerm]",
+          "key": "tableSearch",
+          "kind": "navigation state",
+          "file": "app/admin/database/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/database-migration",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/deal-luong",
+      "shared": [
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"pending\",\"tegl_approved\",\"admin_approved\",\"rejected\"] }",
+          "file": "app/admin/deal-luong/page.tsx"
+        },
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/deal-luong/page.tsx"
+        }
+      ],
+      "existing": [
+        "type"
+      ]
+    },
+    {
+      "route": "/admin/email-monitor",
+      "shared": [
+        {
+          "state": "[period, setPeriod]",
+          "key": "period",
+          "kind": "navigation state",
+          "options": "{ values: [\"24h\",\"7d\",\"30d\"] }",
+          "file": "app/admin/email-monitor/page.tsx"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state",
+          "file": "app/admin/email-monitor/page.tsx"
+        },
+        {
+          "state": "[search, setSearch]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/email-monitor/page.tsx"
+        },
+        {
+          "state": "[status, setStatus]",
+          "key": "status",
+          "kind": "navigation state",
+          "file": "app/admin/email-monitor/page.tsx"
+        },
+        {
+          "state": "[category, setCategory]",
+          "key": "category",
+          "kind": "navigation state",
+          "file": "app/admin/email-monitor/page.tsx"
+        },
+        {
+          "state": "[emailType, setEmailType]",
+          "key": "emailType",
+          "kind": "navigation state",
+          "file": "app/admin/email-monitor/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/feedback",
+      "shared": [
+        {
+          "state": "[filterStatus, setFilterStatus]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{values:['all','new','in_progress','done']}",
+          "file": "app/admin/feedback/page.tsx"
+        },
+        {
+          "state": "[searchText, setSearchText]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/feedback/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/giaitrinh",
+      "shared": [
+        {
+          "state": "[filterStatus, setFilterStatus]",
+          "key": "status",
+          "kind": "navigation state",
+          "file": "app/admin/giaitrinh/page.tsx"
+        },
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/giaitrinh/page.tsx"
+        },
+        {
+          "state": "[filterCampuses, setFilterCampuses]",
+          "key": "campus",
+          "kind": "navigation state",
+          "file": "app/admin/giaitrinh/page.tsx"
+        },
+        {
+          "state": "[filterSubjects, setFilterSubjects]",
+          "key": "subject",
+          "kind": "navigation state",
+          "file": "app/admin/giaitrinh/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/giao-trinh/[id]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/giao-trinh-chuyen-mon",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/giao-trinh-trai-nghiem",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/ho-so-giao-vien",
+      "shared": [
+        {
+          "state": "[selectedMonth, setSelectedMonth]",
+          "key": "month",
+          "kind": "navigation state",
+          "file": "app/admin/page1/page.tsx"
+        },
+        {
+          "state": "[selectedYear, setSelectedYear]",
+          "key": "year",
+          "kind": "navigation state",
+          "file": "app/admin/page1/page.tsx"
+        },
+        {
+          "state": "[selectedTableYear, setSelectedTableYear]",
+          "key": "tableYear",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }",
+          "file": "app/admin/page1/page.tsx"
+        },
+        {
+          "state": "[availabilityPeriod, setAvailabilityPeriod]",
+          "key": "period",
+          "kind": "navigation state",
+          "options": "{ values: [\"week\",\"month\",\"year\"] }",
+          "file": "app/admin/page1/page.tsx"
+        }
+      ],
+      "existing": [
+        "search"
+      ]
+    },
+    {
+      "route": "/admin/hr-candidates/gen-planner",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"planner\",\"tracking\",\"scheduling\",\"overview\"], history: 'push' }",
+          "file": "app/admin/hr-candidates/gen-planner/page.tsx"
+        },
+        {
+          "state": "[searchInput, setSearchInput]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/gen-planner/page.tsx"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"assigned\",\"unassigned\"] }",
+          "file": "app/admin/hr-candidates/gen-planner/page.tsx"
+        },
+        {
+          "state": "[sourceGenFilter, setSourceGenFilter]",
+          "key": "gen",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/gen-planner/page.tsx"
+        },
+        {
+          "state": "[sourceGenRegionFilter, setSourceGenRegionFilter]",
+          "key": "sourceRegion",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"1\",\"2\",\"3\",\"4\",\"5\"] }",
+          "file": "app/admin/hr-candidates/gen-planner/page.tsx"
+        },
+        {
+          "state": "[regionFilter, setRegionFilter]",
+          "key": "region",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"south\",\"north\"] }",
+          "file": "app/admin/hr-candidates/gen-planner/page.tsx"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/gen-planner/page.tsx"
+        },
+        {
+          "state": "[activeGenKey, setActiveGenKey]",
+          "key": "activeGen",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/gen-planner/page.tsx"
+        },
+        {
+          "state": "[candidateSearch, setCandidateSearch]",
+          "key": "candidateSearch",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/components/GenTrackingTab.tsx"
+        },
+        {
+          "state": "[focusDate, setFocusDate]",
+          "key": "date",
+          "kind": "calendar date",
+          "file": "app/admin/hr-candidates/components/GenOverviewTab.tsx"
+        },
+        {
+          "state": "[viewMode, setViewMode]",
+          "key": "calendarView",
+          "kind": "navigation state",
+          "options": "{ values: [\"day\",\"week\",\"month\"] }",
+          "file": "app/admin/hr-candidates/components/GenOverviewTab.tsx"
+        },
+        {
+          "state": "[genSearchInput, setGenSearchInput]",
+          "key": "genSearch",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/components/GenSidebar.tsx"
+        },
+        {
+          "state": "[genSortOrder, setGenSortOrder]",
+          "key": "genOrder",
+          "kind": "navigation state",
+          "options": "{ values: [\"asc\",\"desc\"] }",
+          "file": "app/admin/hr-candidates/components/GenSidebar.tsx"
+        },
+        {
+          "state": "[genPage, setGenPage]",
+          "key": "genPage",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/components/GenSidebar.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/hr-candidates/input-assessment",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/hr-candidates/input-training-tests",
+      "shared": [
+        {
+          "state": "[stageFilter, setStageFilter]",
+          "key": "stage",
+          "kind": "navigation state",
+          "options": "{ values: [\"centralized_training\",\"pedagogy_training\"] }",
+          "file": "app/admin/hr-candidates/input-training-tests/page.tsx"
+        },
+        {
+          "state": "[search, setSearch]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/input-training-tests/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/hr-candidates",
+      "shared": [
+        {
+          "state": "[searchInput, setSearchInput]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/page.tsx"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/page.tsx"
+        },
+        {
+          "state": "[regionFilter, setRegionFilter]",
+          "key": "region",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/page.tsx"
+        },
+        {
+          "state": "[genFilter, setGenFilter]",
+          "key": "gen",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/page.tsx"
+        },
+        {
+          "state": "[genSort, setGenSort]",
+          "key": "sort",
+          "kind": "navigation state",
+          "options": "{ values: [\"none\",\"asc\",\"desc\"] }",
+          "file": "app/admin/hr-candidates/page.tsx"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/hr-candidates/pedagogy-training",
+      "shared": [
+        {
+          "state": "[search, setSearch]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/pedagogy-training/page.tsx"
+        },
+        {
+          "state": "[centerFilter, setCenterFilter]",
+          "key": "centre",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/pedagogy-training/page.tsx"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/pedagogy-training/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/hr-candidates/training-calendar",
+      "shared": [
+        {
+          "state": "[regionFilter, setRegionFilter]",
+          "key": "region",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"south\",\"north\"] }",
+          "file": "app/admin/hr-candidates/training-calendar/page.tsx"
+        },
+        {
+          "state": "[activeGenKey, setActiveGenKey]",
+          "key": "gen",
+          "kind": "navigation state",
+          "file": "app/admin/hr-candidates/training-calendar/page.tsx"
+        },
+        {
+          "state": "[focusDate, setFocusDate]",
+          "key": "date",
+          "kind": "calendar date",
+          "file": "app/admin/hr-candidates/components/GenOverviewTab.tsx"
+        },
+        {
+          "state": "[viewMode, setViewMode]",
+          "key": "calendarView",
+          "kind": "navigation state",
+          "options": "{ values: [\"day\",\"week\",\"month\"] }",
+          "file": "app/admin/hr-candidates/components/GenOverviewTab.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/hr-candidates/training-documents",
+      "shared": [],
+      "existing": [
+        "id"
+      ]
+    },
+    {
+      "route": "/admin/hr-onboarding",
+      "shared": [
+        {
+          "state": "[regionFilter, setRegionFilter]",
+          "key": "region",
+          "kind": "navigation state",
+          "file": "app/admin/hr-onboarding/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/hr-onboarding/videos/lesson",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/hr-onboarding/videos",
+      "shared": [
+        {
+          "state": "[searchTerm, setSearchTerm]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/hr-onboarding/videos/page.tsx"
+        },
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"active\",\"draft\",\"inactive\"], history: 'push' }",
+          "file": "app/admin/hr-onboarding/videos/page.tsx"
+        },
+        {
+          "state": "[stageFilter, setStageFilter]",
+          "key": "stage",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"centralized_training\",\"pedagogy_training\"] }",
+          "file": "app/admin/hr-onboarding/videos/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/hr-onboarding/[gen]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/kiem-soat-spck/builder/[portfolioKey]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/kiem-soat-spck",
+      "shared": [
+        {
+          "state": "selectedCentres",
+          "key": "centre",
+          "kind": "filter",
+          "file": "components/portfolio/ClassFilterToolbar.tsx"
+        },
+        {
+          "state": "dateFrom",
+          "key": "dateFrom",
+          "kind": "filter",
+          "file": "components/portfolio/ClassFilterToolbar.tsx"
+        },
+        {
+          "state": "dateTo",
+          "key": "dateTo",
+          "kind": "filter",
+          "file": "components/portfolio/ClassFilterToolbar.tsx"
+        },
+        {
+          "state": "qcStatus",
+          "key": "qcStatus",
+          "kind": "filter",
+          "file": "components/portfolio/ClassFilterToolbar.tsx"
+        },
+        {
+          "state": "teacherSearch",
+          "key": "teacher",
+          "kind": "filter",
+          "file": "components/portfolio/ClassFilterToolbar.tsx"
+        },
+        {
+          "state": "classSearch",
+          "key": "search",
+          "kind": "filter",
+          "file": "components/portfolio/ClassFilterToolbar.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/manager-centers",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/page1",
+      "shared": [
+        {
+          "state": "[selectedMonth, setSelectedMonth]",
+          "key": "month",
+          "kind": "navigation state",
+          "file": "app/admin/page1/page.tsx"
+        },
+        {
+          "state": "[selectedYear, setSelectedYear]",
+          "key": "year",
+          "kind": "navigation state",
+          "file": "app/admin/page1/page.tsx"
+        },
+        {
+          "state": "[selectedTableYear, setSelectedTableYear]",
+          "key": "tableYear",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }",
+          "file": "app/admin/page1/page.tsx"
+        },
+        {
+          "state": "[availabilityPeriod, setAvailabilityPeriod]",
+          "key": "period",
+          "kind": "navigation state",
+          "options": "{ values: [\"week\",\"month\",\"year\"] }",
+          "file": "app/admin/page1/page.tsx"
+        }
+      ],
+      "existing": [
+        "search"
+      ]
+    },
+    {
+      "route": "/admin/page2/custom",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/page2/manage",
+      "shared": [
+        {
+          "state": "[selectedSlug, setSelectedSlug]",
+          "key": "doc",
+          "kind": "navigation state",
+          "file": "app/admin/page2/manage/page.tsx"
+        },
+        {
+          "state": "[sidebarQuery, setSidebarQuery]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/page2/manage/page.tsx"
+        },
+        {
+          "state": "[editorMode, setEditorMode]",
+          "key": "editor",
+          "kind": "navigation state",
+          "options": "{ values: [\"markdown\",\"visual\"] }",
+          "file": "app/admin/page2/manage/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/page2",
+      "shared": [],
+      "existing": [
+        "si",
+        "v",
+        "sub_page_id",
+        "id"
+      ]
+    },
+    {
+      "route": "/admin/page3",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/page4/danh-sach-dang-ky",
+      "shared": [
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state",
+          "file": "app/admin/page4/danh-sach-dang-ky/page.tsx"
+        },
+        {
+          "state": "[searchTeacherCode, setSearchTeacherCode]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/page4/danh-sach-dang-ky/page.tsx"
+        },
+        {
+          "state": "[filterYear, setFilterYear]",
+          "key": "year",
+          "kind": "navigation state",
+          "file": "app/admin/page4/danh-sach-dang-ky/page.tsx"
+        },
+        {
+          "state": "[filterMonth, setFilterMonth]",
+          "key": "month",
+          "kind": "navigation state",
+          "file": "app/admin/page4/danh-sach-dang-ky/page.tsx"
+        },
+        {
+          "state": "[filterSubjectCodes, setFilterSubjectCodes]",
+          "key": "subject",
+          "kind": "navigation state",
+          "file": "app/admin/page4/danh-sach-dang-ky/page.tsx"
+        },
+        {
+          "state": "[filterBlockCodes, setFilterBlockCodes]",
+          "key": "block",
+          "kind": "navigation state",
+          "file": "app/admin/page4/danh-sach-dang-ky/page.tsx"
+        },
+        {
+          "state": "[filterRegType, setFilterRegType]",
+          "key": "regType",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"official\",\"additional\"] }",
+          "file": "app/admin/page4/danh-sach-dang-ky/page.tsx"
+        },
+        {
+          "state": "[filterXuLy, setFilterXuLy]",
+          "key": "processing",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"chờ giải trình\",\"đã duyệt\",\"từ chối\",\"đã hoàn thành\"] }",
+          "file": "app/admin/page4/danh-sach-dang-ky/page.tsx"
+        },
+        {
+          "state": "[filterHasScore, setFilterHasScore]",
+          "key": "hasScore",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"has\",\"none\"] }",
+          "file": "app/admin/page4/danh-sach-dang-ky/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/page4/form-dang-ky",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/page4/lich-danh-gia",
+      "shared": [
+        {
+          "state": "[view, setView]",
+          "key": "view",
+          "kind": "navigation state",
+          "options": "{ values: [\"day\",\"week\",\"month\",\"year\"] }",
+          "file": "app/admin/page4/lich-danh-gia/page.tsx"
+        },
+        {
+          "state": "[focusDate, setFocusDate]",
+          "key": "date",
+          "kind": "calendar date",
+          "file": "app/admin/page4/lich-danh-gia/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/page4/quan-ly-lich-lam-viec",
+      "shared": [
+        {
+          "state": "[focusDate, setFocusDate]",
+          "key": "date",
+          "kind": "calendar date",
+          "file": "app/admin/page4/quan-ly-lich-lam-viec/page.tsx"
+        },
+        {
+          "state": "\"khungGio\"",
+          "key": "slot",
+          "kind": "filter",
+          "file": "app/admin/page4/quan-ly-lich-lam-viec/page.tsx"
+        },
+        {
+          "state": "\"coSo\"",
+          "key": "centre",
+          "kind": "filter",
+          "file": "app/admin/page4/quan-ly-lich-lam-viec/page.tsx"
+        },
+        {
+          "state": "\"khoi\"",
+          "key": "block",
+          "kind": "filter",
+          "file": "app/admin/page4/quan-ly-lich-lam-viec/page.tsx"
+        },
+        {
+          "state": "\"linhHoat\"",
+          "key": "flexible",
+          "kind": "filter",
+          "file": "app/admin/page4/quan-ly-lich-lam-viec/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/page4/thu-vien-de",
+      "shared": [
+        {
+          "state": "[activePageTab, setActivePageTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"library\",\"feedback\"], history: 'push' }",
+          "file": "app/admin/page4/thu-vien-de/page.tsx"
+        },
+        {
+          "state": "[leftPanelTab, setLeftPanelTab]",
+          "key": "panel",
+          "kind": "navigation state",
+          "options": "{ values: [\"both\",\"setup\",\"queue\"], history: 'push' }",
+          "file": "app/admin/page4/thu-vien-de/page.tsx"
+        },
+        {
+          "state": "[focusDate, setFocusDate]",
+          "key": "date",
+          "kind": "calendar date",
+          "file": "app/admin/page4/thu-vien-de/page.tsx"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "examFeedbackPage",
+          "kind": "navigation state",
+          "file": "components/admin/exam-feedback/ExamFeedbackStatsPanel.tsx"
+        },
+        {
+          "state": "[month, setMonth]",
+          "key": "examFeedbackMonth",
+          "kind": "navigation state",
+          "file": "components/admin/exam-feedback/ExamFeedbackStatsPanel.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/page4/thu-vien-de/questions",
+      "shared": [],
+      "existing": [
+        "set_id"
+      ]
+    },
+    {
+      "route": "/admin/page4/thu-vien-de/subjects/[subjectId]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/page5",
+      "shared": [
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"assigned\",\"draft\",\"locked\"], history: 'push' }",
+          "file": "app/admin/page5/page.tsx"
+        },
+        {
+          "state": "[search, setSearch]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/page5/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/phieu-danh-gia-giao-vien",
+      "shared": [
+        {
+          "state": "[dateFrom, setDateFrom]",
+          "key": "dateFrom",
+          "kind": "navigation state",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[dateTo, setDateTo]",
+          "key": "dateTo",
+          "kind": "navigation state",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[centreId, setCentreId]",
+          "key": "centre",
+          "kind": "navigation state",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[requestSearch, setRequestSearch]",
+          "key": "requestSearch",
+          "kind": "navigation state",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[viewMode, setViewMode]",
+          "key": "view",
+          "kind": "navigation state",
+          "options": "{ values: [\"classes\",\"entries\"] }",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[search, setSearch]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[sourceFilter, setSourceFilter]",
+          "key": "source",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"lms\",\"google_sheets\"] }",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[tableCentreFilter, setTableCentreFilter]",
+          "key": "tableCentre",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[courseLineFilter, setCourseLineFilter]",
+          "key": "course",
+          "kind": "navigation state",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[topicFilter, setTopicFilter]",
+          "key": "topic",
+          "kind": "navigation state",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[sessionFilter, setSessionFilter]",
+          "key": "session",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"4\",\"8\",\"outside_session\",\"inactive\"] }",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[scoreFilter, setScoreFilter]",
+          "key": "score",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"low\"] }",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[classSortKey, setClassSortKey]",
+          "key": "classSort",
+          "kind": "navigation state",
+          "options": "{ values: [\"className\",\"courseName\",\"sessions\",\"collectionRate\",\"averageTeacherScore\",\"totalResponses\"] }",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[classSortDirection, setClassSortDirection]",
+          "key": "classOrder",
+          "kind": "navigation state",
+          "options": "{ values: [\"asc\",\"desc\"] }",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[entrySortKey, setEntrySortKey]",
+          "key": "entrySort",
+          "kind": "navigation state",
+          "options": "{ values: [\"timestamp\",\"studentName\",\"className\",\"teacherScore\",\"status\"] }",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[entrySortDirection, setEntrySortDirection]",
+          "key": "entryOrder",
+          "kind": "navigation state",
+          "options": "{ values: [\"asc\",\"desc\"] }",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state",
+          "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/portfolio/builder/[portfolioKey]",
+      "shared": [
+        {
+          "state": "[active, setActive]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"profile\",\"journey\",\"skills\",\"dna\",\"projects\",\"gallery\",\"awards\",\"rewards\"] }",
+          "file": "app/admin/portfolio/builder/[portfolioKey]/page.tsx"
+        }
+      ],
+      "existing": [
+        "studentId",
+        "classId",
+        "studentName",
+        "className",
+        "centreName",
+        "courseName",
+        "courseLine",
+        "teacherName"
+      ]
+    },
+    {
+      "route": "/admin/portfolio",
+      "shared": [
+        {
+          "state": "[appliedSearch, setAppliedSearch]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/portfolio/page.tsx"
+        },
+        {
+          "state": "[pageIndex, setPageIndex]",
+          "key": "pageIndex",
+          "kind": "navigation state",
+          "options": "{ min: 0 }",
+          "file": "app/admin/portfolio/page.tsx"
+        },
+        {
+          "state": "[trackFilter, setTrackFilter]",
+          "key": "track",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"coding\",\"robotics\",\"art\"] }",
+          "file": "app/admin/portfolio/page.tsx"
+        },
+        {
+          "state": "[selectedCentre, setSelectedCentre]",
+          "key": "centre",
+          "kind": "navigation state",
+          "file": "app/admin/portfolio/page.tsx"
+        },
+        {
+          "state": "[dateFrom, setDateFrom]",
+          "key": "dateFrom",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }",
+          "file": "app/admin/portfolio/page.tsx"
+        },
+        {
+          "state": "[dateTo, setDateTo]",
+          "key": "dateTo",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }",
+          "file": "app/admin/portfolio/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/profile",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/quan-ly-be-mai",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/quan-ly-qc",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"classes\",\"records\",\"facility\"], history: 'push' }",
+          "file": "app/admin/quan-ly-qc/page.tsx"
+        },
+        {
+          "state": "[currentPage, setCurrentPage]",
+          "key": "page",
+          "kind": "navigation state",
+          "file": "app/admin/quan-ly-qc/page.tsx"
+        },
+        {
+          "state": "[q, setQ]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/quan-ly-qc/page.tsx"
+        },
+        {
+          "state": "[fromDate, setFromDate]",
+          "key": "dateFrom",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }",
+          "file": "app/admin/quan-ly-qc/page.tsx"
+        },
+        {
+          "state": "[toDate, setToDate]",
+          "key": "dateTo",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }",
+          "file": "app/admin/quan-ly-qc/page.tsx"
+        },
+        {
+          "state": "[selectedCourseLine, setSelectedCourseLine]",
+          "key": "course",
+          "kind": "navigation state",
+          "file": "app/admin/quan-ly-qc/page.tsx"
+        },
+        {
+          "state": "[selectedCentre, setSelectedCentre]",
+          "key": "centre",
+          "kind": "navigation state",
+          "file": "app/admin/quan-ly-qc/page.tsx"
+        },
+        {
+          "state": "[recordSearch, setRecordSearch]",
+          "key": "recordSearch",
+          "kind": "navigation state",
+          "file": "app/admin/quan-ly-qc/page.tsx"
+        },
+        {
+          "state": "[recordCentre, setRecordCentre]",
+          "key": "recordCentre",
+          "kind": "navigation state",
+          "file": "app/admin/quan-ly-qc/page.tsx"
+        },
+        {
+          "state": "[recordLevel, setRecordLevel]",
+          "key": "recordLevel",
+          "kind": "navigation state",
+          "file": "app/admin/quan-ly-qc/page.tsx"
+        },
+        {
+          "state": "[recordLeader, setRecordLeader]",
+          "key": "recordLeader",
+          "kind": "navigation state",
+          "file": "app/admin/quan-ly-qc/page.tsx"
+        },
+        {
+          "state": "[recordPage, setRecordPage]",
+          "key": "recordPage",
+          "kind": "navigation state",
+          "file": "app/admin/quan-ly-qc/page.tsx"
+        },
+        {
+          "state": "[selectedMonth, setSelectedMonth]",
+          "key": "month",
+          "kind": "navigation state",
+          "file": "app/admin/quan-ly-qc/components/FacilityEvaluationTab.tsx"
+        },
+        {
+          "state": "[historySearch, setHistorySearch]",
+          "key": "historySearch",
+          "kind": "navigation state",
+          "file": "app/admin/quan-ly-qc/components/FacilityEvaluationTab.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/quan-ly-tai-lieu-giang-day",
+      "shared": [
+        {
+          "state": "[activeStatus, setActiveStatus]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{values:['published','draft','disabled']}",
+          "file": "app/admin/quan-ly-tai-lieu-giang-day/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/quy-trinh-quy-dinh-leader/manage",
+      "shared": [
+        {
+          "state": "[selectedSlug, setSelectedSlug]",
+          "key": "doc",
+          "kind": "navigation state",
+          "file": "app/admin/quy-trinh-quy-dinh-leader/manage/page.tsx"
+        },
+        {
+          "state": "[sidebarQuery, setSidebarQuery]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/quy-trinh-quy-dinh-leader/manage/page.tsx"
+        },
+        {
+          "state": "[editorMode, setEditorMode]",
+          "key": "editor",
+          "kind": "navigation state",
+          "options": "{ values: [\"markdown\",\"visual\"] }",
+          "file": "app/admin/quy-trinh-quy-dinh-leader/manage/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/quy-trinh-quy-dinh-leader",
+      "shared": [],
+      "existing": [
+        "si",
+        "v",
+        "sub_page_id",
+        "id"
+      ]
+    },
+    {
+      "route": "/admin/s3-supabase-manager",
+      "shared": [
+        {
+          "state": "[bucket, setBucket]",
+          "key": "bucket",
+          "kind": "navigation state",
+          "file": "app/admin/s3-supabase-manager/page.tsx"
+        },
+        {
+          "state": "[resourceType, setResourceType]",
+          "key": "type",
+          "kind": "navigation state",
+          "file": "app/admin/s3-supabase-manager/page.tsx"
+        },
+        {
+          "state": "[appliedPrefix, setAppliedPrefix]",
+          "key": "prefix",
+          "kind": "navigation state",
+          "file": "app/admin/s3-supabase-manager/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/system-metrics",
+      "shared": [
+        {
+          "state": "[fromDate, setFromDate]",
+          "key": "dateFrom",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }",
+          "file": "app/admin/system-metrics/page.tsx"
+        },
+        {
+          "state": "[toDate, setToDate]",
+          "key": "dateTo",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }",
+          "file": "app/admin/system-metrics/page.tsx"
+        },
+        {
+          "state": "[chartTab, setChartTab]",
+          "key": "chart",
+          "kind": "navigation state",
+          "options": "{ values: [\"dau\",\"wau\"], history: 'push' }",
+          "file": "app/admin/system-metrics/page.tsx"
+        },
+        {
+          "state": "[userSearch, setUserSearch]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/system-metrics/page.tsx"
+        },
+        {
+          "state": "[centerFilter, setCenterFilter]",
+          "key": "centre",
+          "kind": "navigation state",
+          "file": "app/admin/system-metrics/page.tsx"
+        },
+        {
+          "state": "[errorTablePage, setErrorTablePage]",
+          "key": "errorPage",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }",
+          "file": "app/admin/system-metrics/page.tsx"
+        },
+        {
+          "state": "[onlineTablePage, setOnlineTablePage]",
+          "key": "onlinePage",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }",
+          "file": "app/admin/system-metrics/page.tsx"
+        },
+        {
+          "state": "[managerRankingTablePage, setManagerRankingTablePage]",
+          "key": "managerPage",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }",
+          "file": "app/admin/system-metrics/page.tsx"
+        },
+        {
+          "state": "[teacherRankingTablePage, setTeacherRankingTablePage]",
+          "key": "teacherPage",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }",
+          "file": "app/admin/system-metrics/page.tsx"
+        },
+        {
+          "state": "[centerTablePage, setCenterTablePage]",
+          "key": "centrePage",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }",
+          "file": "app/admin/system-metrics/page.tsx"
+        },
+        {
+          "state": "[selectedCenterActorTab, setSelectedCenterActorTab]",
+          "key": "centreActorTab",
+          "kind": "navigation state",
+          "options": "{ values: [\"teacher\",\"manager\"], history: 'push' }",
+          "file": "app/admin/system-metrics/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/tao-deal-luong",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "type",
+          "kind": "navigation state",
+          "options": "{ values: [\"bonus\",\"salary_reduction\",\"salary_deal\"], history: 'push' }",
+          "file": "app/admin/tao-deal-luong/page.tsx"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"pending\",\"tegl_approved\",\"admin_approved\",\"rejected\"] }",
+          "file": "app/admin/tao-deal-luong/page.tsx"
+        },
+        {
+          "state": "[dealTypeFilter, setDealTypeFilter]",
+          "key": "dealType",
+          "kind": "navigation state",
+          "options": "{values:['all','bonus','salary_reduction','salary_deal']}",
+          "file": "app/admin/tao-deal-luong/page.tsx"
+        },
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/tao-deal-luong/page.tsx"
+        }
+      ],
+      "existing": [
+        "type"
+      ]
+    },
+    {
+      "route": "/admin/thong-bao",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"unread\",\"read\",\"settings\"], history: 'push' }",
+          "file": "app/admin/thong-bao/page.tsx"
+        },
+        {
+          "state": "[activeCategory, setActiveCategory]",
+          "key": "category",
+          "kind": "navigation state",
+          "options": "{values:['all', ...Object.keys(categoriesMap)]}",
+          "file": "app/admin/thong-bao/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/thu-vien-de",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/thu-vien-de/questions",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/thu-vien-de/subjects/[subjectId]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/tieu-chi-cham-diem",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"course\",\"common\"], history: 'push' }",
+          "file": "app/admin/tieu-chi-cham-diem/page.tsx"
+        },
+        {
+          "state": "[searchTerm, setSearchTerm]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/tieu-chi-cham-diem/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/training-dashboard",
+      "shared": [
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"teacher_stats\",\"video_stats\"], history: 'push' }",
+          "file": "app/admin/training-dashboard/page.tsx"
+        },
+        {
+          "state": "\"selectedCenters\"",
+          "key": "centre",
+          "kind": "filter",
+          "file": "app/admin/training-dashboard/page.tsx"
+        },
+        {
+          "state": "\"teacherCodeQuery\"",
+          "key": "search",
+          "kind": "filter",
+          "file": "app/admin/training-dashboard/page.tsx"
+        },
+        {
+          "state": "\"block\"",
+          "key": "block",
+          "kind": "filter",
+          "file": "app/admin/training-dashboard/page.tsx"
+        },
+        {
+          "state": "[teacherPage, setTeacherPage]",
+          "key": "teacherPage",
+          "kind": "navigation state",
+          "file": "app/admin/training-dashboard/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/truyenthong",
+      "shared": [
+        {
+          "state": "[searchTerm, setSearchTerm]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/truyenthong/page.tsx"
+        },
+        {
+          "state": "[filterStatus, setFilterStatus]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"draft\",\"published\",\"hidden\"] }",
+          "file": "app/admin/truyenthong/page.tsx"
+        },
+        {
+          "state": "[selectedMonth, setSelectedMonth]",
+          "key": "honorsMonth",
+          "kind": "navigation state",
+          "file": "components/monthly-honors-manager.tsx"
+        },
+        {
+          "state": "[viewMode, setViewMode]",
+          "key": "honorsView",
+          "kind": "navigation state",
+          "options": "{ values: [\"podium\",\"table\"] }",
+          "file": "components/monthly-honors-manager.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/truyenthong/posts/create",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/truyenthong/posts",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/truyenthong/posts/[slug]/edit",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/truyenthong/posts/[slug]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/truyenthong/sliders",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/admin/user-management",
+      "shared": [
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"users\",\"roles\",\"screens\",\"data\"], history: 'push' }",
+          "file": "app/admin/user-management/page.tsx"
+        },
+        {
+          "state": "[subTab, setSubTab]",
+          "key": "dataTab",
+          "kind": "navigation state",
+          "options": "{ values: [\"centers-leaders\",\"roles\",\"kanban\"], history: 'push' }",
+          "file": "app/admin/user-management/components/DataTab.tsx"
+        },
+        {
+          "state": "\"areas\"",
+          "key": "dataArea",
+          "kind": "filter",
+          "file": "app/admin/user-management/components/DataTab.tsx"
+        },
+        {
+          "state": "\"roleCodes\"",
+          "key": "dataRole",
+          "kind": "filter",
+          "file": "app/admin/user-management/components/DataTab.tsx"
+        },
+        {
+          "state": "\"statuses\"",
+          "key": "dataStatuses",
+          "kind": "filter",
+          "file": "app/admin/user-management/components/DataTab.tsx"
+        },
+        {
+          "state": "\"courses\"",
+          "key": "dataCourse",
+          "kind": "filter",
+          "file": "app/admin/user-management/components/DataTab.tsx"
+        },
+        {
+          "state": "[search, setSearch]",
+          "key": "dataSearch",
+          "kind": "navigation state",
+          "file": "app/admin/user-management/components/DataTab.tsx"
+        },
+        {
+          "state": "[fStatus, setFStatus]",
+          "key": "dataStatus",
+          "kind": "navigation state",
+          "file": "app/admin/user-management/components/DataTab.tsx"
+        },
+        {
+          "state": "[search, setSearch]",
+          "key": "kanbanSearch",
+          "kind": "navigation state",
+          "file": "app/admin/user-management/components/KanbanLeadersPanel.tsx"
+        },
+        {
+          "state": "[search, setSearch]",
+          "key": "screenSearch",
+          "kind": "navigation state",
+          "file": "app/admin/user-management/components/ScreensTab.tsx"
+        },
+        {
+          "state": "[groupFilter, setGroupFilter]",
+          "key": "screenGroup",
+          "kind": "navigation state",
+          "file": "app/admin/user-management/components/ScreensTab.tsx"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "screenStatus",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"active\",\"inactive\"] }",
+          "file": "app/admin/user-management/components/ScreensTab.tsx"
+        },
+        {
+          "state": "[userSearch, setUserSearch]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/user-management/components/UsersTab.tsx"
+        },
+        {
+          "state": "[roleFilter, setRoleFilter]",
+          "key": "role",
+          "kind": "navigation state",
+          "file": "app/admin/user-management/components/UsersTab.tsx"
+        },
+        {
+          "state": "[areaFilter, setAreaFilter]",
+          "key": "area",
+          "kind": "navigation state",
+          "file": "app/admin/user-management/components/UsersTab.tsx"
+        },
+        {
+          "state": "[authTypeFilter, setAuthTypeFilter]",
+          "key": "authType",
+          "kind": "navigation state",
+          "file": "app/admin/user-management/components/UsersTab.tsx"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state",
+          "file": "app/admin/user-management/components/UsersTab.tsx"
+        },
+        {
+          "state": "[createdByFilter, setCreatedByFilter]",
+          "key": "createdBy",
+          "kind": "navigation state",
+          "file": "app/admin/user-management/components/UsersTab.tsx"
+        }
+      ],
+      "existing": [
+        "tab"
+      ]
+    },
+    {
+      "route": "/admin/video-detail",
+      "shared": [
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"student\",\"question\"], history: 'push' }",
+          "file": "app/admin/video-detail/page.tsx"
+        }
+      ],
+      "existing": [
+        "id"
+      ]
+    },
+    {
+      "route": "/admin/video-setup",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"questions\",\"assignment\"], history: 'push' }",
+          "file": "app/admin/video-setup/page.tsx"
+        }
+      ],
+      "existing": [
+        "id"
+      ]
+    },
+    {
+      "route": "/admin/xin-nghi-mot-buoi",
+      "shared": [
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/xin-nghi-mot-buoi/page.tsx"
+        },
+        {
+          "state": "[campusFilter, setCampusFilter]",
+          "key": "campus",
+          "kind": "navigation state",
+          "file": "app/admin/xin-nghi-mot-buoi/page.tsx"
+        },
+        {
+          "state": "[fromDate, setFromDate]",
+          "key": "dateFrom",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }",
+          "file": "app/admin/xin-nghi-mot-buoi/page.tsx"
+        },
+        {
+          "state": "[toDate, setToDate]",
+          "key": "dateTo",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }",
+          "file": "app/admin/xin-nghi-mot-buoi/page.tsx"
+        },
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }",
+          "file": "app/admin/xin-nghi-mot-buoi/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/admin/xu-ly-tinh-huong",
+      "shared": [
+        {
+          "state": "[activeCategory, setActiveCategory]",
+          "key": "category",
+          "kind": "navigation state",
+          "file": "app/admin/xu-ly-tinh-huong/page.tsx"
+        },
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/admin/xu-ly-tinh-huong/page.tsx"
+        },
+        {
+          "state": "[filterDate, setFilterDate]",
+          "key": "date",
+          "kind": "navigation state",
+          "file": "app/admin/xu-ly-tinh-huong/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/analytics",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/bao-tri",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/candidate-portal/giao-trinh/[id]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/candidate-portal/giao-trinh-chuyen-mon",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/candidate-portal/giao-trinh-trai-nghiem",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/candidate-portal",
+      "shared": [
+        {
+          "state": "[videoStageTab, setVideoStageTab]",
+          "key": "videoStage",
+          "kind": "navigation state",
+          "options": "{ values: [\"centralized_training\",\"pedagogy_training\"], history: 'push' }",
+          "file": "app/candidate-portal/page.tsx"
+        },
+        {
+          "state": "[teLeaderSearch, setTeLeaderSearch]",
+          "key": "leaderSearch",
+          "kind": "navigation state",
+          "file": "app/candidate-portal/page.tsx"
+        },
+        {
+          "state": "[selectedTeArea, setSelectedTeArea]",
+          "key": "leaderArea",
+          "kind": "navigation state",
+          "file": "app/candidate-portal/page.tsx"
+        },
+        {
+          "state": "[focusDate, setFocusDate]",
+          "key": "date",
+          "kind": "calendar date",
+          "file": "app/admin/hr-candidates/components/GenOverviewTab.tsx"
+        },
+        {
+          "state": "[viewMode, setViewMode]",
+          "key": "calendarView",
+          "kind": "navigation state",
+          "options": "{ values: [\"day\",\"week\",\"month\"] }",
+          "file": "app/admin/hr-candidates/components/GenOverviewTab.tsx"
+        }
+      ],
+      "existing": [
+        "doc",
+        "si",
+        "v",
+        "sub_page_id",
+        "id"
+      ]
+    },
+    {
+      "route": "/candidate-portal/tests",
+      "shared": [
+        {
+          "state": "[stageTab, setStageTab]",
+          "key": "stage",
+          "kind": "navigation state",
+          "options": "{ values: [\"centralized_training\",\"pedagogy_training\"], history: 'push' }",
+          "file": "app/candidate-portal/tests/page.tsx"
+        }
+      ],
+      "existing": [
+        "start_assignment_id"
+      ]
+    },
+    {
+      "route": "/candidate-portal/videos/lesson",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/candidate-portal/[section]",
+      "shared": [
+        {
+          "state": "[videoStageTab, setVideoStageTab]",
+          "key": "videoStage",
+          "kind": "navigation state",
+          "options": "{ values: [\"centralized_training\",\"pedagogy_training\"], history: 'push' }",
+          "file": "app/candidate-portal/page.tsx"
+        },
+        {
+          "state": "[teLeaderSearch, setTeLeaderSearch]",
+          "key": "leaderSearch",
+          "kind": "navigation state",
+          "file": "app/candidate-portal/page.tsx"
+        },
+        {
+          "state": "[selectedTeArea, setSelectedTeArea]",
+          "key": "leaderArea",
+          "kind": "navigation state",
+          "file": "app/candidate-portal/page.tsx"
+        },
+        {
+          "state": "[focusDate, setFocusDate]",
+          "key": "date",
+          "kind": "calendar date",
+          "file": "app/admin/hr-candidates/components/GenOverviewTab.tsx"
+        },
+        {
+          "state": "[viewMode, setViewMode]",
+          "key": "calendarView",
+          "kind": "navigation state",
+          "options": "{ values: [\"day\",\"week\",\"month\"] }",
+          "file": "app/admin/hr-candidates/components/GenOverviewTab.tsx"
+        }
+      ],
+      "existing": [
+        "doc",
+        "si",
+        "v",
+        "sub_page_id",
+        "id"
+      ]
+    },
+    {
+      "route": "/checkdatasource",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/course-links-test",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/dashboard",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/hr-candidate-application",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/lichgiaovien",
+      "shared": [
+        {
+          "state": "[selectedRegion, setSelectedRegion]",
+          "key": "region",
+          "kind": "navigation state",
+          "file": "app/lichgiaovien/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/login",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/public/checkout",
+      "shared": [
+        {
+          "state": "[search, setSearch]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "\"center\"",
+          "key": "centre",
+          "kind": "filter",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "\"track\"",
+          "key": "track",
+          "kind": "filter",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "\"subject\"",
+          "key": "subject",
+          "kind": "filter",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "\"fromDate\"",
+          "key": "dateFrom",
+          "kind": "filter",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "\"toDate\"",
+          "key": "dateTo",
+          "kind": "filter",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "[sortBy, setSortBy]",
+          "key": "sort",
+          "kind": "navigation state",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "[activeQuickFilter, setActiveQuickFilter]",
+          "key": "quickFilter",
+          "kind": "navigation state",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state",
+          "file": "app/user/checkout/manage/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/public/checkout/[token]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/public/portfolio/[slug]",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "galleryTab",
+          "kind": "navigation state",
+          "options": "{ values: [\"certificates\",\"activities\",\"events\"], history: 'push' }",
+          "file": "components/student-portfolio/gallery-showcase.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/public/quan-ly-qc/danh-gia-co-so/[token]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/public/training-detail/[code]",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"overview\",\"log\"], history: 'push' }",
+          "file": "app/public/training-detail/[code]/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/public/training-submission-detail/[id]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/rawdata",
+      "shared": [],
+      "existing": [
+        "code"
+      ]
+    },
+    {
+      "route": "/rawdata-experience",
+      "shared": [],
+      "existing": [
+        "code"
+      ]
+    },
+    {
+      "route": "/temp-hidden-404",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/test-teachers",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/training-test",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/assignments/exam/[id]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/assignments",
+      "shared": [
+        {
+          "state": "[activeMainTab, setActiveMainTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"available\",\"list\",\"training\"], history: 'push' }",
+          "file": "app/user/assignments/page.tsx"
+        },
+        {
+          "state": "[scoreTypeFilter, setScoreTypeFilter]",
+          "key": "scoreType",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"expertise\",\"experience\"] }",
+          "file": "app/user/assignments/page.tsx"
+        },
+        {
+          "state": "[scoreResultFilter, setScoreResultFilter]",
+          "key": "scoreResult",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"done\",\"waiting\",\"pending\",\"accepted\",\"rejected\"] }",
+          "file": "app/user/assignments/page.tsx"
+        }
+      ],
+      "existing": [
+        "start_assignment_id",
+        "video_ok"
+      ]
+    },
+    {
+      "route": "/user/checkdatasource",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/checkout/create",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/checkout/manage",
+      "shared": [
+        {
+          "state": "[search, setSearch]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "\"center\"",
+          "key": "centre",
+          "kind": "filter",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "\"track\"",
+          "key": "track",
+          "kind": "filter",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "\"subject\"",
+          "key": "subject",
+          "kind": "filter",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "\"fromDate\"",
+          "key": "dateFrom",
+          "kind": "filter",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "\"toDate\"",
+          "key": "dateTo",
+          "kind": "filter",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "[sortBy, setSortBy]",
+          "key": "sort",
+          "kind": "navigation state",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "[activeQuickFilter, setActiveQuickFilter]",
+          "key": "quickFilter",
+          "kind": "navigation state",
+          "file": "app/user/checkout/manage/page.tsx"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state",
+          "file": "app/user/checkout/manage/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/user/checkout",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/dang-ky-lich-lam-viec",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/dao-tao-nang-cao/lesson",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/dao-tao-nang-cao",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/deal-luong",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"bonus\",\"salary_reduction\",\"salary_deal\"], history: 'push' }",
+          "file": "app/user/deal-luong/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/user/diem-danh-lop-hoc",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/diem-danh-lop-hoc/[classId]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/giaithich",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/giaitrinh",
+      "shared": [],
+      "existing": [
+        "assignment_id",
+        "subject",
+        "campus",
+        "test_date"
+      ]
+    },
+    {
+      "route": "/user/giao-trinh/[id]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/giao-trinh-chuyen-mon",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/giao-trinh-trai-nghiem",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/hoat-dong-hang-thang",
+      "shared": [
+        {
+          "state": "[view, setView]",
+          "key": "view",
+          "kind": "navigation state",
+          "options": "{ values: [\"month\",\"week\",\"day\"] }",
+          "file": "app/user/hoat-dong-hang-thang/page.tsx"
+        },
+        {
+          "state": "[focusDate, setFocusDate]",
+          "key": "date",
+          "kind": "calendar date",
+          "file": "app/user/hoat-dong-hang-thang/page.tsx"
+        }
+      ],
+      "existing": [
+        "showRegisterHint"
+      ]
+    },
+    {
+      "route": "/user/home",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/lich-cua-toi",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"lich\",\"lich-lop-hoc\",\"xin-nghi\",\"nhan-lop\",\"office-hours\"], history: 'push' }",
+          "file": "app/user/lich-cua-toi/page.tsx"
+        },
+        {
+          "state": "[focusDate,setFocusDate]",
+          "key": "date",
+          "kind": "calendar date",
+          "file": "app/user/lich-cua-toi/components/TabLichHoatDong.tsx"
+        },
+        {
+          "state": "[view,setView]",
+          "key": "calendarView",
+          "kind": "navigation state",
+          "options": "{ values: [\"day\",\"week\",\"month\"] }",
+          "file": "app/user/lich-cua-toi/components/TabLichHoatDong.tsx"
+        },
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "receiveTab",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }",
+          "file": "app/user/lich-cua-toi/components/TabNhanLop.tsx"
+        },
+        {
+          "state": "[campusFilter, setCampusFilter]",
+          "key": "receiveCampus",
+          "kind": "navigation state",
+          "file": "app/user/lich-cua-toi/components/TabNhanLop.tsx"
+        },
+        {
+          "state": "[fromDate, setFromDate]",
+          "key": "receiveDateFrom",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }",
+          "file": "app/user/lich-cua-toi/components/TabNhanLop.tsx"
+        },
+        {
+          "state": "[toDate, setToDate]",
+          "key": "receiveDateTo",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }",
+          "file": "app/user/lich-cua-toi/components/TabNhanLop.tsx"
+        },
+        {
+          "state": "[weekMonday, setWeekMonday]",
+          "key": "week",
+          "kind": "calendar date",
+          "file": "app/user/lich-cua-toi/components/TabLichLopHoc.tsx"
+        },
+        {
+          "state": "[selectedCentres, setSelectedCentres]",
+          "key": "officeCentre",
+          "kind": "navigation state",
+          "file": "app/user/lich-cua-toi/components/TabOfficeHours.tsx"
+        },
+        {
+          "state": "[dateFrom, setDateFrom]",
+          "key": "officeDateFrom",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }",
+          "file": "app/user/lich-cua-toi/components/TabOfficeHours.tsx"
+        },
+        {
+          "state": "[dateTo, setDateTo]",
+          "key": "officeDateTo",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }",
+          "file": "app/user/lich-cua-toi/components/TabOfficeHours.tsx"
+        },
+        {
+          "state": "[appointmentStatus, setAppointmentStatus]",
+          "key": "appointmentStatus",
+          "kind": "navigation state",
+          "file": "app/user/lich-cua-toi/components/TabOfficeHours.tsx"
+        }
+      ],
+      "existing": [
+        "tab"
+      ]
+    },
+    {
+      "route": "/user/lop-hoc",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"attendance\",\"comments\"], history: 'push' }",
+          "file": "app/user/lop-hoc/page.tsx"
+        },
+        {
+          "state": "\"search\"",
+          "key": "search",
+          "kind": "filter",
+          "file": "app/user/lop-hoc/page.tsx"
+        },
+        {
+          "state": "\"centre\"",
+          "key": "centre",
+          "kind": "filter",
+          "file": "app/user/lop-hoc/page.tsx"
+        },
+        {
+          "state": "\"startDate\"",
+          "key": "dateFrom",
+          "kind": "filter",
+          "file": "app/user/lop-hoc/page.tsx"
+        },
+        {
+          "state": "\"endDate\"",
+          "key": "dateTo",
+          "kind": "filter",
+          "file": "app/user/lop-hoc/page.tsx"
+        },
+        {
+          "state": "\"slotFrom\"",
+          "key": "slotFrom",
+          "kind": "filter",
+          "file": "app/user/lop-hoc/page.tsx"
+        },
+        {
+          "state": "\"slotTo\"",
+          "key": "slotTo",
+          "kind": "filter",
+          "file": "app/user/lop-hoc/page.tsx"
+        },
+        {
+          "state": "\"status\"",
+          "key": "status",
+          "kind": "filter",
+          "file": "app/user/lop-hoc/page.tsx"
+        },
+        {
+          "state": "\"teacher\"",
+          "key": "teacher",
+          "kind": "filter",
+          "file": "app/user/lop-hoc/page.tsx"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state",
+          "file": "app/user/lop-hoc/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/user/lop-hoc/[classId]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/nhan-lop-1-buoi",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/page2",
+      "shared": [],
+      "existing": [
+        "si",
+        "v",
+        "sub_page_id",
+        "id"
+      ]
+    },
+    {
+      "route": "/user/phan-tich-giao-trinh",
+      "shared": [],
+      "existing": [
+        "course",
+        "session",
+        "class",
+        "className"
+      ]
+    },
+    {
+      "route": "/user/profile",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/quan-ly-phan-hoi",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/quy-trinh-quy-dinh",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/quy-trinh-quy-dinh-leader",
+      "shared": [],
+      "existing": [
+        "si",
+        "v",
+        "sub_page_id",
+        "id"
+      ]
+    },
+    {
+      "route": "/user/tai-lieu-giang-day",
+      "shared": [
+        {
+          "state": "[query, setQuery]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/user/tai-lieu-giang-day/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/user/thong-bao",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"unread\",\"read\",\"settings\"], history: 'push' }",
+          "file": "app/user/thong-bao/page.tsx"
+        },
+        {
+          "state": "[activeCategory, setActiveCategory]",
+          "key": "category",
+          "kind": "navigation state",
+          "options": "{values:['all', ...Object.keys(categoriesMap)]}",
+          "file": "app/user/thong-bao/page.tsx"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "route": "/user/thong-tin-giao-vien",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/thongtingv",
+      "shared": [
+        {
+          "state": "[selectedMonth, setSelectedMonth]",
+          "key": "month",
+          "kind": "navigation state",
+          "file": "app/user/thongtingv/page.tsx"
+        },
+        {
+          "state": "[selectedYear, setSelectedYear]",
+          "key": "year",
+          "kind": "navigation state",
+          "file": "app/user/thongtingv/page.tsx"
+        },
+        {
+          "state": "[teacherInfoTab, setTeacherInfoTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"profile\",\"checkCong\",\"checkCongFeedback\"], history: 'push' }",
+          "file": "app/user/thongtingv/page.tsx"
+        },
+        {
+          "state": "[checkCongStatusFilter, setCheckCongStatusFilter]",
+          "key": "attendanceStatus",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"CHECKED\",\"UNCHECKED\"] }",
+          "file": "app/user/thongtingv/page.tsx"
+        },
+        {
+          "state": "[availabilityPeriod, setAvailabilityPeriod]",
+          "key": "period",
+          "kind": "navigation state",
+          "options": "{ values: [\"week\",\"month\",\"year\"] }",
+          "file": "app/user/thongtingv/page.tsx"
+        }
+      ],
+      "existing": [
+        "tab"
+      ]
+    },
+    {
+      "route": "/user/training/lesson",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/training",
+      "shared": [
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"lessons\",\"stats\",\"tests\"], history: 'push' }",
+          "file": "app/user/training/page.tsx"
+        },
+        {
+          "state": "[activeMainTab, setActiveMainTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"available\",\"list\",\"training\"], history: 'push' }",
+          "file": "app/user/assignments/page.tsx"
+        },
+        {
+          "state": "[scoreTypeFilter, setScoreTypeFilter]",
+          "key": "scoreType",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"expertise\",\"experience\"] }",
+          "file": "app/user/assignments/page.tsx"
+        },
+        {
+          "state": "[scoreResultFilter, setScoreResultFilter]",
+          "key": "scoreResult",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"done\",\"waiting\",\"pending\",\"accepted\",\"rejected\"] }",
+          "file": "app/user/assignments/page.tsx"
+        }
+      ],
+      "existing": [
+        "start_assignment_id",
+        "video_ok"
+      ]
+    },
+    {
+      "route": "/user/truyenthong",
+      "shared": [
+        {
+          "state": "[selectedFilter, setSelectedFilter]",
+          "key": "filter",
+          "kind": "navigation state",
+          "file": "app/user/truyenthong/page.tsx"
+        },
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "search",
+          "kind": "navigation state",
+          "file": "app/user/truyenthong/page.tsx"
+        }
+      ],
+      "existing": [
+        "filter"
+      ]
+    },
+    {
+      "route": "/user/truyenthong/[slug]",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/xin-nghi-mot-buoi",
+      "shared": [],
+      "existing": []
+    },
+    {
+      "route": "/user/xu-ly-tinh-huong",
+      "shared": [
+        {
+          "state": "[activeCategory, setActiveCategory]",
+          "key": "category",
+          "kind": "navigation state",
+          "file": "app/user/xu-ly-tinh-huong/page.tsx"
+        }
+      ],
+      "existing": []
+    }
+  ],
+  "modules": [
+    {
+      "file": "app/admin/check-cong/page.tsx",
+      "shared": [
+        {
+          "state": "[month, setMonth]",
+          "key": "month",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"records\",\"feedback\",\"analytics\"], history: 'push' }"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"CHECKED\",\"UNCHECKED\"] }"
+        },
+        {
+          "state": "[queryInput, setQueryInput]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[feedbackFilter, setFeedbackFilter]",
+          "key": "feedback",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"pending\",\"approved\",\"rejected\"] }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/cloudinary/page.tsx",
+      "shared": [
+        {
+          "state": "[resourceType, setResourceType]",
+          "key": "type",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"image\",\"video\",\"raw\"] }"
+        },
+        {
+          "state": "[appliedPrefix, setAppliedPrefix]",
+          "key": "prefix",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[limit, setLimit]",
+          "key": "limit",
+          "kind": "navigation state",
+          "options": "{min:1,max:100}"
+        },
+        {
+          "state": "[bucket, setBucket]",
+          "key": "bucket",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/dashboard/page.tsx",
+      "shared": [
+        {
+          "state": "[activeViewMode, setActiveViewMode]",
+          "key": "view",
+          "kind": "navigation state",
+          "options": "{ values: [\"team\",\"bu\"] }"
+        },
+        {
+          "state": "[selectedMonth, setSelectedMonth]",
+          "key": "month",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[selectedTrendBU, setSelectedTrendBU]",
+          "key": "trendBU",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "components/dashboard/TeamDashboardView.tsx",
+      "shared": [
+        {
+          "state": "[selectedCenter, setSelectedCenter]",
+          "key": "teamCentre",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[selectedStatus, setSelectedStatus]",
+          "key": "teamStatus",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "teamSearch",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "teamTab",
+          "kind": "navigation state",
+          "options": "{ values: [\"classes\",\"teachers\"], history: 'push' }"
+        },
+        {
+          "state": "[classesPage, setClassesPage]",
+          "key": "classesPage",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[classesPageSize, setClassesPageSize]",
+          "key": "classesPageSize",
+          "kind": "navigation state",
+          "options": "{min:1,max:100}"
+        },
+        {
+          "state": "[teachersPage, setTeachersPage]",
+          "key": "teachersPage",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[teachersPageSize, setTeachersPageSize]",
+          "key": "teachersPageSize",
+          "kind": "navigation state",
+          "options": "{min:1,max:100}"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/database/page.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"tables\",\"sql\",\"migrations\"], history: 'push' }"
+        },
+        {
+          "state": "[detailTab, setDetailTab]",
+          "key": "detailTab",
+          "kind": "navigation state",
+          "options": "{ values: [\"data\",\"structure\"], history: 'push' }"
+        },
+        {
+          "state": "[searchTerm, setSearchTerm]",
+          "key": "tableSearch",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/deal-luong/page.tsx",
+      "shared": [
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"pending\",\"tegl_approved\",\"admin_approved\",\"rejected\"] }"
+        },
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "search",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": [
+        "type"
+      ]
+    },
+    {
+      "file": "app/admin/email-monitor/page.tsx",
+      "shared": [
+        {
+          "state": "[period, setPeriod]",
+          "key": "period",
+          "kind": "navigation state",
+          "options": "{ values: [\"24h\",\"7d\",\"30d\"] }"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[search, setSearch]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[status, setStatus]",
+          "key": "status",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[category, setCategory]",
+          "key": "category",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[emailType, setEmailType]",
+          "key": "emailType",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/feedback/page.tsx",
+      "shared": [
+        {
+          "state": "[filterStatus, setFilterStatus]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{values:['all','new','in_progress','done']}"
+        },
+        {
+          "state": "[searchText, setSearchText]",
+          "key": "search",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/giaitrinh/page.tsx",
+      "shared": [
+        {
+          "state": "[filterStatus, setFilterStatus]",
+          "key": "status",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[filterCampuses, setFilterCampuses]",
+          "key": "campus",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[filterSubjects, setFilterSubjects]",
+          "key": "subject",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/page1/page.tsx",
+      "shared": [
+        {
+          "state": "[selectedMonth, setSelectedMonth]",
+          "key": "month",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[selectedYear, setSelectedYear]",
+          "key": "year",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[selectedTableYear, setSelectedTableYear]",
+          "key": "tableYear",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }"
+        },
+        {
+          "state": "[availabilityPeriod, setAvailabilityPeriod]",
+          "key": "period",
+          "kind": "navigation state",
+          "options": "{ values: [\"week\",\"month\",\"year\"] }"
+        }
+      ],
+      "existing": [
+        "search"
+      ]
+    },
+    {
+      "file": "app/admin/hr-candidates/gen-planner/page.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"planner\",\"tracking\",\"scheduling\",\"overview\"], history: 'push' }"
+        },
+        {
+          "state": "[searchInput, setSearchInput]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"assigned\",\"unassigned\"] }"
+        },
+        {
+          "state": "[sourceGenFilter, setSourceGenFilter]",
+          "key": "gen",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[sourceGenRegionFilter, setSourceGenRegionFilter]",
+          "key": "sourceRegion",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"1\",\"2\",\"3\",\"4\",\"5\"] }"
+        },
+        {
+          "state": "[regionFilter, setRegionFilter]",
+          "key": "region",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"south\",\"north\"] }"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[activeGenKey, setActiveGenKey]",
+          "key": "activeGen",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/hr-candidates/components/GenTrackingTab.tsx",
+      "shared": [
+        {
+          "state": "[candidateSearch, setCandidateSearch]",
+          "key": "candidateSearch",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/hr-candidates/components/GenOverviewTab.tsx",
+      "shared": [
+        {
+          "state": "[focusDate, setFocusDate]",
+          "key": "date",
+          "kind": "calendar date"
+        },
+        {
+          "state": "[viewMode, setViewMode]",
+          "key": "calendarView",
+          "kind": "navigation state",
+          "options": "{ values: [\"day\",\"week\",\"month\"] }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/hr-candidates/components/GenSidebar.tsx",
+      "shared": [
+        {
+          "state": "[genSearchInput, setGenSearchInput]",
+          "key": "genSearch",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[genSortOrder, setGenSortOrder]",
+          "key": "genOrder",
+          "kind": "navigation state",
+          "options": "{ values: [\"asc\",\"desc\"] }"
+        },
+        {
+          "state": "[genPage, setGenPage]",
+          "key": "genPage",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/hr-candidates/input-training-tests/page.tsx",
+      "shared": [
+        {
+          "state": "[stageFilter, setStageFilter]",
+          "key": "stage",
+          "kind": "navigation state",
+          "options": "{ values: [\"centralized_training\",\"pedagogy_training\"] }"
+        },
+        {
+          "state": "[search, setSearch]",
+          "key": "search",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/hr-candidates/page.tsx",
+      "shared": [
+        {
+          "state": "[searchInput, setSearchInput]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[regionFilter, setRegionFilter]",
+          "key": "region",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[genFilter, setGenFilter]",
+          "key": "gen",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[genSort, setGenSort]",
+          "key": "sort",
+          "kind": "navigation state",
+          "options": "{ values: [\"none\",\"asc\",\"desc\"] }"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/hr-candidates/pedagogy-training/page.tsx",
+      "shared": [
+        {
+          "state": "[search, setSearch]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[centerFilter, setCenterFilter]",
+          "key": "centre",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/hr-candidates/training-calendar/page.tsx",
+      "shared": [
+        {
+          "state": "[regionFilter, setRegionFilter]",
+          "key": "region",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"south\",\"north\"] }"
+        },
+        {
+          "state": "[activeGenKey, setActiveGenKey]",
+          "key": "gen",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/hr-onboarding/page.tsx",
+      "shared": [
+        {
+          "state": "[regionFilter, setRegionFilter]",
+          "key": "region",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/hr-onboarding/videos/page.tsx",
+      "shared": [
+        {
+          "state": "[searchTerm, setSearchTerm]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"active\",\"draft\",\"inactive\"], history: 'push' }"
+        },
+        {
+          "state": "[stageFilter, setStageFilter]",
+          "key": "stage",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"centralized_training\",\"pedagogy_training\"] }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "components/portfolio/ClassFilterToolbar.tsx",
+      "shared": [
+        {
+          "state": "selectedCentres",
+          "key": "centre",
+          "kind": "filter"
+        },
+        {
+          "state": "dateFrom",
+          "key": "dateFrom",
+          "kind": "filter"
+        },
+        {
+          "state": "dateTo",
+          "key": "dateTo",
+          "kind": "filter"
+        },
+        {
+          "state": "qcStatus",
+          "key": "qcStatus",
+          "kind": "filter"
+        },
+        {
+          "state": "teacherSearch",
+          "key": "teacher",
+          "kind": "filter"
+        },
+        {
+          "state": "classSearch",
+          "key": "search",
+          "kind": "filter"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/page2/manage/page.tsx",
+      "shared": [
+        {
+          "state": "[selectedSlug, setSelectedSlug]",
+          "key": "doc",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[sidebarQuery, setSidebarQuery]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[editorMode, setEditorMode]",
+          "key": "editor",
+          "kind": "navigation state",
+          "options": "{ values: [\"markdown\",\"visual\"] }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/page4/danh-sach-dang-ky/page.tsx",
+      "shared": [
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[searchTeacherCode, setSearchTeacherCode]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[filterYear, setFilterYear]",
+          "key": "year",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[filterMonth, setFilterMonth]",
+          "key": "month",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[filterSubjectCodes, setFilterSubjectCodes]",
+          "key": "subject",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[filterBlockCodes, setFilterBlockCodes]",
+          "key": "block",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[filterRegType, setFilterRegType]",
+          "key": "regType",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"official\",\"additional\"] }"
+        },
+        {
+          "state": "[filterXuLy, setFilterXuLy]",
+          "key": "processing",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"chờ giải trình\",\"đã duyệt\",\"từ chối\",\"đã hoàn thành\"] }"
+        },
+        {
+          "state": "[filterHasScore, setFilterHasScore]",
+          "key": "hasScore",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"has\",\"none\"] }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/page4/lich-danh-gia/page.tsx",
+      "shared": [
+        {
+          "state": "[view, setView]",
+          "key": "view",
+          "kind": "navigation state",
+          "options": "{ values: [\"day\",\"week\",\"month\",\"year\"] }"
+        },
+        {
+          "state": "[focusDate, setFocusDate]",
+          "key": "date",
+          "kind": "calendar date"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/page4/quan-ly-lich-lam-viec/page.tsx",
+      "shared": [
+        {
+          "state": "[focusDate, setFocusDate]",
+          "key": "date",
+          "kind": "calendar date"
+        },
+        {
+          "state": "\"khungGio\"",
+          "key": "slot",
+          "kind": "filter"
+        },
+        {
+          "state": "\"coSo\"",
+          "key": "centre",
+          "kind": "filter"
+        },
+        {
+          "state": "\"khoi\"",
+          "key": "block",
+          "kind": "filter"
+        },
+        {
+          "state": "\"linhHoat\"",
+          "key": "flexible",
+          "kind": "filter"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/page4/thu-vien-de/page.tsx",
+      "shared": [
+        {
+          "state": "[activePageTab, setActivePageTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"library\",\"feedback\"], history: 'push' }"
+        },
+        {
+          "state": "[leftPanelTab, setLeftPanelTab]",
+          "key": "panel",
+          "kind": "navigation state",
+          "options": "{ values: [\"both\",\"setup\",\"queue\"], history: 'push' }"
+        },
+        {
+          "state": "[focusDate, setFocusDate]",
+          "key": "date",
+          "kind": "calendar date"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "components/admin/exam-feedback/ExamFeedbackStatsPanel.tsx",
+      "shared": [
+        {
+          "state": "[page, setPage]",
+          "key": "examFeedbackPage",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[month, setMonth]",
+          "key": "examFeedbackMonth",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/page5/page.tsx",
+      "shared": [
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"assigned\",\"draft\",\"locked\"], history: 'push' }"
+        },
+        {
+          "state": "[search, setSearch]",
+          "key": "search",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/phieu-danh-gia-giao-vien/teacher-evaluation-dashboard.tsx",
+      "shared": [
+        {
+          "state": "[dateFrom, setDateFrom]",
+          "key": "dateFrom",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[dateTo, setDateTo]",
+          "key": "dateTo",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[centreId, setCentreId]",
+          "key": "centre",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[requestSearch, setRequestSearch]",
+          "key": "requestSearch",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[viewMode, setViewMode]",
+          "key": "view",
+          "kind": "navigation state",
+          "options": "{ values: [\"classes\",\"entries\"] }"
+        },
+        {
+          "state": "[search, setSearch]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[sourceFilter, setSourceFilter]",
+          "key": "source",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"lms\",\"google_sheets\"] }"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[tableCentreFilter, setTableCentreFilter]",
+          "key": "tableCentre",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }"
+        },
+        {
+          "state": "[courseLineFilter, setCourseLineFilter]",
+          "key": "course",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[topicFilter, setTopicFilter]",
+          "key": "topic",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[sessionFilter, setSessionFilter]",
+          "key": "session",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"4\",\"8\",\"outside_session\",\"inactive\"] }"
+        },
+        {
+          "state": "[scoreFilter, setScoreFilter]",
+          "key": "score",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"low\"] }"
+        },
+        {
+          "state": "[classSortKey, setClassSortKey]",
+          "key": "classSort",
+          "kind": "navigation state",
+          "options": "{ values: [\"className\",\"courseName\",\"sessions\",\"collectionRate\",\"averageTeacherScore\",\"totalResponses\"] }"
+        },
+        {
+          "state": "[classSortDirection, setClassSortDirection]",
+          "key": "classOrder",
+          "kind": "navigation state",
+          "options": "{ values: [\"asc\",\"desc\"] }"
+        },
+        {
+          "state": "[entrySortKey, setEntrySortKey]",
+          "key": "entrySort",
+          "kind": "navigation state",
+          "options": "{ values: [\"timestamp\",\"studentName\",\"className\",\"teacherScore\",\"status\"] }"
+        },
+        {
+          "state": "[entrySortDirection, setEntrySortDirection]",
+          "key": "entryOrder",
+          "kind": "navigation state",
+          "options": "{ values: [\"asc\",\"desc\"] }"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/portfolio/builder/[portfolioKey]/page.tsx",
+      "shared": [
+        {
+          "state": "[active, setActive]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"profile\",\"journey\",\"skills\",\"dna\",\"projects\",\"gallery\",\"awards\",\"rewards\"] }"
+        }
+      ],
+      "existing": [
+        "studentId",
+        "classId",
+        "studentName",
+        "className",
+        "centreName",
+        "courseName",
+        "courseLine",
+        "teacherName"
+      ]
+    },
+    {
+      "file": "app/admin/portfolio/page.tsx",
+      "shared": [
+        {
+          "state": "[appliedSearch, setAppliedSearch]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[pageIndex, setPageIndex]",
+          "key": "pageIndex",
+          "kind": "navigation state",
+          "options": "{ min: 0 }"
+        },
+        {
+          "state": "[trackFilter, setTrackFilter]",
+          "key": "track",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"coding\",\"robotics\",\"art\"] }"
+        },
+        {
+          "state": "[selectedCentre, setSelectedCentre]",
+          "key": "centre",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[dateFrom, setDateFrom]",
+          "key": "dateFrom",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }"
+        },
+        {
+          "state": "[dateTo, setDateTo]",
+          "key": "dateTo",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/quan-ly-qc/page.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"classes\",\"records\",\"facility\"], history: 'push' }"
+        },
+        {
+          "state": "[currentPage, setCurrentPage]",
+          "key": "page",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[q, setQ]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[fromDate, setFromDate]",
+          "key": "dateFrom",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }"
+        },
+        {
+          "state": "[toDate, setToDate]",
+          "key": "dateTo",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }"
+        },
+        {
+          "state": "[selectedCourseLine, setSelectedCourseLine]",
+          "key": "course",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[selectedCentre, setSelectedCentre]",
+          "key": "centre",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[recordSearch, setRecordSearch]",
+          "key": "recordSearch",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[recordCentre, setRecordCentre]",
+          "key": "recordCentre",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[recordLevel, setRecordLevel]",
+          "key": "recordLevel",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[recordLeader, setRecordLeader]",
+          "key": "recordLeader",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[recordPage, setRecordPage]",
+          "key": "recordPage",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/quan-ly-qc/components/FacilityEvaluationTab.tsx",
+      "shared": [
+        {
+          "state": "[selectedMonth, setSelectedMonth]",
+          "key": "month",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[historySearch, setHistorySearch]",
+          "key": "historySearch",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/quan-ly-tai-lieu-giang-day/page.tsx",
+      "shared": [
+        {
+          "state": "[activeStatus, setActiveStatus]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{values:['published','draft','disabled']}"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/quy-trinh-quy-dinh-leader/manage/page.tsx",
+      "shared": [
+        {
+          "state": "[selectedSlug, setSelectedSlug]",
+          "key": "doc",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[sidebarQuery, setSidebarQuery]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[editorMode, setEditorMode]",
+          "key": "editor",
+          "kind": "navigation state",
+          "options": "{ values: [\"markdown\",\"visual\"] }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/s3-supabase-manager/page.tsx",
+      "shared": [
+        {
+          "state": "[bucket, setBucket]",
+          "key": "bucket",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[resourceType, setResourceType]",
+          "key": "type",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[appliedPrefix, setAppliedPrefix]",
+          "key": "prefix",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/system-metrics/page.tsx",
+      "shared": [
+        {
+          "state": "[fromDate, setFromDate]",
+          "key": "dateFrom",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }"
+        },
+        {
+          "state": "[toDate, setToDate]",
+          "key": "dateTo",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }"
+        },
+        {
+          "state": "[chartTab, setChartTab]",
+          "key": "chart",
+          "kind": "navigation state",
+          "options": "{ values: [\"dau\",\"wau\"], history: 'push' }"
+        },
+        {
+          "state": "[userSearch, setUserSearch]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[centerFilter, setCenterFilter]",
+          "key": "centre",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[errorTablePage, setErrorTablePage]",
+          "key": "errorPage",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }"
+        },
+        {
+          "state": "[onlineTablePage, setOnlineTablePage]",
+          "key": "onlinePage",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }"
+        },
+        {
+          "state": "[managerRankingTablePage, setManagerRankingTablePage]",
+          "key": "managerPage",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }"
+        },
+        {
+          "state": "[teacherRankingTablePage, setTeacherRankingTablePage]",
+          "key": "teacherPage",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }"
+        },
+        {
+          "state": "[centerTablePage, setCenterTablePage]",
+          "key": "centrePage",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }"
+        },
+        {
+          "state": "[selectedCenterActorTab, setSelectedCenterActorTab]",
+          "key": "centreActorTab",
+          "kind": "navigation state",
+          "options": "{ values: [\"teacher\",\"manager\"], history: 'push' }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/tao-deal-luong/page.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "type",
+          "kind": "navigation state",
+          "options": "{ values: [\"bonus\",\"salary_reduction\",\"salary_deal\"], history: 'push' }"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"pending\",\"tegl_approved\",\"admin_approved\",\"rejected\"] }"
+        },
+        {
+          "state": "[dealTypeFilter, setDealTypeFilter]",
+          "key": "dealType",
+          "kind": "navigation state",
+          "options": "{values:['all','bonus','salary_reduction','salary_deal']}"
+        },
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "search",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": [
+        "type"
+      ]
+    },
+    {
+      "file": "app/admin/thong-bao/page.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"unread\",\"read\",\"settings\"], history: 'push' }"
+        },
+        {
+          "state": "[activeCategory, setActiveCategory]",
+          "key": "category",
+          "kind": "navigation state",
+          "options": "{values:['all', ...Object.keys(categoriesMap)]}"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/tieu-chi-cham-diem/page.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"course\",\"common\"], history: 'push' }"
+        },
+        {
+          "state": "[searchTerm, setSearchTerm]",
+          "key": "search",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/training-dashboard/page.tsx",
+      "shared": [
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"teacher_stats\",\"video_stats\"], history: 'push' }"
+        },
+        {
+          "state": "\"selectedCenters\"",
+          "key": "centre",
+          "kind": "filter"
+        },
+        {
+          "state": "\"teacherCodeQuery\"",
+          "key": "search",
+          "kind": "filter"
+        },
+        {
+          "state": "\"block\"",
+          "key": "block",
+          "kind": "filter"
+        },
+        {
+          "state": "[teacherPage, setTeacherPage]",
+          "key": "teacherPage",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/truyenthong/page.tsx",
+      "shared": [
+        {
+          "state": "[searchTerm, setSearchTerm]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[filterStatus, setFilterStatus]",
+          "key": "status",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"draft\",\"published\",\"hidden\"] }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "components/monthly-honors-manager.tsx",
+      "shared": [
+        {
+          "state": "[selectedMonth, setSelectedMonth]",
+          "key": "honorsMonth",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[viewMode, setViewMode]",
+          "key": "honorsView",
+          "kind": "navigation state",
+          "options": "{ values: [\"podium\",\"table\"] }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/user-management/page.tsx",
+      "shared": [
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"users\",\"roles\",\"screens\",\"data\"], history: 'push' }"
+        }
+      ],
+      "existing": [
+        "tab"
+      ]
+    },
+    {
+      "file": "app/admin/user-management/components/DataTab.tsx",
+      "shared": [
+        {
+          "state": "[subTab, setSubTab]",
+          "key": "dataTab",
+          "kind": "navigation state",
+          "options": "{ values: [\"centers-leaders\",\"roles\",\"kanban\"], history: 'push' }"
+        },
+        {
+          "state": "\"areas\"",
+          "key": "dataArea",
+          "kind": "filter"
+        },
+        {
+          "state": "\"roleCodes\"",
+          "key": "dataRole",
+          "kind": "filter"
+        },
+        {
+          "state": "\"statuses\"",
+          "key": "dataStatuses",
+          "kind": "filter"
+        },
+        {
+          "state": "\"courses\"",
+          "key": "dataCourse",
+          "kind": "filter"
+        },
+        {
+          "state": "[search, setSearch]",
+          "key": "dataSearch",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[fStatus, setFStatus]",
+          "key": "dataStatus",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/user-management/components/KanbanLeadersPanel.tsx",
+      "shared": [
+        {
+          "state": "[search, setSearch]",
+          "key": "kanbanSearch",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/user-management/components/ScreensTab.tsx",
+      "shared": [
+        {
+          "state": "[search, setSearch]",
+          "key": "screenSearch",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[groupFilter, setGroupFilter]",
+          "key": "screenGroup",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "screenStatus",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"active\",\"inactive\"] }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/user-management/components/UsersTab.tsx",
+      "shared": [
+        {
+          "state": "[userSearch, setUserSearch]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[roleFilter, setRoleFilter]",
+          "key": "role",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[areaFilter, setAreaFilter]",
+          "key": "area",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[authTypeFilter, setAuthTypeFilter]",
+          "key": "authType",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[statusFilter, setStatusFilter]",
+          "key": "status",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[createdByFilter, setCreatedByFilter]",
+          "key": "createdBy",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/video-detail/page.tsx",
+      "shared": [
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"student\",\"question\"], history: 'push' }"
+        }
+      ],
+      "existing": [
+        "id"
+      ]
+    },
+    {
+      "file": "app/admin/video-setup/page.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"questions\",\"assignment\"], history: 'push' }"
+        }
+      ],
+      "existing": [
+        "id"
+      ]
+    },
+    {
+      "file": "app/admin/xin-nghi-mot-buoi/page.tsx",
+      "shared": [
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[campusFilter, setCampusFilter]",
+          "key": "campus",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[fromDate, setFromDate]",
+          "key": "dateFrom",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }"
+        },
+        {
+          "state": "[toDate, setToDate]",
+          "key": "dateTo",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }"
+        },
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/admin/xu-ly-tinh-huong/page.tsx",
+      "shared": [
+        {
+          "state": "[activeCategory, setActiveCategory]",
+          "key": "category",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[filterDate, setFilterDate]",
+          "key": "date",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/candidate-portal/page.tsx",
+      "shared": [
+        {
+          "state": "[videoStageTab, setVideoStageTab]",
+          "key": "videoStage",
+          "kind": "navigation state",
+          "options": "{ values: [\"centralized_training\",\"pedagogy_training\"], history: 'push' }"
+        },
+        {
+          "state": "[teLeaderSearch, setTeLeaderSearch]",
+          "key": "leaderSearch",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[selectedTeArea, setSelectedTeArea]",
+          "key": "leaderArea",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": [
+        "doc"
+      ]
+    },
+    {
+      "file": "app/candidate-portal/tests/page.tsx",
+      "shared": [
+        {
+          "state": "[stageTab, setStageTab]",
+          "key": "stage",
+          "kind": "navigation state",
+          "options": "{ values: [\"centralized_training\",\"pedagogy_training\"], history: 'push' }"
+        }
+      ],
+      "existing": [
+        "start_assignment_id"
+      ]
+    },
+    {
+      "file": "app/lichgiaovien/page.tsx",
+      "shared": [
+        {
+          "state": "[selectedRegion, setSelectedRegion]",
+          "key": "region",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/user/checkout/manage/page.tsx",
+      "shared": [
+        {
+          "state": "[search, setSearch]",
+          "key": "search",
+          "kind": "navigation state"
+        },
+        {
+          "state": "\"center\"",
+          "key": "centre",
+          "kind": "filter"
+        },
+        {
+          "state": "\"track\"",
+          "key": "track",
+          "kind": "filter"
+        },
+        {
+          "state": "\"subject\"",
+          "key": "subject",
+          "kind": "filter"
+        },
+        {
+          "state": "\"fromDate\"",
+          "key": "dateFrom",
+          "kind": "filter"
+        },
+        {
+          "state": "\"toDate\"",
+          "key": "dateTo",
+          "kind": "filter"
+        },
+        {
+          "state": "[sortBy, setSortBy]",
+          "key": "sort",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[activeQuickFilter, setActiveQuickFilter]",
+          "key": "quickFilter",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "components/student-portfolio/gallery-showcase.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "galleryTab",
+          "kind": "navigation state",
+          "options": "{ values: [\"certificates\",\"activities\",\"events\"], history: 'push' }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/public/training-detail/[code]/page.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"overview\",\"log\"], history: 'push' }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/user/assignments/page.tsx",
+      "shared": [
+        {
+          "state": "[activeMainTab, setActiveMainTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"available\",\"list\",\"training\"], history: 'push' }"
+        },
+        {
+          "state": "[scoreTypeFilter, setScoreTypeFilter]",
+          "key": "scoreType",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"expertise\",\"experience\"] }"
+        },
+        {
+          "state": "[scoreResultFilter, setScoreResultFilter]",
+          "key": "scoreResult",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"done\",\"waiting\",\"pending\",\"accepted\",\"rejected\"] }"
+        }
+      ],
+      "existing": [
+        "start_assignment_id",
+        "video_ok"
+      ]
+    },
+    {
+      "file": "app/user/deal-luong/page.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"bonus\",\"salary_reduction\",\"salary_deal\"], history: 'push' }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/user/hoat-dong-hang-thang/page.tsx",
+      "shared": [
+        {
+          "state": "[view, setView]",
+          "key": "view",
+          "kind": "navigation state",
+          "options": "{ values: [\"month\",\"week\",\"day\"] }"
+        },
+        {
+          "state": "[focusDate, setFocusDate]",
+          "key": "date",
+          "kind": "calendar date"
+        }
+      ],
+      "existing": [
+        "showRegisterHint"
+      ]
+    },
+    {
+      "file": "app/user/lich-cua-toi/page.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"lich\",\"lich-lop-hoc\",\"xin-nghi\",\"nhan-lop\",\"office-hours\"], history: 'push' }"
+        }
+      ],
+      "existing": [
+        "tab"
+      ]
+    },
+    {
+      "file": "app/user/lich-cua-toi/components/TabLichHoatDong.tsx",
+      "shared": [
+        {
+          "state": "[focusDate,setFocusDate]",
+          "key": "date",
+          "kind": "calendar date"
+        },
+        {
+          "state": "[view,setView]",
+          "key": "calendarView",
+          "kind": "navigation state",
+          "options": "{ values: [\"day\",\"week\",\"month\"] }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/user/lich-cua-toi/components/TabNhanLop.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "receiveTab",
+          "kind": "navigation state",
+          "options": "{ history: 'push' }"
+        },
+        {
+          "state": "[campusFilter, setCampusFilter]",
+          "key": "receiveCampus",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[fromDate, setFromDate]",
+          "key": "receiveDateFrom",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }"
+        },
+        {
+          "state": "[toDate, setToDate]",
+          "key": "receiveDateTo",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/user/lich-cua-toi/components/TabLichLopHoc.tsx",
+      "shared": [
+        {
+          "state": "[weekMonday, setWeekMonday]",
+          "key": "week",
+          "kind": "calendar date"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/user/lich-cua-toi/components/TabOfficeHours.tsx",
+      "shared": [
+        {
+          "state": "[selectedCentres, setSelectedCentres]",
+          "key": "officeCentre",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[dateFrom, setDateFrom]",
+          "key": "officeDateFrom",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }"
+        },
+        {
+          "state": "[dateTo, setDateTo]",
+          "key": "officeDateTo",
+          "kind": "navigation state",
+          "options": "{ kind: 'date' }"
+        },
+        {
+          "state": "[appointmentStatus, setAppointmentStatus]",
+          "key": "appointmentStatus",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/user/lop-hoc/page.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"attendance\",\"comments\"], history: 'push' }"
+        },
+        {
+          "state": "\"search\"",
+          "key": "search",
+          "kind": "filter"
+        },
+        {
+          "state": "\"centre\"",
+          "key": "centre",
+          "kind": "filter"
+        },
+        {
+          "state": "\"startDate\"",
+          "key": "dateFrom",
+          "kind": "filter"
+        },
+        {
+          "state": "\"endDate\"",
+          "key": "dateTo",
+          "kind": "filter"
+        },
+        {
+          "state": "\"slotFrom\"",
+          "key": "slotFrom",
+          "kind": "filter"
+        },
+        {
+          "state": "\"slotTo\"",
+          "key": "slotTo",
+          "kind": "filter"
+        },
+        {
+          "state": "\"status\"",
+          "key": "status",
+          "kind": "filter"
+        },
+        {
+          "state": "\"teacher\"",
+          "key": "teacher",
+          "kind": "filter"
+        },
+        {
+          "state": "[page, setPage]",
+          "key": "page",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/user/tai-lieu-giang-day/page.tsx",
+      "shared": [
+        {
+          "state": "[query, setQuery]",
+          "key": "search",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/user/thong-bao/page.tsx",
+      "shared": [
+        {
+          "state": "[activeTab, setActiveTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"unread\",\"read\",\"settings\"], history: 'push' }"
+        },
+        {
+          "state": "[activeCategory, setActiveCategory]",
+          "key": "category",
+          "kind": "navigation state",
+          "options": "{values:['all', ...Object.keys(categoriesMap)]}"
+        }
+      ],
+      "existing": []
+    },
+    {
+      "file": "app/user/thongtingv/page.tsx",
+      "shared": [
+        {
+          "state": "[selectedMonth, setSelectedMonth]",
+          "key": "month",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[selectedYear, setSelectedYear]",
+          "key": "year",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[teacherInfoTab, setTeacherInfoTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"profile\",\"checkCong\",\"checkCongFeedback\"], history: 'push' }"
+        },
+        {
+          "state": "[checkCongStatusFilter, setCheckCongStatusFilter]",
+          "key": "attendanceStatus",
+          "kind": "navigation state",
+          "options": "{ values: [\"all\",\"CHECKED\",\"UNCHECKED\"] }"
+        },
+        {
+          "state": "[availabilityPeriod, setAvailabilityPeriod]",
+          "key": "period",
+          "kind": "navigation state",
+          "options": "{ values: [\"week\",\"month\",\"year\"] }"
+        }
+      ],
+      "existing": [
+        "tab"
+      ]
+    },
+    {
+      "file": "app/user/training/page.tsx",
+      "shared": [
+        {
+          "state": "[tab, setTab]",
+          "key": "tab",
+          "kind": "navigation state",
+          "options": "{ values: [\"lessons\",\"stats\",\"tests\"], history: 'push' }"
+        }
+      ],
+      "existing": [
+        "start_assignment_id"
+      ]
+    },
+    {
+      "file": "app/user/truyenthong/page.tsx",
+      "shared": [
+        {
+          "state": "[selectedFilter, setSelectedFilter]",
+          "key": "filter",
+          "kind": "navigation state"
+        },
+        {
+          "state": "[searchQuery, setSearchQuery]",
+          "key": "search",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": [
+        "filter"
+      ]
+    },
+    {
+      "file": "app/user/xu-ly-tinh-huong/page.tsx",
+      "shared": [
+        {
+          "state": "[activeCategory, setActiveCategory]",
+          "key": "category",
+          "kind": "navigation state"
+        }
+      ],
+      "existing": []
+    }
+  ]
+}

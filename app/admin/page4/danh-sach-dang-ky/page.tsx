@@ -1,4 +1,7 @@
 "use client";
+import { useQueryState } from '@/lib/use-query-state'
+
+
 
 import { PageContainer } from "@/components/PageContainer";
 import { Stepper } from "@/components/ui/stepper";
@@ -230,31 +233,29 @@ function ymWithinBounds(y: number, m: number, minD: Date, maxD: Date): boolean {
 export default function ExamRegistrationListPage() {
   const [rows, setRows] = useState<RegistrationRow[]>([]);
   const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useQueryState<number>('page', 1);
   const [loading, setLoading] = useState(true);
   /** Poll phát hiện thay đổi → fetch silent — hiệu ứng nút Làm mới / phân trang */
   const [silentListLoading, setSilentListLoading] = useState(false);
   const listFetchBusy = loading || silentListLoading;
-  const [searchTeacherCode, setSearchTeacherCode] = useState("");
+  const [searchTeacherCode, setSearchTeacherCode] = useQueryState<string>('search', "");
   /** "all" | YYYY */
-  const [filterYear, setFilterYear] = useState<string>("all");
+  const [filterYear, setFilterYear] = useQueryState<string>('year', "all");
   /** "all" | "01".."12" */
-  const [filterMonth, setFilterMonth] = useState<string>("all");
+  const [filterMonth, setFilterMonth] = useQueryState<string>('month', "all");
   /** Gõ tay tháng/năm — đồng bộ khi không đang focus ô gõ */
   const [periodInput, setPeriodInput] = useState("");
   const periodFieldFocusedRef = useRef(false);
   /** Rỗng = tất cả; nhiều mã → API OR */
-  const [filterSubjectCodes, setFilterSubjectCodes] = useState<string[]>([]);
-  const [filterBlockCodes, setFilterBlockCodes] = useState<string[]>([]);
+  const [filterSubjectCodes, setFilterSubjectCodes] = useQueryState<string[]>('subject', []);
+  const [filterBlockCodes, setFilterBlockCodes] = useQueryState<string[]>('block', []);
   /** Gõ để lọc danh sách checkbox (không gửi API) */
   const [blockListQuery, setBlockListQuery] = useState("");
   const [subjectListQuery, setSubjectListQuery] = useState("");
   const [examSubjects, setExamSubjects] = useState<ExamSubjectRow[]>([]);
-  const [filterRegType, setFilterRegType] = useState<"all" | "official" | "additional">("all");
-  const [filterXuLy, setFilterXuLy] = useState<
-    "all" | "chờ giải trình" | "đã duyệt" | "từ chối" | "đã hoàn thành"
-  >("all");
-  const [filterHasScore, setFilterHasScore] = useState<"all" | "has" | "none">("all");
+  const [filterRegType, setFilterRegType] = useQueryState<"all" | "official" | "additional">('regType', "all", { values: ["all","official","additional"] });
+  const [filterXuLy, setFilterXuLy] = useQueryState<"all" | "chờ giải trình" | "đã duyệt" | "từ chối" | "đã hoàn thành">('processing', "all", { values: ["all","chờ giải trình","đã duyệt","từ chối","đã hoàn thành"] });
+  const [filterHasScore, setFilterHasScore] = useQueryState<"all" | "has" | "none">('hasScore', "all", { values: ["all","has","none"] });
   const [removingRegistrationId, setRemovingRegistrationId] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);

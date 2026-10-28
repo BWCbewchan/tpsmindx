@@ -1,4 +1,6 @@
 "use client";
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Card } from "@/components/Card";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -36,8 +38,8 @@ interface Video {
 
 export default function Page5() {
   const { token } = useAuth();
-  const [tab, setTab] = useState<'assigned' | 'draft' | 'locked'>('assigned');
-  const [search, setSearch] = useState("");
+  const [tab, setTab] = useQueryState<'assigned' | 'draft' | 'locked'>('tab', 'assigned', { values: ["assigned","draft","locked"], history: 'push' });
+  const [search, setSearch] = useQueryState<string>('search', "");
   const { uploadState, startUpload } = useUploadVideo();
   const [videos, setVideos] = useState<Video[]>([]);
   const [videoDurations, setVideoDurations] = useState<Record<number, number>>({});

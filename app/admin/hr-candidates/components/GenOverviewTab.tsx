@@ -66,6 +66,10 @@ function parseDateKey(dateKey: string) {
   return new Date(year, (month || 1) - 1, day || 1);
 }
 
+function shouldAutoFocusFetchedSchedule(hasSelectedGen: boolean, datedScheduleCount: number) {
+  return hasSelectedGen && datedScheduleCount > 0;
+}
+
 function buildCalendarCells(focusDate: Date) {
   const startMonth = new Date(focusDate.getFullYear(), focusDate.getMonth(), 1);
   const endMonth = new Date(focusDate.getFullYear(), focusDate.getMonth() + 1, 0);
@@ -225,7 +229,7 @@ export default function GenOverviewTab({
             const rows = Array.isArray(data.schedules) ? data.schedules : [];
             const datedRows = rows.filter((item: TrainingScheduleEvent) => Boolean(item.date));
             setApiSchedules(datedRows);
-            if (datedRows.length > 0) {
+            if (shouldAutoFocusFetchedSchedule(Boolean(selectedGen), datedRows.length)) {
               setFocusDate(parseDateKey(datedRows[0].date));
             }
           }

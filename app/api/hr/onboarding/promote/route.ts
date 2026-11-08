@@ -45,21 +45,44 @@ export const POST = withApiProtection(async (req: NextRequest) => {
 
     let teacherInserted = false
     let teacherAlreadyExists = false
+    let teacherHrLinked = false
 
     if (status === 'passed') {
+      const teacherData = mapCandidateToTeacher(candidate)
       // Kiểm tra teacher đã tồn tại chưa
       const existing = await client.query(
-        `SELECT id FROM teachers WHERE work_email = $1 LIMIT 1`,
-        [candidate.email]
+        `SELECT code, hr_candidate_id
+         FROM teachers
+         WHERE LOWER(TRIM(COALESCE(work_email, ''))) = LOWER(TRIM($1))
+            OR LOWER(TRIM(COALESCE("Work email", ''))) = LOWER(TRIM($1))
+            OR LOWER(TRIM(COALESCE(personal_email, ''))) = LOWER(TRIM($1))
+            OR LOWER(TRIM(code)) = LOWER(TRIM($2))
+         LIMIT 1`,
+        [candidate.email, teacherData.code]
       )
 
       if ((existing.rowCount ?? 0) > 0) {
         teacherAlreadyExists = true
+        const existingTeacher = existing.rows[0] as {
+          code: string
+          hr_candidate_id: number | null
+        }
+        const linked = await client.query(
+          `UPDATE teachers
+           SET hr_candidate_id = $1, updated_at = CURRENT_TIMESTAMP
+           WHERE code = $2
+             AND (hr_candidate_id IS NULL OR hr_candidate_id = $1)
+           RETURNING code`,
+          [candidate_id, existingTeacher.code],
+        )
+        teacherHrLinked = (linked.rowCount ?? 0) > 0
       } else {
-        const teacherData = mapCandidateToTeacher(candidate)
         await client.query(
-          `INSERT INTO teachers (code, full_name, work_email, main_centre, course_line, status, source)
-           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          `INSERT INTO teachers (
+             code, full_name, work_email, main_centre, course_line, status, source,
+             hr_candidate_id
+           )
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
           [
             teacherData.code,
             teacherData.full_name,
@@ -68,9 +91,11 @@ export const POST = withApiProtection(async (req: NextRequest) => {
             teacherData.course_line,
             teacherData.status,
             teacherData.source,
+            candidate_id,
           ]
         )
         teacherInserted = true
+        teacherHrLinked = true
       }
     }
 
@@ -79,7 +104,11 @@ export const POST = withApiProtection(async (req: NextRequest) => {
     return NextResponse.json({
       success: true,
       candidate: { id: candidate_id, status },
-      ...(status === 'passed' && { teacherInserted, teacherAlreadyExists }),
+      ...(status === 'passed' && {
+        teacherInserted,
+        teacherAlreadyExists,
+        teacherHrLinked,
+      }),
     })
   } catch (err) {
     await client.query('ROLLBACK')

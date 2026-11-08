@@ -3217,6 +3217,505 @@ const migrations: Migration[] = [
     `,
   },
   { name: 'V125_traffic_monitor_state', version: 125, sql: TRAFFIC_MONITOR_SCHEMA },
+  {
+    name: 'V126_teacher_portfolio',
+    version: 126,
+    sql: `
+      -- Liên kết ứng viên HR với giáo viên sau khi hoàn tất onboarding.
+      ALTER TABLE teachers
+        ADD COLUMN IF NOT EXISTS hr_candidate_id INTEGER,
+        ADD COLUMN IF NOT EXISTS personal_email VARCHAR(255);
+
+      DO $$
+      BEGIN
+        IF to_regclass('public.hr_candidates') IS NOT NULL
+           AND NOT EXISTS (
+             SELECT 1 FROM pg_constraint
+             WHERE conname = 'fk_teachers_hr_candidate'
+               AND conrelid = 'teachers'::regclass
+           ) THEN
+          ALTER TABLE teachers
+            ADD CONSTRAINT fk_teachers_hr_candidate
+            FOREIGN KEY (hr_candidate_id)
+            REFERENCES hr_candidates(id)
+            ON DELETE SET NULL;
+        END IF;
+      END $$;
+
+      CREATE UNIQUE INDEX IF NOT EXISTS uq_teachers_hr_candidate_id
+        ON teachers(hr_candidate_id)
+        WHERE hr_candidate_id IS NOT NULL;
+
+      -- Chỉ backfill khi quan hệ email là duy nhất ở cả hai phía; không nối theo họ tên.
+      WITH candidate_matches AS (
+        SELECT
+          t.code AS teacher_code,
+          c.id AS candidate_id,
+          COUNT(*) OVER (PARTITION BY t.code) AS candidates_per_teacher,
+          COUNT(*) OVER (PARTITION BY c.id) AS teachers_per_candidate
+        FROM teachers t
+        JOIN hr_candidates c
+          ON LOWER(TRIM(c.email)) IN (
+            LOWER(TRIM(COALESCE(t.work_email, ''))),
+            LOWER(TRIM(COALESCE(t."Work email", ''))),
+            LOWER(TRIM(COALESCE(t.personal_email, '')))
+          )
+        WHERE TRIM(COALESCE(c.email, '')) <> ''
+      )
+      UPDATE teachers t
+      SET hr_candidate_id = m.candidate_id
+      FROM candidate_matches m
+      WHERE t.code = m.teacher_code
+        AND t.hr_candidate_id IS NULL
+        AND m.candidates_per_teacher = 1
+        AND m.teachers_per_candidate = 1;
+
+      CREATE TABLE IF NOT EXISTS teacher_portfolios (
+        id BIGSERIAL PRIMARY KEY,
+        teacher_code VARCHAR(50) NOT NULL UNIQUE
+          REFERENCES teachers(code) ON UPDATE CASCADE ON DELETE CASCADE,
+        teacher_email_snapshot VARCHAR(255),
+        public_slug VARCHAR(180) NOT NULL UNIQUE,
+        status VARCHAR(20) NOT NULL DEFAULT 'published'
+          CHECK (status IN ('published', 'revoked')),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_teacher_portfolios_slug_status
+        ON teacher_portfolios(public_slug, status);
+
+      CREATE TABLE IF NOT EXISTS teacher_portfolio_educations (
+        id BIGSERIAL PRIMARY KEY,
+        portfolio_id BIGINT NOT NULL
+          REFERENCES teacher_portfolios(id) ON DELETE CASCADE,
+        institution VARCHAR(200) NOT NULL,
+        qualification VARCHAR(160) NOT NULL,
+        field_of_study VARCHAR(160),
+        start_year INTEGER CHECK (start_year IS NULL OR start_year BETWEEN 1950 AND 2100),
+        end_year INTEGER CHECK (end_year IS NULL OR end_year BETWEEN 1950 AND 2100),
+        description VARCHAR(1000),
+        display_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CHECK (start_year IS NULL OR end_year IS NULL OR end_year >= start_year)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_teacher_portfolio_educations_portfolio
+        ON teacher_portfolio_educations(portfolio_id, display_order, id);
+
+      CREATE TABLE IF NOT EXISTS teacher_portfolio_experiences (
+        id BIGSERIAL PRIMARY KEY,
+        portfolio_id BIGINT NOT NULL
+          REFERENCES teacher_portfolios(id) ON DELETE CASCADE,
+        organization VARCHAR(200) NOT NULL,
+        job_title VARCHAR(160) NOT NULL,
+        start_date DATE,
+        end_date DATE,
+        is_current BOOLEAN NOT NULL DEFAULT FALSE,
+        description VARCHAR(1500),
+        display_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CHECK (is_current = TRUE OR start_date IS NULL OR end_date IS NULL OR end_date >= start_date),
+        CHECK (is_current = FALSE OR end_date IS NULL)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_teacher_portfolio_experiences_portfolio
+        ON teacher_portfolio_experiences(portfolio_id, display_order, id);
+
+      CREATE TABLE IF NOT EXISTS teacher_portfolio_achievements (
+        id BIGSERIAL PRIMARY KEY,
+        portfolio_id BIGINT NOT NULL
+          REFERENCES teacher_portfolios(id) ON DELETE CASCADE,
+        category VARCHAR(20) NOT NULL DEFAULT 'award'
+          CHECK (category IN ('award', 'competition')),
+        title VARCHAR(200) NOT NULL,
+        organization VARCHAR(200),
+        level VARCHAR(100),
+        achieved_on DATE,
+        description VARCHAR(1000),
+        evidence_url VARCHAR(1000),
+        verification_status VARCHAR(20) NOT NULL DEFAULT 'self_declared'
+          CHECK (verification_status IN ('self_declared', 'pending', 'verified', 'rejected')),
+        verified_by_email VARCHAR(255),
+        verified_at TIMESTAMPTZ,
+        verification_note VARCHAR(1000),
+        display_order INTEGER NOT NULL DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_teacher_portfolio_achievements_portfolio
+        ON teacher_portfolio_achievements(portfolio_id, display_order, id);
+      CREATE INDEX IF NOT EXISTS idx_teacher_portfolio_achievements_pending
+        ON teacher_portfolio_achievements(verification_status)
+        WHERE verification_status = 'pending';
+
+      -- Bảng chứng chỉ trước đây chỉ được tạo bằng script thủ công; đưa vào migration
+      -- để Teacher Portfolio hoạt động nhất quán trên môi trường mới.
+      CREATE TABLE IF NOT EXISTS teacher_certificates (
+        id SERIAL PRIMARY KEY,
+        teacher_email VARCHAR(255) NOT NULL,
+        certificate_name VARCHAR(500) NOT NULL,
+        certificate_url TEXT NOT NULL,
+        certificate_type VARCHAR(100),
+        issue_date DATE,
+        expiry_date DATE,
+        description TEXT,
+        cloudinary_public_id VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_teacher_certificates_email
+        ON teacher_certificates(teacher_email);
+
+      -- Vinh danh hiện có được nối bằng teacher_code ở các lần import tiếp theo.
+      ALTER TABLE IF EXISTS teacher_monthly_honors
+        ADD COLUMN IF NOT EXISTS teacher_code VARCHAR(50);
+      CREATE INDEX IF NOT EXISTS idx_teacher_monthly_honors_teacher_code
+        ON teacher_monthly_honors(teacher_code);
+
+      -- Backfill có kiểm soát: ưu tiên email; nếu không có email thì chỉ nhận tên
+      -- khớp tuyệt đối và duy nhất. Các trường hợp mơ hồ được giữ NULL để rà soát.
+      WITH possible_matches AS (
+        SELECT DISTINCT
+          h.id AS honor_id,
+          t.code AS teacher_code,
+          CASE
+            WHEN TRIM(COALESCE(h.email, '')) <> '' AND (
+              LOWER(TRIM(h.email)) = LOWER(TRIM(COALESCE(t.work_email, '')))
+              OR LOWER(TRIM(h.email)) = LOWER(TRIM(COALESCE(t."Work email", '')))
+              OR LOWER(TRIM(h.email)) = LOWER(TRIM(COALESCE(t.personal_email, '')))
+            ) THEN 0
+            ELSE 1
+          END AS priority
+        FROM teacher_monthly_honors h
+        JOIN teachers t ON (
+          TRIM(COALESCE(h.email, '')) <> '' AND (
+            LOWER(TRIM(h.email)) = LOWER(TRIM(COALESCE(t.work_email, '')))
+            OR LOWER(TRIM(h.email)) = LOWER(TRIM(COALESCE(t."Work email", '')))
+            OR LOWER(TRIM(h.email)) = LOWER(TRIM(COALESCE(t.personal_email, '')))
+          )
+        ) OR (
+          LOWER(TRIM(h.full_name)) = LOWER(
+            COALESCE(NULLIF(TRIM(t.full_name), ''), NULLIF(TRIM(t."Full name"), ''), '')
+          )
+        )
+        WHERE h.teacher_code IS NULL
+      ), best_priority AS (
+        SELECT honor_id, MIN(priority) AS priority
+        FROM possible_matches
+        GROUP BY honor_id
+      ), unique_best AS (
+        SELECT p.honor_id, MIN(p.teacher_code) AS teacher_code
+        FROM possible_matches p
+        JOIN best_priority b ON b.honor_id = p.honor_id AND b.priority = p.priority
+        GROUP BY p.honor_id
+        HAVING COUNT(*) = 1
+      )
+      UPDATE teacher_monthly_honors h
+      SET teacher_code = u.teacher_code
+      FROM unique_best u
+      WHERE h.id = u.honor_id AND h.teacher_code IS NULL;
+
+      DROP TRIGGER IF EXISTS trg_teacher_portfolios_updated_at ON teacher_portfolios;
+      CREATE TRIGGER trg_teacher_portfolios_updated_at
+        BEFORE UPDATE ON teacher_portfolios
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+      DROP TRIGGER IF EXISTS trg_teacher_portfolio_educations_updated_at ON teacher_portfolio_educations;
+      CREATE TRIGGER trg_teacher_portfolio_educations_updated_at
+        BEFORE UPDATE ON teacher_portfolio_educations
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+      DROP TRIGGER IF EXISTS trg_teacher_portfolio_experiences_updated_at ON teacher_portfolio_experiences;
+      CREATE TRIGGER trg_teacher_portfolio_experiences_updated_at
+        BEFORE UPDATE ON teacher_portfolio_experiences
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+      DROP TRIGGER IF EXISTS trg_teacher_portfolio_achievements_updated_at ON teacher_portfolio_achievements;
+      CREATE TRIGGER trg_teacher_portfolio_achievements_updated_at
+        BEFORE UPDATE ON teacher_portfolio_achievements
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+    `,
+  },
+  {
+    name: 'V127_teaching_monthly_schedules',
+    version: 127,
+    sql: `
+      CREATE TABLE IF NOT EXISTS teaching_monthly_schedules (
+        id BIGSERIAL PRIMARY KEY,
+        staff_email VARCHAR(255) NOT NULL,
+        staff_code VARCHAR(80) NOT NULL,
+        staff_name VARCHAR(255) NOT NULL,
+        role_code VARCHAR(30) NOT NULL,
+        work_date DATE NOT NULL,
+        work_pattern VARCHAR(40) NOT NULL CHECK (
+          work_pattern IN (
+            'morning_afternoon_evening',
+            'morning_afternoon',
+            'afternoon_evening',
+            'morning_evening',
+            'morning',
+            'afternoon',
+            'evening',
+            'wfh',
+            'day_off',
+            'leave',
+            'holiday',
+            'full_time'
+          )
+        ),
+        centre_ids INTEGER[] NOT NULL DEFAULT '{}',
+        centre_codes TEXT[] NOT NULL DEFAULT '{}',
+        is_flexible BOOLEAN NOT NULL DEFAULT FALSE,
+        note VARCHAR(500),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (staff_email, work_date)
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_teaching_monthly_schedules_date
+        ON teaching_monthly_schedules(work_date);
+      CREATE INDEX IF NOT EXISTS idx_teaching_monthly_schedules_staff
+        ON teaching_monthly_schedules(staff_email, work_date);
+      CREATE INDEX IF NOT EXISTS idx_teaching_monthly_schedules_role
+        ON teaching_monthly_schedules(role_code, work_date);
+
+      DROP TRIGGER IF EXISTS trg_teaching_monthly_schedules_updated_at
+        ON teaching_monthly_schedules;
+      CREATE TRIGGER trg_teaching_monthly_schedules_updated_at
+        BEFORE UPDATE ON teaching_monthly_schedules
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+      ALTER TABLE dangky_lich_lam
+        ADD COLUMN IF NOT EXISTS schedule_source VARCHAR(40);
+      ALTER TABLE dangky_lich_lam
+        ADD COLUMN IF NOT EXISTS source_schedule_id BIGINT;
+
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'fk_dangky_lich_lam_monthly_schedule'
+        ) THEN
+          ALTER TABLE dangky_lich_lam
+            ADD CONSTRAINT fk_dangky_lich_lam_monthly_schedule
+            FOREIGN KEY (source_schedule_id)
+            REFERENCES teaching_monthly_schedules(id)
+            ON DELETE CASCADE;
+        END IF;
+      END $$;
+
+      CREATE INDEX IF NOT EXISTS idx_dangky_lich_lam_monthly_source
+        ON dangky_lich_lam(source_schedule_id)
+        WHERE source_schedule_id IS NOT NULL;
+
+      INSERT INTO app_screens (
+        route_path,
+        label,
+        group_name,
+        sort_order,
+        description,
+        is_active
+      )
+      VALUES (
+        '/admin/schedule',
+        'Đăng ký lịch làm việc',
+        'Quản lý Giáo viên & Vận hành',
+        21,
+        'Team Teaching đăng ký ca và cơ sở làm việc theo tuần',
+        true
+      )
+      ON CONFLICT (route_path) DO UPDATE SET
+        label = EXCLUDED.label,
+        group_name = EXCLUDED.group_name,
+        sort_order = EXCLUDED.sort_order,
+        description = EXCLUDED.description,
+        is_active = true;
+
+      INSERT INTO app_permissions (user_id, route_path, can_access)
+      SELECT u.id, '/admin/schedule', true
+      FROM app_users u
+      WHERE u.role IN ('super_admin', 'admin')
+      ON CONFLICT (user_id, route_path) DO UPDATE SET can_access = true;
+
+      DO $$
+      DECLARE
+        allowed_roles text[] := ARRAY[
+          'TEGL+', 'TEGL', 'HO', 'LEADER', 'LEAD', 'CL', 'RL', 'AL',
+          'TE', 'TC', 'TF'
+        ];
+      BEGIN
+        IF to_regclass('public.roles') IS NOT NULL
+           AND to_regclass('public.role_permissions') IS NOT NULL THEN
+          INSERT INTO role_permissions (role_code, route_path)
+          SELECT r.role_code, '/admin/schedule'
+          FROM roles r
+          WHERE r.role_code = ANY(allowed_roles)
+          ON CONFLICT DO NOTHING;
+        END IF;
+      END $$;
+    `,
+  },
+  {
+    name: 'V128_teaching_weekly_schedule_ui',
+    version: 128,
+    sql: `
+      COMMENT ON TABLE teaching_monthly_schedules IS
+        'Team Teaching work schedules stored by actual work date and viewed by week';
+
+      UPDATE app_screens
+      SET label = 'Đăng ký lịch làm việc',
+          description = 'Team Teaching đăng ký ca và cơ sở làm việc theo tuần',
+          group_name = 'Quản lý Giáo viên & Vận hành',
+          sort_order = 21,
+          is_active = true
+      WHERE route_path = '/admin/schedule';
+    `,
+  },
+  {
+    name: 'V129_teaching_monthly_schedule_ui',
+    version: 129,
+    sql: `
+      COMMENT ON TABLE teaching_monthly_schedules IS
+        'Team Teaching work schedules stored by actual work date, registered and viewed by month';
+
+      UPDATE app_screens
+      SET label = 'Đăng ký lịch làm việc',
+          description = 'Team Teaching đăng ký ca và cơ sở làm việc theo tháng',
+          group_name = 'Quản lý Giáo viên & Vận hành',
+          sort_order = 21,
+          is_active = true
+      WHERE route_path = '/admin/schedule';
+    `,
+  },
+  {
+    name: 'V130_lecture_review_applications',
+    version: 130,
+    sql: `
+      CREATE TABLE IF NOT EXISTS lecture_review_applications (
+        id BIGSERIAL PRIMARY KEY,
+        manager_leader_code VARCHAR(80) NOT NULL,
+        manager_leader_name VARCHAR(255) NOT NULL,
+        manager_role_code VARCHAR(30) NOT NULL,
+        center_id INTEGER REFERENCES centers(id) ON UPDATE CASCADE ON DELETE SET NULL,
+        center_name VARCHAR(255) NOT NULL,
+        candidate_name VARCHAR(255) NOT NULL,
+        lms_code VARCHAR(80) NOT NULL,
+        review_date DATE NOT NULL,
+        reviewer_name VARCHAR(255) NOT NULL,
+        teaching_block VARCHAR(30) NOT NULL CHECK (
+          teaching_block IN ('coding', 'art', 'robotics', 'age_4_plus')
+        ),
+        material_bucket TEXT NOT NULL,
+        material_key TEXT NOT NULL,
+        material_file_name TEXT NOT NULL,
+        material_file_type VARCHAR(255) NOT NULL,
+        material_file_size BIGINT NOT NULL CHECK (
+          material_file_size > 0 AND material_file_size <= 104857600
+        ),
+        registered_by_user_id INTEGER REFERENCES app_users(id) ON DELETE SET NULL,
+        registered_by_email VARCHAR(255) NOT NULL,
+        scoring_status VARCHAR(100),
+        evaluation_score NUMERIC(6, 2),
+        theory_score NUMERIC(6, 2),
+        final_score NUMERIC(6, 2),
+        total_lesson INTEGER,
+        training_status VARCHAR(255),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_lra_review_date
+        ON lecture_review_applications(review_date DESC, id DESC);
+      CREATE INDEX IF NOT EXISTS idx_lra_manager_leader
+        ON lecture_review_applications(manager_leader_code, review_date DESC);
+      CREATE INDEX IF NOT EXISTS idx_lra_center
+        ON lecture_review_applications(center_id, review_date DESC);
+      CREATE INDEX IF NOT EXISTS idx_lra_lms_code
+        ON lecture_review_applications(LOWER(lms_code));
+      CREATE INDEX IF NOT EXISTS idx_lra_candidate_name
+        ON lecture_review_applications(LOWER(candidate_name));
+
+      DROP TRIGGER IF EXISTS trg_lecture_review_applications_updated_at
+        ON lecture_review_applications;
+      CREATE TRIGGER trg_lecture_review_applications_updated_at
+        BEFORE UPDATE ON lecture_review_applications
+        FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+      INSERT INTO app_screens (
+        route_path,
+        label,
+        group_name,
+        sort_order,
+        description,
+        is_active
+      )
+      VALUES
+        (
+          '/admin/dang-ky-duyet-giang',
+          'Đăng Ký Duyệt Giảng',
+          'Quản lý Giáo viên & Vận hành',
+          22,
+          'Leader/TE đăng ký lịch và tài liệu duyệt giảng cho giáo viên',
+          true
+        ),
+        (
+          '/admin/quan-ly-dang-ky-duyet-giang',
+          'Quản Lý Đăng Ký Duyệt Giảng',
+          'Quản lý Giáo viên & Vận hành',
+          23,
+          'Danh sách và bộ lọc phiếu đăng ký duyệt giảng',
+          true
+        )
+      ON CONFLICT (route_path) DO UPDATE SET
+        label = EXCLUDED.label,
+        group_name = EXCLUDED.group_name,
+        sort_order = EXCLUDED.sort_order,
+        description = EXCLUDED.description,
+        is_active = true;
+
+      INSERT INTO app_permissions (user_id, route_path, can_access)
+      SELECT
+        u.id,
+        screen.route_path,
+        true
+      FROM app_users u
+      CROSS JOIN (
+        VALUES
+          ('/admin/dang-ky-duyet-giang'),
+          ('/admin/quan-ly-dang-ky-duyet-giang')
+      ) AS screen(route_path)
+      WHERE u.role IN ('super_admin', 'admin')
+      ON CONFLICT (user_id, route_path) DO UPDATE SET can_access = true;
+
+      DO $$
+      DECLARE
+        allowed_roles text[] := ARRAY[
+          'CL', 'AL', 'RL', 'TE', 'TEGL', 'TEGL+', 'LEADER'
+        ];
+      BEGIN
+        IF to_regclass('public.roles') IS NOT NULL
+           AND to_regclass('public.role_permissions') IS NOT NULL THEN
+          INSERT INTO role_permissions (role_code, route_path)
+          SELECT
+            r.role_code,
+            screen.route_path
+          FROM roles r
+          CROSS JOIN (
+            VALUES
+              ('/admin/dang-ky-duyet-giang'),
+              ('/admin/quan-ly-dang-ky-duyet-giang')
+          ) AS screen(route_path)
+          WHERE UPPER(r.role_code) = ANY(allowed_roles)
+          ON CONFLICT DO NOTHING;
+        END IF;
+      END $$;
+    `,
+  },
 ]
 
 // ========== HÀM CHẠY MIGRATIONS ==========

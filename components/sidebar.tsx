@@ -279,7 +279,22 @@ export function Sidebar() {
           label: 'Phiếu đánh giá giáo viên',
           icon: ClipboardCheck,
         },
+        {
+          href: '/admin/dang-ky-duyet-giang',
+          label: 'Đăng Ký Duyệt Giảng',
+          icon: ClipboardCheck,
+        },
+        {
+          href: '/admin/quan-ly-dang-ky-duyet-giang',
+          label: 'Quản Lý Đăng Ký Duyệt Giảng',
+          icon: ClipboardCheck,
+        },
         { href: '/admin/check-cong', label: 'Kiểm tra công' },
+        {
+          href: '/admin/schedule',
+          label: 'Đăng ký lịch làm việc',
+          icon: CalendarDays,
+        },
         {
           href: '/admin/page4/quan-ly-lich-lam-viec',
           label: 'Quản lý lịch làm việc',

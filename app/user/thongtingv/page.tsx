@@ -26,6 +26,7 @@ import { setVideo } from '@/lib/redux/features/trainingSlice'
 import { useAppDispatch } from '@/lib/redux/hooks'
 import { mapTeachersDbRowToTeacher } from '@/lib/teacher-db-mapper'
 import {
+    BookOpen,
     Briefcase,
     Calendar,
     ClipboardCheck,
@@ -53,6 +54,7 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
+import TeacherPortfolioTab from './components/TeacherPortfolioTab'
 
 // Cache for processed data
 const dataCache = new Map()
@@ -153,7 +155,11 @@ interface TrainingAssignmentsResponse {
 type TeacherDbRow = Record<string, unknown>
 
 type AvailabilityPeriod = 'week' | 'month' | 'year'
-type TeacherInfoTab = 'profile' | 'checkCong' | 'checkCongFeedback'
+type TeacherInfoTab =
+  | 'profile'
+  | 'portfolio'
+  | 'checkCong'
+  | 'checkCongFeedback'
 type CheckCongStatusFilter = 'all' | 'CHECKED' | 'UNCHECKED'
 
 interface CheckCongRecord {
@@ -999,12 +1005,23 @@ export default function Page1() {
     const tabParam = searchParams.get('tab')
     if (
       tabParam === 'profile' ||
+      tabParam === 'portfolio' ||
       tabParam === 'checkCong' ||
       tabParam === 'checkCongFeedback'
     ) {
       setTeacherInfoTab(tabParam)
     }
   }, [searchParams])
+
+  const handleTeacherInfoTabChange = useCallback((tab: TeacherInfoTab) => {
+    setTeacherInfoTab(tab)
+
+    const params = new URLSearchParams(window.location.search)
+    params.set('tab', tab)
+    const query = params.toString()
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`
+    window.history.replaceState(null, '', nextUrl)
+  }, [])
 
   const uncheckedCheckCongRecords = useMemo(
     () => (checkCongData?.records ?? []).filter((record) => record.status === 'UNCHECKED'),
@@ -1935,6 +1952,11 @@ export default function Page1() {
                 {[
                   { value: 'profile' as const, label: 'Hồ sơ', icon: User },
                   {
+                    value: 'portfolio' as const,
+                    label: 'Teacher Portfolio',
+                    icon: BookOpen,
+                  },
+                  {
                     value: 'checkCong' as const,
                     label: 'Kiểm tra công & lương',
                     icon: ClipboardCheck,
@@ -1944,14 +1966,14 @@ export default function Page1() {
                     label: 'Phản hồi công',
                     icon: MessageSquare,
                   },
-                ].map((tab) => {
+                ].filter((tab) => tab.value !== 'portfolio').map((tab) => {
                   const ActiveIcon = tab.icon
                   const active = teacherInfoTab === tab.value
                   return (
                     <button
                       key={tab.value}
                       type="button"
-                      onClick={() => setTeacherInfoTab(tab.value)}
+                      onClick={() => handleTeacherInfoTabChange(tab.value)}
                       className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
                         active
                           ? 'bg-[#a1001f] text-white shadow-sm'
@@ -1994,6 +2016,8 @@ export default function Page1() {
                   )}
                 </div>
               </div>
+            ) : teacherInfoTab === 'portfolio' ? (
+              <TeacherPortfolioTab teacher={teacher} />
             ) : teacherInfoTab === 'checkCong' ? (
               <div className="space-y-4 p-3 sm:p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -2267,7 +2291,7 @@ export default function Page1() {
                   </>
                 )}
               </div>
-            ) : (
+            ) : teacherInfoTab === 'checkCongFeedback' ? (
               <div className="space-y-4 p-3 sm:p-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -2465,7 +2489,7 @@ export default function Page1() {
                   </div>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
         )}
 

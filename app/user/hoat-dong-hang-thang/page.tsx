@@ -1,4 +1,7 @@
 'use client'
+import { useQueryDate } from '@/lib/use-query-date'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Card } from '@/components/Card'
 import { Modal } from '@/components/ui/modal'
@@ -482,8 +485,8 @@ export default function MonthlyActivitiesPage() {
   const { user, token } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [view, setView] = useState<CalendarView>('month')
-  const [focusDate, setFocusDate] = useState(new Date())
+  const [view, setView] = useQueryState<CalendarView>('view', 'month', { values: ["month","week","day"] })
+  const [focusDate, setFocusDate] = useQueryDate('date', () => new Date())
   const [events, setEvents] = useState<EvaluationEvent[]>([])
   const [examSubjects, setExamSubjects] = useState<Array<{
     id: number

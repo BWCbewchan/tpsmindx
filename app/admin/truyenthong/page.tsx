@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { EmptyState } from '@/components/EmptyState'
 import { PageContainer } from '@/components/PageContainer'
@@ -64,8 +66,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function TruyenthongDashboardPage() {
-    const [searchTerm, setSearchTerm] = useState('')
-    const [filterStatus, setFilterStatus] = useState<'all' | 'draft' | 'published' | 'hidden'>('all')
+    const [searchTerm, setSearchTerm] = useQueryState<string>('search', '')
+    const [filterStatus, setFilterStatus] = useQueryState<'all' | 'draft' | 'published' | 'hidden'>('status', 'all', { values: ["all","draft","published","hidden"] })
 
     const queryParams = new URLSearchParams()
     queryParams.set('include', 'comment_counts')

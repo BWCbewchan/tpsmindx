@@ -1,4 +1,7 @@
 'use client'
+import { useQueryState, isQueryUserEdit, resetQueryPage } from '@/lib/use-query-state'
+
+
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -278,7 +281,7 @@ export default function HrGenPlannerPage() {
   const { user, token } = useAuth()
   const searchParams = useSearchParams()
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('planner')
+  const [activeTab, setActiveTab] = useQueryState<ActiveTab>('tab', 'planner', { values: ["planner","tracking","scheduling","overview"], history: 'push' })
 
   const [rows, setRows] = useState<HrCandidateRow[]>([])
   const [pagination, setPagination] = useState<HrPagination>(emptyPagination)
@@ -289,17 +292,13 @@ export default function HrGenPlannerPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
 
-  const [searchInput, setSearchInput] = useState('')
+  const [searchInput, setSearchInput] = useQueryState<string>('search', '')
   const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState<
-    'all' | 'assigned' | 'unassigned'
-  >('all')
-  const [sourceGenFilter, setSourceGenFilter] = useState('all')
-  const [sourceGenRegionFilter, setSourceGenRegionFilter] = useState<
-    'all' | '1' | '2' | '3' | '4' | '5'
-  >('all')
-  const [regionFilter, setRegionFilter] = useState<PlannerRegionFilter>('all')
-  const [page, setPage] = useState(1)
+  const [statusFilter, setStatusFilter] = useQueryState<'all' | 'assigned' | 'unassigned'>('status', 'all', { values: ["all","assigned","unassigned"] })
+  const [sourceGenFilter, setSourceGenFilter] = useQueryState<string>('gen', 'all')
+  const [sourceGenRegionFilter, setSourceGenRegionFilter] = useQueryState<'all' | '1' | '2' | '3' | '4' | '5'>('sourceRegion', 'all', { values: ["all","1","2","3","4","5"] })
+  const [regionFilter, setRegionFilter] = useQueryState<PlannerRegionFilter>('region', 'all', { values: ["all","south","north"] })
+  const [page, setPage] = useQueryState<number>('page', 1)
 
   const [availableGenEntries, setAvailableGenEntries] = useState<GenEntry[]>([])
   const [targetGen, setTargetGen] = useState('')
@@ -308,7 +307,7 @@ export default function HrGenPlannerPage() {
   const [isCreatingTargetGen, setIsCreatingTargetGen] = useState(false)
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [activeGenKey, setActiveGenKey] = useState('')
+  const [activeGenKey, setActiveGenKey] = useQueryState<string>('activeGen', '')
   const [activeGenInfo, setActiveGenInfo] = useState<{
     genCode: string
     regionCode: string
@@ -318,33 +317,12 @@ export default function HrGenPlannerPage() {
   const [creatingGen, setCreatingGen] = useState(false)
   const [assigning, setAssigning] = useState(false)
 
-  useEffect(() => {
-    const regionParam = searchParams.get('region')
-    if (
-      regionParam === 'south' ||
-      regionParam === 'north' ||
-      regionParam === 'all'
-    ) {
-      setRegionFilter(regionParam as PlannerRegionFilter)
-      setPage(1)
-      setSelectedKeys(new Set())
-    }
 
-    const tabParam = searchParams.get('tab')
-    if (
-      tabParam === 'planner' ||
-      tabParam === 'tracking' ||
-      tabParam === 'scheduling' ||
-      tabParam === 'overview'
-    ) {
-      setActiveTab(tabParam)
-    }
-  }, [searchParams])
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput.trim())
-      setPage(1)
+      void (isQueryUserEdit() && resetQueryPage(setPage))
       setSelectedKeys(new Set())
     }, 250)
 
@@ -504,7 +482,7 @@ export default function HrGenPlannerPage() {
 
   useEffect(() => {
     if (
-      sourceGenFilter !== 'all' &&
+      availableGenEntries.length > 0 && sourceGenFilter !== 'all' &&
       !availableGenEntries.some(
         (entry) =>
           entry.genCode === sourceGenFilter &&
@@ -514,7 +492,7 @@ export default function HrGenPlannerPage() {
     ) {
       setSourceGenFilter('all')
       setSourceGenRegionFilter('all')
-      setPage(1)
+      void (isQueryUserEdit() && resetQueryPage(setPage))
       setSelectedKeys(new Set())
     }
   }, [availableGenEntries, sourceGenFilter, sourceGenRegionFilter])
@@ -1314,7 +1292,7 @@ export default function HrGenPlannerPage() {
                 genEntries={availableGenEntries}
                 regionFilter={regionFilter}
                 activeGenKey={activeGenKey}
-                activeGenInfo={activeGenInfo}
+                activeGenInfo={activeGenEntry ? {genCode: activeGenEntry.genCode, regionCode: activeGenEntry.regionCode} : activeGenInfo}
                 onSelectGen={handleSelectGen}
               />
             )}
@@ -1324,7 +1302,7 @@ export default function HrGenPlannerPage() {
                 genEntries={availableGenEntries}
                 regionFilter={regionFilter}
                 activeGenKey={activeGenKey}
-                activeGenInfo={activeGenInfo}
+                activeGenInfo={activeGenEntry ? {genCode: activeGenEntry.genCode, regionCode: activeGenEntry.regionCode} : activeGenInfo}
                 onSelectGen={handleSelectGen}
               />
             )}
@@ -1334,7 +1312,7 @@ export default function HrGenPlannerPage() {
                 genEntries={availableGenEntries}
                 regionFilter={regionFilter}
                 activeGenKey={activeGenKey}
-                activeGenInfo={activeGenInfo}
+                activeGenInfo={activeGenEntry ? {genCode: activeGenEntry.genCode, regionCode: activeGenEntry.regionCode} : activeGenInfo}
                 onSelectGen={handleSelectGen}
               />
             )}

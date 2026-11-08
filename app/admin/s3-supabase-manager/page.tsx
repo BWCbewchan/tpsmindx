@@ -1,4 +1,6 @@
 "use client";
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { PageContainer } from "@/components/PageContainer";
 import { PageSkeleton } from "@/components/skeletons/PageSkeleton";
@@ -41,11 +43,12 @@ export default function S3SupabaseManagerPage() {
   const { user, token } = useAuth();
   const [items, setItems] = useState<StorageItem[]>([]);
   const [buckets, setBuckets] = useState<Array<{ name: string; public: boolean }>>([]);
-  const [bucket, setBucket] = useState("");
+  const [bucket, setBucket] = useQueryState<string>('bucket', "");
   const [loading, setLoading] = useState(true);
-  const [resourceType, setResourceType] = useState<ResourceFilter>("all");
+  const [resourceType, setResourceType] = useQueryState<ResourceFilter>('type', "all");
   const [prefix, setPrefix] = useState("");
-  const [appliedPrefix, setAppliedPrefix] = useState("");
+  const [appliedPrefix, setAppliedPrefix] = useQueryState<string>('prefix', "");
+  useEffect(() => { setPrefix(appliedPrefix) }, [appliedPrefix]);
   const [configured, setConfigured] = useState(true);
   const [configMessage, setConfigMessage] = useState("");
 

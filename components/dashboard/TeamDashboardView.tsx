@@ -1,4 +1,7 @@
 'use client'
+import { useQueryState, isQueryUserEdit, resetQueryPage } from '@/lib/use-query-state'
+
+
 
 import { useAuth } from '@/lib/auth-context'
 import { authHeaders } from '@/lib/auth-headers'
@@ -266,11 +269,11 @@ export function TeamDashboardView() {
   const [teachers, setTeachers] = useState<TeacherDetailData[]>([])
 
   // Filters state
-  const [selectedCenter, setSelectedCenter] = useState<string>('all')
-  const [selectedStatus, setSelectedStatus] = useState<string>('all')
-  const [searchQuery, setSearchQuery] = useState<string>('')
+  const [selectedCenter, setSelectedCenter] = useQueryState<string>('teamCentre', 'all')
+  const [selectedStatus, setSelectedStatus] = useQueryState<string>('teamStatus', 'all')
+  const [searchQuery, setSearchQuery] = useQueryState<string>('teamSearch', '')
   const [debouncedSearch, setDebouncedSearch] = useState<string>('')
-  const [activeTab, setActiveTab] = useState<'classes' | 'teachers'>('classes')
+  const [activeTab, setActiveTab] = useQueryState<'classes' | 'teachers'>('teamTab', 'classes', { values: ["classes","teachers"], history: 'push' })
 
   // Debounce từ khóa tìm kiếm để gửi request lên server tìm chính xác nếu cần
   useEffect(() => {
@@ -281,10 +284,10 @@ export function TeamDashboardView() {
   }, [searchQuery])
 
   // Pagination state
-  const [classesPage, setClassesPage] = useState(1)
-  const [classesPageSize, setClassesPageSize] = useState(10)
-  const [teachersPage, setTeachersPage] = useState(1)
-  const [teachersPageSize, setTeachersPageSize] = useState(10)
+  const [classesPage, setClassesPage] = useQueryState<number>('classesPage', 1)
+  const [classesPageSize, setClassesPageSize] = useQueryState<number>('classesPageSize', 10, {min:1,max:100})
+  const [teachersPage, setTeachersPage] = useQueryState<number>('teachersPage', 1)
+  const [teachersPageSize, setTeachersPageSize] = useQueryState<number>('teachersPageSize', 10, {min:1,max:100})
 
   // Selected item for modals
   const [selectedClass, setSelectedClass] = useState<ClassDetailData | null>(null)
@@ -330,8 +333,8 @@ export function TeamDashboardView() {
 
   // Reset phân trang khi thay đổi filter hoặc từ khóa tìm kiếm
   useEffect(() => {
-    setClassesPage(1)
-    setTeachersPage(1)
+    void (isQueryUserEdit() && resetQueryPage(setClassesPage))
+    void (isQueryUserEdit() && resetQueryPage(setTeachersPage))
   }, [searchQuery, selectedCenter, selectedStatus])
 
   // 1. Tìm kiếm đúng theo tab Lớp học

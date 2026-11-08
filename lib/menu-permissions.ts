@@ -1,4 +1,4 @@
-import { filterManagementPermissions } from '@/lib/admin-permission-routes'
+import { filterManagementPermissions, normalizeRoutePath } from '@/lib/admin-permission-routes'
 
 export function normalizeRoleToken(value?: string): string {
   return (value || '')
@@ -116,7 +116,7 @@ export function canAccessPortfolioPath(user: any, path: string): boolean {
  */
 export function checkHrefPermission(href: string, user: any): boolean {
   if (!user || user.isActive === false) return false
-  const path = href.split(/[?#]/)[0].replace(/\/+$/, '') || '/'
+  const path = normalizeRoutePath(href.split('#')[0])
   if (path === '/user' || path.startsWith('/user/') ||
       path === '/candidate-portal' || path.startsWith('/candidate-portal/')) return true
   if (normalizeRoleToken(user.role) === 'super_admin') return true
@@ -132,13 +132,28 @@ export function checkHrefPermission(href: string, user: any): boolean {
   })
 }
 
+function firstMenuDestination(items: any[]): string | undefined {
+  for (const item of items) {
+    if (item.href) return item.href
+    const destination = firstMenuDestination(item.submenu || item.items || [])
+    if (destination) return destination
+  }
+  return undefined
+}
+
 export function getFilteredAdminMenuItems(adminMenuItems: any[], user: any, _pathname = ''): any[] {
   if (!user) return []
   return adminMenuItems.flatMap((item) => {
     const childKey = Array.isArray(item.submenu) ? 'submenu' : Array.isArray(item.items) ? 'items' : null
     if (childKey) {
       const children = getFilteredAdminMenuItems(item[childKey], user)
-      return children.length ? [{ ...item, [childKey]: children }] : []
+      if (!children.length) return []
+      // A visible group may only have child grants. Its heading must not link
+      // to the denied parent; use the first permitted destination instead.
+      const href = item.href && !checkHrefPermission(item.href, user)
+        ? firstMenuDestination(children)
+        : item.href
+      return [{ ...item, ...(item.href ? { href } : {}), [childKey]: children }]
     }
     return item.href && checkHrefPermission(item.href, user) ? [item] : []
   })

@@ -49,6 +49,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: '/admin/page1',
+        destination: '/admin/ho-so-giao-vien',
+        permanent: false,
+      },
+      {
         source: '/',
         destination: '/login',
         permanent: false,

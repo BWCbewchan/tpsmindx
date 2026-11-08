@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import {
     Table,
@@ -453,11 +455,18 @@ const createSecureFetcher = <TResponse,>(): ((url: string) => Promise<TResponse>
         throw new Error('Unauthorized')
       }
 
-      const error = new Error('An error occurred while fetching the data.') as FetchError
+      const error = new Error('Chưa thể tải dữ liệu. Vui lòng thử lại.') as FetchError
       try {
         error.info = await response.json()
       } catch {
         error.info = null
+      }
+      const apiMessage = error.info && typeof error.info === 'object' && 'error' in error.info
+        ? error.info.error : null
+      if (typeof apiMessage === 'string' && apiMessage.trim()) {
+        error.message = apiMessage
+      } else if (response.status === 403) {
+        error.message = 'Bạn chưa có quyền xem dữ liệu giáo viên này.'
       }
       error.status = response.status
       throw error
@@ -484,15 +493,11 @@ export default function Page1() {
   const [searchCode, setSearchCode] = useState('')
   const [submitCode, setSubmitCode] = useState('')
   const [error, setError] = useState('')
-  const [selectedMonth, setSelectedMonth] = useState(
-    () => getCalendarMonthYear().month,
-  )
-  const [selectedYear, setSelectedYear] = useState(
-    () => getCalendarMonthYear().year,
-  )
-  const [selectedTableYear, setSelectedTableYear] = useState(
-    () => getCalendarMonthYear().year,
-  )
+  const [sourceSync, setSourceSync] = useState<{ query: string; phase: 'pending' | 'updated' | 'notfound' | 'error' | 'choice'; message: string } | null>(null)
+  const [syncAttempt, setSyncAttempt] = useState(0)
+  const [selectedMonth, setSelectedMonth] = useQueryState<string>('month', () => getCalendarMonthYear().month)
+  const [selectedYear, setSelectedYear] = useQueryState<string>('year', () => getCalendarMonthYear().year)
+  const [selectedTableYear, setSelectedTableYear] = useQueryState<string>('tableYear', () => getCalendarMonthYear().year, { history: 'push' })
 
   const reportYearOptions = useMemo(() => {
     const y = new Date().getFullYear()
@@ -508,7 +513,7 @@ export default function Page1() {
   )
   const [modalRecords, setModalRecords] = useState<TestRecord[]>([])
 
-  const [availabilityPeriod, setAvailabilityPeriod] = useState<AvailabilityPeriod>('month')
+  const [availabilityPeriod, setAvailabilityPeriod] = useQueryState<AvailabilityPeriod>('period', 'month', { values: ["week","month","year"] })
   const [notFoundModalOpen, setNotFoundModalOpen] = useState(false)
   const [registrationCheckModalOpen, setRegistrationCheckModalOpen] =
     useState(false)
@@ -516,13 +521,27 @@ export default function Page1() {
     TeacherLookupCandidate[] | null
   >(null)
 
-  // Load last searched code from localStorage
+  // Shared links and reloads restore the requested teacher, while browser back
+  // restores the previous submitted search. The local cache is input-only.
   useEffect(() => {
-    const lastCode = localStorage.getItem('lastSearchCode')
-    if (lastCode) {
-      setSearchCode(lastCode)
+    const restore = () => {
+      const search = new URL(window.location.href).searchParams.get('search')?.trim() || ''
+      setSearchCode(search || localStorage.getItem('lastSearchCode') || '')
+      setSubmitCode(search)
+      setTeacherChoices(null)
+      setError('')
+      lastScorePeriodTeacherCodeRef.current = null
     }
+    restore()
+    window.addEventListener('popstate', restore)
+    return () => window.removeEventListener('popstate', restore)
+  }, [])
 
+  const updateSearchUrl = useCallback((search: string) => {
+    const url = new URL(window.location.href)
+    if (search) url.searchParams.set('search', search)
+    else url.searchParams.delete('search')
+    if (url.href !== window.location.href) window.history.pushState(null, '', url)
   }, [])
 
   // Bundle nhanh: teacher + chứng chỉ + training (không chờ CSV/query điểm chuyên sâu–trải nghiệm)
@@ -688,6 +707,53 @@ export default function Page1() {
     }
   }, [profileBundle])
 
+  // Missing profiles are imported from the trusted source only after an explicit search.
+  useEffect(() => {
+    const query = submitCode.trim()
+    if (!query || isLoadingProfile || !profileBundle || profileBundle.success === false || profileBundle.exists || profileBundle.chooseTeacher) return
+    const controller = new AbortController()
+    let active = true
+    setNotFoundModalOpen(false)
+    setSourceSync({ query, phase: 'pending', message: 'Hồ sơ chưa có trong TPS → Đang xử lý dữ liệu từ nguồn…' })
+    const token = localStorage.getItem('token')
+    void (async () => {
+      try {
+        const response = await fetch('/api/admin/teacher-profiles/import-missing', {
+          method: 'POST', credentials: 'include', signal: controller.signal,
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ query }),
+        })
+        const result = await response.json()
+        if (!active) return
+        if (!response.ok || !result.success) {
+          const notFound = response.status === 404 && result.notFound === true
+          setSourceSync({ query, phase: notFound ? 'notfound' : 'error', message: result.error || 'Chưa thể cập nhật hồ sơ. Vui lòng thử tìm lại.' })
+          setNotFoundModalOpen(notFound)
+          return
+        }
+        if (result.chooseTeacher) {
+          setTeacherChoices(result.matches)
+          setSourceSync({ query, phase: 'choice', message: 'Tìm thấy dữ liệu nguồn → Chọn giáo viên để cập nhật hồ sơ.' })
+          return
+        }
+        const code = String(result.code || '').trim()
+        if (!code) throw new Error('Nguồn chưa có mã giáo viên hợp lệ')
+        setSourceSync({ query: code, phase: 'updated', message: 'Hồ sơ chưa có trong TPS → Đã xử lý dữ liệu → Đã cập nhật hồ sơ giáo viên.' })
+        if (code !== query) {
+          setSearchCode(code)
+          setSubmitCode(code)
+          updateSearchUrl(code)
+          localStorage.setItem('lastSearchCode', code)
+        } else {
+          await mutateProfile()
+        }
+      } catch (err) {
+        if (active) setSourceSync({ query, phase: 'error', message: err instanceof Error ? err.message : 'Chưa thể cập nhật hồ sơ. Vui lòng thử tìm lại.' })
+      }
+    })()
+    return () => { active = false; controller.abort() }
+  }, [submitCode, isLoadingProfile, profileBundle, syncAttempt, mutateProfile, updateSearchUrl])
+
   const trainingLessons = trainingData?.lessons ?? []
   const trainingLessonTotalCount = trainingLessons.length
   const completedTrainingLessonCount = trainingLessons.filter(
@@ -794,8 +860,9 @@ export default function Page1() {
           return
         }
 
-        // Other API errors: show not found modal
-        setNotFoundModalOpen(true)
+        // Transport and permission errors do not mean the teacher is missing.
+        setError(profileError.message || 'Chưa thể tải hồ sơ giáo viên. Vui lòng thử lại.')
+        setNotFoundModalOpen(false)
       } else if (teacher) {
         setError('')
         setNotFoundModalOpen(false)
@@ -807,13 +874,15 @@ export default function Page1() {
         !isLoadingProfile &&
         profileBundle &&
         !profileBundle.exists &&
-        !profileBundle.chooseTeacher
+        !profileBundle.chooseTeacher &&
+        sourceSync?.query === submitCode.trim() && sourceSync.phase === 'notfound'
       ) {
         setNotFoundModalOpen(true)
       }
     })()
   }, [
     profileError,
+    sourceSync,
     teacher,
     teacherChoices,
     submitCode,
@@ -830,7 +899,8 @@ export default function Page1() {
     setSubmitCode('')
     setError('')
     localStorage.removeItem('lastSearchCode')
-  }, [])
+    updateSearchUrl('')
+  }, [updateSearchUrl])
 
   const applyCurrentMonthYear = useCallback(() => {
     const { month, year } = getCalendarMonthYear()
@@ -845,10 +915,11 @@ export default function Page1() {
     const code = candidate.code.trim()
     setSearchCode(code)
     setSubmitCode(code)
+    updateSearchUrl(code)
     localStorage.setItem('lastSearchCode', code)
     lastScorePeriodTeacherCodeRef.current = null
     applyCurrentMonthYear()
-  }, [applyCurrentMonthYear])
+  }, [applyCurrentMonthYear, updateSearchUrl])
 
   const handleSearch = useCallback(() => {
     if (!searchCode.trim()) {
@@ -858,7 +929,9 @@ export default function Page1() {
     setError('')
     setTeacherChoices(null)
     const trimmedCode = searchCode.trim()
+    setSyncAttempt(attempt => attempt + 1)
     setSubmitCode(trimmedCode)
+    updateSearchUrl(trimmedCode)
     lastScorePeriodTeacherCodeRef.current = null
     applyCurrentMonthYear()
     // Save to localStorage for quick access
@@ -873,7 +946,7 @@ export default function Page1() {
         searchCode: trimmedCode,
       }),
     }).catch((err) => console.error('Analytics tracking failed:', err))
-  }, [applyCurrentMonthYear, searchCode])
+  }, [applyCurrentMonthYear, searchCode, updateSearchUrl])
 
   const getScoreForMonth = useCallback(
     (data: MonthlyAverage[], month: string): string => {
@@ -1205,13 +1278,19 @@ export default function Page1() {
           </div>
           <button
             onClick={handleSearch}
-            disabled={isLoadingProfile}
+            disabled={isLoadingProfile || (sourceSync?.query === submitCode && sourceSync.phase === 'pending')}
             className="px-6 py-2.5 bg-[#a1001f] text-white rounded-full text-sm font-semibold hover:bg-[#870019] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 min-w-[100px]"
           >
             <Search className="h-4 w-4" />
             {isLoadingProfile ? 'Đang tìm...' : 'Tìm'}
           </button>
         </div>
+
+        {sourceSync?.query === submitCode && (
+          <p role="status" aria-live="polite" className={`text-xs ${sourceSync.phase === 'error' || sourceSync.phase === 'notfound' ? 'text-red-700' : 'text-gray-600'}`}>
+            {sourceSync.message}
+          </p>
+        )}
 
         {/* Error Message */}
         {error && (

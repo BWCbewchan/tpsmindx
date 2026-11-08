@@ -1,4 +1,7 @@
 'use client';
+import { useQueryState, isQueryUserEdit, resetQueryPage } from '@/lib/use-query-state'
+
+
 
 import { useEffect, useMemo, useState } from 'react';
 import { 
@@ -89,13 +92,13 @@ export default function GenSidebar({
   creatingGen,
   suggestedNextGen,
 }: GenSidebarProps) {
-  const [genSearchInput, setGenSearchInput] = useState('');
-  const [genSortOrder, setGenSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [genPage, setGenPage] = useState(1);
+  const [genSearchInput, setGenSearchInput] = useQueryState<string>('genSearch', '');
+  const [genSortOrder, setGenSortOrder] = useQueryState<'asc' | 'desc'>('genOrder', 'desc', { values: ["asc","desc"] });
+  const [genPage, setGenPage] = useQueryState<number>('genPage', 1);
   const [recentGenKeys, setRecentGenKeys] = useState<string[]>([]);
 
   useEffect(() => {
-    setGenPage(1);
+    void (isQueryUserEdit() && resetQueryPage(setGenPage));
   }, [genSearchInput, genSortOrder, genEntries.length]);
 
   useEffect(() => {
@@ -104,7 +107,7 @@ export default function GenSidebar({
       activeGenKey,
       ...previous.filter((key) => key !== activeGenKey),
     ].slice(0, 8));
-    setGenPage(1);
+    void (isQueryUserEdit() && resetQueryPage(setGenPage));
   }, [activeGenKey]);
 
   const filteredGens = useMemo(() => {

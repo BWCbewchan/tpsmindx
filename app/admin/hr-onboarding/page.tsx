@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useCallback, useEffect, useState } from 'react'
 import { PageContainer } from '@/components/PageContainer'
@@ -23,7 +25,7 @@ interface GenSummary {
 export default function HrOnboardingDashboard() {
   const [loading, setLoading] = useState(true)
   const [gens, setGens] = useState<GenSummary[]>([])
-  const [regionFilter, setRegionFilter] = useState<string>('all')
+  const [regionFilter, setRegionFilter] = useQueryState<string>('region', 'all')
 
   const fetchGens = useCallback(async () => {
     setLoading(true)

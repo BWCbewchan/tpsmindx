@@ -1,4 +1,7 @@
 "use client";
+import { useQueryFilters } from '@/lib/use-query-filters'
+import { useQueryState } from '@/lib/use-query-state'
+
 import { useAuth } from "@/lib/auth-context";
 import { authHeaders } from "@/lib/auth-headers";
 import { getLeaderAreas } from "@/lib/teaching-leaders";
@@ -29,8 +32,8 @@ export default function LeadersPanel() {
     const { token } = useAuth();
     const [data, setData] = useState<Leader[]>([]);
     const [loading, setLoading] = useState(false);
-    const [filters, setFilters] = useState<Filters>({ areas: [], roleCodes: [], statuses: [] });
-    const [search, setSearch] = useState(""); const [fStatus, setFStatus] = useState(""); const [fArea, setFArea] = useState(""); const [fRole, setFRole] = useState("");
+    const [filters, setFilters] = useQueryFilters<Filters>({ areas: [], roleCodes: [], statuses: [] }, {"areas":"leaderAreas","roleCodes":"leaderRoles","statuses":"leaderStatuses"}, [], {roleCodes:{valueKey:'role_code',labelKey:'role_name'}});
+    const [search, setSearch] = useQueryState<string>('leaderSearch', ""); const [fStatus, setFStatus] = useQueryState<string>('leaderStatus', ""); const [fArea, setFArea] = useQueryState<string>('leaderArea', ""); const [fRole, setFRole] = useQueryState<string>('leaderRole', "");
     const [showFilters, setShowFilters] = useState(false);
     const [editLeader, setEditLeader] = useState<Leader | null>(null);
     const [isNew, setIsNew] = useState(false);

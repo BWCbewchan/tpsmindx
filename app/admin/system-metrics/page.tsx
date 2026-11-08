@@ -1,4 +1,8 @@
 'use client'
+import { useQueryState, isQueryUserEdit, resetQueryPage } from '@/lib/use-query-state'
+
+
+
 
 import { PageContainer } from '@/components/PageContainer'
 import { DevicePieChart } from '@/components/system-metrics/DevicePieChart'
@@ -294,28 +298,26 @@ function CenterActorDetailSection({
 export default function SystemMetricsPage() {
   const { user, isLoading: authLoading } = useAuth()
   const router = useRouter()
-  const [fromDate, setFromDate] = useState(() => {
+  const [fromDate, setFromDate] = useQueryState<string>('dateFrom', () => {
     const date = new Date()
     date.setDate(date.getDate() - 6)
     return formatDateForInput(date)
-  })
-  const [toDate, setToDate] = useState(() => formatDateForInput(new Date()))
-  const [chartTab, setChartTab] = useState<'dau' | 'wau'>('dau')
+  }, { kind: 'date' })
+  const [toDate, setToDate] = useQueryState<string>('dateTo', () => formatDateForInput(new Date()), { kind: 'date' })
+  const [chartTab, setChartTab] = useQueryState<'dau' | 'wau'>('chart', 'dau', { values: ["dau","wau"], history: 'push' })
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
-  const [userSearch, setUserSearch] = useState('')
+  const [userSearch, setUserSearch] = useQueryState<string>('search', '')
   const [debouncedUserSearch, setDebouncedUserSearch] = useState('')
-  const [centerFilter, setCenterFilter] = useState('all')
-  const [errorTablePage, setErrorTablePage] = useState(1)
-  const [onlineTablePage, setOnlineTablePage] = useState(1)
-  const [managerRankingTablePage, setManagerRankingTablePage] = useState(1)
-  const [teacherRankingTablePage, setTeacherRankingTablePage] = useState(1)
-  const [centerTablePage, setCenterTablePage] = useState(1)
+  const [centerFilter, setCenterFilter] = useQueryState<string>('centre', 'all')
+  const [errorTablePage, setErrorTablePage] = useQueryState<number>('errorPage', 1, { history: 'push' })
+  const [onlineTablePage, setOnlineTablePage] = useQueryState<number>('onlinePage', 1, { history: 'push' })
+  const [managerRankingTablePage, setManagerRankingTablePage] = useQueryState<number>('managerPage', 1, { history: 'push' })
+  const [teacherRankingTablePage, setTeacherRankingTablePage] = useQueryState<number>('teacherPage', 1, { history: 'push' })
+  const [centerTablePage, setCenterTablePage] = useQueryState<number>('centrePage', 1, { history: 'push' })
   const [selectedCenterDetail, setSelectedCenterDetail] = useState<
     string | null
   >(null)
-  const [selectedCenterActorTab, setSelectedCenterActorTab] = useState<
-    'teacher' | 'manager'
-  >('teacher')
+  const [selectedCenterActorTab, setSelectedCenterActorTab] = useQueryState<'teacher' | 'manager'>('centreActorTab', 'teacher', { values: ["teacher","manager"], history: 'push' })
 
   useEffect(() => {
     if (!authLoading && user?.role !== 'super_admin') {
@@ -544,21 +546,21 @@ export default function SystemMetricsPage() {
   const topTeacherInteraction = engagement?.teacher_interaction_ranking?.[0]
 
   useEffect(() => {
-    setErrorTablePage(1)
-    setOnlineTablePage(1)
-    setManagerRankingTablePage(1)
-    setTeacherRankingTablePage(1)
-    setCenterTablePage(1)
+    void (isQueryUserEdit() && resetQueryPage(setErrorTablePage))
+    void (isQueryUserEdit() && resetQueryPage(setOnlineTablePage))
+    void (isQueryUserEdit() && resetQueryPage(setManagerRankingTablePage))
+    void (isQueryUserEdit() && resetQueryPage(setTeacherRankingTablePage))
+    void (isQueryUserEdit() && resetQueryPage(setCenterTablePage))
   }, [fromDate, toDate])
 
   useEffect(() => {
-    setOnlineTablePage(1)
-    setManagerRankingTablePage(1)
-    setTeacherRankingTablePage(1)
+    void (isQueryUserEdit() && resetQueryPage(setOnlineTablePage))
+    void (isQueryUserEdit() && resetQueryPage(setManagerRankingTablePage))
+    void (isQueryUserEdit() && resetQueryPage(setTeacherRankingTablePage))
   }, [normalizedUserSearch])
 
   useEffect(() => {
-    setCenterTablePage(1)
+    void (isQueryUserEdit() && resetQueryPage(setCenterTablePage))
   }, [centerFilter])
 
   useEffect(() => {

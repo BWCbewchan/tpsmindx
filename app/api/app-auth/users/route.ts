@@ -1,6 +1,7 @@
 import {
   requireBearerDbRoles,
   requireBearerSuperAdmin,
+  requireBearerSuperAdminMutation,
 } from '@/lib/auth-server';
 import {
   filterManagementPermissions,
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
     const result = await pool.query(`
       SELECT u.id, u.email, u.display_name, u.role, u.is_active, u.created_by, u.created_at,
         COALESCE(u.auth_type, 'app') as auth_type,
+        (u.password_hash IS NOT NULL) as has_tps_password,
         COALESCE(
           (SELECT json_agg(json_build_object('route_path', p.route_path, 'can_access', p.can_access))
            FROM app_permissions p WHERE p.user_id = u.id),
@@ -157,7 +159,7 @@ export async function POST(request: NextRequest) {
 // PUT: Update user — super_admin only
 export async function PUT(request: NextRequest) {
   try {
-    const gate = await requireBearerSuperAdmin(request);
+    const gate = await requireBearerSuperAdminMutation(request);
     if (!gate.ok) return gate.response;
 
     const { id, displayName, role, isActive, password } = await request.json();
@@ -168,7 +170,7 @@ export async function PUT(request: NextRequest) {
 
     // Lấy thông tin user cũ trước khi UPDATE để phục vụ logging chính xác
     const oldUserResult = await pool.query(
-      'SELECT email, display_name, role, is_active FROM app_users WHERE id = $1',
+      'SELECT email, display_name, role, is_active, auth_type FROM app_users WHERE id = $1',
       [id]
     );
     if (oldUserResult.rows.length === 0) {
@@ -198,10 +200,17 @@ export async function PUT(request: NextRequest) {
       updates.push(`is_active = $${paramIndex++}`);
       params.push(isActive);
     }
-    if (password) {
-      const passwordHash = await bcrypt.hash(password, 10);
-      updates.push(`password_hash = $${paramIndex++}`);
-      params.push(passwordHash);
+    if (password !== undefined) {
+      if (password === null && oldUser.auth_type === 'firebase') {
+        updates.push('password_hash = NULL');
+      } else {
+        if (typeof password !== 'string' || password.length < 6 || Buffer.byteLength(password, 'utf8') > 72) {
+          return NextResponse.json({ error: 'Mật khẩu cần ít nhất 6 ký tự và tối đa 72 byte UTF-8' }, { status: 400 });
+        }
+        const passwordHash = await bcrypt.hash(password, 10);
+        updates.push(`password_hash = $${paramIndex++}`);
+        params.push(passwordHash);
+      }
     }
 
     if (updates.length === 0) {
@@ -245,7 +254,7 @@ export async function PUT(request: NextRequest) {
         table:       'app_users',
         recordId:    id,
         oldRecord:   { display_name: oldUser.display_name, role: oldUser.role, is_active: oldUser.is_active },
-        newRecord:   { display_name: displayName ?? oldUser.display_name, role: role ?? oldUser.role, is_active: isActive ?? oldUser.is_active, password_changed: !!password },
+        newRecord:   { display_name: displayName ?? oldUser.display_name, role: role ?? oldUser.role, is_active: isActive ?? oldUser.is_active, password_changed: password !== undefined },
         ...meta,
       });
     }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useAuth } from '@/lib/auth-context'
+import { canSwitchInterface } from '@/lib/teacher-session-routing'
 import {
   appendSafeAuthRedirect,
   buildLoginRedirectPath,
@@ -71,6 +72,13 @@ export default function AppLayout({
   const [noPermission, setNoPermission] = useState(false)
   /** DB tạm không trả lời — cho qua cổng (không kẹt skeleton), không coi là đã xác nhận trong teachers. */
   const [teacherGateAllowUnknown, setTeacherGateAllowUnknown] = useState(false)
+
+  const managementOnly = Boolean(user?.isAdmin) && !canSwitchInterface(user)
+  useEffect(() => {
+    if (!isLoading && managementOnly && pathname.startsWith('/user')) {
+      router.replace('/admin/dashboard')
+    }
+  }, [isLoading, managementOnly, pathname, router])
 
   useEffect(() => {
     if (!user) setTeacherGateAllowUnknown(false)
@@ -407,7 +415,7 @@ export default function AppLayout({
   ])
 
   // Show nothing while checking authentication - let page-level skeleton handle it
-  if (isLoading) {
+  if (isLoading || (managementOnly && pathname.startsWith('/user'))) {
     return null
   }
 

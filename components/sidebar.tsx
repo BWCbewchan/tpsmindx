@@ -1,5 +1,7 @@
 'use client'
 
+import { canSwitchInterface } from '@/lib/teacher-session-routing'
+
 import { useAuth } from '@/lib/auth-context'
 import { filterManagementPermissions } from '@/lib/admin-permission-routes'
 import { useSidebar } from '@/lib/sidebar-context'
@@ -266,7 +268,7 @@ export function Sidebar() {
       label: 'Quản lý Giáo viên & Vận hành',
       icon: Users,
       submenu: [
-        { href: '/admin/page1', label: 'Hồ sơ Giáo viên' },
+        { href: '/admin/ho-so-giao-vien', label: 'Hồ sơ Giáo viên' },
         {
           href: '/admin/quan-ly-qc',
           label: 'Quản Lý Kiểm Tra Chất Lượng',
@@ -689,8 +691,8 @@ export function Sidebar() {
   }
 
   const profileHref = isUserArea ? '/user/profile' : user?.isAdmin ? '/admin/profile' : '/user/profile'
-  const canSwitchToManagement = Boolean(user?.isAdmin) && isUserArea
-  const canSwitchToTeacher = Boolean(user?.isAdmin) && !isUserArea
+  const canSwitchToManagement = canSwitchInterface(user) && isUserArea
+  const canSwitchToTeacher = canSwitchInterface(user) && !isUserArea
 
   const getTourTargetForHref = (href?: string) => {
     if (!href) return undefined

@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState, isQueryUserEdit, resetQueryPage } from '@/lib/use-query-state'
+
 
 import { PageContainer } from '@/components/PageContainer'
 import { EmailLoadChart } from '@/components/email-monitor/EmailLoadChart'
@@ -249,14 +251,14 @@ export default function EmailMonitorPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
-  const [period, setPeriod] = useState<'24h' | '7d' | '30d'>('24h')
+  const [period, setPeriod] = useQueryState<'24h' | '7d' | '30d'>('period', '24h', { values: ["24h","7d","30d"] })
   const [autoRefresh, setAutoRefresh] = useState(true)
-  const [page, setPage] = useState(1)
-  const [search, setSearch] = useState('')
+  const [page, setPage] = useQueryState<number>('page', 1)
+  const [search, setSearch] = useQueryState<string>('search', '')
   const [debouncedSearch, setDebouncedSearch] = useState('')
-  const [status, setStatus] = useState('')
-  const [category, setCategory] = useState('')
-  const [emailType, setEmailType] = useState('')
+  const [status, setStatus] = useQueryState<string>('status', '')
+  const [category, setCategory] = useQueryState<string>('category', '')
+  const [emailType, setEmailType] = useQueryState<string>('emailType', '')
   const [selectedLog, setSelectedLog] = useState<EmailDeliveryLog | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [savingSettings, setSavingSettings] = useState(false)
@@ -292,7 +294,7 @@ export default function EmailMonitorPage() {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       setDebouncedSearch(search.trim())
-      setPage(1)
+      void (isQueryUserEdit() && resetQueryPage(setPage))
     }, 350)
     return () => window.clearTimeout(timer)
   }, [search])

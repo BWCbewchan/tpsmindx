@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useEffect, useState } from 'react'
 import {
@@ -76,9 +78,9 @@ export default function AdminXuLyTinhHuongPage() {
   const [studies, setStudies] = useState<CaseStudy[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [filterDate, setFilterDate] = useState<string>('') // 'YYYY-MM-DD'
+  const [activeCategory, setActiveCategory] = useQueryState<string | null>('category', null)
+  const [searchQuery, setSearchQuery] = useQueryState<string>('search', '')
+  const [filterDate, setFilterDate] = useQueryState<string>('date', '') // 'YYYY-MM-DD'
 
   // ── view modal
   const [viewTarget, setViewTarget] = useState<CaseStudy | null>(null)

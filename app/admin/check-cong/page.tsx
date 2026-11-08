@@ -1,4 +1,8 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
+
+
 
 import { PageContainer } from '@/components/PageContainer'
 import { Button } from '@/components/ui/button'
@@ -237,10 +241,10 @@ export default function AdminCheckCongPage() {
   const requestSeqRef = useRef(0)
   const fetchingPageRef = useRef(false)
   const dataRef = useRef<AdminCheckCongResponse | null>(null)
-  const [month, setMonth] = useState('all')
-  const [tab, setTab] = useState<AdminCheckCongTab>('records')
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [queryInput, setQueryInput] = useState('')
+  const [month, setMonth] = useQueryState<string>('month', 'all')
+  const [tab, setTab] = useQueryState<AdminCheckCongTab>('tab', 'records', { values: ["records","feedback","analytics"], history: 'push' })
+  const [statusFilter, setStatusFilter] = useQueryState<StatusFilter>('status', 'all', { values: ["all","CHECKED","UNCHECKED"] })
+  const [queryInput, setQueryInput] = useQueryState<string>('search', '')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [data, setData] = useState<AdminCheckCongResponse | null>(null)
   const [loadedRecords, setLoadedRecords] = useState<AdminCheckCongRecord[]>([])
@@ -251,7 +255,7 @@ export default function AdminCheckCongPage() {
   const [feedbackSetting, setFeedbackSetting] =
     useState<CheckCongFeedbackSetting | null>(null)
   const [feedbacks, setFeedbacks] = useState<CheckCongFeedbackItem[]>([])
-  const [feedbackFilter, setFeedbackFilter] = useState<FeedbackFilter>('pending')
+  const [feedbackFilter, setFeedbackFilter] = useQueryState<FeedbackFilter>('feedback', 'pending', { values: ["all","pending","approved","rejected"] })
   const [isLoadingFeedbacks, setIsLoadingFeedbacks] = useState(false)
   const [isSavingFeedbackSetting, setIsSavingFeedbackSetting] = useState(false)
   const [feedbackOpId, setFeedbackOpId] = useState<number | null>(null)
@@ -265,12 +269,7 @@ export default function AdminCheckCongPage() {
     closesAt: '',
   })
 
-  useEffect(() => {
-    const tabParam = searchParams.get('tab')
-    if (tabParam === 'records' || tabParam === 'feedback' || tabParam === 'analytics') {
-      setTab(tabParam)
-    }
-  }, [searchParams])
+
 
   const fetchPage = useCallback(
     async (targetPage: number, mode: 'reset' | 'append') => {

@@ -1,4 +1,7 @@
 ﻿'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
+
 
 import { Modal } from '@/components/ui/modal'
 import { PageHeader } from '@/components/PageHeader'
@@ -306,9 +309,9 @@ export default function XinNghiContent({ initialLeaveDate, externalOpen, onCreat
   const [showDateDropdown, setShowDateDropdown] = useState(false)
 
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([])
-  const [campusFilter, setCampusFilter] = useState<string[]>([])
-  const [fromDate, setFromDate] = useState<string>('')
-  const [toDate, setToDate] = useState<string>('')
+  const [campusFilter, setCampusFilter] = useQueryState<string[]>('leaveCampus', [])
+  const [fromDate, setFromDate] = useQueryState<string>('leaveDateFrom', '', { kind: 'date' })
+  const [toDate, setToDate] = useQueryState<string>('leaveDateTo', '', { kind: 'date' })
   const [showCampusDropdown, setShowCampusDropdown] = useState(false)
   const [campusSearchText, setCampusSearchText] = useState('')
   const [showCampusPicker, setShowCampusPicker] = useState(false)

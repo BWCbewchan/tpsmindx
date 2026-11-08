@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Filter, Search } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
@@ -70,8 +72,8 @@ export default function CommunicationsPage() {
       },
     )
     const posts = Array.isArray(rawPosts) ? rawPosts : []
-    const [selectedFilter, setSelectedFilter] = useState<string>('all')
-    const [searchQuery, setSearchQuery] = useState('')
+    const [selectedFilter, setSelectedFilter] = useQueryState<string>('filter', 'all')
+    const [searchQuery, setSearchQuery] = useQueryState<string>('search', '')
     const [isPopupOpen, setIsPopupOpen] = useState(false)
 
   // Auto-open popup on first visit, re-open every week

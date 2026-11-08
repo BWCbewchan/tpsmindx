@@ -1,4 +1,8 @@
 'use client'
+import { useQueryRestore } from '@/lib/use-query-restore'
+import { useQueryFilters } from '@/lib/use-query-filters'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { PageContainer } from '@/components/PageContainer'
 import DateRangePicker from '@/components/portfolio/DateRangePicker'
@@ -2364,7 +2368,7 @@ function ClassAttendanceDrawer({
     if (!cls) return { canGrade: false, canEdit: false, isManager: false, isLecOrJudge: false, reason: '' }
     return getGradingPermission(cls, user)
   }, [cls, user])
-  const [activeTab, setActiveTab] = useState<'attendance' | 'comments'>('attendance')
+  const [activeTab, setActiveTab] = useQueryState<'attendance' | 'comments'>('tab', 'attendance', { values: ["attendance","comments"], history: 'push' })
   const [selectedSessionIndex, setSelectedSessionIndex] = useState<number | null>(null)
   const [selectedClassSiteId, setSelectedClassSiteId] = useState('')
   const [draftStatuses, setDraftStatuses] = useState<Record<string, AttendanceStatus>>({})
@@ -3271,13 +3275,13 @@ function compareClassesByRecency(a: AttendanceClass, b: AttendanceClass, todayMs
 export default function TeacherClassesPage() {
   const { user, token, isLoading: authLoading } = useAuth()
   const [classes, setClasses] = useState<AttendanceClass[]>([])
-  const [filters, setFilters] = useState<FiltersState>(INITIAL_FILTERS)
+  const [filters, setFilters] = useQueryFilters<FiltersState>(INITIAL_FILTERS, {"search":"search","centre":"centre","startDate":"dateFrom","endDate":"dateTo","slotFrom":"slotFrom","slotTo":"slotTo","status":"status","teacher":"teacher"})
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [noLmsToken, setNoLmsToken] = useState(false)
   const [refreshSignal, setRefreshSignal] = useState(0)
   const [hasRequestedLoad, setHasRequestedLoad] = useState(false)
-  const [page, setPage] = useState(1)
+  const [page, setPage] = useQueryState<number>('page', 1)
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
   const requestedFiltersRef = useRef<FiltersState>(INITIAL_FILTERS)
 
@@ -3303,6 +3307,8 @@ export default function TeacherClassesPage() {
     setIsLoading(true)
     setRefreshSignal((current) => current + 1)
   }, [filters, hasActiveFilters, isLeaderRole])
+
+  useQueryRestore(loadClasses, ['search','centre','dateFrom','dateTo','slotFrom','slotTo','status','teacher','classId'], !authLoading);
 
   useEffect(() => {
     if (authLoading) return
@@ -3510,7 +3516,7 @@ export default function TeacherClassesPage() {
   )
 
   useEffect(() => {
-    if (page > totalPages) setPage(totalPages)
+    if (!isLoading && hasRequestedLoad && classes.length > 0 && page > totalPages) setPage(totalPages)
   }, [page, totalPages])
 
   useEffect(() => {

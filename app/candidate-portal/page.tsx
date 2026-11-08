@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -621,7 +623,7 @@ function CandidatePortalContent() {
   const activeTab = useMemo(() => resolveCandidateTab(pathname), [pathname]);
   const [videos, setVideos] = useState<CandidateVideo[]>([]);
   const [loadingVideos, setLoadingVideos] = useState(false);
-  const [videoStageTab, setVideoStageTab] = useState<CandidateTrainingStage>('centralized_training');
+  const [videoStageTab, setVideoStageTab] = useQueryState<CandidateTrainingStage>('videoStage', 'centralized_training', { values: ["centralized_training","pedagogy_training"], history: 'push' });
   const [videoStages, setVideoStages] = useState<Record<number, CandidateTrainingStage>>({});
   const [k12Docs, setK12Docs] = useState<CandidateK12Docs | null>(null);
   const [loadingK12Docs, setLoadingK12Docs] = useState(false);
@@ -629,7 +631,7 @@ function CandidatePortalContent() {
   const [teLeaderContacts, setTeLeaderContacts] = useState<TeLeaderContact[]>([]);
   const [loadingTeLeaderContacts, setLoadingTeLeaderContacts] = useState(false);
   const [teLeaderContactsError, setTeLeaderContactsError] = useState('');
-  const [teLeaderSearch, setTeLeaderSearch] = useState('');
+  const [teLeaderSearch, setTeLeaderSearch] = useQueryState<string>('leaderSearch', '');
 
   const allowedTabs = useMemo(() => {
     return [
@@ -841,7 +843,7 @@ function CandidatePortalContent() {
     }
   }, [activeTab, fetchTeLeaderContacts]);
 
-  const [selectedTeArea, setSelectedTeArea] = useState<string>('all');
+  const [selectedTeArea, setSelectedTeArea] = useQueryState<string>('leaderArea', 'all');
 
   const allTeAreas = useMemo(() => {
     const areas = new Set<string>();

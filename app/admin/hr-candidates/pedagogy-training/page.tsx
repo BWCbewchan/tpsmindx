@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState, isQueryUserEdit, resetQueryPage } from '@/lib/use-query-state'
+
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { PageContainer } from '@/components/PageContainer';
@@ -104,9 +106,9 @@ export default function PedagogyTrainingPage() {
   const [data, setData] = useState<TrainingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
-  const [centerFilter, setCenterFilter] = useState('all');
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useQueryState<string>('search', '');
+  const [centerFilter, setCenterFilter] = useQueryState<string>('centre', 'all');
+  const [page, setPage] = useQueryState<number>('page', 1);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -151,7 +153,7 @@ export default function PedagogyTrainingPage() {
   const pagedRows = filteredRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   useEffect(() => {
-    setPage(1);
+    void (isQueryUserEdit() && resetQueryPage(setPage));
   }, [centerFilter, search]);
 
   return (

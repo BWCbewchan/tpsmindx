@@ -1,4 +1,6 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { Trophy, Upload, X, CheckCircle, AlertCircle, Trash2, Eye, Star, Crown, Medal, Download, RefreshCw, Plus, Crop, RotateCcw } from 'lucide-react'
@@ -1601,8 +1603,8 @@ function ImportDialog({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 export default function MonthlyHonorsManager() {
   const [showImport, setShowImport] = useState(false)
   const [showPanel, setShowPanel] = useState(false)
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'podium' | 'table'>('podium')
+  const [selectedMonth, setSelectedMonth] = useQueryState<string | null>('honorsMonth', null)
+  const [viewMode, setViewMode] = useQueryState<'podium' | 'table'>('honorsView', 'podium', { values: ["podium","table"] })
   const [deleting, setDeleting] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const { mutate: mutateGlobal } = useSWRConfig()

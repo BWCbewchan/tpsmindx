@@ -1,7 +1,22 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { resolveAuthenticatedLanding } from '../lib/teacher-session-routing.ts'
+import { resolveAuthenticatedLanding, canSwitchInterface, INTERFACE_SWITCH_DISABLED } from '../lib/teacher-session-routing.ts'
+
+test('switching is preserved for existing managers but can be disabled per account', () => {
+  assert.equal(canSwitchInterface({ role: 'manager', isAdmin: true }), true)
+  assert.equal(canSwitchInterface({ role: 'manager', isAdmin: true, permissions: [INTERFACE_SWITCH_DISABLED] }), false)
+  assert.equal(canSwitchInterface({ role: 'teacher', isAdmin: false }), false)
+  assert.equal(canSwitchInterface(null), false)
+  assert.equal(canSwitchInterface({ role: 'super_admin', isAdmin: true, permissions: [INTERFACE_SWITCH_DISABLED] }), true)
+})
+
+test('restricted managers always land in management, including teacher login selection', () => {
+  for (const selectedRole of ['teacher', 'manager'] as const) {
+    assert.equal(resolveAuthenticatedLanding({ selectedRole, userRole: 'manager', isAdmin: true,
+      permissions: [INTERFACE_SWITCH_DISABLED] }), '/admin/dashboard')
+  }
+})
 
 test('known teacher enters the teacher portal directly', () => {
   assert.equal(

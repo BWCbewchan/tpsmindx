@@ -1,4 +1,6 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
 
 import { PageContainer } from '@/components/PageContainer';
 import { toast } from '@/lib/app-toast';
@@ -69,9 +71,9 @@ export default function DatabasePage() {
     // UI state
     const [loading, setLoading] = useState(true);
     const [migrating, setMigrating] = useState(false);
-    const [activeTab, setActiveTab] = useState<'tables' | 'sql' | 'migrations'>('tables');
-    const [detailTab, setDetailTab] = useState<'data' | 'structure'>('data');
-    const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useQueryState<'tables' | 'sql' | 'migrations'>('tab', 'tables', { values: ["tables","sql","migrations"], history: 'push' });
+    const [detailTab, setDetailTab] = useQueryState<'data' | 'structure'>('detailTab', 'data', { values: ["data","structure"], history: 'push' });
+    const [searchTerm, setSearchTerm] = useQueryState<string>('tableSearch', '');
     const [showInsertModal, setShowInsertModal] = useState(false);
     const [insertData, setInsertData] = useState<Record<string, string>>({});
     const sqlInputRef = useRef<HTMLTextAreaElement>(null);

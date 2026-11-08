@@ -1,4 +1,7 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
+
 
 import { Button } from '@/components/ui/button'
 import {
@@ -144,8 +147,8 @@ export function ExamFeedbackStatsPanel() {
   const [error, setError] = useState('')
   const [updatingId, setUpdatingId] = useState<number | null>(null)
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set())
-  const [page, setPage] = useState(1)
-  const [month, setMonth] = useState('')
+  const [page, setPage] = useQueryState<number>('examFeedbackPage', 1)
+  const [month, setMonth] = useQueryState<string>('examFeedbackMonth', '')
   const [subjectCode, setSubjectCode] = useState('')
   const [setId, setSetId] = useState('')
   const [status, setStatus] = useState('')

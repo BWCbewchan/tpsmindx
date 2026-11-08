@@ -1,4 +1,7 @@
 'use client'
+import { useQueryFilters } from '@/lib/use-query-filters'
+import { useQueryState } from '@/lib/use-query-state'
+
 import { toast } from '@/lib/app-toast'
 import { useAuth } from '@/lib/auth-context'
 import { authHeaders } from '@/lib/auth-headers'
@@ -62,7 +65,7 @@ interface Filters {
 }
 
 export default function DataTab() {
-  const [subTab, setSubTab] = useState<SubTab>('centers-leaders')
+  const [subTab, setSubTab] = useQueryState<SubTab>('dataTab', 'centers-leaders', { values: ["centers-leaders","roles","kanban"], history: 'push' })
   const tabs: { key: SubTab; label: string; icon: React.ReactNode }[] = [
     {
       key: 'centers-leaders',
@@ -115,15 +118,15 @@ function CentersLeadersPanel() {
   const { token } = useAuth()
   const [centers, setCenters] = useState<Center[]>([])
   const [leaders, setLeaders] = useState<Leader[]>([])
-  const [filters, setFilters] = useState<Filters>({
+  const [filters, setFilters] = useQueryFilters<Filters>({
     areas: [],
     roleCodes: [],
     statuses: [],
     courses: [],
-  })
+  }, {"areas":"dataArea","roleCodes":"dataRole","statuses":"dataStatuses","courses":"dataCourse"}, [], {roleCodes:{valueKey:'role_code',labelKey:'role_name'}})
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [fStatus, setFStatus] = useState('')
+  const [search, setSearch] = useQueryState<string>('dataSearch', '')
+  const [fStatus, setFStatus] = useQueryState<string>('dataStatus', '')
   const [fArea, setFArea] = useState('')
   const [fRole, setFRole] = useState('')
   const [showFilters, setShowFilters] = useState(false)

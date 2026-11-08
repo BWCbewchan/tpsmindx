@@ -1,4 +1,7 @@
 'use client'
+import { useQueryRestore } from '@/lib/use-query-restore'
+import { useQueryState, isQueryUserEdit, resetQueryPage } from '@/lib/use-query-state'
+
 
 import { PageContainer } from '@/components/PageContainer'
 import { Tabs } from '@/components/Tabs'
@@ -640,10 +643,10 @@ export function TeacherEvaluationDashboard({
 } = {}) {
   const { token, isLoading: authLoading } = useAuth()
   const today = useMemo(() => vietnamToday(), [])
-  const [dateFrom, setDateFrom] = useState(`${today.slice(0, 7)}-01`)
-  const [dateTo, setDateTo] = useState(today)
-  const [centreId, setCentreId] = useState('')
-  const [requestSearch, setRequestSearch] = useState('')
+  const [dateFrom, setDateFrom] = useQueryState<string>('dateFrom', `${today.slice(0, 7)}-01`)
+  const [dateTo, setDateTo] = useQueryState<string>('dateTo', today)
+  const [centreId, setCentreId] = useQueryState<string>('centre', '')
+  const [requestSearch, setRequestSearch] = useQueryState<string>('requestSearch', '')
   const [filterCentres, setFilterCentres] = useState<EvaluationCentre[]>(initialData?.centres || [])
   const [filterOptionsLoading, setFilterOptionsLoading] = useState(!initialData)
   const [filterOptionsError, setFilterOptionsError] = useState('')
@@ -652,20 +655,20 @@ export function TeacherEvaluationDashboard({
   const [error, setError] = useState('')
   const [filterInputError, setFilterInputError] = useState('')
   const [hasApplied, setHasApplied] = useState(Boolean(initialData))
-  const [viewMode, setViewMode] = useState<ViewMode>('classes')
-  const [search, setSearch] = useState('')
-  const [sourceFilter, setSourceFilter] = useState<SourceFilter>('all')
-  const [statusFilter, setStatusFilter] = useState('all')
-  const [tableCentreFilter, setTableCentreFilter] = useState('all')
-  const [courseLineFilter, setCourseLineFilter] = useState('all')
-  const [topicFilter, setTopicFilter] = useState('all')
-  const [sessionFilter, setSessionFilter] = useState<SessionFilter>('all')
-  const [scoreFilter, setScoreFilter] = useState<ScoreFilter>('all')
-  const [classSortKey, setClassSortKey] = useState<ClassSortKey>('collectionRate')
-  const [classSortDirection, setClassSortDirection] = useState<SortDirection>('asc')
-  const [entrySortKey, setEntrySortKey] = useState<EntrySortKey>('timestamp')
-  const [entrySortDirection, setEntrySortDirection] = useState<SortDirection>('desc')
-  const [page, setPage] = useState(1)
+  const [viewMode, setViewMode] = useQueryState<ViewMode>('view', 'classes', { values: ["classes","entries"] })
+  const [search, setSearch] = useQueryState<string>('search', '')
+  const [sourceFilter, setSourceFilter] = useQueryState<SourceFilter>('source', 'all', { values: ["all","lms","google_sheets"] })
+  const [statusFilter, setStatusFilter] = useQueryState<string>('status', 'all')
+  const [tableCentreFilter, setTableCentreFilter] = useQueryState<string>('tableCentre', 'all', { history: 'push' })
+  const [courseLineFilter, setCourseLineFilter] = useQueryState<string>('course', 'all')
+  const [topicFilter, setTopicFilter] = useQueryState<string>('topic', 'all')
+  const [sessionFilter, setSessionFilter] = useQueryState<SessionFilter>('session', 'all', { values: ["all","4","8","outside_session","inactive"] })
+  const [scoreFilter, setScoreFilter] = useQueryState<ScoreFilter>('score', 'all', { values: ["all","low"] })
+  const [classSortKey, setClassSortKey] = useQueryState<ClassSortKey>('classSort', 'collectionRate', { values: ["className","courseName","sessions","collectionRate","averageTeacherScore","totalResponses"] })
+  const [classSortDirection, setClassSortDirection] = useQueryState<SortDirection>('classOrder', 'asc', { values: ["asc","desc"] })
+  const [entrySortKey, setEntrySortKey] = useQueryState<EntrySortKey>('entrySort', 'timestamp', { values: ["timestamp","studentName","className","teacherScore","status"] })
+  const [entrySortDirection, setEntrySortDirection] = useQueryState<SortDirection>('entryOrder', 'desc', { values: ["asc","desc"] })
+  const [page, setPage] = useQueryState<number>('page', 1)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [selectedEntry, setSelectedEntry] = useState<TeacherEvaluationEntry | null>(null)
   const [ticketDraft, setTicketDraft] = useState<TicketDraft | null>(null)
@@ -720,7 +723,7 @@ export function TeacherEvaluationDashboard({
     }
   }, [token])
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (preservePage = false) => {
     const normalizedRequestSearch = requestSearch.trim()
     if (!centreId && normalizedRequestSearch.length < 2) {
       setFilterInputError('Chọn một cơ sở hoặc nhập từ khóa có ít nhất 2 ký tự trước khi áp dụng.')
@@ -765,7 +768,7 @@ export function TeacherEvaluationDashboard({
       setData(payload.data)
       setFilterCentres(payload.data.centres)
       setSelectedIds(new Set())
-      setPage(1)
+      if (!preservePage) setPage(1)
       if (process.env.NODE_ENV !== 'production') {
         console.info('[teacher-evaluations] load:done', {
           classes: payload.data.classes.length,
@@ -793,6 +796,8 @@ export function TeacherEvaluationDashboard({
       }
     }
   }, [centreId, dateFrom, dateTo, requestSearch, token])
+
+  useQueryRestore(() => { void loadData(true) }, ['centre','requestSearch'], !authLoading);
 
   useEffect(() => {
     if (authLoading || initialData) return
@@ -979,7 +984,7 @@ export function TeacherEvaluationDashboard({
   const totalPages = Math.max(1, Math.ceil(filteredEntries.length / PAGE_SIZE))
   const currentPage = Math.min(page, totalPages)
   const pagedEntries = filteredEntries.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE)
-  useEffect(() => setPage(1), [
+  useEffect(() => void (isQueryUserEdit() && resetQueryPage(setPage)), [
     courseLineFilter,
     entrySortDirection,
     entrySortKey,

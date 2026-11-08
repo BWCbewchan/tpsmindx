@@ -7,7 +7,7 @@
  *   1. Kiểm tra IP bị block (brute force guard)
  *   2. Rate limiting: 40 req/phút mỗi IP
  *   3. Tra cứu user trong bảng `app_users` theo email hoặc username
- *   4. Kiểm tra auth_type: nếu là 'firebase' thì fallback sang Firebase login
+ *   4. Thử mật khẩu TPS nếu có; Firebase fallback nếu mật khẩu TPS không khớp
  *   5. So sánh password với bcrypt hash
  *   6. Ký JWT (HS256, 30 ngày) và set httpOnly cookie
  *   7. Ghi audit log (login_success / login_failed)
@@ -110,12 +110,17 @@ export async function POST(request: NextRequest) {
     const user = userResult.rows[0];
 
     const authType = String(user.auth_type ?? '').trim().toLowerCase();
-    if (authType === 'firebase' || !user.password_hash) {
-      console.warn(`⚠️ [APP-AUTH LOGIN] Tài khoản "${normalizedInput}" dùng auth_type='${user.auth_type}' hoặc chưa thiết lập password_hash -> Chuyển sang fallback Firebase`);
+    if (!user.password_hash) {
+      console.warn(`⚠️ [APP-AUTH LOGIN] Tài khoản "${normalizedInput}" chưa có mật khẩu TPS -> Chuyển sang fallback Firebase`);
       return NextResponse.json({ appUser: false });
     }
 
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    // A Firebase account may use either its TPS backup password or its LMS password.
+    // Let the final Firebase login record failures once, avoiding double counting.
+    if (!isValidPassword && authType === 'firebase') {
+      return NextResponse.json({ appUser: false });
+    }
     if (!isValidPassword) {
       console.error(`❌ [APP-AUTH LOGIN FAILED] Mật khẩu không chính xác cho tài khoản: "${normalizedInput}" (IP: ${ip})`);
       // Ghi log thất bại + kiểm tra brute force

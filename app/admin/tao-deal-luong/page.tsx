@@ -1,4 +1,7 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
+
 
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
@@ -125,12 +128,12 @@ export default function DealLuongPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [activeTab, setActiveTab] = useState<DealTab>('bonus');
+  const [activeTab, setActiveTab] = useQueryState<DealTab>('type', 'bonus', { values: ["bonus","salary_reduction","salary_deal"], history: 'push' });
   const [selectedDeal, setSelectedDeal] = useState<SalaryDeal | null>(null);
   const [showRateTable, setShowRateTable] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [dealTypeFilter, setDealTypeFilter] = useState<DealTypeFilter>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useQueryState<StatusFilter>('status', 'all', { values: ["all","pending","tegl_approved","admin_approved","rejected"] });
+  const [dealTypeFilter, setDealTypeFilter] = useQueryState<DealTypeFilter>('dealType', 'all', {values:['all','bonus','salary_reduction','salary_deal']});
+  const [searchQuery, setSearchQuery] = useQueryState<string>('search', '');
   const [reviewNote, setReviewNote] = useState('');
   const [rejectMode, setRejectMode] = useState(false);
   const [rejectReason, setRejectReason] = useState('');

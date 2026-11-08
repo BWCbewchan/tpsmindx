@@ -1,4 +1,7 @@
 'use client';
+import { useQueryState } from '@/lib/use-query-state'
+
+
 
 import type { PortfolioAnalyticsSummary, StudentPortfolioListItem } from '@/lib/student-portfolio/types';
 import { authHeaders } from '@/lib/auth-headers';
@@ -100,14 +103,16 @@ export default function PortfolioManagementPage() {
   const { token, user } = useAuth();
   const [items, setItems] = useState<StudentPortfolioListItem[]>([]);
   const [searchText, setSearchText] = useState('');
-  const [appliedSearch, setAppliedSearch] = useState('');
-  const [trackFilter, setTrackFilter] = useState<TrackFilter>('all');
+  const [appliedSearch, setAppliedSearch] = useQueryState<string>('search', '');
+  useEffect(() => { setSearchText(appliedSearch); }, [appliedSearch]);
+  const [pageIndex, setPageIndex] = useQueryState<number>('pageIndex', 0, { min: 0 });
+  const [trackFilter, setTrackFilter] = useQueryState<TrackFilter>('track', 'all', { values: ["all","coding","robotics","art"] });
   const [centres, setCentres] = useState<CentreOption[]>([]);
-  const [selectedCentre, setSelectedCentre] = useState('');
+  const [selectedCentre, setSelectedCentre] = useQueryState<string>('centre', '');
   const [centreSearch, setCentreSearch] = useState('');
   const [isCentreDropdownOpen, setIsCentreDropdownOpen] = useState(false);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useQueryState<string>('dateFrom', '', { kind: 'date' });
+  const [dateTo, setDateTo] = useQueryState<string>('dateTo', '', { kind: 'date' });
   const [loadingCentres, setLoadingCentres] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | number | null>(null);
@@ -180,8 +185,8 @@ export default function PortfolioManagementPage() {
   );
 
   useEffect(() => {
-    void fetchPortfolios(0, appliedSearch, trackFilter, selectedCentre, dateFrom, dateTo);
-  }, [fetchPortfolios, appliedSearch, trackFilter, selectedCentre, dateFrom, dateTo]);
+    void fetchPortfolios(pageIndex, appliedSearch, trackFilter, selectedCentre, dateFrom, dateTo);
+  }, [fetchPortfolios, pageIndex, appliedSearch, trackFilter, selectedCentre, dateFrom, dateTo]);
 
   useEffect(() => {
     let cancelled = false;
@@ -609,7 +614,7 @@ export default function PortfolioManagementPage() {
           <button
             type="button"
             disabled={loading || pagination.pageIndex <= 0}
-            onClick={() => void fetchPortfolios(pagination.pageIndex - 1, appliedSearch, trackFilter, selectedCentre, dateFrom, dateTo)}
+            onClick={() => setPageIndex(Math.max(0, pagination.pageIndex - 1))}
             className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Trước
@@ -617,7 +622,7 @@ export default function PortfolioManagementPage() {
           <button
             type="button"
             disabled={loading || pagination.pageIndex + 1 >= totalPages}
-            onClick={() => void fetchPortfolios(pagination.pageIndex + 1, appliedSearch, trackFilter, selectedCentre, dateFrom, dateTo)}
+            onClick={() => setPageIndex(pagination.pageIndex + 1)}
             className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Sau

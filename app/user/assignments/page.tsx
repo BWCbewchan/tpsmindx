@@ -1,4 +1,7 @@
 'use client'
+import { useQueryState } from '@/lib/use-query-state'
+
+
 
 
 
@@ -187,15 +190,11 @@ export default function TeacherAssignmentPage() {
   const [examLoading, setExamLoading] = useState(true)
   const [error, setError] = useState('')
   const [teacherCode, setTeacherCode] = useState('')
-  const [activeMainTab, setActiveMainTab] = useState<
-    'available' | 'list' | 'training'
-  >('available')
+  const [activeMainTab, setActiveMainTab] = useQueryState<'available' | 'list' | 'training'>('tab', 'available', { values: ["available","list","training"], history: 'push' })
 
   const [selectedExamMonth, setSelectedExamMonth] = useState('6months')
-  const [scoreTypeFilter, setScoreTypeFilter] = useState<ScoreTypeFilter>('all')
-  const [scoreResultFilter, setScoreResultFilter] = useState<ScoreResultFilter>(
-    'all',
-  )
+  const [scoreTypeFilter, setScoreTypeFilter] = useQueryState<ScoreTypeFilter>('scoreType', 'all', { values: ["all","expertise","experience"] })
+  const [scoreResultFilter, setScoreResultFilter] = useQueryState<ScoreResultFilter>('scoreResult', 'all', { values: ["all","done","waiting","pending","accepted","rejected"] })
   const [scoreSubjectKeyword, setScoreSubjectKeyword] = useState('')
 
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set())

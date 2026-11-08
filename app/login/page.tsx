@@ -31,6 +31,7 @@ function resolvePostLoginPath(options: {
   userRole: string;
   isAdmin: boolean;
   teacherSync?: TeacherSyncState;
+  permissions?: string[];
 }): { redirectPath: string; isAdminLanding: boolean } {
   if (options.selectedRole === 'candidate') {
     return {
@@ -134,6 +135,7 @@ export default function LoginPage() {
           userRole: user.role,
           isAdmin: Boolean(user.isAdmin),
           teacherSync: user.teacherSync,
+          permissions: user.permissions,
         });
         const finalRedirectPath = resolveFinalPostLoginPath(redirectPath);
         logger.info('User already logged in, redirecting', { email: user.email, role: user.role, path: finalRedirectPath });
@@ -256,6 +258,7 @@ export default function LoginPage() {
           userRole: userData.role,
           isAdmin: Boolean(appAuthData.isAdmin),
           teacherSync: appAuthData.teacherSync,
+          permissions: userData.permissions,
         });
 
         if (appAuthData.role === 'super_admin') {
@@ -328,6 +331,7 @@ export default function LoginPage() {
         userRole: userData.role,
         isAdmin: Boolean(userData.isAdmin),
         teacherSync: data?.teacherSync,
+        permissions: userData.permissions,
       });
 
       const finalRedirectPath = resolveFinalPostLoginPath(landing.redirectPath);

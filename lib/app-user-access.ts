@@ -3,6 +3,11 @@ import { filterManagementPermissions } from '@/lib/admin-permission-routes'
 import pool from '@/lib/db'
 import { hasSpckManagementRole } from '@/lib/menu-permissions'
 import { getOrSetRequestCache } from '@/lib/request-cache'
+import { TEACHING_SCHEDULE_ALLOWED_ROLE_CODES } from '@/lib/teaching-schedule'
+import {
+  LECTURE_REVIEW_ALLOWED_ROLE_CODES,
+  LECTURE_REVIEW_ROUTES,
+} from '@/lib/lecture-review-applications'
 
 export type AppUserAccess = {
   found: boolean
@@ -43,20 +48,34 @@ async function _resolveAppUserAccess(normalized: string): Promise<AppUserAccess>
 
     if (dbResult.rows.length === 0) {
       const leaderResult = await pool.query(
-        'SELECT status FROM teaching_leaders WHERE LOWER(TRIM(email)) = $1 LIMIT 1',
+        'SELECT status, role_code FROM teaching_leaders WHERE LOWER(TRIM(email)) = $1 LIMIT 1',
         [normalized],
       )
 
       if (leaderResult.rows.length > 0) {
-        const leaderRow = leaderResult.rows[0] as { status?: string }
+        const leaderRow = leaderResult.rows[0] as {
+          status?: string
+          role_code?: string
+        }
         const isActive = leaderRow.status !== 'Deactive'
+        const roleCode = String(leaderRow.role_code || '').toUpperCase()
+        const canRegisterTeachingSchedule = (
+          TEACHING_SCHEDULE_ALLOWED_ROLE_CODES as readonly string[]
+        ).includes(roleCode)
+        const canUseLectureReview = (
+          LECTURE_REVIEW_ALLOWED_ROLE_CODES as readonly string[]
+        ).includes(roleCode)
+        const leaderPermissions = [
+          ...(canRegisterTeachingSchedule ? ['/admin/schedule'] : []),
+          ...(canUseLectureReview ? LECTURE_REVIEW_ROUTES : []),
+        ]
         return {
           found: true,
           email: normalized,
           role: 'manager',
           isAdmin: isActive,
-          permissions: [],
-          userRoles: [],
+          permissions: isActive ? Array.from(leaderPermissions) : [],
+          userRoles: roleCode ? [roleCode] : [],
           isAppUser: false,
           isActive,
           assignedCenters: await getAccessibleCenters(normalized),
@@ -105,7 +124,7 @@ async function _resolveAppUserAccess(normalized: string): Promise<AppUserAccess>
       [appUser.id],
     )
 
-    const roleCodes = userRoles.rows.map((r: { role_code: string }) =>
+    const roleCodes: string[] = userRoles.rows.map((r: { role_code: string }) =>
       (r.role_code || '').toUpperCase(),
     )
     const canManageSpckByRole = hasSpckManagementRole({

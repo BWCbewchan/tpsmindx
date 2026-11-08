@@ -10,9 +10,10 @@ interface DateRangePickerProps {
   className?: string;
   popoverAlign?: 'left' | 'right';
   placeholder?: string;
+  variant?: 'default' | 'filter';
 }
 
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const WEEKDAYS = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
 
 function parseYmd(value?: string) {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -30,11 +31,9 @@ function formatYmd(date: Date) {
 function formatShortDate(value?: string) {
   const date = parseYmd(value);
   if (!date) return '';
-  return date.toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month}/${date.getFullYear()}`;
 }
 
 function startOfMonth(date: Date) {
@@ -76,6 +75,7 @@ export default function DateRangePicker({
   className = '',
   popoverAlign = 'left',
   placeholder = 'Chọn thời gian',
+  variant = 'default',
 }: DateRangePickerProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -170,7 +170,9 @@ export default function DateRangePicker({
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
-        className="flex h-11 w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-left text-sm font-medium text-slate-700 outline-none transition hover:border-[#bd0026]/30 focus:border-[#bd0026] focus:bg-white focus:ring-4 focus:ring-[#bd0026]/10"
+        className={variant === 'filter'
+          ? 'flex h-10 w-full items-center gap-2 rounded-md border border-gray-300 bg-white px-3 text-left text-sm font-normal text-gray-800 outline-none transition-colors hover:border-gray-400 focus:border-[#3156d4] focus:ring-2 focus:ring-[#3156d4]/10'
+          : 'flex h-11 w-full items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 text-left text-sm font-medium text-slate-700 outline-none transition hover:border-[#bd0026]/30 focus:border-[#bd0026] focus:bg-white focus:ring-4 focus:ring-[#bd0026]/10'}
       >
         <CalendarDays className="h-4 w-4 shrink-0 text-slate-400" />
         <span className="min-w-0 flex-1 truncate">{displayValue}</span>
@@ -203,7 +205,7 @@ export default function DateRangePicker({
               <ChevronLeft className="h-4 w-4" />
             </button>
             <p className="text-sm font-semibold text-slate-900">
-              {monthDate.toLocaleDateString('en-US', {
+              {monthDate.toLocaleDateString('vi-VN', {
                 month: 'long',
                 year: 'numeric',
               })}

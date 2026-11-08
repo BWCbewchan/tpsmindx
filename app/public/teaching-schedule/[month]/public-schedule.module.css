@@ -1,0 +1,313 @@
+.page {
+  --public-ink: #0f172a;
+  --public-muted: #64748b;
+  --public-line: #dbe3ec;
+  --public-paper: #ffffff;
+  --public-red: #a1001f;
+  --public-red-dark: #820019;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #f8fafc;
+  color: var(--public-ink);
+  font-family: var(--font-exo);
+}
+
+.toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 82px;
+  gap: 28px;
+  padding: 13px 24px;
+  border-bottom: 3px solid var(--public-red);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.monthNavigation,
+.monthStatus,
+.monthTitle,
+.publicBadge {
+  display: flex;
+  align-items: center;
+}
+
+.monthNavigation { gap: 12px; }
+
+.iconButton {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--public-line);
+  border-radius: 12px;
+  background: white;
+  color: #475569;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  text-decoration: none;
+  transition: 160ms ease;
+}
+
+.iconButton:hover {
+  border-color: rgba(161, 0, 31, 0.32);
+  background: #fff5f7;
+  color: var(--public-red);
+}
+
+.monthTitle {
+  gap: 10px;
+  min-width: 320px;
+  padding: 0 6px;
+}
+
+.monthTitle > span {
+  color: var(--public-muted);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.monthTitle > strong {
+  font-size: 1.06rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.monthTitle > svg { color: var(--public-red); }
+
+.monthStatus {
+  justify-content: flex-end;
+  gap: 14px;
+}
+
+.monthStatus > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.monthStatus strong {
+  color: var(--public-ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-transform: lowercase;
+}
+
+.monthStatus span {
+  color: var(--public-muted);
+  font-size: 0.74rem;
+  font-weight: 400;
+}
+
+.publicBadge {
+  gap: 6px;
+  padding: 7px 10px;
+  border: 1px solid #e9cbd1;
+  border-radius: 999px;
+  background: #fff3f5;
+  color: #8c1830 !important;
+  font-size: 0.7rem !important;
+  font-weight: 500 !important;
+}
+
+.tableViewport {
+  height: calc(100dvh - 82px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #c3cbd5 #eef2f7;
+  scrollbar-width: thin;
+}
+
+.tableViewport::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.tableViewport::-webkit-scrollbar-track { background: #eef2f7; }
+.tableViewport::-webkit-scrollbar-thumb {
+  border: 2px solid #eef2f7;
+  border-radius: 999px;
+  background: #b8c2ce;
+}
+
+.scheduleTable {
+  width: 100%;
+  min-width: 1500px;
+  border-spacing: 0;
+  border-collapse: separate;
+  table-layout: fixed;
+  background: var(--public-paper);
+  font-size: 0.88rem;
+}
+
+.scheduleTable th,
+.scheduleTable td {
+  height: 76px;
+  padding: 10px 12px;
+  border-right: 1px solid var(--public-line);
+  border-bottom: 1px solid var(--public-line);
+  vertical-align: middle;
+  transition: background-color 140ms ease;
+}
+
+.scheduleTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  height: 52px;
+  padding: 11px 12px;
+  background: linear-gradient(180deg, #ad0628 0%, var(--public-red) 100%);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.035em;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.scheduleTable thead th[data-weekend='true'] {
+  background: linear-gradient(180deg, #97021f 0%, var(--public-red-dark) 100%);
+}
+
+.scheduleTable tbody tr:nth-child(even) td,
+.scheduleTable tbody tr:nth-child(even) th { background-color: #f8fafc; }
+
+.scheduleTable tbody tr:hover td,
+.scheduleTable tbody tr:hover th { background-color: #fff7f8; }
+
+.scheduleTable .indexColumn {
+  position: sticky;
+  left: 0;
+  z-index: 8;
+  width: 64px;
+  background: var(--public-paper);
+  color: #64748b;
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-align: center;
+}
+
+.scheduleTable .nameColumn {
+  position: sticky;
+  left: 64px;
+  z-index: 8;
+  width: 260px;
+  background: var(--public-paper);
+  color: #1e293b;
+  font-size: 0.92rem;
+  font-weight: 500;
+  text-align: left;
+}
+
+.scheduleTable thead .indexColumn,
+.scheduleTable thead .nameColumn {
+  z-index: 20;
+  background: linear-gradient(180deg, #ad0628 0%, var(--public-red) 100%);
+  color: #ffffff;
+}
+
+.scheduleTable tbody tr:nth-child(even) .indexColumn,
+.scheduleTable tbody tr:nth-child(even) .nameColumn { background: #f8fafc; }
+
+.scheduleTable tbody tr:hover .indexColumn,
+.scheduleTable tbody tr:hover .nameColumn { background: #fff7f8; }
+
+.scheduleTable tbody tr:hover .nameColumn {
+  box-shadow: inset 3px 0 0 var(--public-red);
+}
+
+.scheduleCell { text-align: center; }
+
+.shiftCard {
+  display: flex;
+  min-height: 58px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 5px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 11px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  text-align: left;
+}
+
+.shiftCard strong {
+  color: #674229;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.shiftCard span,
+.shiftCard small {
+  color: #806a5d;
+  font-size: 0.69rem;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+.shiftCard[data-category='onsite'] {
+  border-color: #f0d5c2;
+  background: #fff1e7;
+}
+
+.shiftCard[data-category='remote'] {
+  border-color: #bfdee5;
+  background: #e9f6f8;
+}
+
+.shiftCard[data-category='remote'] strong { color: #286473; }
+
+.shiftCard[data-category='off'],
+.shiftCard[data-category='leave'],
+.shiftCard[data-category='holiday'] {
+  border-color: #d8cae5;
+  background: #f4eef9;
+}
+
+.shiftCard[data-category='off'] strong,
+.shiftCard[data-category='leave'] strong,
+.shiftCard[data-category='holiday'] strong { color: #68507a; }
+
+.shiftCard[data-category='fulltime'] {
+  border-color: #dfc1c7;
+  background: #f6e5e8;
+}
+
+.shiftCard[data-category='fulltime'] strong { color: #7e3d47; }
+
+.emptyCell {
+  color: #c4bfbb;
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+@media (max-width: 760px) {
+  .toolbar {
+    align-items: flex-start;
+    min-height: 124px;
+    flex-direction: column;
+    gap: 8px;
+    padding: 11px 12px;
+  }
+
+  .monthNavigation { width: 100%; justify-content: space-between; }
+  .monthTitle { min-width: 0; justify-content: center; }
+  .monthTitle > span { display: none; }
+  .monthStatus { width: 100%; justify-content: space-between; }
+  .monthStatus > div { align-items: flex-start; }
+  .tableViewport { height: calc(100dvh - 124px); }
+  .scheduleTable { min-width: 1380px; }
+  .scheduleTable .nameColumn { width: 220px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iconButton { transition: none; }
+}

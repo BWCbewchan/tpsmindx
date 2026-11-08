@@ -18,7 +18,7 @@ export function PortfolioSideProgressNav({
   const fillRef = useRef<HTMLDivElement>(null);
   const dotRef = useRef<HTMLDivElement>(null);
   const pctRef = useRef<HTMLSpanElement>(null);
-  const cpRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const cpRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   /**
    * Find the scrolling element — PersistentLayout puts content in a
@@ -117,6 +117,7 @@ export function PortfolioSideProgressNav({
         ticking = true;
       }
     };
+    const onResize = () => update();
 
     // Initial + delayed (after images load and layout settles)
     const t1 = requestAnimationFrame(update);
@@ -124,14 +125,14 @@ export function PortfolioSideProgressNav({
     const t3 = setTimeout(update, 2000);
 
     scroller.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', () => update());
+    window.addEventListener('resize', onResize);
 
     return () => {
       cancelAnimationFrame(t1);
       clearTimeout(t2);
       clearTimeout(t3);
       scroller.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', update);
+      window.removeEventListener('resize', onResize);
     };
   }, [sections, update, getScroller]);
 
@@ -157,7 +158,7 @@ export function PortfolioSideProgressNav({
         .sp-track {
           position: absolute; left: 50%; top: 0; bottom: 0;
           width: 2px; transform: translateX(-50%);
-          background: #ddd6cc; border-radius: 999px;
+          background: repeating-linear-gradient(to bottom, #cfc6bb 0 3px, transparent 3px 8px); border-radius: 999px;
           box-shadow: 0 0 6px 2px rgba(255,255,255,0.7);
         }
 
@@ -209,6 +210,7 @@ export function PortfolioSideProgressNav({
           transform: translate(-50%, -50%);
           z-index: 20; pointer-events: auto;
           cursor: pointer;
+          appearance: none; border: 0; padding: 0; background: transparent;
         }
         .sp-cp-dot {
           width: 10px; height: 10px; border-radius: 50%;
@@ -256,12 +258,14 @@ export function PortfolioSideProgressNav({
 
         {/* Checkpoint nodes — each is self-contained with its own label */}
         {sections.map((sec) => (
-          <div
+          <button
+            type="button"
             key={sec.id}
             ref={(el) => { if (el) cpRefs.current.set(sec.id, el); }}
             className="sp-checkpoint"
             data-active="0"
             style={{ top: '0%' }}
+            aria-label={`Đi đến mục ${sec.label}`}
             onClick={() => {
               const el = document.getElementById(sec.id);
               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -272,7 +276,7 @@ export function PortfolioSideProgressNav({
               boxShadow: 'var(--cp-shadow, none)',
             }} />
             <span className="sp-cp-label">{sec.label}</span>
-          </div>
+          </button>
         ))}
       </div>
     </aside>

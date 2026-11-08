@@ -1,46 +1,50 @@
 'use client'
 
 import { PageContainer } from '@/components/PageContainer'
+import DateRangePicker from '@/components/portfolio/DateRangePicker'
 import { authHeaders } from '@/lib/auth-headers'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
-import { toast } from '@/lib/app-toast'
 import {
   AlertCircle,
   AlertTriangle,
-  CheckCircle2,
   Award,
-  Loader2,
   Bot,
   BookOpen,
   Building2,
   CalendarDays,
   Check,
+  CheckCircle2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
   Code2,
   Eye,
+  FileSpreadsheet,
   Filter,
-  LoaderCircle,
   LockKeyhole,
+  Loader2,
   MapPin,
   MessageSquareText,
+  MoreVertical,
   PenTool,
   RefreshCcw,
   Save,
   Search,
+  ShieldCheck,
   Users,
   X,
   type LucideIcon,
 } from 'lucide-react'
+import { toast } from '@/lib/app-toast'
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ClassCommentsPanel } from './ClassCommentsPanel'
 
 const SESSION_COUNT = 14
 const PAGE_SIZE = 20
+const LEADER_ROLE_CODES = new Set(['CL', 'AL', 'RL', 'TC', 'TE'])
 
 type AttendanceStatus =
   | 'PRESENT'
@@ -55,6 +59,8 @@ type TeacherAccount = {
   email: string
   username: string
   code: string
+  roleId?: string
+  roleCode?: string
   roleShortName: string
   roleName: string
 }
@@ -68,8 +74,8 @@ type Student = {
   customer?: CustomerInfo | null
   imageUrl: string | null
   activeInClass: boolean
-  classSiteId: string
-  classSiteName: string
+  classSiteId?: string
+  classSiteName?: string
 }
 
 type ClassSiteOption = {
@@ -177,6 +183,40 @@ type AttendanceApiResponse = {
   }
 }
 
+type SaveAttendanceApiResponse = {
+  success?: boolean
+  noLmsToken?: boolean
+  ambiguous?: boolean
+  unchanged?: boolean
+  verified?: boolean
+  message?: string
+  class?: AttendanceClass
+}
+
+type TeacherRow = {
+  id: string
+  fullName: string
+  email: string
+  imageUrl: string | null
+  roleShortName: string
+  roleName: string
+}
+
+function accessRoleLabels(roles: string[]): string[] {
+  const roleSet = new Set(roles)
+  const labels = [
+    roleSet.has('LEC') ? 'LEC' : '',
+    roleSet.has('TA') ? 'TA' : '',
+    roleSet.has('SUPPLY') ? 'Supply' : '',
+    roleSet.has('JUDGE') || roleSet.has('JUDGE_SESSION_14') ? 'Judge' : '',
+    roleSet.has('MENTOR') ? 'Mentor' : '',
+    roleSet.has('ST_18_PLUS') ? 'ST 18+' : '',
+  ].filter(Boolean)
+  if (labels.length === 0 && roles.includes('ASSIGNED_TEACHER')) labels.push('Giảng dạy')
+  if (labels.length === 0 && roles.includes('TEACHER_ATTENDANCE')) labels.push('Đã tham gia')
+  return labels
+}
+
 type FiltersState = {
   search: string
   centre: string
@@ -191,6 +231,8 @@ type FiltersState = {
 type SelectOption = {
   value: string
   label: string
+  keywords?: string
+  description?: string
 }
 
 const INITIAL_FILTERS: FiltersState = {
@@ -264,11 +306,11 @@ function weekDayName(value: string | null | undefined): string {
 
 function classStatusLabel(status: string): string {
   const normalized = status.toUpperCase()
-  if (normalized === 'RUNNING') return 'Running'
-  if (normalized === 'PREPARING') return 'Preparing'
-  if (normalized === 'FINISHED') return 'Finished'
-  if (normalized === 'CANCELLED') return 'Cancelled'
-  return status || 'Unknown'
+  if (normalized === 'RUNNING') return 'Đang học'
+  if (normalized === 'PREPARING') return 'Sắp khai giảng'
+  if (normalized === 'FINISHED') return 'Đã kết thúc'
+  if (normalized === 'CANCELLED') return 'Đã hủy'
+  return status || 'Không xác định'
 }
 
 function classStatusTextClass(status: string): string {
@@ -278,35 +320,6 @@ function classStatusTextClass(status: string): string {
   if (normalized === 'FINISHED') return 'text-blue-700'
   if (normalized === 'CANCELLED') return 'text-rose-700'
   return 'text-gray-600'
-}
-
-type SaveAttendanceApiResponse = {
-  success?: boolean
-  noLmsToken?: boolean
-  ambiguous?: boolean
-  unchanged?: boolean
-  verified?: boolean
-  message?: string
-  class?: AttendanceClass
-}
-
-type TeacherRow = {
-  id: string
-  fullName: string
-  email: string
-  imageUrl: string | null
-  roleShortName: string
-  roleName: string
-}
-
-function accessRoleLabels(roles: string[]): string[] {
-  const labels: string[] = []
-  if (roles.includes('LEC')) labels.push('LEC')
-  if (roles.includes('TA')) labels.push('TA')
-  if (roles.includes('JUDGE') || roles.includes('JUDGE_SESSION_14')) labels.push('Judge')
-  if (labels.length === 0 && roles.includes('ASSIGNED_TEACHER')) labels.push('Giảng dạy')
-  if (labels.length === 0 && roles.includes('TEACHER_ATTENDANCE')) labels.push('Đã tham gia')
-  return labels
 }
 
 function normalizeAttendanceStatus(value: unknown): AttendanceStatus {
@@ -364,9 +377,9 @@ function formatShortDate(value: string | null | undefined): string {
 
 function formatShortDateWithYear(value: string | null | undefined): string {
   const key = dateKey(value)
-  if (!key) return '--/--/--'
+  if (!key) return '--/--/----'
   const [year, month, day] = key.split('-')
-  return `${day}/${month}/${year.slice(-2)}`
+  return `${day}/${month}/${year}`
 }
 
 function formatDateTimeFull(value: string | number | Date | null | undefined): string {
@@ -377,15 +390,20 @@ function formatDateTimeFull(value: string | number | Date | null | undefined): s
   const minutes = String(d.getMinutes()).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   const month = String(d.getMonth() + 1).padStart(2, '0')
-  return `${hours}:${minutes} ${day}/${month}/${d.getFullYear()}`
+  const year = d.getFullYear()
+  return `${hours}:${minutes} ${day}/${month}/${year}`
 }
 
 function formatDateFull(value: string | number | Date | null | undefined): string {
   if (!value) return ''
   const d = new Date(value)
   if (isNaN(d.getTime())) return ''
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+  const day = String(d.getDate()).padStart(2, '0')
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const year = d.getFullYear()
+  return `${day}/${month}/${year}`
 }
+
 function formatTimeRange(slot: ClassSlot): string {
   const start = formatTime(slot.startTime)
   const end = formatTime(slot.endTime)
@@ -401,16 +419,12 @@ function getInitials(name: string): string {
 }
 
 function buildDisplaySlots(cls: AttendanceClass): ClassSlot[] {
-  const targetSessionCount = Math.max(
-    1,
-    Number(cls.numberOfSessions || cls.sessionCount || cls.slots.length || SESSION_COUNT),
-  )
-  const slots = cls.slots.slice(0, targetSessionCount).map((slot, index) => ({
+  const slots = cls.slots.slice(0, SESSION_COUNT).map((slot, index) => ({
     ...slot,
     sessionNumber: index + 1,
   }))
 
-  while (slots.length < targetSessionCount) {
+  while (slots.length < SESSION_COUNT) {
     const sessionNumber = slots.length + 1
     slots.push({
       id: `placeholder-${cls.id}-${sessionNumber}`,
@@ -535,18 +549,41 @@ function slotStartTimestamp(slot: ClassSlot): number | null {
   return Number.isFinite(value) ? value : null
 }
 
+const ATTENDANCE_CLOSE_GRACE_MS = 30 * 60 * 1000
+
+function slotEndTimestamp(slot: ClassSlot): number | null {
+  const explicitEnd = new Date(slot.endTime || '').getTime()
+  if (Number.isFinite(explicitEnd) && explicitEnd > 0) return explicitEnd
+
+  const startTime = slotStartTimestamp(slot)
+  if (startTime === null) return null
+  const sessionHours = Number(slot.sessionHour)
+  const durationHours = Number.isFinite(sessionHours) && sessionHours > 0 ? sessionHours : 2
+  return startTime + durationHours * 60 * 60 * 1000
+}
+
+function slotAttendanceCloseTimestamp(slot: ClassSlot): number | null {
+  const endTime = slotEndTimestamp(slot)
+  return endTime === null ? null : endTime + ATTENDANCE_CLOSE_GRACE_MS
+}
+
 function isSlotOpen(slot: ClassSlot): boolean {
   if (slot.isPlaceholder) return false
   const startTime = slotStartTimestamp(slot)
   return startTime !== null && startTime <= Date.now()
 }
 
-function automaticTeacherStatus(slot: ClassSlot): AttendanceStatus {
-  const startTime = new Date(slot.startTime || slot.date || '').getTime()
-  if (!Number.isFinite(startTime)) return 'PRESENT'
+function isAttendanceWindowOpen(slot: ClassSlot): boolean {
+  if (!isSlotOpen(slot)) return false
+  const closeTime = slotAttendanceCloseTimestamp(slot)
+  return closeTime !== null && Date.now() <= closeTime
+}
 
-  const lateAfter = startTime + 15 * 60 * 1000
-  return Date.now() > lateAfter ? 'LATE' : 'PRESENT'
+function automaticTeacherStatus(slot: ClassSlot): AttendanceStatus {
+  const startTime = slotStartTimestamp(slot)
+  if (startTime === null) return 'PRESENT'
+
+  return Date.now() > startTime + 15 * 60 * 1000 ? 'LATE' : 'PRESENT'
 }
 
 const ATTENDANCE_META: Record<AttendanceStatus, {
@@ -570,26 +607,26 @@ const ATTENDANCE_META: Record<AttendanceStatus, {
   EXCUSED: {
     label: 'Vắng có phép',
     icon: MessageSquareText,
-    colorClass: 'text-orange-500',
-    activeClass: 'text-orange-600 bg-orange-50',
+    colorClass: 'text-blue-600',
+    activeClass: 'text-blue-600 bg-blue-50',
   },
   ABSENT: {
     label: 'Vắng không phép',
     icon: X,
-    colorClass: 'text-gray-600',
+    colorClass: 'text-rose-600',
     activeClass: 'text-rose-600 bg-rose-50',
   },
   NOT_RECORDED: {
     label: 'Chưa ghi nhận',
     icon: X,
-    colorClass: 'text-blue-500',
-    activeClass: 'text-blue-500 bg-blue-50',
+    colorClass: 'text-gray-400',
+    activeClass: 'text-gray-400',
   },
 }
 
 function AttendanceMark({ status, className }: { status: AttendanceStatus; className?: string }) {
   if (status === 'NOT_RECORDED') {
-    return <span className={cn('text-lg font-semibold leading-none text-blue-500', className)}>–</span>
+    return <span className={cn('text-lg font-semibold leading-none text-gray-300', className)}>–</span>
   }
 
   const meta = ATTENDANCE_META[status]
@@ -603,11 +640,12 @@ function StatusControls({
 }: {
   value: AttendanceStatus
   onChange: (status: AttendanceStatus) => void
+  hasComment?: boolean
 }) {
   const actions: AttendanceStatus[] = ['PRESENT', 'LATE', 'EXCUSED', 'ABSENT']
 
   return (
-    <div className="flex items-center justify-center gap-2">
+    <div className="flex items-center justify-center gap-1.5">
       {actions.map((status) => {
         const meta = ATTENDANCE_META[status]
         const Icon = meta.icon
@@ -619,11 +657,11 @@ function StatusControls({
             onClick={() => onChange(status)}
             title={meta.label}
             className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-sm transition-colors hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3156d4]',
-              active ? meta.activeClass : 'text-gray-500',
+              'flex h-7 w-7 items-center justify-center rounded transition-colors focus-visible:outline-none',
+              active ? meta.activeClass : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100',
             )}
           >
-            <Icon className="h-5 w-5" />
+            <Icon className="h-4.5 w-4.5" />
           </button>
         )
       })}
@@ -631,31 +669,194 @@ function StatusControls({
   )
 }
 
-function scheduleText(cls: AttendanceClass): string {
+function courseVisual(cls: AttendanceClass): {
+  label: string
+  icon: LucideIcon
+  iconClass: string
+  surfaceClass: string
+} {
+  const courseText = normalizeText([
+    cls.courseName,
+    cls.courseShortName,
+    cls.courseLineName,
+  ].join(' '))
+
+  if (
+    courseText.includes('robot') ||
+    courseText.includes('arduino') ||
+    courseText.includes('lego') ||
+    courseText.includes('vex')
+  ) {
+    return {
+      label: 'Robotics',
+      icon: Bot,
+      iconClass: 'text-amber-700',
+      surfaceClass: 'border-amber-200 bg-amber-50',
+    }
+  }
+
+  if (
+    courseText.includes('art') ||
+    courseText.includes('drawing') ||
+    courseText.includes('painting') ||
+    courseText.includes('my thuat')
+  ) {
+    return {
+      label: 'Art',
+      icon: PenTool,
+      iconClass: 'text-fuchsia-700',
+      surfaceClass: 'border-fuchsia-200 bg-fuchsia-50',
+    }
+  }
+
+  return {
+    label: 'Coding',
+    icon: Code2,
+    iconClass: 'text-blue-700',
+    surfaceClass: 'border-blue-200 bg-blue-50',
+  }
+}
+
+function SessionJourney({
+  cls,
+  slots,
+  selectedSessionIndex,
+  onSelect,
+}: {
+  cls: AttendanceClass
+  slots: ClassSlot[]
+  selectedSessionIndex: number | null
+  onSelect: (slot: ClassSlot, index: number) => void
+}) {
+  const progress = classProgress(cls)
+  const visual = courseVisual(cls)
+  const SubjectIcon = visual.icon
+  const slotCount = Math.max(slots.length, 1)
+  const reachedIndex = progress.done > 0 && slots.length > 0
+    ? Math.min(slots.length - 1, progress.done - 1)
+    : -1
+  const pointInsetPercent = 50 / slotCount
+  const trackLengthPercent = 100 - pointInsetPercent * 2
+  const reachedPercent = reachedIndex >= 0
+    ? ((reachedIndex + 0.5) / slotCount) * 100
+    : pointInsetPercent
+  const completedTrackPercent = reachedIndex > 0 && slots.length > 1
+    ? (reachedIndex / (slots.length - 1)) * trackLengthPercent
+    : 0
+
+  return (
+    <section className="mb-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-medium text-gray-950">Hành trình buổi học</h3>
+          <p className="mt-0.5 text-xs text-gray-500">{cls.courseName || cls.courseShortName || 'Khóa học'}</p>
+        </div>
+        <span className="text-xs font-medium text-gray-600">
+          {progress.done}/{progress.total} buổi đã diễn ra
+        </span>
+      </div>
+
+      <nav aria-label="Tiến trình buổi học" className="overflow-x-auto overflow-y-hidden [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1">
+        <div className="h-10 min-w-[620px] px-5">
+          <div className="relative h-full">
+            <span
+              className="absolute top-[19px] h-px bg-gray-200"
+              style={{ left: `${pointInsetPercent}%`, right: `${pointInsetPercent}%` }}
+              aria-hidden="true"
+            />
+            <span
+              className="absolute top-[19px] h-px bg-[#a1001f] transition-[width] duration-500"
+              style={{ left: `${pointInsetPercent}%`, width: `${completedTrackPercent}%` }}
+              aria-hidden="true"
+            />
+
+            {reachedIndex >= 0 ? (
+              <div
+                className={cn(
+                  'pointer-events-none absolute top-[5px] z-20 flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full border shadow-sm ring-2 ring-white transition-[left] duration-500',
+                  visual.surfaceClass,
+                  selectedSessionIndex === reachedIndex && 'ring-[#a1001f]/20',
+                )}
+                style={{ left: `${reachedPercent}%` }}
+                title={`${visual.label} · Đã tới buổi ${reachedIndex + 1}`}
+              >
+                <SubjectIcon className={cn('h-3.5 w-3.5', visual.iconClass)} />
+              </div>
+            ) : null}
+
+            <ol
+              className="absolute inset-x-0 top-[14px] grid h-3 items-center"
+              style={{ gridTemplateColumns: `repeat(${slotCount}, minmax(0, 1fr))` }}
+              role="list"
+            >
+              {slots.map((slot, index) => {
+                const completed = index < progress.done
+                const selected = index === selectedSessionIndex
+                const opened = isSlotOpen(slot)
+                return (
+                  <li key={`journey-${slot.id}`} className="relative z-10 flex items-center justify-center">
+                    <button
+                      type="button"
+                      disabled={!opened}
+                      onClick={() => onSelect(slot, index)}
+                      title={slot.isPlaceholder
+                        ? `Buổi ${slot.sessionNumber} chưa có lịch`
+                        : !opened
+                          ? `Buổi ${slot.sessionNumber} mở lúc ${formatTime(slot.startTime)} ngày ${formatDate(slot.startTime || slot.date)}`
+                          : `Buổi ${slot.sessionNumber} - ${formatShortDateWithYear(slot.date || slot.startTime)}`}
+                      aria-label={`Chọn buổi ${slot.sessionNumber}`}
+                      className={cn(
+                        'h-3 w-3 rounded-full border-2 transition-[background-color,border-color,box-shadow,transform] hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a1001f]/30 focus-visible:ring-offset-2',
+                        completed ? 'border-[#a1001f] bg-[#a1001f]' : 'border-gray-300 bg-white',
+                        selected && 'border-[#a1001f] bg-white ring-4 ring-[#a1001f]/15',
+                        !opened && 'cursor-not-allowed hover:scale-100',
+                        reachedIndex === index && 'opacity-0',
+                      )}
+                    />
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+        </div>
+      </nav>
+    </section>
+  )
+}
+
+function getScheduleList(cls: AttendanceClass): string[] {
   const entries = cls.slots
     .filter((slot) => slot.startTime || slot.date)
     .map((slot) => {
       const weekday = weekDayName(slot.date || slot.startTime)
       const start = formatTime(slot.startTime)
       const end = formatTime(slot.endTime)
-      const time = start && end ? `${start}-${end}` : start || end
-      return [weekday, time].filter(Boolean).join(' ')
+      const time = start && end ? `${start} - ${end}` : start || end
+      if (weekday && time) return `${weekday}, ${time}`
+      return weekday || time || ''
     })
     .filter(Boolean)
 
-  const unique = Array.from(new Set(entries))
+  return Array.from(new Set(entries))
+}
+
+function scheduleText(cls: AttendanceClass): string {
+  const unique = getScheduleList(cls)
   if (unique.length === 0) return '-'
-  return unique.slice(0, 2).join(', ') + (unique.length > 2 ? ` +${unique.length - 2}` : '')
+  return unique.slice(0, 2).join('; ') + (unique.length > 2 ? ` (+${unique.length - 2})` : '')
 }
 
 function classProgress(cls: AttendanceClass): { done: number; total: number; percent: number } {
   const total = Number(cls.progressTotal || cls.numberOfSessions || cls.sessionCount || SESSION_COUNT) || SESSION_COUNT
-  const pastSlotCount = cls.slots.filter(isSlotOpen).length
+  const pastSlotCount = cls.slots.filter((slot) => {
+    const key = dateKey(slot.startTime || slot.date)
+    return key && compareDateKey(key, dateKey(new Date().toISOString())) <= 0
+  }).length
   const fallbackDone = cls.slots.length === 0
     ? 0
     : cls.status === 'FINISHED'
     ? Math.min(cls.slots.length || total, total)
-    : Math.min(pastSlotCount, total)
+    : Math.min(pastSlotCount + 1, total)
   const done = Math.min(Number(cls.progressSession || fallbackDone) || 0, total)
   return {
     done,
@@ -673,27 +874,6 @@ function hasSlotInRange(cls: AttendanceClass, from: string, to: string): boolean
     if (to && compareDateKey(key, to) > 0) return false
     return true
   })
-}
-
-function optionKey(value: string): string {
-  return normalizeText(value).replace(/[^a-z0-9]+/g, '-')
-}
-
-function buildOptions(values: string[], allLabel: string): SelectOption[] {
-  const seen = new Set<string>()
-  const options = values
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .filter((value) => {
-      const key = optionKey(value)
-      if (!key || seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
-    .sort((a, b) => a.localeCompare(b, 'vi'))
-    .map((value) => ({ value, label: value }))
-
-  return [{ value: '', label: allLabel }, ...options]
 }
 
 function HeaderButton({
@@ -764,11 +944,13 @@ function SearchableSelectField({
   onChange,
   options,
   placeholder,
+  emptyMessage = 'Không có kết quả phù hợp',
 }: {
   value: string
   onChange: (value: string) => void
   options: SelectOption[]
   placeholder: string
+  emptyMessage?: string
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -777,7 +959,7 @@ function SearchableSelectField({
   const normalizedQuery = normalizeText(query)
   const visibleOptions = options.filter((option) => {
     if (!normalizedQuery) return true
-    return normalizeText(option.label).includes(normalizedQuery)
+    return normalizeText([option.label, option.keywords, option.description].filter(Boolean).join(' ')).includes(normalizedQuery)
   })
 
   useEffect(() => {
@@ -798,9 +980,11 @@ function SearchableSelectField({
     <div ref={rootRef} className="relative">
       <input
         value={open ? query : selectedOption?.label || ''}
-        onFocus={() => {
+        onFocus={(event) => {
+          const input = event.currentTarget
           setOpen(true)
           setQuery(selectedOption?.value ? selectedOption.label : '')
+          requestAnimationFrame(() => input.select())
         }}
         onChange={(event) => {
           setQuery(event.target.value)
@@ -823,15 +1007,18 @@ function SearchableSelectField({
                   setQuery('')
                 }}
                 className={cn(
-                  'block w-full px-3 py-2 text-left text-sm transition-colors hover:bg-[#eef3ff]',
-                  option.value === value ? 'bg-[#dbe7ff] font-medium text-gray-950' : 'font-normal text-gray-800',
+                  'block w-full px-3 py-2 text-left transition-colors hover:bg-[#fff4f6]',
+                  option.value === value ? 'bg-[#fff0f3] font-medium text-[#a1001f]' : 'font-normal text-gray-800',
                 )}
               >
-                {option.label}
+                <span className="block truncate text-sm">{option.label}</span>
+                {option.description ? (
+                  <span className="mt-0.5 block truncate text-xs font-normal text-gray-500">{option.description}</span>
+                ) : null}
               </button>
             ))
           ) : (
-            <div className="px-3 py-2 text-sm text-gray-500">Không có giảng viên phù hợp</div>
+            <div className="px-3 py-2 text-sm text-gray-500">{emptyMessage}</div>
           )}
         </div>
       ) : null}
@@ -874,13 +1061,13 @@ function StatTile({
   tone: string
 }) {
   return (
-    <div className="flex min-h-20 items-center gap-3 px-5 py-3">
+    <div className="flex min-h-20 items-center gap-3 rounded-xl border border-gray-200 bg-white px-4 py-3">
       <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-lg', tone)}>
         <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0">
-        <p className="text-xs font-medium text-gray-500">{label}</p>
-        <p className="mt-0.5 truncate text-xl font-semibold text-gray-950">{value}</p>
+        <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">{label}</p>
+        <p className="mt-1 truncate text-xl font-semibold text-gray-950">{value}</p>
       </div>
     </div>
   )
@@ -917,8 +1104,8 @@ function StudentIdentity({
     const rect = rootRef.current?.getBoundingClientRect()
     if (!rect) return
 
-    const width = 328
-    const height = 390
+    const width = 360
+    const height = 430
     const gap = 12
     const padding = 16
     const canOpenRight = rect.right + gap + width <= window.innerWidth - padding
@@ -958,7 +1145,7 @@ function StudentIdentity({
 
       {tooltipPosition ? (
         <div
-          className="pointer-events-none fixed z-[80] max-h-[calc(100vh-24px)] w-[328px] -translate-y-1/2 overflow-y-auto rounded-lg border border-white/10 bg-[#202020] p-5 text-white shadow-2xl"
+          className="pointer-events-none fixed z-[80] w-[360px] -translate-y-1/2 rounded-sm bg-[#202020] p-5 text-white shadow-2xl"
           style={{ left: tooltipPosition.left, top: tooltipPosition.top }}
         >
           <span
@@ -967,7 +1154,7 @@ function StudentIdentity({
               tooltipPosition.side === 'right' ? '-left-2' : '-right-2',
             )}
           />
-          <div className="mx-auto h-24 w-24 overflow-hidden rounded-full bg-gray-600 ring-4 ring-white/10">
+          <div className="mx-auto h-28 w-28 overflow-hidden rounded-full bg-gray-500">
             {info.imageUrl ? (
               <img src={info.imageUrl} alt={info.fullName} className="h-full w-full object-cover" />
             ) : (
@@ -979,31 +1166,31 @@ function StudentIdentity({
           <h4 className="mt-4 text-center text-base font-semibold">Thông tin học viên</h4>
           <dl className="mt-3 space-y-1.5 text-sm">
             <div className="grid grid-cols-[105px_1fr] gap-2">
-              <dt className="font-medium text-white/70">Họ tên</dt>
-              <dd className="min-w-0 break-words">: {info.fullName}</dd>
+              <dt className="font-semibold">Họ tên</dt>
+              <dd className="min-w-0 break-words font-semibold">: {info.fullName}</dd>
             </div>
             <div className="grid grid-cols-[105px_1fr] gap-2">
-              <dt className="font-medium text-white/70">Ngày sinh</dt>
-              <dd>: -</dd>
+              <dt className="font-semibold">Ngày sinh</dt>
+              <dd className="font-semibold">: -</dd>
             </div>
             <div className="grid grid-cols-[105px_1fr] gap-2">
-              <dt className="font-medium text-white/70">Giới tính</dt>
-              <dd>: {info.gender}</dd>
+              <dt className="font-semibold">Giới tính</dt>
+              <dd className="font-semibold">: {info.gender}</dd>
             </div>
           </dl>
           <h4 className="mt-5 text-center text-base font-semibold">Thông tin phụ huynh/khách hàng</h4>
           <dl className="mt-3 space-y-1.5 text-sm">
             <div className="grid grid-cols-[105px_1fr] gap-2">
-              <dt className="font-medium text-white/70">Họ tên</dt>
-              <dd className="min-w-0 break-words">: {info.customerName}</dd>
+              <dt className="font-semibold">Họ tên</dt>
+              <dd className="min-w-0 break-words font-semibold">: {info.customerName}</dd>
             </div>
             <div className="grid grid-cols-[105px_1fr] gap-2">
-              <dt className="font-medium text-white/70">Số điện thoại</dt>
-              <dd className="min-w-0 break-words">: {info.customerPhone}</dd>
+              <dt className="font-semibold">Số điện thoại</dt>
+              <dd className="min-w-0 break-words font-semibold">: {info.customerPhone}</dd>
             </div>
             <div className="grid grid-cols-[105px_1fr] gap-2">
-              <dt className="font-medium text-white/70">Email</dt>
-              <dd className="min-w-0 break-words">: {info.customerEmail}</dd>
+              <dt className="font-semibold">Email</dt>
+              <dd className="min-w-0 break-words font-semibold">: {info.customerEmail}</dd>
             </div>
           </dl>
         </div>
@@ -2161,36 +2348,67 @@ function StudentDemoGradingModal({
   )
 }
 
-
-function ClassAttendanceModal({
+function ClassAttendanceDrawer({
   cls,
-  currentUserEmail,
   onClose,
   onRefresh,
   onClassUpdated,
 }: {
   cls: AttendanceClass | null
-  currentUserEmail: string
   onClose: () => void
   onRefresh: () => void
   onClassUpdated: (nextClass: AttendanceClass) => void
 }) {
-  const { token: authToken, user } = useAuth()
+  const { token, user } = useAuth()
+  const perm = useMemo(() => {
+    if (!cls) return { canGrade: false, canEdit: false, isManager: false, isLecOrJudge: false, reason: '' }
+    return getGradingPermission(cls, user)
+  }, [cls, user])
   const [activeTab, setActiveTab] = useState<'attendance' | 'comments'>('attendance')
   const [selectedSessionIndex, setSelectedSessionIndex] = useState<number | null>(null)
   const [selectedClassSiteId, setSelectedClassSiteId] = useState('')
   const [draftStatuses, setDraftStatuses] = useState<Record<string, AttendanceStatus>>({})
   const [showUpdateNote, setShowUpdateNote] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
+  const [isSavingAttendance, setIsSavingAttendance] = useState(false)
   const [saveResult, setSaveResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
-  const [courseCriteria, setCourseCriteria] = useState<any>(null)
-  const [gradingStudent, setGradingStudent] = useState<Student | null>(null)
-  const [gradedStudentIds, setGradedStudentIds] = useState<Set<string>>(new Set())
-  const gradePermission = useMemo(() => cls ? getGradingPermission(cls, user) : { canGrade: false, canEdit: false, isManager: false, isLecOrJudge: false, reason: '' }, [cls, user])
-  useEffect(() => { setGradingStudent(null); setCourseCriteria(null); setGradedStudentIds(new Set()) }, [cls?.id])
-  useEffect(() => { if (!cls?.id) return; let active=true; fetch('/api/user/student-demo-grade?classId='+encodeURIComponent(cls.id),{headers:{...authHeaders(authToken)}}).then(r=>r.json()).then(d=>{if(active&&d?.success&&Array.isArray(d.data))setGradedStudentIds(new Set(d.data.map((x:any)=>String(x.studentId))))}).catch(e=>console.error('Error fetching graded student summary:',e)); return()=>{active=false} },[cls?.id,authToken])
-  useEffect(() => { if (!cls?.courseId&&!cls?.courseName){setCourseCriteria(null);return}; let active=true; const q=new URLSearchParams(); if(cls.courseId)q.append('courseId',cls.courseId.trim()); if(cls.courseName)q.append('courseName',cls.courseName.trim()); if(cls.courseShortName)q.append('courseShortName',cls.courseShortName.trim()); if(cls.courseLineName)q.append('courseLineName',cls.courseLineName.trim()); if(cls.name)q.append('className',cls.name.trim()); fetch('/api/user/course-grading-criteria?'+q.toString(),{headers:{...authHeaders(authToken)}}).then(r=>r.json()).then(d=>{if(active)setCourseCriteria(d?.success&&d?.hasCriteria?d:null)}).catch(()=>{if(active)setCourseCriteria(null)}); return()=>{active=false} },[cls?.courseId,cls?.courseName,cls?.courseShortName,cls?.courseLineName,cls?.name,authToken])
 
+  // Tiêu chí chấm điểm khóa học của lớp này (hỗ trợ phân loại chuyên môn 60% / chung 40%)
+  const [courseCriteria, setCourseCriteria] = useState<{
+    hasCriteria: boolean
+    hasCourseCriteria?: boolean
+    hasCommonCriteria?: boolean
+    weights?: {
+      courseWeight: number
+      commonWeight: number
+      courseWeightPercent: number
+      commonWeightPercent: number
+    }
+    courseCriteria?: {
+      hasCriteria: boolean
+      weight: number
+      weightPercent: number
+      totalMaxScore: number
+      groups: any[]
+      itemsCount: number
+    }
+    commonCriteria?: {
+      hasCriteria: boolean
+      weight: number
+      weightPercent: number
+      totalMaxScore: number
+      groups: any[]
+      itemsCount: number
+    }
+    totalMaxScore: number
+    groups: Array<{ groupName: string; rubricType?: string; weight?: number; weightPercent?: number; totalGroupScore: number; items: any[] }>
+    data: any[]
+  } | null>(null)
+
+  // Học viên đang được mở modal chấm điểm
+  const [gradingStudent, setGradingStudent] = useState<Student | null>(null)
+
+  // Danh sách ID học viên đã có điểm chấm được lưu trong DB
+  const [gradedStudentIds, setGradedStudentIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     setActiveTab('attendance')
@@ -2198,8 +2416,10 @@ function ClassAttendanceModal({
     setSelectedClassSiteId(cls?.classSites?.[0]?.id || '')
     setDraftStatuses({})
     setShowUpdateNote(true)
-    setIsSaving(false)
+    setIsSavingAttendance(false)
     setSaveResult(null)
+    setGradingStudent(null)
+    setGradedStudentIds(new Set())
   }, [cls?.id])
 
   useEffect(() => {
@@ -2219,31 +2439,75 @@ function ClassAttendanceModal({
     }
   }, [cls, onClose])
 
+  // Lấy danh sách tóm tắt học viên đã có điểm trong lớp
+  useEffect(() => {
+    if (!cls?.id) return
+
+    fetch(`/api/user/student-demo-grade?classId=${encodeURIComponent(cls.id)}`, {
+      headers: { ...authHeaders(token) },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && Array.isArray(data?.data)) {
+          setGradedStudentIds(new Set(data.data.map((d: any) => String(d.studentId))))
+        }
+      })
+      .catch((err) => console.error('Error fetching graded student summary:', err))
+  }, [cls?.id, token])
+
+  // Tải tiêu chí chấm điểm của khóa học từ DB (nếu có)
+  useEffect(() => {
+    if (!cls?.courseId && !cls?.courseName) {
+      setCourseCriteria(null)
+      return
+    }
+
+    const params = new URLSearchParams()
+    if (cls.courseId) params.append('courseId', cls.courseId.trim())
+    if (cls.courseName) params.append('courseName', cls.courseName.trim())
+    if (cls.courseShortName) params.append('courseShortName', cls.courseShortName.trim())
+    if (cls.courseLineName) params.append('courseLineName', cls.courseLineName.trim())
+    if (cls.name) params.append('className', cls.name.trim())
+
+    fetch(`/api/user/course-grading-criteria?${params.toString()}`, {
+      headers: { ...authHeaders(token) },
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && data?.hasCriteria) {
+          setCourseCriteria(data)
+        } else {
+          setCourseCriteria(null)
+        }
+      })
+      .catch(() => setCourseCriteria(null))
+  }, [cls?.courseId, cls?.courseName, cls?.courseShortName, cls?.courseLineName, cls?.name, token])
+
   if (!cls) return null
 
-  const currentClass = cls
-  const classId = currentClass.id
-  const slots = buildDisplaySlots(currentClass)
+  const classId = cls.id
+  const visual = courseVisual(cls)
+  const CourseIcon = visual.icon
+  const slots = buildDisplaySlots(cls)
+  const realSlots = slots.filter((s) => !s.isPlaceholder)
+  const lastRealSlotIndex = realSlots.length > 0 ? realSlots.length - 1 : -1
   const selectedSlot = selectedSessionIndex === null ? null : slots[selectedSessionIndex] || null
-  const visibleStudents = currentClass.students.filter((student) => {
-    if (!selectedClassSiteId) return currentClass.classSites.length <= 1
-    return student.classSiteId === selectedClassSiteId || (
-      !student.classSiteId && currentClass.classSites.length <= 1
-    )
+  const selectedSlotAttendanceOpen = Boolean(selectedSlot && isAttendanceWindowOpen(selectedSlot))
+  const selectedSlotCloseTime = selectedSlot ? slotAttendanceCloseTimestamp(selectedSlot) : null
+  const classSites = cls.classSites || []
+  const selectedClassSite = classSites.find((classSite) => classSite.id === selectedClassSiteId)
+  const visibleStudents = cls.students.filter((student) => {
+    if (!selectedClassSiteId) return classSites.length <= 1
+    return student.classSiteId === selectedClassSiteId || (!student.classSiteId && classSites.length <= 1)
   })
-  const selectedClassSite = currentClass.classSites.find(
-    (classSite) => classSite.id === selectedClassSiteId,
-  )
-  const teacherRows = teacherRowsForClass(currentClass)
-  const normalizedCurrentUserEmail = currentUserEmail.trim().toLowerCase()
+  const teacherRows = teacherRowsForClass(cls)
+  const normalizedCurrentUserEmail = String(user?.email || '').trim().toLowerCase()
   const currentTeacher = teacherRows.find(
     (teacher) => teacher.email.trim().toLowerCase() === normalizedCurrentUserEmail,
   )
   const selectedTeacherRows = selectedSlot
     ? teacherRows.filter((teacher) => teacherIsAssignedForSelectedSite(selectedSlot, teacher))
     : []
-  const visual = courseVisual(currentClass)
-  const CourseIcon = visual.icon
   const teacherRecorded = selectedSlot ? selectedTeacherRows.filter((teacher) => {
     const key = attendanceKey(cls.id, selectedSlot.id, teacher.id)
     const status = draftStatuses[key] || teacherStatus(selectedSlot, teacher.id, teacher.email)
@@ -2256,9 +2520,7 @@ function ClassAttendanceModal({
         return status !== 'NOT_RECORDED'
       }).length
     : 0
-  const teacherRowsToSubmit = selectedTeacherRows.filter(
-    (teacher) => currentTeacher?.id !== teacher.id,
-  )
+  const teacherRowsToSubmit = selectedTeacherRows.filter((teacher) => currentTeacher?.id !== teacher.id)
   const selectedSlotPrefix = selectedSlot ? `${classId}:${selectedSlot.id}:` : ''
   const hasDraftChanges = Boolean(selectedSlotPrefix) && Object.keys(draftStatuses).some(
     (key) => key.startsWith(selectedSlotPrefix),
@@ -2271,39 +2533,42 @@ function ClassAttendanceModal({
     const key = attendanceKey(classId, selectedSlot!.id, teacher.id)
     return (draftStatuses[key] || teacherStatus(selectedSlot!, teacher.id, teacher.email)) !== 'NOT_RECORDED'
   })
-  const canSave = Boolean(
+  const canSaveAttendance = Boolean(
     selectedSlot &&
     selectedClassSiteId &&
-    isSlotOpen(selectedSlot) &&
+    selectedSlotAttendanceOpen &&
     hasDraftChanges &&
     allStudentsRecorded &&
     allOtherTeachersRecorded &&
-    !isSaving,
+    !isSavingAttendance,
   )
+
+  function teacherIsAssignedForSelectedSite(slot: ClassSlot, teacher: TeacherRow): boolean {
+    const siteTeacherIds = selectedClassSite?.slotTeacherIds?.[slot.id]
+    if (siteTeacherIds) return siteTeacherIds.includes(teacher.id)
+    return teacherIsAssignedToSlot(slot, teacher)
+  }
 
   function addAutomaticTeacherAttendance(
     current: Record<string, AttendanceStatus>,
     slot: ClassSlot,
   ): Record<string, AttendanceStatus> {
     if (
+      !isAttendanceWindowOpen(slot) ||
       !currentTeacher ||
       !teacherIsAssignedForSelectedSite(slot, currentTeacher) ||
       visibleStudents.length === 0
     ) return current
 
-    const allStudentsRecorded = visibleStudents.every((student) => {
+    const studentsComplete = visibleStudents.every((student) => {
       const key = attendanceKey(classId, slot.id, student.id)
       return (current[key] || studentStatus(slot, student.id)) !== 'NOT_RECORDED'
     })
-    if (!allStudentsRecorded) return current
+    if (!studentsComplete) return current
 
     const teacherKey = attendanceKey(classId, slot.id, currentTeacher.id)
-    const currentTeacherStatus = current[teacherKey] || teacherStatus(
-      slot,
-      currentTeacher.id,
-      currentTeacher.email,
-    )
-    if (currentTeacherStatus !== 'NOT_RECORDED') return current
+    const currentStatus = current[teacherKey] || teacherStatus(slot, currentTeacher.id, currentTeacher.email)
+    if (currentStatus !== 'NOT_RECORDED') return current
 
     return {
       ...current,
@@ -2313,28 +2578,42 @@ function ClassAttendanceModal({
 
   function selectSession(slot: ClassSlot, index: number) {
     if (!isSlotOpen(slot)) {
+      const message = slot.isPlaceholder
+        ? 'Buổi học này chưa có lịch trên LMS.'
+        : `Điểm danh sẽ mở lúc ${formatTime(slot.startTime)} ngày ${formatDate(slot.startTime || slot.date)}.`
       setSaveResult({
         type: 'error',
-        message: slot.isPlaceholder
-          ? 'Buổi học này chưa có lịch trên LMS.'
-          : `Điểm danh sẽ mở lúc ${formatTime(slot.startTime)} ngày ${formatDate(slot.startTime || slot.date)}.`,
+        message,
       })
+      toast.error(message)
       return
     }
 
-    setSelectedSessionIndex((current) => current === index ? null : index)
-    setDraftStatuses((current) => addAutomaticTeacherAttendance(current, slot))
-    setSaveResult(null)
-  }
+    const isClosing = selectedSessionIndex === index
+    setSelectedSessionIndex(isClosing ? null : index)
+    if (isAttendanceWindowOpen(slot)) {
+      setDraftStatuses((current) => addAutomaticTeacherAttendance(current, slot))
+    }
+    if (isClosing || isAttendanceWindowOpen(slot)) {
+      setSaveResult(null)
+      return
+    }
 
-  function teacherIsAssignedForSelectedSite(slot: ClassSlot, teacher: TeacherRow): boolean {
-    const siteTeacherIds = selectedClassSite?.slotTeacherIds?.[slot.id]
-    if (siteTeacherIds) return siteTeacherIds.includes(teacher.id)
-    return teacherIsAssignedToSlot(slot, teacher)
+    const closeTime = slotAttendanceCloseTimestamp(slot)
+    setSaveResult({
+      type: 'error',
+      message: closeTime
+        ? `Buổi ${slot.sessionNumber} đã hết thời gian cập nhật điểm danh lúc ${formatTime(new Date(closeTime).toISOString())} ngày ${formatDate(new Date(closeTime).toISOString())}. Dữ liệu hiện ở chế độ chỉ xem.`
+        : `Buổi ${slot.sessionNumber} hiện chỉ có thể xem dữ liệu điểm danh.`,
+    })
   }
 
   function setTeacherDraft(slot: ClassSlot, teacher: TeacherRow, status: AttendanceStatus) {
     if (currentTeacher?.id === teacher.id) return
+    if (!isAttendanceWindowOpen(slot)) {
+      toast.error('Buổi học đã hết thời gian cập nhật điểm danh.')
+      return
+    }
 
     setSaveResult(null)
     setDraftStatuses((current) => ({
@@ -2344,6 +2623,10 @@ function ClassAttendanceModal({
   }
 
   function setStudentDraft(slot: ClassSlot, studentId: string, status: AttendanceStatus) {
+    if (!isAttendanceWindowOpen(slot)) {
+      toast.error('Buổi học đã hết thời gian cập nhật điểm danh.')
+      return
+    }
     setSaveResult(null)
     setDraftStatuses((current) => addAutomaticTeacherAttendance({
       ...current,
@@ -2352,16 +2635,16 @@ function ClassAttendanceModal({
   }
 
   async function saveAttendance() {
-    if (!selectedSlot || !canSave) return
+    if (!selectedSlot || !canSaveAttendance) return
 
-    setIsSaving(true)
+    setIsSavingAttendance(true)
     setSaveResult(null)
     try {
       const response = await fetch('/api/user/diem-danh-lop-hoc', {
         method: 'POST',
         cache: 'no-store',
         headers: {
-          ...authHeaders(authToken),
+          ...authHeaders(token),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -2392,19 +2675,22 @@ function ClassAttendanceModal({
         type: 'success',
         message: payload.message || 'Đã lưu và xác nhận dữ liệu trên LMS.',
       })
+      toast.success(payload.message || `Đã lưu điểm danh buổi ${selectedSlot.sessionNumber} lên LMS.`)
     } catch (saveError: unknown) {
+      const message = saveError instanceof Error ? saveError.message : 'Không thể lưu điểm danh lên LMS.'
       setSaveResult({
         type: 'error',
-        message: saveError instanceof Error ? saveError.message : 'Không thể lưu điểm danh lên LMS.',
+        message,
       })
+      toast.error(message)
     } finally {
-      setIsSaving(false)
+      setIsSavingAttendance(false)
     }
   }
 
   return createPortal(
     <div
-      className="fixed inset-0 z-modal-backdrop-custom flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-5"
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/60 p-3 backdrop-blur-sm sm:p-5"
       role="presentation"
       onMouseDown={(event) => {
         if (event.currentTarget === event.target) onClose()
@@ -2414,10 +2700,10 @@ function ClassAttendanceModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="attendance-modal-title"
-        className="z-modal-custom flex h-[min(90dvh,840px)] w-[min(94vw,1180px)] flex-col overflow-hidden rounded-lg border border-white/80 bg-white shadow-2xl"
+        className="flex h-[min(90dvh,840px)] w-[min(94vw,1180px)] flex-col overflow-hidden rounded-lg border border-white/80 bg-white shadow-2xl"
       >
-        <header className="shrink-0 border-b border-gray-200 bg-white">
-          <div className="flex items-start justify-between gap-4 px-5 py-4 sm:px-6">
+        <header className="shrink-0 border-b border-gray-200 bg-white px-5 py-4 sm:px-6">
+          <div className="flex items-start justify-between gap-4">
             <div className="flex min-w-0 items-start gap-3.5">
               <div className={cn('flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border', visual.surfaceClass)}>
                 <CourseIcon className={cn('h-5 w-5', visual.iconClass)} />
@@ -2429,11 +2715,6 @@ function ClassAttendanceModal({
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                     {classStatusLabel(cls.status)}
                   </span>
-                  {accessRoleLabels(cls.accessRoles).map((role) => (
-                    <span key={role} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600">
-                      {role}
-                    </span>
-                  ))}
                 </div>
                 <p className="mt-1 truncate text-sm text-gray-700">
                   {cls.courseName || cls.courseShortName || 'Khóa học'}
@@ -2451,7 +2732,7 @@ function ClassAttendanceModal({
                     <Users className="h-3.5 w-3.5" />
                     {cls.operatorName || cls.allTeacherNames[0] || 'Chưa có phụ trách'}
                   </span>
-                  {cls.classSites.length > 0 ? (
+                  {classSites.length > 0 ? (
                     <label className="inline-flex items-center gap-1.5">
                       <span>Class site</span>
                       <select
@@ -2464,7 +2745,7 @@ function ClassAttendanceModal({
                         }}
                         className="h-7 rounded-md border border-gray-200 bg-white px-2 text-xs text-gray-700 outline-none focus:border-[#3156d4]"
                       >
-                        {cls.classSites.map((classSite) => (
+                        {classSites.map((classSite) => (
                           <option key={classSite.id} value={classSite.id}>{classSite.name}</option>
                         ))}
                       </select>
@@ -2495,14 +2776,14 @@ function ClassAttendanceModal({
             </div>
           </div>
 
-          <nav className="flex gap-1 border-t border-gray-100 bg-gray-50/70 px-5 text-sm sm:px-6" aria-label="Nội dung lớp học">
+          <nav className="mt-4 flex gap-1 border-t border-gray-100 bg-gray-50/70 px-1 text-sm text-gray-500" aria-label="Nội dung lớp học">
             <button
               type="button"
               onClick={() => setActiveTab('attendance')}
               className={cn(
                 'border-b-2 px-3 py-3 font-medium transition-colors',
                 activeTab === 'attendance'
-                  ? 'border-b-2 border-[#a1001f] text-[#a1001f]'
+                  ? 'border-[#a1001f] text-[#a1001f]'
                   : 'border-b-2 border-transparent hover:text-gray-900',
               )}
             >
@@ -2514,7 +2795,7 @@ function ClassAttendanceModal({
               className={cn(
                 'border-b-2 px-3 py-3 font-medium transition-colors',
                 activeTab === 'comments'
-                  ? 'border-b-2 border-[#a1001f] text-[#a1001f]'
+                  ? 'border-[#a1001f] text-[#a1001f]'
                   : 'border-b-2 border-transparent hover:text-gray-900',
               )}
             >
@@ -2532,7 +2813,7 @@ function ClassAttendanceModal({
           ) : (
             <>
           <SessionJourney
-            cls={currentClass}
+            cls={cls}
             slots={slots}
             selectedSessionIndex={selectedSessionIndex}
             onSelect={selectSession}
@@ -2552,21 +2833,42 @@ function ClassAttendanceModal({
               <span>{saveResult.message}</span>
             </div>
           ) : null}
-          {showUpdateNote && selectedSlot && (!currentTeacher || !teacherIsAssignedForSelectedSite(selectedSlot, currentTeacher)) ? (
-            <div className="relative mb-4 rounded-lg border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-gray-800">
+          {showUpdateNote ? (
+            <div className="relative mb-4 rounded-lg border border-[#a1001f]/15 bg-[#fff8fa] px-4 py-3 text-sm text-gray-800">
               <button
                 type="button"
                 onClick={() => setShowUpdateNote(false)}
-                className="absolute right-3 top-3 text-gray-600 hover:text-gray-950"
+                className="absolute right-3 top-3 text-gray-500 transition-colors hover:text-[#a1001f]"
                 title="Ẩn thông báo"
+                aria-label="Ẩn lưu ý điểm danh"
               >
                 <X className="h-5 w-5" />
               </button>
-              <p className="pr-8 font-medium text-gray-900">Không thể cập nhật điểm danh vì những lý do sau:</p>
-              <ul className="mt-1.5 list-disc space-y-1 pl-5 text-gray-700">
-                <li>User không phải là giảng viên được phân công dạy slot hiện tại</li>
-                <li>User không phải là vận hành của lớp</li>
-              </ul>
+              <div className="flex items-start gap-2.5 pr-8">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#a1001f]" />
+                <div>
+                  <p className="font-semibold text-gray-950">Lưu ý khi điểm danh</p>
+                  <ul className="mt-1.5 list-disc space-y-1 pl-5 leading-5 text-gray-700">
+                    <li>Điểm danh được mở từ giờ bắt đầu buổi học đến 30 phút sau giờ kết thúc.</li>
+                    <li>Hãy kiểm tra đủ học viên và nhấn <strong>Lưu</strong>; TPS chỉ báo thành công sau khi LMS xác nhận dữ liệu.</li>
+                    <li>Nếu LMS lỗi hoặc chưa xác nhận, không nhấn lưu liên tục. Hãy chụp màn hình và báo CS, Leader hoặc phụ trách vận hành lớp, kèm mã lớp và số buổi.</li>
+                  </ul>
+                </div>
+              </div>
+              {selectedSlot && !selectedSlotAttendanceOpen && isSlotOpen(selectedSlot) ? (
+                <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                  Buổi {selectedSlot.sessionNumber} đã hết thời gian cập nhật
+                  {selectedSlotCloseTime
+                    ? ` lúc ${formatTime(new Date(selectedSlotCloseTime).toISOString())} ngày ${formatDate(new Date(selectedSlotCloseTime).toISOString())}`
+                    : ''}
+                  . Bạn vẫn có thể xem dữ liệu đã ghi nhận.
+                </p>
+              ) : null}
+              {selectedSlot && (!currentTeacher || !teacherIsAssignedForSelectedSite(selectedSlot, currentTeacher)) ? (
+                <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                  Tài khoản hiện tại không được phân công giảng dạy tại buổi hoặc class site này nên chỉ có quyền xem.
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -2574,12 +2876,26 @@ function ClassAttendanceModal({
             <table className="w-full min-w-max border-separate border-spacing-0 text-left text-sm">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-30 w-[240px] min-w-[240px] border-b border-gray-200 bg-white px-4 py-2" />
+                  <th className="sticky left-0 z-20 w-[240px] min-w-[240px] bg-white pl-5 pr-4 py-2" />
                   {slots.map((slot, index) => {
                     const active = index === selectedSessionIndex
                     const opened = isSlotOpen(slot)
+                    const isLastSlot = !slot.isPlaceholder && (
+                      index === lastRealSlotIndex ||
+                      (cls.numberOfSessions && slot.sessionNumber === cls.numberOfSessions) ||
+                      (cls.sessionCount && slot.sessionNumber === cls.sessionCount)
+                    )
+                    const isGradable = isLastSlot && Boolean(courseCriteria?.hasCriteria)
                     return (
-                      <th key={slot.id} className={cn('border-b border-gray-200 bg-white px-1 py-2 text-center', active ? 'w-[190px] min-w-[190px]' : 'w-[100px] min-w-[100px]')}>
+                      <th
+                        key={slot.id}
+                        className={cn(
+                          'px-1 py-2 text-center transition-all',
+                          active
+                            ? isGradable ? 'w-[330px]' : 'w-[220px]'
+                            : isGradable ? 'w-[180px]' : 'w-[96px]',
+                        )}
+                      >
                         <button
                           type="button"
                           onClick={() => selectSession(slot, index)}
@@ -2596,7 +2912,14 @@ function ClassAttendanceModal({
                                 : 'border-gray-200 bg-gray-50 text-gray-900 hover:border-gray-300 hover:bg-gray-100',
                           )}
                         >
-                          <span className="block text-sm font-semibold">#{slot.sessionNumber}</span>
+                          <span className="block text-sm font-semibold">
+                            #{slot.sessionNumber}
+                            {isGradable && (
+                              <span className="ml-1 inline-block rounded bg-amber-400 px-1 py-0.2 text-[9px] font-black text-amber-950">
+                                Demo
+                              </span>
+                            )}
+                          </span>
                           <span className={cn('mt-1 flex items-center justify-center gap-1 truncate text-xs font-medium', active ? 'text-white' : 'text-gray-500')}>
                             {!opened && !slot.isPlaceholder ? <LockKeyhole className="h-3 w-3" /> : null}
                             {slot.isPlaceholder
@@ -2610,30 +2933,25 @@ function ClassAttendanceModal({
                 </tr>
               </thead>
               <tbody>
+                {/* Tiêu đề mục: Kiểm tra giáo viên */}
                 <tr>
-                  <td className="sticky left-0 z-20 border-b border-gray-200 bg-gray-50 px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#a1001f] text-xs font-semibold text-white">1</span>
-                      <h3 className="font-semibold text-gray-950">Kiểm tra giáo viên</h3>
+                  <td className="sticky left-0 z-10 w-[240px] min-w-[240px] bg-white pb-2 pl-5 pr-4 pt-4 align-bottom">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-semibold text-gray-950">Kiểm tra giáo viên</h3>
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#a1001f] text-sm font-semibold text-white">1</span>
+                      </div>
+                      <p className="text-sm font-semibold text-green-700">
+                        {selectedSlot ? `${teacherRecorded}/${selectedTeacherRows.length} đã ghi nhận` : 'Chọn một buổi để thực hiện điểm danh'}
+                      </p>
                     </div>
                   </td>
-                  <td colSpan={slots.length} className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-                    <p className={cn('text-sm font-medium', selectedSlot ? 'text-emerald-700' : 'text-gray-500')}>
-                      {selectedSlot ? `${teacherRecorded}/${selectedTeacherRows.length} đã ghi nhận` : 'Chọn một buổi để thực hiện điểm danh'}
-                    </p>
-                  </td>
+                  <td colSpan={slots.length} className="bg-white" />
                 </tr>
 
-                {teacherRows.length === 0 ? (
-                  <tr>
-                    <td className="sticky left-0 z-10 border-b border-gray-100 bg-white px-4 py-4 text-sm text-gray-500">
-                      Chưa có dữ liệu giáo viên
-                    </td>
-                    <td colSpan={slots.length} className="border-b border-gray-100 bg-white" />
-                  </tr>
-                ) : teacherRows.map((teacher) => (
+                {teacherRows.map((teacher) => (
                   <tr key={teacher.id}>
-                    <td className="sticky left-0 z-10 border-b border-gray-100 bg-white px-4 py-3 align-middle">
+                    <td className="sticky left-0 z-10 w-[240px] min-w-[240px] bg-white py-3 pl-5 pr-4 align-middle">
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-300 text-xs font-semibold text-white">
                           {teacher.imageUrl ? (
@@ -2664,8 +2982,8 @@ function ClassAttendanceModal({
                       const assignedToSlot = teacherIsAssignedForSelectedSite(slot, teacher)
                       const opened = isSlotOpen(slot)
                       return (
-                        <td key={`${teacher.id}-${slot.id}`} className={cn('border-b border-gray-100 px-1 py-3 text-center align-middle', index === selectedSessionIndex && 'bg-[#a1001f]/[0.025]')}>
-                          {index === selectedSessionIndex && assignedToSlot && !isCurrentTeacher ? (
+                        <td key={`${teacher.id}-${slot.id}`} className="px-1 py-3 text-center align-middle">
+                          {index === selectedSessionIndex && assignedToSlot && !isCurrentTeacher && isAttendanceWindowOpen(slot) ? (
                             <StatusControls
                               value={status}
                               onChange={(nextStatus) => setTeacherDraft(slot, teacher, nextStatus)}
@@ -2686,39 +3004,112 @@ function ClassAttendanceModal({
                   </tr>
                 ))}
 
+                {/* Tiêu đề mục: Kiểm tra học viên */}
                 <tr>
-                  <td className="sticky left-0 z-20 border-b border-gray-200 bg-gray-50 px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#a1001f] text-xs font-semibold text-white">2</span>
-                      <h3 className="font-semibold text-gray-950">Kiểm tra học viên</h3>
+                  <td className="sticky left-0 z-10 w-[240px] min-w-[240px] bg-white pb-2 pl-5 pr-4 pt-6 align-bottom">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-semibold text-gray-950">Kiểm tra học viên</h3>
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#a1001f] text-sm font-semibold text-white">2</span>
+                      </div>
+                      <p className="text-sm font-semibold text-green-700">
+                        {selectedSlot ? `${studentRecorded}/${visibleStudents.length} đã ghi nhận` : 'Chọn một buổi để thực hiện điểm danh'}
+                      </p>
                     </div>
                   </td>
-                  <td colSpan={slots.length} className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-                    <p className={cn('text-sm font-medium', selectedSlot ? 'text-emerald-700' : 'text-gray-500')}>
-                      {selectedSlot ? `${studentRecorded}/${visibleStudents.length} đã ghi nhận` : 'Chọn một buổi để thực hiện điểm danh'}
-                    </p>
-                  </td>
+                  <td colSpan={slots.length} className="bg-white" />
                 </tr>
 
                 {visibleStudents.map((student) => (
                   <tr key={student.id}>
-                    <td className="sticky left-0 z-10 border-b border-gray-100 bg-white px-4 py-3 align-middle">
-                      <div className="flex items-center gap-2"><StudentIdentity cls={cls} student={student} />{courseCriteria?.hasCriteria && slots.some((slot) => !slot.isPlaceholder) && <button type="button" onClick={() => setGradingStudent(student)} className={cn('shrink-0 rounded px-2 py-1 text-xs font-semibold text-white',gradedStudentIds.has(student.id)?'bg-indigo-600':gradePermission.canEdit?'bg-amber-600':'bg-slate-700')} title={gradePermission.canEdit?'Chấm điểm demo':gradePermission.reason}>{gradedStudentIds.has(student.id)?'Xem điểm':gradePermission.canEdit?'Chấm điểm':'Xem điểm'}</button>}</div>
+                    <td className="sticky left-0 z-10 w-[240px] min-w-[240px] bg-white py-3 pl-5 pr-4 align-middle">
+                      <StudentIdentity cls={cls} student={student} />
                     </td>
                     {slots.map((slot, index) => {
+                      const attendance = findAttendance(slot, student.id)
                       const key = attendanceKey(cls.id, slot.id, student.id)
                       const status = draftStatuses[key] || studentStatus(slot, student.id)
                       const opened = isSlotOpen(slot)
+
+                      // Buổi cuối cùng: slot thực tế cuối cùng của lớp hoặc sessionNumber bằng tổng số buổi của lớp
+                      const isLastSlot = !slot.isPlaceholder && (
+                        index === lastRealSlotIndex ||
+                        (cls.numberOfSessions && slot.sessionNumber === cls.numberOfSessions) ||
+                        (cls.sessionCount && slot.sessionNumber === cls.sessionCount)
+                      )
+                      const canGradeStudent = isLastSlot && opened && Boolean(courseCriteria?.hasCriteria)
+                      const isGraded = gradedStudentIds.has(student.id)
+                      const buttonText = isGraded ? 'Xem điểm' : perm.canEdit ? 'Chấm điểm' : 'Xem điểm'
+                      const buttonClass = isGraded
+                        ? 'bg-indigo-600 hover:bg-indigo-700'
+                        : perm.canEdit
+                          ? 'bg-amber-500 hover:bg-amber-600'
+                          : 'bg-slate-700 hover:bg-slate-800'
+
                       return (
-                        <td key={`${student.id}-${slot.id}`} className={cn('border-b border-gray-100 px-1 py-3 text-center align-middle', index === selectedSessionIndex && 'bg-[#a1001f]/[0.025]')}>
+                        <td key={`${student.id}-${slot.id}`} className="px-1 py-3 text-center align-middle">
                           {index === selectedSessionIndex ? (
-                            <StatusControls
-                              value={status}
-                              onChange={(nextStatus) => setStudentDraft(slot, student.id, nextStatus)}
-                            />
+                            <div className="flex items-center justify-center gap-2">
+                              {isAttendanceWindowOpen(slot) ? (
+                                <StatusControls
+                                  value={status}
+                                  hasComment={Boolean(attendance?.comment)}
+                                  onChange={(nextStatus) => setStudentDraft(slot, student.id, nextStatus)}
+                                />
+                              ) : (
+                                <div className="flex h-8 items-center justify-center" title={ATTENDANCE_META[status].label}>
+                                  <AttendanceMark status={status} />
+                                </div>
+                              )}
+                              {canGradeStudent && (
+                                <button
+                                  type="button"
+                                  onClick={() => setGradingStudent(student)}
+                                  className={cn(
+                                    'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-white transition text-xs font-semibold shadow-xs whitespace-nowrap cursor-pointer',
+                                    buttonClass
+                                  )}
+                                  title={
+                                    isGraded
+                                      ? `Xem bảng điểm demo của ${student.fullName}${perm.canEdit ? ' (Có thể chỉnh sửa)' : ''}`
+                                      : perm.canEdit
+                                        ? `Chấm điểm buổi demo cho ${student.fullName}`
+                                        : `Xem bảng điểm demo của ${student.fullName} (${perm.reason || 'Chế độ xem'})`
+                                  }
+                                >
+                                  <Award className="h-3.5 w-3.5" />
+                                  {buttonText}
+                                </button>
+                              )}
+                            </div>
                           ) : (
-                            <div className="flex h-8 items-center justify-center">
-                              <AttendanceMark status={opened ? status : 'NOT_RECORDED'} />
+                            <div className="flex items-center justify-center gap-2">
+                              <div className="flex h-8 items-center justify-center">
+                                <AttendanceMark status={opened ? status : 'NOT_RECORDED'} />
+                              </div>
+                              {canGradeStudent && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setGradingStudent(student)
+                                  }}
+                                  className={cn(
+                                    'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold text-white shadow-xs transition whitespace-nowrap cursor-pointer',
+                                    buttonClass
+                                  )}
+                                  title={
+                                    isGraded
+                                      ? `Xem bảng điểm demo của ${student.fullName}${perm.canEdit ? ' (Có thể chỉnh sửa)' : ''}`
+                                      : perm.canEdit
+                                        ? `Chấm điểm demo cho ${student.fullName}`
+                                        : `Xem bảng điểm demo của ${student.fullName} (${perm.reason || 'Chế độ xem'})`
+                                  }
+                                >
+                                  <Award className="h-3.5 w-3.5" />
+                                  {buttonText}
+                                </button>
+                              )}
                             </div>
                           )}
                         </td>
@@ -2730,12 +3121,14 @@ function ClassAttendanceModal({
               {selectedSlot ? (
                 <tfoot>
                   <tr>
-                    <td className="sticky left-0 z-20 border-t border-gray-200 bg-white px-4 py-3 align-middle">
+                    <td className="sticky left-0 z-20 w-[240px] min-w-[240px] border-t border-gray-200 bg-white py-3 pl-5 pr-4 align-middle">
                       <p className="text-sm font-medium text-gray-900">
                         Buổi {selectedSlot.sessionNumber} · {formatTimeRange(selectedSlot)}
                       </p>
                       <p className="mt-0.5 text-xs text-gray-500">
-                        {!allStudentsRecorded
+                        {!selectedSlotAttendanceOpen
+                          ? 'Ngoài thời gian cập nhật, dữ liệu đang ở chế độ chỉ xem'
+                          : !allStudentsRecorded
                           ? `Còn ${Math.max(0, visibleStudents.length - studentRecorded)} học viên chưa ghi nhận`
                           : !allOtherTeachersRecorded
                             ? 'Còn giáo viên được phân công chưa ghi nhận'
@@ -2756,11 +3149,11 @@ function ClassAttendanceModal({
                           <button
                             type="button"
                             onClick={saveAttendance}
-                            disabled={!canSave}
+                            disabled={!canSaveAttendance}
                             className="mx-auto inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#a1001f] px-5 text-sm font-medium text-white shadow-sm transition-colors hover:bg-[#850019] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a1001f]/30 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none"
                           >
-                            {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            {isSaving ? 'Đang lưu...' : 'Lưu'}
+                            {isSavingAttendance ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                            {isSavingAttendance ? 'Đang lưu...' : 'Lưu'}
                           </button>
                         ) : null}
                       </td>
@@ -2774,164 +3167,105 @@ function ClassAttendanceModal({
           )}
         </div>
       </section>
-      {gradingStudent && courseCriteria && (<StudentDemoGradingModal cls={cls} student={gradingStudent} courseCriteria={courseCriteria} defaultDemoDate={dateKey(slots.filter((slot)=>!slot.isPlaceholder).slice(-1)[0]?.date||slots.filter((slot)=>!slot.isPlaceholder).slice(-1)[0]?.startTime)} token={authToken} onClose={()=>setGradingStudent(null)} onSaved={(id)=>setGradedStudentIds((prior)=>new Set([...prior,id]))} />)}
+
+      {/* Modal Chấm điểm demo cho học viên */}
+      {gradingStudent && courseCriteria && (
+        <StudentDemoGradingModal
+          cls={cls}
+          student={gradingStudent}
+          courseCriteria={courseCriteria}
+          defaultDemoDate={dateKey(realSlots[realSlots.length - 1]?.date || realSlots[realSlots.length - 1]?.startTime)}
+          token={token}
+          onClose={() => setGradingStudent(null)}
+          onSaved={(savedStudentId) => {
+            setGradedStudentIds((prev) => new Set([...prev, savedStudentId]))
+          }}
+        />
+      )}
     </div>,
     document.body,
   )
 }
 
-function courseVisual(cls: AttendanceClass): {
-  label: string
-  icon: LucideIcon
-  iconClass: string
-  surfaceClass: string
-} {
-  const courseText = normalizeText([
-    cls.courseName,
-    cls.courseShortName,
-    cls.courseLineName,
-  ].join(' '))
-
-  if (
-    courseText.includes('robot') ||
-    courseText.includes('arduino') ||
-    courseText.includes('lego') ||
-    courseText.includes('vex')
-  ) {
-    return {
-      label: 'Robotics',
-      icon: Bot,
-      iconClass: 'text-amber-700',
-      surfaceClass: 'border-amber-200 bg-amber-50',
+function getClassRecencyScore(cls: AttendanceClass, todayMs: number): number {
+  const slotDates: number[] = []
+  if (Array.isArray(cls.slots)) {
+    for (const slot of cls.slots) {
+      if (slot.isPlaceholder) continue
+      const rawDate = slot.date || slot.startTime
+      if (rawDate) {
+        const d = new Date(rawDate)
+        if (!isNaN(d.getTime())) {
+          slotDates.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime())
+        }
+      }
     }
   }
 
-  if (
-    courseText.includes('art') ||
-    courseText.includes('drawing') ||
-    courseText.includes('painting') ||
-    courseText.includes('my thuat')
-  ) {
-    return {
-      label: 'Art',
-      icon: PenTool,
-      iconClass: 'text-fuchsia-700',
-      surfaceClass: 'border-fuchsia-200 bg-fuchsia-50',
+  if (slotDates.length === 0) {
+    if (cls.startDate) {
+      const d = new Date(cls.startDate)
+      if (!isNaN(d.getTime())) {
+        slotDates.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime())
+      }
+    }
+    if (cls.endDate) {
+      const d = new Date(cls.endDate)
+      if (!isNaN(d.getTime())) {
+        slotDates.push(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime())
+      }
     }
   }
 
-  return {
-    label: 'Coding',
-    icon: Code2,
-    iconClass: 'text-blue-700',
-    surfaceClass: 'border-blue-200 bg-blue-50',
+  if (slotDates.length === 0) {
+    return 999999999
   }
+
+  const oneDayMs = 24 * 60 * 60 * 1000
+
+  // 1. Kiểm tra nếu có slot đúng hôm nay (chênh lệch < 12h so với 00:00 hôm nay)
+  const hasToday = slotDates.some((time) => Math.abs(time - todayMs) < 12 * 60 * 60 * 1000)
+  if (hasToday) {
+    return 0 // Ưu tiên cao nhất
+  }
+
+  // 2. Tìm slot tương lai gần nhất (>= todayMs)
+  const futureSlots = slotDates.filter((time) => time >= todayMs).sort((a, b) => a - b)
+  const nextFutureSlot = futureSlots.length > 0 ? futureSlots[0] : null
+
+  // 3. Tìm slot quá khứ gần nhất (< todayMs)
+  const pastSlots = slotDates.filter((time) => time < todayMs).sort((a, b) => b - a)
+  const lastPastSlot = pastSlots.length > 0 ? pastSlots[0] : null
+
+  if (nextFutureSlot !== null && lastPastSlot !== null) {
+    const futureDiffDays = (nextFutureSlot - todayMs) / oneDayMs
+    const pastDiffDays = (todayMs - lastPastSlot) / oneDayMs
+    if (futureDiffDays <= pastDiffDays) {
+      return futureDiffDays
+    } else {
+      return pastDiffDays + 0.05
+    }
+  } else if (nextFutureSlot !== null) {
+    return (nextFutureSlot - todayMs) / oneDayMs
+  } else if (lastPastSlot !== null) {
+    return (todayMs - lastPastSlot) / oneDayMs + 0.05
+  }
+
+  return 999999999
 }
 
-function SessionJourney({
-  cls,
-  slots,
-  selectedSessionIndex,
-  onSelect,
-}: {
-  cls: AttendanceClass
-  slots: ClassSlot[]
-  selectedSessionIndex: number | null
-  onSelect: (slot: ClassSlot, index: number) => void
-}) {
-  const progress = classProgress(cls)
-  const visual = courseVisual(cls)
-  const SubjectIcon = visual.icon
-  const slotCount = Math.max(slots.length, 1)
-  const hasReachedSession = progress.done > 0 && slots.length > 0
-  const reachedIndex = hasReachedSession
-    ? Math.min(slots.length - 1, progress.done - 1)
-    : -1
-  const pointInsetPercent = 50 / slotCount
-  const trackLengthPercent = 100 - (pointInsetPercent * 2)
-  const reachedPercent = reachedIndex >= 0
-    ? ((reachedIndex + 0.5) / slotCount) * 100
-    : pointInsetPercent
-  const completedTrackPercent = reachedIndex > 0 && slots.length > 1
-    ? (reachedIndex / (slots.length - 1)) * trackLengthPercent
-    : 0
+function compareClassesByRecency(a: AttendanceClass, b: AttendanceClass, todayMs: number): number {
+  const scoreA = getClassRecencyScore(a, todayMs)
+  const scoreB = getClassRecencyScore(b, todayMs)
 
-  return (
-    <section className="mb-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
-      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-medium text-gray-950">Hành trình buổi học</h3>
-          <p className="mt-0.5 text-xs text-gray-500">{cls.courseName || cls.courseShortName || 'Khóa học'}</p>
-        </div>
-        <span className="text-xs font-medium text-gray-600">
-          {progress.done}/{progress.total} buổi đã diễn ra
-        </span>
-      </div>
+  if (Math.abs(scoreA - scoreB) > 0.001) {
+    return scoreA - scoreB
+  }
 
-      <nav aria-label="Tiến trình buổi học" className="overflow-x-auto overflow-y-hidden [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1">
-        <div className="h-10 min-w-[620px] px-5">
-          <div className="relative h-full">
-            <span
-              className="absolute top-[19px] h-px bg-gray-200"
-              style={{ left: `${pointInsetPercent}%`, right: `${pointInsetPercent}%` }}
-              aria-hidden="true"
-            />
-            <span
-              className="absolute top-[19px] h-px bg-[#a1001f] transition-[width] duration-500"
-              style={{ left: `${pointInsetPercent}%`, width: `${completedTrackPercent}%` }}
-              aria-hidden="true"
-            />
+  if (a.status === 'RUNNING' && b.status !== 'RUNNING') return -1
+  if (b.status === 'RUNNING' && a.status !== 'RUNNING') return 1
 
-            {hasReachedSession ? (
-              <div
-                className={cn(
-                  'pointer-events-none absolute top-[5px] z-20 flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full border shadow-sm ring-2 ring-white transition-[left] duration-500',
-                  visual.surfaceClass,
-                  selectedSessionIndex === reachedIndex && 'ring-[#a1001f]/20',
-                )}
-                style={{ left: `${reachedPercent}%` }}
-                title={`${visual.label} · Đã tới buổi ${reachedIndex + 1}`}
-              >
-                <SubjectIcon className={cn('h-3.5 w-3.5', visual.iconClass)} />
-              </div>
-            ) : null}
-
-            <ol className="absolute inset-x-0 top-[14px] grid h-3 items-center" style={{ gridTemplateColumns: `repeat(${Math.max(slots.length, 1)}, minmax(0, 1fr))` }} role="list">
-            {slots.map((slot, index) => {
-              const completed = index < progress.done
-              const selected = index === selectedSessionIndex
-              const opened = isSlotOpen(slot)
-              return (
-                <li key={`journey-${slot.id}`} className="relative z-10 flex items-center justify-center">
-                  <button
-                    type="button"
-                    disabled={!opened}
-                    onClick={() => onSelect(slot, index)}
-                    title={slot.isPlaceholder
-                      ? `Buổi ${slot.sessionNumber} chưa có lịch`
-                      : !opened
-                        ? `Buổi ${slot.sessionNumber} mở lúc ${formatTime(slot.startTime)} ngày ${formatDate(slot.startTime || slot.date)}`
-                        : `Buổi ${slot.sessionNumber} - ${formatShortDateWithYear(slot.date || slot.startTime)}`}
-                    aria-label={`Chọn buổi ${slot.sessionNumber}`}
-                    className={cn(
-                      'h-3 w-3 rounded-full border-2 transition-[background-color,border-color,box-shadow,transform] hover:scale-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#a1001f]/30 focus-visible:ring-offset-2',
-                      completed
-                        ? 'border-[#a1001f] bg-[#a1001f]'
-                        : 'border-gray-300 bg-white',
-                      selected && 'border-[#a1001f] bg-white ring-4 ring-[#a1001f]/15',
-                      !opened && 'cursor-not-allowed hover:scale-100',
-                      hasReachedSession && index === reachedIndex && 'opacity-0',
-                    )}
-                  />
-                </li>
-              )
-            })}
-            </ol>
-          </div>
-        </div>
-      </nav>
-    </section>
-  )
+  return String(a.name || '').localeCompare(String(b.name || ''), 'vi')
 }
 
 export default function TeacherClassesPage() {
@@ -2942,22 +3276,61 @@ export default function TeacherClassesPage() {
   const [error, setError] = useState('')
   const [noLmsToken, setNoLmsToken] = useState(false)
   const [refreshSignal, setRefreshSignal] = useState(0)
+  const [hasRequestedLoad, setHasRequestedLoad] = useState(false)
   const [page, setPage] = useState(1)
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null)
+  const requestedFiltersRef = useRef<FiltersState>(INITIAL_FILTERS)
+
+  const isLeaderRole = useMemo(() => {
+    const roleCodes = [...(user?.userRoles || []), user?.role || '']
+      .map((role) => String(role).trim().toUpperCase())
+      .filter(Boolean)
+    return roleCodes.some((role) => LEADER_ROLE_CODES.has(role)) || (
+      String(user?.role || '').toLowerCase() === 'manager' &&
+      (user?.assignedCenters?.length || 0) > 0
+    )
+  }, [user?.assignedCenters, user?.role, user?.userRoles])
+
+  const hasActiveFilters = useMemo(
+    () => Object.values(filters).some(Boolean),
+    [filters],
+  )
 
   const loadClasses = useCallback(() => {
+    if (isLeaderRole && !hasActiveFilters) return
+    requestedFiltersRef.current = { ...filters }
+    setHasRequestedLoad(true)
+    setIsLoading(true)
     setRefreshSignal((current) => current + 1)
-  }, [])
+  }, [filters, hasActiveFilters, isLeaderRole])
 
   useEffect(() => {
     if (authLoading) return
 
+    if (isLeaderRole && !hasRequestedLoad) {
+      setClasses([])
+      setError('')
+      setNoLmsToken(false)
+      setIsLoading(false)
+      return
+    }
+
     const controller = new AbortController()
+    const requestedFilters = requestedFiltersRef.current
+    const params = new URLSearchParams()
+    if (requestedFilters.search.trim()) params.set('q', requestedFilters.search.trim())
+    if (requestedFilters.centre) params.set('centre', requestedFilters.centre)
+    if (requestedFilters.teacher) params.set('teacher', requestedFilters.teacher)
+    if (requestedFilters.status) params.set('status', requestedFilters.status)
+    if (requestedFilters.slotFrom) params.set('from', requestedFilters.slotFrom)
+    if (requestedFilters.slotTo) params.set('to', requestedFilters.slotTo)
+    const query = params.toString()
+
     setIsLoading(true)
     setError('')
     setNoLmsToken(false)
 
-    fetch('/api/user/diem-danh-lop-hoc', {
+    fetch(`/api/user/diem-danh-lop-hoc${query ? `?${query}` : ''}`, {
       cache: 'no-store',
       headers: authHeaders(token),
       signal: controller.signal,
@@ -2971,7 +3344,7 @@ export default function TeacherClassesPage() {
         if (!response.ok || !payload?.success) {
           throw new Error(payload?.message || 'Không thể tải danh sách lớp từ LMS.')
         }
-        return (payload.classes || []).filter((cls) => cls.status === 'RUNNING')
+        return payload.classes || []
       })
       .then((nextClasses) => setClasses(nextClasses))
       .catch((fetchError) => {
@@ -2984,76 +3357,128 @@ export default function TeacherClassesPage() {
       })
 
     return () => controller.abort()
-  }, [authLoading, refreshSignal, token])
+  }, [authLoading, hasRequestedLoad, isLeaderRole, refreshSignal, token])
 
-  const centreOptions = useMemo(
-    () => buildOptions(classes.map((cls) => cls.centreShortName || cls.centreName), 'Tất cả cơ sở'),
-    [classes],
-  )
+  const centreOptions = useMemo(() => {
+    const options = new Map<string, SelectOption>()
+    const addOption = (value: string, label: string, keywords: string) => {
+      const normalizedValue = normalizeText(value)
+      if (!normalizedValue || options.has(normalizedValue)) return
+      options.set(normalizedValue, { value, label, keywords })
+    }
+
+    const assignedCenters = user?.assignedCenters || []
+    assignedCenters.forEach((centre) => {
+      const fullName = String(centre.full_name || '').trim()
+      const shortCode = String(centre.short_code || '').trim()
+      addOption(fullName || shortCode, fullName || shortCode, shortCode)
+    })
+    classes.forEach((cls) => {
+      const fullName = String(cls.centreName || '').trim()
+      const shortCode = String(cls.centreShortName || '').trim()
+      addOption(fullName || shortCode, fullName || shortCode, shortCode)
+    })
+
+    return [
+      { value: '', label: 'Tất cả cơ sở' },
+      ...Array.from(options.values()).sort((a, b) => a.label.localeCompare(b.label, 'vi')),
+    ]
+  }, [classes, user?.assignedCenters])
 
   const statusOptions = useMemo(
     () => [
-      { value: '', label: 'Tất cả trạng thái' },
-      ...Array.from(new Set(classes.map((cls) => cls.status).filter(Boolean)))
-        .sort()
-        .map((status) => ({ value: status, label: classStatusLabel(status) })),
+      { value: '', label: 'Tất cả' },
+      { value: 'RUNNING', label: 'Đang học' },
+      { value: 'PREPARING', label: 'Sắp khai giảng' },
+      { value: 'FINISHED', label: 'Đã kết thúc' },
     ],
-    [classes],
+    [],
   )
 
-  const teacherOptions = useMemo(
-    () =>
-      buildOptions(
-        classes.flatMap((cls) => cls.allTeachers.map(teacherName)),
-        'Tất cả giảng viên',
-      ),
-    [classes],
-  )
+  const teacherOptions = useMemo(() => {
+    const options = new Map<string, SelectOption>()
+    classes.flatMap((cls) => cls.allTeachers).forEach((teacher) => {
+      const name = teacherName(teacher)
+      const value = teacher.id || teacher.email || teacher.code || teacher.username || name
+      const key = normalizeText(value)
+      if (!key || options.has(key)) return
+      const lmsCode = String(teacher.code || teacher.username || '').trim()
+      options.set(key, {
+        value,
+        label: name,
+        keywords: [teacher.fullName, teacher.code, teacher.username, teacher.email].filter(Boolean).join(' '),
+        description: lmsCode && normalizeText(lmsCode) !== normalizeText(name) ? `Mã LMS: ${lmsCode}` : undefined,
+      })
+    })
+
+    return [
+      { value: '', label: 'Tất cả giảng viên' },
+      ...Array.from(options.values()).sort((a, b) => a.label.localeCompare(b.label, 'vi')),
+    ]
+  }, [classes])
 
   const filteredClasses = useMemo(() => {
     const query = normalizeText(filters.search)
     const teacherQuery = normalizeText(filters.teacher)
     const centreQuery = normalizeText(filters.centre)
+    const nowVn = new Date()
+    const todayMs = new Date(nowVn.getFullYear(), nowVn.getMonth(), nowVn.getDate()).getTime()
+    const ALLOWED_STATUSES = new Set(['RUNNING', 'FINISHED', 'PREPARING'])
 
-    return classes.filter((cls) => {
-      const searchText = normalizeText(
-        [
-          cls.name,
-          cls.courseName,
-          cls.courseShortName,
-          cls.courseLineName,
-          cls.centreName,
-          cls.centreShortName,
-          cls.operationMethodName,
-          cls.operatorName,
-          cls.allTeacherNames.join(' '),
-        ].join(' '),
-      )
+    return classes
+      .filter((cls) => {
+        // Chỉ lấy các lớp Running, Finished, Preparing
+        if (!ALLOWED_STATUSES.has(cls.status)) return false
 
-      if (query && !searchText.includes(query)) return false
-      if (
-        filters.centre &&
-        ![cls.centreName, cls.centreShortName, String(cls.centreId || '')]
-          .map(normalizeText)
-          .some((value) => value === centreQuery || value.includes(centreQuery))
-      ) {
-        return false
-      }
-      if (filters.status && cls.status !== filters.status) return false
-      if (
-        filters.teacher &&
-        !cls.allTeachers.some((teacher) => normalizeText(teacherName(teacher)).includes(teacherQuery))
-      ) {
-        return false
-      }
-      const start = dateKey(cls.startDate)
-      if (filters.startDate && (!start || compareDateKey(start, filters.startDate) < 0)) return false
-      const end = dateKey(cls.endDate)
-      if (filters.endDate && (!end || compareDateKey(end, filters.endDate) > 0)) return false
-      if (!hasSlotInRange(cls, filters.slotFrom, filters.slotTo)) return false
+        if (filters.status) {
+          if (cls.status !== filters.status) return false
+        }
 
-      return true
-    })
+        const searchText = normalizeText(
+          [
+            cls.name,
+            cls.courseName,
+            cls.courseShortName,
+            cls.courseLineName,
+            cls.centreName,
+            cls.centreShortName,
+            cls.operationMethodName,
+            cls.operatorName,
+            cls.allTeacherNames.join(' '),
+            cls.allTeachers.flatMap((teacher) => [teacher.fullName, teacher.code, teacher.username, teacher.email]).join(' '),
+          ].join(' '),
+        )
+
+        if (query && !searchText.includes(query)) return false
+        if (
+          filters.centre &&
+          ![cls.centreName, cls.centreShortName, String(cls.centreId || '')]
+            .map(normalizeText)
+            .some((value) => value === centreQuery || value.includes(centreQuery) || centreQuery.includes(value))
+        ) {
+          return false
+        }
+        if (
+          filters.teacher &&
+          !cls.allTeachers.some((teacher) => {
+            const teacherId = normalizeText(teacher.id || teacher.email || teacher.code || teacher.username || teacherName(teacher))
+            const searchable = normalizeText(
+              [teacher.fullName, teacher.code, teacher.username, teacher.email].filter(Boolean).join(' '),
+            )
+            return teacherId === teacherQuery || searchable.includes(teacherQuery)
+          })
+        ) {
+          return false
+        }
+        const start = dateKey(cls.startDate)
+        if (filters.startDate && (!start || compareDateKey(start, filters.startDate) < 0)) return false
+        const end = dateKey(cls.endDate)
+        if (filters.endDate && (!end || compareDateKey(end, filters.endDate) > 0)) return false
+        if (!hasSlotInRange(cls, filters.slotFrom, filters.slotTo)) return false
+
+        return true
+      })
+      .sort((a, b) => compareClassesByRecency(a, b, todayMs))
   }, [classes, filters])
 
   const totalStudents = useMemo(
@@ -3071,7 +3496,6 @@ export default function TeacherClassesPage() {
     [filteredClasses],
   )
 
-  const hasActiveFilters = Object.values(filters).some(Boolean)
   const totalPages = Math.max(1, Math.ceil(filteredClasses.length / PAGE_SIZE))
   const safePage = Math.min(page, totalPages)
   const pagedClasses = useMemo(
@@ -3102,18 +3526,44 @@ export default function TeacherClassesPage() {
     setFilters((current) => ({ ...current, [key]: value }))
   }
 
+  function updateSlotRange(range: { dateFrom: string; dateTo: string }) {
+    setPage(1)
+    setFilters((current) => ({
+      ...current,
+      slotFrom: range.dateFrom,
+      slotTo: range.dateTo,
+    }))
+  }
+
+  function updateClassDateRange(range: { dateFrom: string; dateTo: string }) {
+    setPage(1)
+    setFilters((current) => ({
+      ...current,
+      startDate: range.dateFrom,
+      endDate: range.dateTo,
+    }))
+  }
+
   function clearFilters() {
     setPage(1)
     setFilters(INITIAL_FILTERS)
+    requestedFiltersRef.current = INITIAL_FILTERS
+    if (isLeaderRole) {
+      setClasses([])
+      setError('')
+      setNoLmsToken(false)
+      setHasRequestedLoad(false)
+      setIsLoading(false)
+    }
   }
 
-  const headerActions = (
+  const headerActions = !isLeaderRole || hasRequestedLoad ? (
     <div className="flex flex-wrap justify-end gap-2">
       <HeaderButton icon={RefreshCcw} onClick={loadClasses} disabled={isLoading}>
         Làm mới
       </HeaderButton>
     </div>
-  )
+  ) : null
 
   return (
     <PageContainer
@@ -3136,16 +3586,33 @@ export default function TeacherClassesPage() {
               <Filter className="h-4 w-4 text-[#a1001f]" />
               <h2 className="text-sm font-semibold text-gray-800">Bộ lọc lớp học</h2>
             </div>
-            {hasActiveFilters ? (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="inline-flex h-8 items-center gap-1.5 self-start rounded-md px-2 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-[#a1001f] sm:self-auto"
-              >
-                <X className="h-3.5 w-3.5" />
-                Xóa bộ lọc
-              </button>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-2">
+              {hasActiveFilters ? (
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-[#a1001f]"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Xóa bộ lọc
+                </button>
+              ) : null}
+              {isLeaderRole ? (
+                <button
+                  type="button"
+                  onClick={loadClasses}
+                  disabled={!hasActiveFilters || isLoading}
+                  className="inline-flex h-9 items-center gap-2 rounded-md bg-[#a1001f] px-3.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-[#87001a] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:shadow-none"
+                >
+                  {isLoading && hasRequestedLoad ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
+                  Tìm lớp
+                </button>
+              ) : null}
+            </div>
           </div>
 
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -3162,44 +3629,34 @@ export default function TeacherClassesPage() {
             </FilterField>
 
             <FilterField label="Cơ sở">
-              <SelectField value={filters.centre} onChange={(value) => updateFilter('centre', value)} options={centreOptions} />
-            </FilterField>
-
-            <FilterField label="Ngày bắt đầu">
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(event) => updateFilter('startDate', event.target.value)}
-                className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm font-normal text-gray-800 outline-none transition-colors focus:border-[#3156d4] focus:ring-2 focus:ring-[#3156d4]/10"
+              <SearchableSelectField
+                value={filters.centre}
+                onChange={(value) => updateFilter('centre', value)}
+                options={centreOptions}
+                placeholder="Tìm tên hoặc mã cơ sở"
+                emptyMessage="Không có cơ sở phù hợp"
               />
             </FilterField>
 
-            <FilterField label="Ngày kết thúc">
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(event) => updateFilter('endDate', event.target.value)}
-                className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm font-normal text-gray-800 outline-none transition-colors focus:border-[#3156d4] focus:ring-2 focus:ring-[#3156d4]/10"
+            <FilterField label="Thời gian lớp học">
+              <DateRangePicker
+                dateFrom={filters.startDate}
+                dateTo={filters.endDate}
+                onChange={updateClassDateRange}
+                placeholder="Chọn ngày bắt đầu - kết thúc"
+                className="w-full"
+                variant="filter"
               />
             </FilterField>
 
-            <FilterField label="Có buổi học từ">
-              <input
-                type="date"
-                value={filters.slotFrom}
-                max={filters.slotTo || undefined}
-                onChange={(event) => updateFilter('slotFrom', event.target.value)}
-                className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm font-normal text-gray-800 outline-none transition-colors focus:border-[#3156d4] focus:ring-2 focus:ring-[#3156d4]/10"
-              />
-            </FilterField>
-
-            <FilterField label="Có buổi học đến">
-              <input
-                type="date"
-                value={filters.slotTo}
-                min={filters.slotFrom || undefined}
-                onChange={(event) => updateFilter('slotTo', event.target.value)}
-                className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm font-normal text-gray-800 outline-none transition-colors focus:border-[#3156d4] focus:ring-2 focus:ring-[#3156d4]/10"
+            <FilterField label="Có buổi học trong khoảng">
+              <DateRangePicker
+                dateFrom={filters.slotFrom}
+                dateTo={filters.slotTo}
+                onChange={updateSlotRange}
+                placeholder="Chọn khoảng ngày"
+                className="w-full"
+                variant="filter"
               />
             </FilterField>
 
@@ -3212,7 +3669,8 @@ export default function TeacherClassesPage() {
                 value={filters.teacher}
                 onChange={(value) => updateFilter('teacher', value)}
                 options={teacherOptions}
-                placeholder="Tìm giảng viên"
+                placeholder="Tên hoặc mã LMS giảng viên"
+                emptyMessage="Không có giảng viên phù hợp"
               />
             </FilterField>
           </div>
@@ -3220,6 +3678,12 @@ export default function TeacherClassesPage() {
 
         {authLoading || isLoading ? (
           <LoadingTable />
+        ) : isLeaderRole && !hasRequestedLoad ? (
+          <EmptyState
+            icon={Filter}
+            title="Chọn bộ lọc để tải lớp học"
+            description="Với tài khoản Leader, hãy chọn ít nhất một điều kiện ở phía trên rồi nhấn Tìm lớp. Danh sách sẽ không tự tải khi vừa mở trang."
+          />
         ) : noLmsToken ? (
           <EmptyState
             icon={AlertTriangle}
@@ -3259,18 +3723,18 @@ export default function TeacherClassesPage() {
             </div>
 
             <div className="overflow-x-auto custom-scrollbar [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5">
-              <table className="min-w-[1080px] w-full border-separate border-spacing-0 text-left text-sm">
+              <table className="min-w-[1220px] w-full border-separate border-spacing-0 text-left text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-xs font-semibold text-gray-700">
-                    <th className="border-b border-gray-200 px-4 py-3">Tên</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Khóa học</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Cơ sở</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Tên</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Khóa học</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Cơ sở</th>
                     <th className="border-b border-gray-200 px-4 py-3">Phụ trách vận hành lớp</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Trạng thái</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Bắt đầu</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Kết thúc</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Lịch học</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Tiến độ</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Trạng thái</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Bắt đầu</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Kết thúc</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Lịch học</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Tiến độ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3326,19 +3790,21 @@ export default function TeacherClassesPage() {
                         <td className="border-b border-gray-100 px-4 py-4 font-normal text-gray-800">
                           {cls.operatorName || '-'}
                         </td>
-                        <td className="border-b border-gray-100 px-4 py-4">
+                        <td className="border-b border-gray-100 px-4 py-4 whitespace-nowrap">
                           <span className={cn('text-sm font-medium', classStatusTextClass(cls.status))}>
                             {classStatusLabel(cls.status)}
                           </span>
                         </td>
-                        <td className="border-b border-gray-100 px-4 py-4 font-normal text-gray-700">
+                        <td className="border-b border-gray-100 px-4 py-4 whitespace-nowrap font-normal text-gray-700">
                           {formatDate(cls.startDate)}
                         </td>
-                        <td className="border-b border-gray-100 px-4 py-4 font-normal text-gray-700">
+                        <td className="border-b border-gray-100 px-4 py-4 whitespace-nowrap font-normal text-gray-700">
                           {formatDate(cls.endDate)}
                         </td>
                         <td className="border-b border-gray-100 px-4 py-4 text-xs font-normal text-gray-700">
-                          {scheduleText(cls)}
+                          <span className="block max-w-[220px] truncate whitespace-nowrap" title={scheduleText(cls)}>
+                            {scheduleText(cls)}
+                          </span>
                         </td>
                         <td className="border-b border-gray-100 px-4 py-4">
                           <div className="w-24">
@@ -3385,9 +3851,8 @@ export default function TeacherClassesPage() {
           </section>
         )}
       </div>
-      <ClassAttendanceModal
+      <ClassAttendanceDrawer
         cls={selectedClass}
-        currentUserEmail={user?.email || ''}
         onClose={() => setSelectedClassId(null)}
         onRefresh={loadClasses}
         onClassUpdated={(nextClass) => {

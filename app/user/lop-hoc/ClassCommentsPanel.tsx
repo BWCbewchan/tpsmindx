@@ -1,11 +1,13 @@
 'use client'
 
 import { CommentRichTextEditor } from '@/components/CommentRichTextEditor'
+import { toast } from '@/lib/app-toast'
 import { authHeaders } from '@/lib/auth-headers'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
 import {
   AlertCircle,
+  AlertTriangle,
   BookOpenCheck,
   Check,
   CheckCircle2,
@@ -138,6 +140,9 @@ type CommentClass = {
 type ApiResponse = {
   success?: boolean
   message?: string
+  accepted?: boolean
+  verified?: boolean
+  ambiguous?: boolean
   class?: CommentClass
   checkpoint?: {
     scoreDetail?: CheckpointValue | null
@@ -146,7 +151,7 @@ type ApiResponse = {
 }
 
 type SaveMessage = {
-  type: 'success' | 'error'
+  type: 'success' | 'warning' | 'error'
   message: string
 }
 
@@ -766,7 +771,12 @@ export function ClassCommentsPanel({ classId, selectedClassSiteId }: Props) {
       })
       const payload = await response.json() as ApiResponse
       if (!response.ok || !payload.success || !payload.class) {
-        throw new Error(payload.message || 'Không thể lưu nội dung buổi học.')
+        const message = payload.message || 'Không thể lưu nội dung buổi học.'
+        const type = payload.ambiguous ? 'warning' : 'error'
+        setSaveMessage({ type, message })
+        if (type === 'warning') toast.warning(message)
+        else toast.error(message)
+        return
       }
       setDetail(payload.class)
       setLessonDrafts((current) => {
@@ -774,9 +784,15 @@ export function ClassCommentsPanel({ classId, selectedClassSiteId }: Props) {
         delete next[activeSlot.id]
         return next
       })
-      setSaveMessage({ type: 'success', message: payload.message || 'Đã lưu nội dung buổi học.' })
+      const message = payload.message || 'Đã lưu nội dung buổi học.'
+      const type = payload.accepted && payload.verified === false ? 'warning' : 'success'
+      setSaveMessage({ type, message })
+      if (type === 'warning') toast.warning(message)
+      else toast.success(message)
     } catch (error: unknown) {
-      setSaveMessage({ type: 'error', message: error instanceof Error ? error.message : 'Không thể lưu nội dung buổi học.' })
+      const message = error instanceof Error ? error.message : 'Không thể lưu nội dung buổi học.'
+      setSaveMessage({ type: 'error', message })
+      toast.error(message)
     } finally {
       setSavingLesson(false)
     }
@@ -807,7 +823,12 @@ export function ClassCommentsPanel({ classId, selectedClassSiteId }: Props) {
       })
       const payload = await response.json() as ApiResponse
       if (!response.ok || !payload.success || !payload.class) {
-        throw new Error(payload.message || 'Không thể lưu nhận xét học viên.')
+        const message = payload.message || 'Không thể lưu nhận xét học viên.'
+        const type = payload.ambiguous ? 'warning' : 'error'
+        setSaveMessage({ type, message })
+        if (type === 'warning') toast.warning(message)
+        else toast.error(message)
+        return
       }
       setDetail(payload.class)
       setStudentDrafts((current) => {
@@ -815,9 +836,15 @@ export function ClassCommentsPanel({ classId, selectedClassSiteId }: Props) {
         delete next[currentDraftKey]
         return next
       })
-      setSaveMessage({ type: 'success', message: payload.message || 'Đã lưu nhận xét học viên.' })
+      const message = payload.message || 'Đã lưu nhận xét học viên.'
+      const type = payload.accepted && payload.verified === false ? 'warning' : 'success'
+      setSaveMessage({ type, message })
+      if (type === 'warning') toast.warning(message)
+      else toast.success(message)
     } catch (error: unknown) {
-      setSaveMessage({ type: 'error', message: error instanceof Error ? error.message : 'Không thể lưu nhận xét học viên.' })
+      const message = error instanceof Error ? error.message : 'Không thể lưu nhận xét học viên.'
+      setSaveMessage({ type: 'error', message })
+      toast.error(message)
     } finally {
       setSavingStudent(false)
     }
@@ -875,15 +902,25 @@ export function ClassCommentsPanel({ classId, selectedClassSiteId }: Props) {
       </section>
 
       {saveMessage ? (
-        <div className={cn(
-          'flex items-start gap-2 rounded-md border px-3 py-2 text-sm',
-          saveMessage.type === 'success'
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-            : 'border-rose-200 bg-rose-50 text-rose-800',
-        )}>
-          {saveMessage.type === 'success'
-            ? <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-            : <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />}
+        <div
+          role={saveMessage.type === 'error' ? 'alert' : 'status'}
+          aria-live={saveMessage.type === 'error' ? 'assertive' : 'polite'}
+          className={cn(
+            'flex items-start gap-2 rounded-md border px-3 py-2 text-sm',
+            saveMessage.type === 'success'
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : saveMessage.type === 'warning'
+                ? 'border-amber-200 bg-amber-50 text-amber-800'
+                : 'border-rose-200 bg-rose-50 text-rose-800',
+          )}
+        >
+          {saveMessage.type === 'success' ? (
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          ) : saveMessage.type === 'warning' ? (
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          ) : (
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          )}
           <span>{saveMessage.message}</span>
         </div>
       ) : null}

@@ -341,6 +341,41 @@ export async function POST(request: NextRequest) {
         for (const { row, rankIndex } of importRows) {
           const email = (row.email || '').trim().toLowerCase()
 
+          // Liên kết vinh danh với giáo viên bằng định danh chắc chắn. Ưu tiên email;
+          // chỉ dùng họ tên khi có đúng một giáo viên khớp tuyệt đối.
+          const teacherMatch = await client.query(
+            `WITH matches AS (
+               SELECT code,
+                      CASE
+                        WHEN $1 <> '' AND (
+                          LOWER(TRIM(COALESCE(work_email, ''))) = $1
+                          OR LOWER(TRIM(COALESCE("Work email", ''))) = $1
+                          OR LOWER(TRIM(COALESCE(personal_email, ''))) = $1
+                        ) THEN 0
+                        ELSE 1
+                      END AS priority
+               FROM teachers
+               WHERE (
+                 $1 <> '' AND (
+                   LOWER(TRIM(COALESCE(work_email, ''))) = $1
+                   OR LOWER(TRIM(COALESCE("Work email", ''))) = $1
+                   OR LOWER(TRIM(COALESCE(personal_email, ''))) = $1
+                 )
+               )
+               OR LOWER(COALESCE(NULLIF(TRIM(full_name), ''), NULLIF(TRIM("Full name"), ''), '')) = LOWER(TRIM($2))
+             ), ranked AS (
+               SELECT code, priority, COUNT(*) OVER (PARTITION BY priority) AS same_priority_count
+               FROM matches
+             )
+             SELECT code
+             FROM ranked
+             WHERE same_priority_count = 1
+             ORDER BY priority
+             LIMIT 1`,
+            [email, row.full_name || ''],
+          )
+          const teacherCode = teacherMatch.rows[0]?.code || null
+
           // ── honors_avatar_url: chỉ lưu ảnh do admin upload riêng cho vinh danh ──
           const honorsAvatarUrl: string | null = topImages[rankIndex] || null
 
@@ -379,11 +414,11 @@ export async function POST(request: NextRequest) {
           await client.query(
             `INSERT INTO teacher_monthly_honors
               (stt, full_name, email, khoi_day, co_so, thang, so_case, so_hoc_sinh, ti_le, loai, thuong_cr,
-               avatar_url, honors_avatar_url, imported_by)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+               avatar_url, honors_avatar_url, imported_by, teacher_code)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
             [rankIndex, row.full_name, email || null, row.khoi_day || null, row.co_so || null,
              targetMonth, soCase, soHocSinh, tiLe, row.loai || null, thuongCr,
-             displayAvatarUrl, honorsAvatarUrl, importedBy]
+             displayAvatarUrl, honorsAvatarUrl, importedBy, teacherCode]
           )
 
           insertedCount++

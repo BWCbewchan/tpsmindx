@@ -3524,6 +3524,13 @@ html.portfolio-printing [data-sp-root] {
   display: none !important;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .portfolio-theme [class*="animate-"],
+  .portfolio-theme [class*="animation-delay-"] {
+    animation: none !important;
+  }
+}
+
 @media print {
   @page {
     size: A4;
@@ -3626,7 +3633,9 @@ html.portfolio-printing [data-sp-root] {
 
   .portfolio-theme [class*="hover\\:"],
   .portfolio-theme [class*="transition"],
-  .portfolio-theme [class*="duration-"] {
+  .portfolio-theme [class*="duration-"],
+  .portfolio-theme [class*="animate-"],
+  .portfolio-theme [class*="animation-delay-"] {
     transition: none !important;
     animation: none !important;
   }

@@ -96,6 +96,30 @@
     "is_active": true
   },
   {
+    "route_path": "/admin/schedule",
+    "label": "Đăng ký lịch làm việc",
+    "group_name": "Quản lý Giáo viên & Vận hành",
+    "sort_order": 21,
+    "description": "Team Teaching đăng ký ca và cơ sở làm việc theo tháng",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/dang-ky-duyet-giang",
+    "label": "Đăng Ký Duyệt Giảng",
+    "group_name": "Quản lý Giáo viên & Vận hành",
+    "sort_order": 22,
+    "description": "Leader/TE đăng ký lịch và tài liệu duyệt giảng cho giáo viên",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/quan-ly-dang-ky-duyet-giang",
+    "label": "Quản Lý Đăng Ký Duyệt Giảng",
+    "group_name": "Quản lý Giáo viên & Vận hành",
+    "sort_order": 23,
+    "description": "Danh sách và bộ lọc phiếu đăng ký duyệt giảng",
+    "is_active": true
+  },
+  {
     "route_path": "/admin/page4/quan-ly-lich-lam-viec",
     "label": "Quản lý lịch làm việc",
     "group_name": "Sự kiện",

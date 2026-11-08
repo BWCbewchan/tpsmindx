@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const LMS_API_URL = process.env.LMS_API_URL || 'https://lms-api.mindx.edu.vn/';
 const WRITE_TIMEOUT_MS = 12_000;
+const READBACK_DELAYS_MS = [0, 250, 750] as const;
 const MAX_BODY_BYTES = 256 * 1024;
 const inFlightWrites = new Set<string>();
 
@@ -330,6 +331,29 @@ function uniqueAreas(areas: any[]): any[] {
   });
 }
 
+function areaSupportsSlot(area: any, slotType: string): boolean {
+  const expected = normalizeStatus(slotType);
+  return asAreaList(area?.slots).some((slot) => normalizeStatus(slot) === expected);
+}
+
+function isMindxLetterArea(area: any): boolean {
+  const translations = asAreaList(area?.translations).flatMap((translation) => [
+    translation?.key,
+    translation?.value,
+  ]);
+  const lookup = [area?.name, area?.fieldName, ...translations]
+    .map((value) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+    .join(' ')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+  return [
+    'learnedfrommindx',
+    'suggestionsfrommindx',
+    'futuredirection',
+    'thutumindx',
+  ].some((hint) => lookup.includes(hint));
+}
+
 function decorateArea(area: any, extra: Record<string, unknown> = {}): any {
   return {
     ...area,
@@ -347,15 +371,26 @@ function areasForSession(
   cls: any,
   sessionNumber: number,
   fallbackAreas: any[] = [],
+  finalCommentAreas: any[] = [],
 ): AreaSelection {
   const process = courseProcessForClass(cls);
   const total = Number(cls?.numberOfSessions || sortedSlots(cls).length || 14) || 14;
+  const letterAreas = uniqueAreas([
+    ...finalCommentAreas,
+    ...fallbackAreas.filter(isMindxLetterArea),
+    ...asAreaList(process?.defaultCommentAreas).filter(
+      (area) => areaSupportsSlot(area, 'Final') || isMindxLetterArea(area),
+    ),
+  ]).map((area) => decorateArea(area, { sectionTitle: 'Thư từ MindX' }));
 
   if (!process) {
     return {
-      kind: 'NONE',
-      alwaysShow: false,
-      areas: uniqueAreas(fallbackAreas.map((area) => decorateArea(area))),
+      kind: sessionNumber === total && letterAreas.length > 0 ? 'FINAL' : 'NONE',
+      alwaysShow: sessionNumber === total && letterAreas.length > 0,
+      areas: uniqueAreas([
+        ...fallbackAreas.map((area) => decorateArea(area)),
+        ...(sessionNumber === total ? letterAreas : []),
+      ]),
     };
   }
 
@@ -377,7 +412,7 @@ function areasForSession(
     return {
       kind: 'FINAL',
       alwaysShow: true,
-      areas: uniqueAreas([...demoAreas, ...evaluationAreas]),
+      areas: uniqueAreas([...demoAreas, ...evaluationAreas, ...letterAreas]),
     };
   }
 
@@ -480,7 +515,12 @@ function mapCommentAreaValue(value: any) {
   };
 }
 
-function mapCommentClass(cls: any, fallbackAreas: any[] = [], userEmail = '') {
+function mapCommentClass(
+  cls: any,
+  fallbackAreas: any[] = [],
+  finalCommentAreas: any[] = [],
+  userEmail = '',
+) {
   const slots = sortedSlots(cls);
   const classSites = asAreaList(cls?.classSites).map((site) => ({
     id: String(site?._id || ''),
@@ -497,7 +537,7 @@ function mapCommentClass(cls: any, fallbackAreas: any[] = [], userEmail = '') {
     hasCourseProcess: Boolean(courseProcessForClass(cls)),
     slots: slots.map((slot, index) => {
       const sessionNumber = Number(slot?.index) >= 0 ? Number(slot.index) + 1 : index + 1;
-      const selection = areasForSession(cls, sessionNumber, fallbackAreas);
+      const selection = areasForSession(cls, sessionNumber, fallbackAreas, finalCommentAreas);
       const attendanceByStudent = new Map(
         asAreaList(slot?.studentAttendance).map((attendance) => [
           String(attendance?.student?.id || ''),
@@ -650,7 +690,7 @@ async function fetchCommentClass(classId: string, authHeader: string): Promise<a
   return result?.data?.classesById || null;
 }
 
-async function fetchFallbackAreas(authHeader: string): Promise<any[]> {
+async function fetchCommentAreas(authHeader: string, slots: string[] = []): Promise<any[]> {
   try {
     const result = await callLmsApi<any>({
       query: GET_DEFAULT_COMMENT_AREAS_QUERY,
@@ -659,7 +699,7 @@ async function fetchFallbackAreas(authHeader: string): Promise<any[]> {
         payload: {
           filter: {
             isActive_equals: true,
-            slots_in: [],
+            slots_in: slots,
             type_in: ['CONTENT', 'RATE'],
           },
           pagination: { paginationType: 'NONE' },
@@ -669,7 +709,7 @@ async function fetchFallbackAreas(authHeader: string): Promise<any[]> {
     }, authHeader);
     return asAreaList(result?.data?.studentCommentAreas?.data);
   } catch (error) {
-    console.warn('[nhan-xet-lop-hoc] Không tải được tiêu chí mặc định:', error);
+    console.warn('[nhan-xet-lop-hoc] Không tải được tiêu chí nhận xét:', { slots, error });
     return [];
   }
 }
@@ -1034,17 +1074,79 @@ function buildCommentHtml(areas: any[], values: any[]): string {
   return `<ul>${rows}</ul>`;
 }
 
-function normalizedAreaSnapshot(values: any[]): string {
-  return JSON.stringify(
-    values.map((value) => ({
-      commentAreaId: String(value?.commentAreaId || ''),
-      type: normalizeStatus(value?.type),
-      content: normalizeSubmittedRichText(String(value?.content || '')).replace(/>\s+</g, '><'),
-      grade: finiteNumber(value?.grade) ?? null,
-      checkpoint: value?.checkpoint || null,
-      demoQuestions: value?.demoQuestions || null,
-    })).sort((left, right) => left.commentAreaId.localeCompare(right.commentAreaId)),
+function normalizedSnapshotNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function normalizedPlainContent(value: unknown): string {
+  return richTextToPlain(value)
+    .replace(/[\t ]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function normalizedAreaValue(value: any): Record<string, unknown> {
+  const type = normalizeStatus(value?.type) || 'CONTENT';
+  const base = {
+    commentAreaId: String(value?.commentAreaId || ''),
+    type,
+  };
+
+  if (type === 'CHECKPOINT') {
+    const checkpoint = value?.checkpoint || {};
+    return {
+      ...base,
+      checkpoint: {
+        practiceScore: normalizedSnapshotNumber(checkpoint?.practiceScore),
+        checkpointScore: normalizedSnapshotNumber(checkpoint?.checkpointScore),
+        questions: asAreaList(checkpoint?.checkpointQuestions)
+          .map((question) => ({
+            id: String(question?.id || ''),
+            result: Boolean(question?.result),
+            score: normalizedSnapshotNumber(question?.score),
+          }))
+          .filter((question) => question.id)
+          .sort((left, right) => left.id.localeCompare(right.id)),
+      },
+    };
+  }
+
+  if (type === 'DEMO') {
+    return {
+      ...base,
+      demoQuestions: asAreaList(value?.demoQuestions)
+        .map((question) => ({
+          id: String(question?.courseProcessDemoDetailId || ''),
+          score: normalizedSnapshotNumber(question?.score),
+          maxScore: normalizedSnapshotNumber(question?.maxScore),
+        }))
+        .filter((question) => question.id)
+        .sort((left, right) => left.id.localeCompare(right.id)),
+    };
+  }
+
+  return {
+    ...base,
+    content: normalizedPlainContent(value?.content),
+    grade: normalizedSnapshotNumber(value?.grade),
+  };
+}
+
+function normalizedAreaSnapshot(values: any[], configuredAreas: any[]): string {
+  const valuesById = new Map(
+    values.map((value) => [String(value?.commentAreaId || ''), value]),
   );
+  const configuredIds = uniqueAreas(configuredAreas)
+    .map((area) => String(area?.id || ''))
+    .filter(Boolean)
+    .sort((left, right) => left.localeCompare(right));
+
+  return JSON.stringify(configuredIds.map((commentAreaId) => {
+    const value = valuesById.get(commentAreaId);
+    return value ? normalizedAreaValue(value) : { commentAreaId, value: null };
+  }));
 }
 
 function findSlot(cls: any, slotId: string): any | null {
@@ -1062,10 +1164,20 @@ function lessonMatches(slot: any, summary: string, homework: string): boolean {
     && richTextToPlain(slot?.homework) === richTextToPlain(homework);
 }
 
-function studentCommentMatches(slot: any, studentId: string, values: any[]): boolean {
+function studentCommentMatches(
+  slot: any,
+  studentId: string,
+  values: any[],
+  configuredAreas: any[],
+): boolean {
   const attendance = findStudentAttendance(slot, studentId);
   if (!attendance) return false;
-  return normalizedAreaSnapshot(asAreaList(attendance?.commentByAreas)) === normalizedAreaSnapshot(values);
+  return normalizedAreaSnapshot(asAreaList(attendance?.commentByAreas), configuredAreas)
+    === normalizedAreaSnapshot(values, configuredAreas);
+}
+
+function waitFor(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 export async function GET(request: NextRequest) {
@@ -1116,10 +1228,18 @@ export async function GET(request: NextRequest) {
     if (!cls) {
       return NextResponse.json({ success: false, message: 'Không tìm thấy lớp trên LMS.' }, { status: 404 });
     }
-    const fallbackAreas = courseProcessForClass(cls) ? [] : await fetchFallbackAreas(authHeader);
+    const [fallbackAreas, finalCommentAreas] = await Promise.all([
+      fetchCommentAreas(authHeader),
+      fetchCommentAreas(authHeader, ['Final']),
+    ]);
     return NextResponse.json({
       success: true,
-      class: mapCommentClass(cls, fallbackAreas, normalizeEmail(auth.sessionEmail)),
+      class: mapCommentClass(
+        cls,
+        fallbackAreas,
+        finalCommentAreas,
+        normalizeEmail(auth.sessionEmail),
+      ),
     });
   } catch (error: unknown) {
     console.error('[nhan-xet-lop-hoc] Load error:', error);
@@ -1222,10 +1342,17 @@ export async function POST(request: NextRequest) {
       (candidate) => String(candidate?._id || '') === slotId,
     );
     const sessionNumber = Number(slot?.index) >= 0 ? Number(slot.index) + 1 : slotIndex + 1;
-    let fallbackAreas: any[] = [];
-    if (!courseProcessForClass(freshClass)) fallbackAreas = await fetchFallbackAreas(authHeader);
-    const selection = areasForSession(freshClass, sessionNumber, fallbackAreas);
     const process = courseProcessForClass(freshClass);
+    const [fallbackAreas, finalCommentAreas] = await Promise.all([
+      fetchCommentAreas(authHeader),
+      fetchCommentAreas(authHeader, ['Final']),
+    ]);
+    const selection = areasForSession(
+      freshClass,
+      sessionNumber,
+      fallbackAreas,
+      finalCommentAreas,
+    );
     const slotContext = {
       slotType: lmsSlotType(selection.kind),
       courseProcessId: String(process?.id || freshClass?.courseProcessId || ''),
@@ -1236,6 +1363,7 @@ export async function POST(request: NextRequest) {
 
     let payload: Record<string, unknown>;
     let verification: (verifiedSlot: any) => boolean;
+    let applyOptimisticResult: (targetClass: any) => void = () => undefined;
     if (action === 'lesson') {
       const summary = safeText(body.summary, 20_000);
       const homework = safeText(body.homework, 20_000);
@@ -1244,7 +1372,7 @@ export async function POST(request: NextRequest) {
           success: true,
           unchanged: true,
           message: 'Tổng kết và bài tập về nhà đã trùng với dữ liệu LMS.',
-          class: mapCommentClass(freshClass, fallbackAreas, userEmail),
+          class: mapCommentClass(freshClass, fallbackAreas, finalCommentAreas, userEmail),
         });
       }
       const summaryHtml = editorTextToHtml(summary);
@@ -1259,6 +1387,12 @@ export async function POST(request: NextRequest) {
         homework: homeworkHtml,
       };
       verification = (verifiedSlot) => lessonMatches(verifiedSlot, summaryHtml, homeworkHtml);
+      applyOptimisticResult = (targetClass) => {
+        const targetSlot = findSlot(targetClass, slotId);
+        if (!targetSlot) return;
+        targetSlot.summary = summaryHtml;
+        targetSlot.homework = homeworkHtml;
+      };
     } else {
       const activeStudents = studentsForClassSite(freshClass, classSiteId);
       const belongsToSite = activeStudents.some(
@@ -1292,19 +1426,19 @@ export async function POST(request: NextRequest) {
       if (values.length === 0) {
         return NextResponse.json({ success: false, message: 'Hãy nhập ít nhất một nội dung nhận xét.' }, { status: 400 });
       }
-      if (studentCommentMatches(slot, studentId, values)) {
-        return NextResponse.json({
-          success: true,
-          unchanged: true,
-          message: 'Nhận xét học viên đã trùng với dữ liệu LMS.',
-          class: mapCommentClass(freshClass, fallbackAreas, userEmail),
-        });
-      }
       const preparedAreas = prepareCommentAreasForLms(selection.areas, values);
       if (!preparedAreas.ok) {
         return NextResponse.json({ success: false, message: preparedAreas.message }, { status: 400 });
       }
       const valuesForLms = preparedAreas.values;
+      if (studentCommentMatches(slot, studentId, valuesForLms, selection.areas)) {
+        return NextResponse.json({
+          success: true,
+          unchanged: true,
+          message: 'Nhận xét học viên đã trùng với dữ liệu LMS.',
+          class: mapCommentClass(freshClass, fallbackAreas, finalCommentAreas, userEmail),
+        });
+      }
       const combinedComment = buildCommentHtml(selection.areas, valuesForLms);
       payload = {
         classId,
@@ -1320,16 +1454,37 @@ export async function POST(request: NextRequest) {
           byAreas: valuesForLms,
         },
       };
-      verification = (verifiedSlot) => studentCommentMatches(verifiedSlot, studentId, valuesForLms);
+      verification = (verifiedSlot) => studentCommentMatches(
+        verifiedSlot,
+        studentId,
+        valuesForLms,
+        selection.areas,
+      );
+      applyOptimisticResult = (targetClass) => {
+        const targetSlot = findSlot(targetClass, slotId);
+        const targetAttendance = targetSlot ? findStudentAttendance(targetSlot, studentId) : null;
+        if (!targetAttendance) return;
+        targetAttendance.comment = combinedComment;
+        targetAttendance.commentByAreas = valuesForLms;
+      };
     }
 
     let mutationError: LmsRequestError | null = null;
+    let mutationAcknowledged = false;
     try {
-      await callLmsOnce({
+      const mutationResult = await callLmsOnce<any>({
         query: UPDATE_SLOT_COMMENT_MUTATION,
         operationName: 'UpdateSlotComment',
         variables: { payload },
       }, authHeader);
+      mutationAcknowledged = Boolean(mutationResult?.data?.classes?.updateSlotComment?.id);
+      if (!mutationAcknowledged) {
+        mutationError = new LmsRequestError(
+          'LMS chưa xác nhận yêu cầu lưu. TPS không tự gửi lại để tránh ghi trùng.',
+          502,
+          true,
+        );
+      }
     } catch (error: unknown) {
       mutationError = error instanceof LmsRequestError
         ? error
@@ -1337,14 +1492,28 @@ export async function POST(request: NextRequest) {
     }
 
     let verifiedClass: any = null;
-    try {
-      verifiedClass = await fetchCommentClass(classId, authHeader);
-    } catch (readbackError) {
-      console.error('[nhan-xet-lop-hoc] LMS readback failed:', readbackError);
+    let verified = false;
+    const readbackDelays = mutationError && !mutationError.ambiguous
+      ? [READBACK_DELAYS_MS[0]]
+      : READBACK_DELAYS_MS;
+    for (const [attempt, delayMs] of readbackDelays.entries()) {
+      if (delayMs > 0) await waitFor(delayMs);
+      try {
+        const readbackClass = await fetchCommentClass(classId, authHeader);
+        if (readbackClass) verifiedClass = readbackClass;
+        const verifiedSlot = readbackClass ? findSlot(readbackClass, slotId) : null;
+        if (verifiedSlot && verification(verifiedSlot)) {
+          verified = true;
+          break;
+        }
+      } catch (readbackError) {
+        console.error('[nhan-xet-lop-hoc] LMS readback failed:', {
+          attempt: attempt + 1,
+          readbackError,
+        });
+      }
     }
-    const verifiedSlot = verifiedClass ? findSlot(verifiedClass, slotId) : null;
-    if (verifiedSlot && verification(verifiedSlot)) {
-      const verifiedFallback = courseProcessForClass(verifiedClass) ? [] : fallbackAreas;
+    if (verified && verifiedClass) {
       return NextResponse.json({
         success: true,
         verified: true,
@@ -1353,8 +1522,33 @@ export async function POST(request: NextRequest) {
           : action === 'lesson'
             ? 'Đã lưu tổng kết và bài tập về nhà lên LMS.'
             : 'Đã lưu và xác nhận nhận xét học viên trên LMS.',
-        class: mapCommentClass(verifiedClass, verifiedFallback, userEmail),
+        class: mapCommentClass(
+          verifiedClass,
+          fallbackAreas,
+          finalCommentAreas,
+          userEmail,
+        ),
       });
+    }
+
+    if (mutationAcknowledged) {
+      const optimisticClass = verifiedClass || freshClass;
+      applyOptimisticResult(optimisticClass);
+      return NextResponse.json({
+        success: true,
+        accepted: true,
+        verified: false,
+        ambiguous: false,
+        message: action === 'lesson'
+          ? 'LMS đã tiếp nhận nội dung buổi học và đang đồng bộ. Không cần bấm lưu lại.'
+          : 'LMS đã tiếp nhận nhận xét và đang đồng bộ. Không cần bấm lưu lại.',
+        class: mapCommentClass(
+          optimisticClass,
+          fallbackAreas,
+          finalCommentAreas,
+          userEmail,
+        ),
+      }, { status: 202 });
     }
 
     return NextResponse.json(

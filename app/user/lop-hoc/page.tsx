@@ -59,6 +59,8 @@ type TeacherAccount = {
   email: string
   username: string
   code: string
+  roleId?: string
+  roleCode?: string
   roleShortName: string
   roleName: string
 }
@@ -201,10 +203,15 @@ type TeacherRow = {
 }
 
 function accessRoleLabels(roles: string[]): string[] {
-  const labels: string[] = []
-  if (roles.includes('LEC')) labels.push('LEC')
-  if (roles.includes('TA')) labels.push('TA')
-  if (roles.includes('JUDGE') || roles.includes('JUDGE_SESSION_14')) labels.push('Judge')
+  const roleSet = new Set(roles)
+  const labels = [
+    roleSet.has('LEC') ? 'LEC' : '',
+    roleSet.has('TA') ? 'TA' : '',
+    roleSet.has('SUPPLY') ? 'Supply' : '',
+    roleSet.has('JUDGE') || roleSet.has('JUDGE_SESSION_14') ? 'Judge' : '',
+    roleSet.has('MENTOR') ? 'Mentor' : '',
+    roleSet.has('ST_18_PLUS') ? 'ST 18+' : '',
+  ].filter(Boolean)
   if (labels.length === 0 && roles.includes('ASSIGNED_TEACHER')) labels.push('Giảng dạy')
   if (labels.length === 0 && roles.includes('TEACHER_ATTENDANCE')) labels.push('Đã tham gia')
   return labels
@@ -224,6 +231,8 @@ type FiltersState = {
 type SelectOption = {
   value: string
   label: string
+  keywords?: string
+  description?: string
 }
 
 const INITIAL_FILTERS: FiltersState = {
@@ -298,7 +307,7 @@ function weekDayName(value: string | null | undefined): string {
 function classStatusLabel(status: string): string {
   const normalized = status.toUpperCase()
   if (normalized === 'RUNNING') return 'Đang học'
-  if (normalized === 'PREPARING') return 'Sắp diễn ra'
+  if (normalized === 'PREPARING') return 'Sắp khai giảng'
   if (normalized === 'FINISHED') return 'Đã kết thúc'
   if (normalized === 'CANCELLED') return 'Đã hủy'
   return status || 'Không xác định'
@@ -540,10 +549,34 @@ function slotStartTimestamp(slot: ClassSlot): number | null {
   return Number.isFinite(value) ? value : null
 }
 
+const ATTENDANCE_CLOSE_GRACE_MS = 30 * 60 * 1000
+
+function slotEndTimestamp(slot: ClassSlot): number | null {
+  const explicitEnd = new Date(slot.endTime || '').getTime()
+  if (Number.isFinite(explicitEnd) && explicitEnd > 0) return explicitEnd
+
+  const startTime = slotStartTimestamp(slot)
+  if (startTime === null) return null
+  const sessionHours = Number(slot.sessionHour)
+  const durationHours = Number.isFinite(sessionHours) && sessionHours > 0 ? sessionHours : 2
+  return startTime + durationHours * 60 * 60 * 1000
+}
+
+function slotAttendanceCloseTimestamp(slot: ClassSlot): number | null {
+  const endTime = slotEndTimestamp(slot)
+  return endTime === null ? null : endTime + ATTENDANCE_CLOSE_GRACE_MS
+}
+
 function isSlotOpen(slot: ClassSlot): boolean {
   if (slot.isPlaceholder) return false
   const startTime = slotStartTimestamp(slot)
   return startTime !== null && startTime <= Date.now()
+}
+
+function isAttendanceWindowOpen(slot: ClassSlot): boolean {
+  if (!isSlotOpen(slot)) return false
+  const closeTime = slotAttendanceCloseTimestamp(slot)
+  return closeTime !== null && Date.now() <= closeTime
 }
 
 function automaticTeacherStatus(slot: ClassSlot): AttendanceStatus {
@@ -843,27 +876,6 @@ function hasSlotInRange(cls: AttendanceClass, from: string, to: string): boolean
   })
 }
 
-function optionKey(value: string): string {
-  return normalizeText(value).replace(/[^a-z0-9]+/g, '-')
-}
-
-function buildOptions(values: string[], allLabel: string): SelectOption[] {
-  const seen = new Set<string>()
-  const options = values
-    .map((value) => value.trim())
-    .filter(Boolean)
-    .filter((value) => {
-      const key = optionKey(value)
-      if (!key || seen.has(key)) return false
-      seen.add(key)
-      return true
-    })
-    .sort((a, b) => a.localeCompare(b, 'vi'))
-    .map((value) => ({ value, label: value }))
-
-  return [{ value: '', label: allLabel }, ...options]
-}
-
 function HeaderButton({
   icon: Icon,
   children,
@@ -932,11 +944,13 @@ function SearchableSelectField({
   onChange,
   options,
   placeholder,
+  emptyMessage = 'Không có kết quả phù hợp',
 }: {
   value: string
   onChange: (value: string) => void
   options: SelectOption[]
   placeholder: string
+  emptyMessage?: string
 }) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -945,7 +959,7 @@ function SearchableSelectField({
   const normalizedQuery = normalizeText(query)
   const visibleOptions = options.filter((option) => {
     if (!normalizedQuery) return true
-    return normalizeText(option.label).includes(normalizedQuery)
+    return normalizeText([option.label, option.keywords, option.description].filter(Boolean).join(' ')).includes(normalizedQuery)
   })
 
   useEffect(() => {
@@ -966,9 +980,11 @@ function SearchableSelectField({
     <div ref={rootRef} className="relative">
       <input
         value={open ? query : selectedOption?.label || ''}
-        onFocus={() => {
+        onFocus={(event) => {
+          const input = event.currentTarget
           setOpen(true)
           setQuery(selectedOption?.value ? selectedOption.label : '')
+          requestAnimationFrame(() => input.select())
         }}
         onChange={(event) => {
           setQuery(event.target.value)
@@ -991,15 +1007,18 @@ function SearchableSelectField({
                   setQuery('')
                 }}
                 className={cn(
-                  'block w-full px-3 py-2 text-left text-sm transition-colors hover:bg-[#eef3ff]',
-                  option.value === value ? 'bg-[#dbe7ff] font-medium text-gray-950' : 'font-normal text-gray-800',
+                  'block w-full px-3 py-2 text-left transition-colors hover:bg-[#fff4f6]',
+                  option.value === value ? 'bg-[#fff0f3] font-medium text-[#a1001f]' : 'font-normal text-gray-800',
                 )}
               >
-                {option.label}
+                <span className="block truncate text-sm">{option.label}</span>
+                {option.description ? (
+                  <span className="mt-0.5 block truncate text-xs font-normal text-gray-500">{option.description}</span>
+                ) : null}
               </button>
             ))
           ) : (
-            <div className="px-3 py-2 text-sm text-gray-500">Không có giảng viên phù hợp</div>
+            <div className="px-3 py-2 text-sm text-gray-500">{emptyMessage}</div>
           )}
         </div>
       ) : null}
@@ -2473,6 +2492,8 @@ function ClassAttendanceDrawer({
   const realSlots = slots.filter((s) => !s.isPlaceholder)
   const lastRealSlotIndex = realSlots.length > 0 ? realSlots.length - 1 : -1
   const selectedSlot = selectedSessionIndex === null ? null : slots[selectedSessionIndex] || null
+  const selectedSlotAttendanceOpen = Boolean(selectedSlot && isAttendanceWindowOpen(selectedSlot))
+  const selectedSlotCloseTime = selectedSlot ? slotAttendanceCloseTimestamp(selectedSlot) : null
   const classSites = cls.classSites || []
   const selectedClassSite = classSites.find((classSite) => classSite.id === selectedClassSiteId)
   const visibleStudents = cls.students.filter((student) => {
@@ -2515,7 +2536,7 @@ function ClassAttendanceDrawer({
   const canSaveAttendance = Boolean(
     selectedSlot &&
     selectedClassSiteId &&
-    isSlotOpen(selectedSlot) &&
+    selectedSlotAttendanceOpen &&
     hasDraftChanges &&
     allStudentsRecorded &&
     allOtherTeachersRecorded &&
@@ -2533,6 +2554,7 @@ function ClassAttendanceDrawer({
     slot: ClassSlot,
   ): Record<string, AttendanceStatus> {
     if (
+      !isAttendanceWindowOpen(slot) ||
       !currentTeacher ||
       !teacherIsAssignedForSelectedSite(slot, currentTeacher) ||
       visibleStudents.length === 0
@@ -2556,22 +2578,42 @@ function ClassAttendanceDrawer({
 
   function selectSession(slot: ClassSlot, index: number) {
     if (!isSlotOpen(slot)) {
+      const message = slot.isPlaceholder
+        ? 'Buổi học này chưa có lịch trên LMS.'
+        : `Điểm danh sẽ mở lúc ${formatTime(slot.startTime)} ngày ${formatDate(slot.startTime || slot.date)}.`
       setSaveResult({
         type: 'error',
-        message: slot.isPlaceholder
-          ? 'Buổi học này chưa có lịch trên LMS.'
-          : `Điểm danh sẽ mở lúc ${formatTime(slot.startTime)} ngày ${formatDate(slot.startTime || slot.date)}.`,
+        message,
       })
+      toast.error(message)
       return
     }
 
-    setSelectedSessionIndex((current) => current === index ? null : index)
-    setDraftStatuses((current) => addAutomaticTeacherAttendance(current, slot))
-    setSaveResult(null)
+    const isClosing = selectedSessionIndex === index
+    setSelectedSessionIndex(isClosing ? null : index)
+    if (isAttendanceWindowOpen(slot)) {
+      setDraftStatuses((current) => addAutomaticTeacherAttendance(current, slot))
+    }
+    if (isClosing || isAttendanceWindowOpen(slot)) {
+      setSaveResult(null)
+      return
+    }
+
+    const closeTime = slotAttendanceCloseTimestamp(slot)
+    setSaveResult({
+      type: 'error',
+      message: closeTime
+        ? `Buổi ${slot.sessionNumber} đã hết thời gian cập nhật điểm danh lúc ${formatTime(new Date(closeTime).toISOString())} ngày ${formatDate(new Date(closeTime).toISOString())}. Dữ liệu hiện ở chế độ chỉ xem.`
+        : `Buổi ${slot.sessionNumber} hiện chỉ có thể xem dữ liệu điểm danh.`,
+    })
   }
 
   function setTeacherDraft(slot: ClassSlot, teacher: TeacherRow, status: AttendanceStatus) {
     if (currentTeacher?.id === teacher.id) return
+    if (!isAttendanceWindowOpen(slot)) {
+      toast.error('Buổi học đã hết thời gian cập nhật điểm danh.')
+      return
+    }
 
     setSaveResult(null)
     setDraftStatuses((current) => ({
@@ -2581,6 +2623,10 @@ function ClassAttendanceDrawer({
   }
 
   function setStudentDraft(slot: ClassSlot, studentId: string, status: AttendanceStatus) {
+    if (!isAttendanceWindowOpen(slot)) {
+      toast.error('Buổi học đã hết thời gian cập nhật điểm danh.')
+      return
+    }
     setSaveResult(null)
     setDraftStatuses((current) => addAutomaticTeacherAttendance({
       ...current,
@@ -2629,11 +2675,14 @@ function ClassAttendanceDrawer({
         type: 'success',
         message: payload.message || 'Đã lưu và xác nhận dữ liệu trên LMS.',
       })
+      toast.success(payload.message || `Đã lưu điểm danh buổi ${selectedSlot.sessionNumber} lên LMS.`)
     } catch (saveError: unknown) {
+      const message = saveError instanceof Error ? saveError.message : 'Không thể lưu điểm danh lên LMS.'
       setSaveResult({
         type: 'error',
-        message: saveError instanceof Error ? saveError.message : 'Không thể lưu điểm danh lên LMS.',
+        message,
       })
+      toast.error(message)
     } finally {
       setIsSavingAttendance(false)
     }
@@ -2784,21 +2833,42 @@ function ClassAttendanceDrawer({
               <span>{saveResult.message}</span>
             </div>
           ) : null}
-          {showUpdateNote && selectedSlot && (!currentTeacher || !teacherIsAssignedForSelectedSite(selectedSlot, currentTeacher)) ? (
-            <div className="relative mb-4 rounded-lg border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-gray-800">
+          {showUpdateNote ? (
+            <div className="relative mb-4 rounded-lg border border-[#a1001f]/15 bg-[#fff8fa] px-4 py-3 text-sm text-gray-800">
               <button
                 type="button"
                 onClick={() => setShowUpdateNote(false)}
-                className="absolute right-3 top-3 text-gray-600 hover:text-gray-950"
+                className="absolute right-3 top-3 text-gray-500 transition-colors hover:text-[#a1001f]"
                 title="Ẩn thông báo"
+                aria-label="Ẩn lưu ý điểm danh"
               >
                 <X className="h-5 w-5" />
               </button>
-              <p className="pr-8 font-medium text-gray-900">Không thể cập nhật điểm danh vì những lý do sau:</p>
-              <ul className="mt-1.5 list-disc space-y-1 pl-5 text-gray-700">
-                <li>User không phải là giảng viên được phân công dạy slot hiện tại</li>
-                <li>User không phải là vận hành của lớp</li>
-              </ul>
+              <div className="flex items-start gap-2.5 pr-8">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#a1001f]" />
+                <div>
+                  <p className="font-semibold text-gray-950">Lưu ý khi điểm danh</p>
+                  <ul className="mt-1.5 list-disc space-y-1 pl-5 leading-5 text-gray-700">
+                    <li>Điểm danh được mở từ giờ bắt đầu buổi học đến 30 phút sau giờ kết thúc.</li>
+                    <li>Hãy kiểm tra đủ học viên và nhấn <strong>Lưu</strong>; TPS chỉ báo thành công sau khi LMS xác nhận dữ liệu.</li>
+                    <li>Nếu LMS lỗi hoặc chưa xác nhận, không nhấn lưu liên tục. Hãy chụp màn hình và báo CS, Leader hoặc phụ trách vận hành lớp, kèm mã lớp và số buổi.</li>
+                  </ul>
+                </div>
+              </div>
+              {selectedSlot && !selectedSlotAttendanceOpen && isSlotOpen(selectedSlot) ? (
+                <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                  Buổi {selectedSlot.sessionNumber} đã hết thời gian cập nhật
+                  {selectedSlotCloseTime
+                    ? ` lúc ${formatTime(new Date(selectedSlotCloseTime).toISOString())} ngày ${formatDate(new Date(selectedSlotCloseTime).toISOString())}`
+                    : ''}
+                  . Bạn vẫn có thể xem dữ liệu đã ghi nhận.
+                </p>
+              ) : null}
+              {selectedSlot && (!currentTeacher || !teacherIsAssignedForSelectedSite(selectedSlot, currentTeacher)) ? (
+                <p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+                  Tài khoản hiện tại không được phân công giảng dạy tại buổi hoặc class site này nên chỉ có quyền xem.
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -2806,7 +2876,7 @@ function ClassAttendanceDrawer({
             <table className="w-full min-w-max border-separate border-spacing-0 text-left text-sm">
               <thead>
                 <tr>
-                  <th className="sticky left-0 z-20 w-[210px] bg-white px-0 py-2" />
+                  <th className="sticky left-0 z-20 w-[240px] min-w-[240px] bg-white pl-5 pr-4 py-2" />
                   {slots.map((slot, index) => {
                     const active = index === selectedSessionIndex
                     const opened = isSlotOpen(slot)
@@ -2865,11 +2935,11 @@ function ClassAttendanceDrawer({
               <tbody>
                 {/* Tiêu đề mục: Kiểm tra giáo viên */}
                 <tr>
-                  <td className="sticky left-0 z-10 bg-white px-0 pt-4 pb-2 align-bottom">
+                  <td className="sticky left-0 z-10 w-[240px] min-w-[240px] bg-white pb-2 pl-5 pr-4 pt-4 align-bottom">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-semibold text-gray-950">Kiểm tra giáo viên</h3>
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#5b6fd8] text-sm font-semibold text-white">1</span>
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#a1001f] text-sm font-semibold text-white">1</span>
                       </div>
                       <p className="text-sm font-semibold text-green-700">
                         {selectedSlot ? `${teacherRecorded}/${selectedTeacherRows.length} đã ghi nhận` : 'Chọn một buổi để thực hiện điểm danh'}
@@ -2881,7 +2951,7 @@ function ClassAttendanceDrawer({
 
                 {teacherRows.map((teacher) => (
                   <tr key={teacher.id}>
-                    <td className="sticky left-0 z-10 bg-white px-0 py-3 align-middle">
+                    <td className="sticky left-0 z-10 w-[240px] min-w-[240px] bg-white py-3 pl-5 pr-4 align-middle">
                       <div className="flex min-w-0 items-center gap-3">
                         <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-300 text-xs font-semibold text-white">
                           {teacher.imageUrl ? (
@@ -2913,7 +2983,7 @@ function ClassAttendanceDrawer({
                       const opened = isSlotOpen(slot)
                       return (
                         <td key={`${teacher.id}-${slot.id}`} className="px-1 py-3 text-center align-middle">
-                          {index === selectedSessionIndex && assignedToSlot && !isCurrentTeacher ? (
+                          {index === selectedSessionIndex && assignedToSlot && !isCurrentTeacher && isAttendanceWindowOpen(slot) ? (
                             <StatusControls
                               value={status}
                               onChange={(nextStatus) => setTeacherDraft(slot, teacher, nextStatus)}
@@ -2936,11 +3006,11 @@ function ClassAttendanceDrawer({
 
                 {/* Tiêu đề mục: Kiểm tra học viên */}
                 <tr>
-                  <td className="sticky left-0 z-10 bg-white px-0 pt-6 pb-2 align-bottom">
+                  <td className="sticky left-0 z-10 w-[240px] min-w-[240px] bg-white pb-2 pl-5 pr-4 pt-6 align-bottom">
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-semibold text-gray-950">Kiểm tra học viên</h3>
-                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#5b6fd8] text-sm font-semibold text-white">2</span>
+                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#a1001f] text-sm font-semibold text-white">2</span>
                       </div>
                       <p className="text-sm font-semibold text-green-700">
                         {selectedSlot ? `${studentRecorded}/${visibleStudents.length} đã ghi nhận` : 'Chọn một buổi để thực hiện điểm danh'}
@@ -2952,7 +3022,7 @@ function ClassAttendanceDrawer({
 
                 {visibleStudents.map((student) => (
                   <tr key={student.id}>
-                    <td className="sticky left-0 z-10 bg-white px-0 py-3 align-middle">
+                    <td className="sticky left-0 z-10 w-[240px] min-w-[240px] bg-white py-3 pl-5 pr-4 align-middle">
                       <StudentIdentity cls={cls} student={student} />
                     </td>
                     {slots.map((slot, index) => {
@@ -2980,11 +3050,17 @@ function ClassAttendanceDrawer({
                         <td key={`${student.id}-${slot.id}`} className="px-1 py-3 text-center align-middle">
                           {index === selectedSessionIndex ? (
                             <div className="flex items-center justify-center gap-2">
-                              <StatusControls
-                                value={status}
-                                hasComment={Boolean(attendance?.comment)}
-                                onChange={(nextStatus) => setStudentDraft(slot, student.id, nextStatus)}
-                              />
+                              {isAttendanceWindowOpen(slot) ? (
+                                <StatusControls
+                                  value={status}
+                                  hasComment={Boolean(attendance?.comment)}
+                                  onChange={(nextStatus) => setStudentDraft(slot, student.id, nextStatus)}
+                                />
+                              ) : (
+                                <div className="flex h-8 items-center justify-center" title={ATTENDANCE_META[status].label}>
+                                  <AttendanceMark status={status} />
+                                </div>
+                              )}
                               {canGradeStudent && (
                                 <button
                                   type="button"
@@ -3045,12 +3121,14 @@ function ClassAttendanceDrawer({
               {selectedSlot ? (
                 <tfoot>
                   <tr>
-                    <td className="sticky left-0 z-20 border-t border-gray-200 bg-white px-4 py-3 align-middle">
+                    <td className="sticky left-0 z-20 w-[240px] min-w-[240px] border-t border-gray-200 bg-white py-3 pl-5 pr-4 align-middle">
                       <p className="text-sm font-medium text-gray-900">
                         Buổi {selectedSlot.sessionNumber} · {formatTimeRange(selectedSlot)}
                       </p>
                       <p className="mt-0.5 text-xs text-gray-500">
-                        {!allStudentsRecorded
+                        {!selectedSlotAttendanceOpen
+                          ? 'Ngoài thời gian cập nhật, dữ liệu đang ở chế độ chỉ xem'
+                          : !allStudentsRecorded
                           ? `Còn ${Math.max(0, visibleStudents.length - studentRecorded)} học viên chưa ghi nhận`
                           : !allOtherTeachersRecorded
                             ? 'Còn giáo viên được phân công chưa ghi nhận'
@@ -3207,8 +3285,11 @@ export default function TeacherClassesPage() {
     const roleCodes = [...(user?.userRoles || []), user?.role || '']
       .map((role) => String(role).trim().toUpperCase())
       .filter(Boolean)
-    return roleCodes.some((role) => LEADER_ROLE_CODES.has(role))
-  }, [user?.role, user?.userRoles])
+    return roleCodes.some((role) => LEADER_ROLE_CODES.has(role)) || (
+      String(user?.role || '').toLowerCase() === 'manager' &&
+      (user?.assignedCenters?.length || 0) > 0
+    )
+  }, [user?.assignedCenters, user?.role, user?.userRoles])
 
   const hasActiveFilters = useMemo(
     () => Object.values(filters).some(Boolean),
@@ -3238,6 +3319,8 @@ export default function TeacherClassesPage() {
     const requestedFilters = requestedFiltersRef.current
     const params = new URLSearchParams()
     if (requestedFilters.search.trim()) params.set('q', requestedFilters.search.trim())
+    if (requestedFilters.centre) params.set('centre', requestedFilters.centre)
+    if (requestedFilters.teacher) params.set('teacher', requestedFilters.teacher)
     if (requestedFilters.status) params.set('status', requestedFilters.status)
     if (requestedFilters.slotFrom) params.set('from', requestedFilters.slotFrom)
     if (requestedFilters.slotTo) params.set('to', requestedFilters.slotTo)
@@ -3276,35 +3359,63 @@ export default function TeacherClassesPage() {
     return () => controller.abort()
   }, [authLoading, hasRequestedLoad, isLeaderRole, refreshSignal, token])
 
-  const centreOptions = useMemo(
-    () => buildOptions(
-      [
-        ...(user?.assignedCenters || []).map((centre) => centre.short_code || centre.full_name),
-        ...classes.map((cls) => cls.centreShortName || cls.centreName),
-      ],
-      'Tất cả cơ sở',
-    ),
-    [classes, user?.assignedCenters],
-  )
+  const centreOptions = useMemo(() => {
+    const options = new Map<string, SelectOption>()
+    const addOption = (value: string, label: string, keywords: string) => {
+      const normalizedValue = normalizeText(value)
+      if (!normalizedValue || options.has(normalizedValue)) return
+      options.set(normalizedValue, { value, label, keywords })
+    }
+
+    const assignedCenters = user?.assignedCenters || []
+    assignedCenters.forEach((centre) => {
+      const fullName = String(centre.full_name || '').trim()
+      const shortCode = String(centre.short_code || '').trim()
+      addOption(fullName || shortCode, fullName || shortCode, shortCode)
+    })
+    classes.forEach((cls) => {
+      const fullName = String(cls.centreName || '').trim()
+      const shortCode = String(cls.centreShortName || '').trim()
+      addOption(fullName || shortCode, fullName || shortCode, shortCode)
+    })
+
+    return [
+      { value: '', label: 'Tất cả cơ sở' },
+      ...Array.from(options.values()).sort((a, b) => a.label.localeCompare(b.label, 'vi')),
+    ]
+  }, [classes, user?.assignedCenters])
 
   const statusOptions = useMemo(
     () => [
-      { value: '', label: 'Tất cả (Đang học, Sắp diễn ra & Đã kết thúc)' },
+      { value: '', label: 'Tất cả' },
       { value: 'RUNNING', label: 'Đang học' },
-      { value: 'PREPARING', label: 'Sắp diễn ra' },
+      { value: 'PREPARING', label: 'Sắp khai giảng' },
       { value: 'FINISHED', label: 'Đã kết thúc' },
     ],
     [],
   )
 
-  const teacherOptions = useMemo(
-    () =>
-      buildOptions(
-        classes.flatMap((cls) => cls.allTeachers.map(teacherName)),
-        'Tất cả giảng viên',
-      ),
-    [classes],
-  )
+  const teacherOptions = useMemo(() => {
+    const options = new Map<string, SelectOption>()
+    classes.flatMap((cls) => cls.allTeachers).forEach((teacher) => {
+      const name = teacherName(teacher)
+      const value = teacher.id || teacher.email || teacher.code || teacher.username || name
+      const key = normalizeText(value)
+      if (!key || options.has(key)) return
+      const lmsCode = String(teacher.code || teacher.username || '').trim()
+      options.set(key, {
+        value,
+        label: name,
+        keywords: [teacher.fullName, teacher.code, teacher.username, teacher.email].filter(Boolean).join(' '),
+        description: lmsCode && normalizeText(lmsCode) !== normalizeText(name) ? `Mã LMS: ${lmsCode}` : undefined,
+      })
+    })
+
+    return [
+      { value: '', label: 'Tất cả giảng viên' },
+      ...Array.from(options.values()).sort((a, b) => a.label.localeCompare(b.label, 'vi')),
+    ]
+  }, [classes])
 
   const filteredClasses = useMemo(() => {
     const query = normalizeText(filters.search)
@@ -3334,6 +3445,7 @@ export default function TeacherClassesPage() {
             cls.operationMethodName,
             cls.operatorName,
             cls.allTeacherNames.join(' '),
+            cls.allTeachers.flatMap((teacher) => [teacher.fullName, teacher.code, teacher.username, teacher.email]).join(' '),
           ].join(' '),
         )
 
@@ -3342,13 +3454,19 @@ export default function TeacherClassesPage() {
           filters.centre &&
           ![cls.centreName, cls.centreShortName, String(cls.centreId || '')]
             .map(normalizeText)
-            .some((value) => value === centreQuery || value.includes(centreQuery))
+            .some((value) => value === centreQuery || value.includes(centreQuery) || centreQuery.includes(value))
         ) {
           return false
         }
         if (
           filters.teacher &&
-          !cls.allTeachers.some((teacher) => normalizeText(teacherName(teacher)).includes(teacherQuery))
+          !cls.allTeachers.some((teacher) => {
+            const teacherId = normalizeText(teacher.id || teacher.email || teacher.code || teacher.username || teacherName(teacher))
+            const searchable = normalizeText(
+              [teacher.fullName, teacher.code, teacher.username, teacher.email].filter(Boolean).join(' '),
+            )
+            return teacherId === teacherQuery || searchable.includes(teacherQuery)
+          })
         ) {
           return false
         }
@@ -3414,6 +3532,15 @@ export default function TeacherClassesPage() {
       ...current,
       slotFrom: range.dateFrom,
       slotTo: range.dateTo,
+    }))
+  }
+
+  function updateClassDateRange(range: { dateFrom: string; dateTo: string }) {
+    setPage(1)
+    setFilters((current) => ({
+      ...current,
+      startDate: range.dateFrom,
+      endDate: range.dateTo,
     }))
   }
 
@@ -3502,24 +3629,23 @@ export default function TeacherClassesPage() {
             </FilterField>
 
             <FilterField label="Cơ sở">
-              <SelectField value={filters.centre} onChange={(value) => updateFilter('centre', value)} options={centreOptions} />
-            </FilterField>
-
-            <FilterField label="Ngày bắt đầu">
-              <input
-                type="date"
-                value={filters.startDate}
-                onChange={(event) => updateFilter('startDate', event.target.value)}
-                className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm font-normal text-gray-800 outline-none transition-colors focus:border-[#3156d4] focus:ring-2 focus:ring-[#3156d4]/10"
+              <SearchableSelectField
+                value={filters.centre}
+                onChange={(value) => updateFilter('centre', value)}
+                options={centreOptions}
+                placeholder="Tìm tên hoặc mã cơ sở"
+                emptyMessage="Không có cơ sở phù hợp"
               />
             </FilterField>
 
-            <FilterField label="Ngày kết thúc">
-              <input
-                type="date"
-                value={filters.endDate}
-                onChange={(event) => updateFilter('endDate', event.target.value)}
-                className="h-10 w-full rounded-md border border-gray-300 bg-white px-3 text-sm font-normal text-gray-800 outline-none transition-colors focus:border-[#3156d4] focus:ring-2 focus:ring-[#3156d4]/10"
+            <FilterField label="Thời gian lớp học">
+              <DateRangePicker
+                dateFrom={filters.startDate}
+                dateTo={filters.endDate}
+                onChange={updateClassDateRange}
+                placeholder="Chọn ngày bắt đầu - kết thúc"
+                className="w-full"
+                variant="filter"
               />
             </FilterField>
 
@@ -3530,6 +3656,7 @@ export default function TeacherClassesPage() {
                 onChange={updateSlotRange}
                 placeholder="Chọn khoảng ngày"
                 className="w-full"
+                variant="filter"
               />
             </FilterField>
 
@@ -3542,7 +3669,8 @@ export default function TeacherClassesPage() {
                 value={filters.teacher}
                 onChange={(value) => updateFilter('teacher', value)}
                 options={teacherOptions}
-                placeholder="Tìm giảng viên"
+                placeholder="Tên hoặc mã LMS giảng viên"
+                emptyMessage="Không có giảng viên phù hợp"
               />
             </FilterField>
           </div>
@@ -3595,18 +3723,18 @@ export default function TeacherClassesPage() {
             </div>
 
             <div className="overflow-x-auto custom-scrollbar [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5">
-              <table className="min-w-[1080px] w-full border-separate border-spacing-0 text-left text-sm">
+              <table className="min-w-[1220px] w-full border-separate border-spacing-0 text-left text-sm">
                 <thead>
                   <tr className="bg-gray-50 text-xs font-semibold text-gray-700">
-                    <th className="border-b border-gray-200 px-4 py-3">Tên</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Khóa học</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Cơ sở</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Tên</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Khóa học</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Cơ sở</th>
                     <th className="border-b border-gray-200 px-4 py-3">Phụ trách vận hành lớp</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Trạng thái</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Bắt đầu</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Kết thúc</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Trạng thái</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Bắt đầu</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Kết thúc</th>
                     <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Lịch học</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Tiến độ</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Tiến độ</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3662,19 +3790,21 @@ export default function TeacherClassesPage() {
                         <td className="border-b border-gray-100 px-4 py-4 font-normal text-gray-800">
                           {cls.operatorName || '-'}
                         </td>
-                        <td className="border-b border-gray-100 px-4 py-4">
+                        <td className="border-b border-gray-100 px-4 py-4 whitespace-nowrap">
                           <span className={cn('text-sm font-medium', classStatusTextClass(cls.status))}>
                             {classStatusLabel(cls.status)}
                           </span>
                         </td>
-                        <td className="border-b border-gray-100 px-4 py-4 font-normal text-gray-700">
+                        <td className="border-b border-gray-100 px-4 py-4 whitespace-nowrap font-normal text-gray-700">
                           {formatDate(cls.startDate)}
                         </td>
-                        <td className="border-b border-gray-100 px-4 py-4 font-normal text-gray-700">
+                        <td className="border-b border-gray-100 px-4 py-4 whitespace-nowrap font-normal text-gray-700">
                           {formatDate(cls.endDate)}
                         </td>
                         <td className="border-b border-gray-100 px-4 py-4 text-xs font-normal text-gray-700">
-                          {scheduleText(cls)}
+                          <span className="block max-w-[220px] truncate whitespace-nowrap" title={scheduleText(cls)}>
+                            {scheduleText(cls)}
+                          </span>
                         </td>
                         <td className="border-b border-gray-100 px-4 py-4">
                           <div className="w-24">

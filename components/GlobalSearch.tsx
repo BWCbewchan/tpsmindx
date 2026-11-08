@@ -46,6 +46,7 @@ const adminSearchItems: SearchItem[] = [
   { label: 'Hồ sơ Giáo viên', href: '/admin/page1', icon: Users, group: 'Giáo viên & Vận hành' },
   { label: 'Quản Lý Kiểm Tra Chất Lượng', href: '/admin/quan-ly-qc', icon: ClipboardCheck, group: 'Giáo viên & Vận hành', keywords: ['qc', 'quality check', 'kiem tra chat luong', 'phieu qc'] },
   { label: 'Phiếu đánh giá giáo viên', href: '/admin/phieu-danh-gia-giao-vien', icon: ClipboardCheck, group: 'Giáo viên & Vận hành', keywords: ['teacher point', 'khao sat giao vien', 'google forms', 'phieu danh gia'] },
+  { label: 'Đăng ký lịch làm việc', href: '/admin/schedule', icon: CalendarDays, group: 'Giáo viên & Vận hành', keywords: ['lich team teaching', 'lich thang', 'dang ky ca lam'] },
   { label: 'Quản lý lịch làm việc', href: '/admin/page4/quan-ly-lich-lam-viec', icon: CalendarDays, group: 'Giáo viên & Vận hành' },
   { label: 'Lịch sự kiện', href: '/admin/page4/lich-danh-gia', icon: CalendarDays, group: 'Giáo viên & Vận hành' },
   { label: 'Tiếp nhận xin nghỉ 1 buổi', href: '/admin/xin-nghi-mot-buoi', icon: Users, group: 'Giáo viên & Vận hành' },

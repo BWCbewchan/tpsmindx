@@ -13,7 +13,16 @@ const HOUR_OPTIONS = Array.from({length:15},(_,i)=>`${String(i+7).padStart(2,'0'
 type CalendarView = 'day' | 'week' | 'month'
 
 type CenterOption = { id:number; region:string; short_code:string; full_name:string }
-type LichRanhSlot = { id:number; date:string; batDau:string; ketThuc:string; coSo:string[]; linhHoat:boolean }
+type LichRanhSlot = {
+  id:number
+  date:string
+  batDau:string
+  ketThuc:string
+  coSo:string[]
+  linhHoat:boolean
+  source:string|null
+  sourceScheduleId:number|null
+}
 type LichRanhByDate = Record<string, LichRanhSlot[]>
 type LeaveInfo = { id:number; leave_date:string; status:string; class_code?:string; campus?:string; reason?:string }
 type LeaveByDate = Record<string, LeaveInfo[]>
@@ -143,7 +152,7 @@ export default function TabLichHoatDong({ onRefreshBadge, onOpenLeaveRequest }:P
     if(!maGv)return
     const thang=`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`
     try{const r=await fetch(`/api/dangky-lich-lam?ma_gv=${encodeURIComponent(maGv)}&thang=${thang}`);const d=await r.json()
-    if(r.ok&&d.success){const byDate:LichRanhByDate={};(d.data||[]).forEach((row:any)=>{const ngay=typeof row.ngay==='string'?row.ngay.slice(0,10):'';if(!byDate[ngay])byDate[ngay]=[];byDate[ngay].push({id:row.id,date:ngay,batDau:row.gio_bat_dau?.slice(0,5),ketThuc:row.gio_ket_thuc?.slice(0,5),coSo:row.co_so_uu_tien||[],linhHoat:row.linh_hoat||false})});setLichRanhByDate(byDate)}}catch{}
+    if(r.ok&&d.success){const byDate:LichRanhByDate={};(d.data||[]).forEach((row:any)=>{const ngay=typeof row.ngay==='string'?row.ngay.slice(0,10):'';if(!byDate[ngay])byDate[ngay]=[];byDate[ngay].push({id:row.id,date:ngay,batDau:row.gio_bat_dau?.slice(0,5),ketThuc:row.gio_ket_thuc?.slice(0,5),coSo:row.co_so_uu_tien||[],linhHoat:row.linh_hoat||false,source:row.schedule_source||null,sourceScheduleId:row.source_schedule_id?Number(row.source_schedule_id):null})});setLichRanhByDate(byDate)}}catch{}
   }
   useEffect(()=>{if(maGv)fetchLichRanh(focusDate)},[maGv,focusDate])
 
@@ -788,8 +797,9 @@ export default function TabLichHoatDong({ onRefreshBadge, onOpenLeaveRequest }:P
                           <p className="text-sm font-bold text-gray-900">{slot.batDau} – {slot.ketThuc}</p>
                           {slot.coSo.length>0&&<p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1"><MapPin className="h-3 w-3" />{slot.coSo.join(', ')}</p>}
                           {slot.linhHoat&&<span className="inline-block mt-1 text-[10px] font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Linh hoạt</span>}
+                          {(slot.source==='teaching_monthly'||slot.source==='teaching_weekly')&&<span className="ml-1 inline-block mt-1 text-[10px] font-semibold text-[#a1001f] bg-red-50 px-1.5 py-0.5 rounded">Lịch Team Teaching</span>}
                         </div>
-                        {!isPast&&(
+                        {!isPast&&!slot.sourceScheduleId&&(
                           <div className="flex gap-1">
                             <button onClick={()=>{setDayDetailDate(null);openEditForm(slot)}} className="rounded-lg p-2 text-gray-500 hover:bg-[#a1001f]/10 hover:text-[#a1001f] transition-colors" title="Chỉnh sửa"><Pencil className="h-4 w-4" /></button>
                             <button onClick={()=>{handleDeleteSlot(slot.id,slot.date)}} className="rounded-lg p-2 text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors" title="Xóa"><Trash2 className="h-4 w-4" /></button>

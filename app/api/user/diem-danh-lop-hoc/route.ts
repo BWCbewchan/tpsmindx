@@ -7,8 +7,19 @@ const SESSION_COUNT = 14;
 const ITEMS_PER_PAGE = 200;
 const MAX_PAGES = 30;
 const WRITE_TIMEOUT_MS = 12_000;
+const ATTENDANCE_CLOSE_GRACE_MS = 30 * 60 * 1000;
 const LMS_API_URL = process.env.LMS_API_URL || 'https://lms-api.mindx.edu.vn/';
 const inFlightWrites = new Set<string>();
+const LEADER_ROLE_CODES = new Set(['CL', 'AL', 'RL', 'TC', 'TE']);
+
+const CLASS_ROLE_BY_ID: Record<string, { code: string; shortName: string; name: string }> = {
+  '60cb67982e223b30e9a60f45': { code: 'JUDGE', shortName: 'Judge', name: 'Judge' },
+  '5f0da6560f97e350313d70e9': { code: 'LEC', shortName: 'LEC', name: 'Lecturer' },
+  '68771dba22a1df001226f0bf': { code: 'MENTOR', shortName: 'Mentor', name: 'Mentor' },
+  '6362278adb534f76821be89e': { code: 'ST_18_PLUS', shortName: 'ST 18+', name: 'Super Teacher 18+' },
+  '661f5728c74b9b0012de6857': { code: 'SUPPLY', shortName: 'Supply', name: 'Supply teacher' },
+  '5f0feb1f4b95513f51219a9d': { code: 'TA', shortName: 'TA', name: 'Teacher Assisstant' },
+};
 
 const TEACHER_ASSIGNMENT_FIELDS = /* graphql */ `
   _id
@@ -181,6 +192,74 @@ function normalizeStatus(value: unknown): string {
   return String(value ?? '').trim().toUpperCase();
 }
 
+function normalizeLookupText(value: unknown): string {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function lookupTokensMatch(left: unknown, right: unknown): boolean {
+  const a = normalizeLookupText(left);
+  const b = normalizeLookupText(right);
+  if (!a || !b) return false;
+  if (a === b) return true;
+  return a.length >= 4 && b.length >= 4 && (a.includes(b) || b.includes(a));
+}
+
+function classMatchesCentre(cls: any, centre: { full_name?: unknown; short_code?: unknown }): boolean {
+  const classValues = [cls?.centre?.name, cls?.centre?.shortName, cls?.centre?.id];
+  const allowedValues = [centre?.full_name, centre?.short_code];
+  return classValues.some((classValue) =>
+    allowedValues.some((allowedValue) => lookupTokensMatch(classValue, allowedValue)),
+  );
+}
+
+function classMatchesCentreFilter(cls: any, centreFilter: string): boolean {
+  if (!centreFilter) return true;
+  return [cls?.centre?.name, cls?.centre?.shortName, cls?.centre?.id]
+    .some((value) => lookupTokensMatch(value, centreFilter));
+}
+
+function teacherAssignmentsForClass(cls: any): any[] {
+  const slots = Array.isArray(cls?.slots) ? cls.slots : [];
+  const classSites = Array.isArray(cls?.classSites) ? cls.classSites : [];
+
+  return [
+    ...(cls?.teachers || []),
+    ...slots.flatMap((slot: any) => slot?.teachers || []),
+    ...slots.flatMap((slot: any) => slot?.teacherAttendance || []),
+    ...classSites.flatMap((classSite: any) => classSite?.teachers || []),
+    ...classSites.flatMap((classSite: any) =>
+      (classSite?.classSiteSlots || []).flatMap((slot: any) => slot?.teachers || []),
+    ),
+  ];
+}
+
+function classMatchesTeacherFilter(cls: any, teacherFilter: string): boolean {
+  const target = normalizeLookupText(teacherFilter);
+  if (!target) return true;
+
+  return teacherAssignmentsForClass(cls).some((assignment: any) => {
+    if (assignment?.isActive === false) return false;
+    const teacher = assignment?.teacher || {};
+    const exactValues = [teacher?.id, teacher?.user, teacher?.email, teacher?.code, teacher?.username];
+    if (exactValues.some((value) => normalizeLookupText(value) === target)) return true;
+
+    const searchable = normalizeLookupText([
+      teacher?.fullName,
+      teacher?.code,
+      teacher?.username,
+      teacher?.email,
+    ].filter(Boolean).join(' '));
+    return Boolean(searchable && searchable.includes(target));
+  });
+}
+
 function normalizeRoleText(value: unknown): string {
   return String(value ?? '')
     .normalize('NFD')
@@ -197,6 +276,47 @@ function roleValues(assignment: any): string[] {
   ].map(normalizeRoleText);
 }
 
+function classRoleForAssignment(
+  assignment: any,
+): { id: string; code: string; shortName: string; name: string } {
+  const roleId = String(assignment?.role?.id || assignment?.role?._id || '').trim();
+  const knownById = CLASS_ROLE_BY_ID[roleId];
+  if (knownById) return { id: roleId, ...knownById };
+
+  const values = roleValues(assignment);
+  let known: { code: string; shortName: string; name: string } | null = null;
+
+  if (values.some((role) => role === 'JUDGE' || role === 'BGK' || role.includes('GIAM KHAO'))) {
+    known = { code: 'JUDGE', shortName: 'Judge', name: 'Judge' };
+  } else if (values.some((role) => role === 'LEC' || role.includes('LECTURER') || role.includes('GIANG VIEN'))) {
+    known = { code: 'LEC', shortName: 'LEC', name: 'Lecturer' };
+  } else if (values.some((role) => role === 'SUPPLY' || role.includes('SUPPLY TEACHER') || role.includes('DAY THAY'))) {
+    known = { code: 'SUPPLY', shortName: 'Supply', name: 'Supply teacher' };
+  } else if (values.some((role) => role === 'MENTOR' || role.includes('NGUOI HUONG DAN'))) {
+    known = { code: 'MENTOR', shortName: 'Mentor', name: 'Mentor' };
+  } else if (values.some((role) => role === 'ST 18+' || role.includes('SUPER TEACHER 18'))) {
+    known = { code: 'ST_18_PLUS', shortName: 'ST 18+', name: 'Super Teacher 18+' };
+  } else if (values.some((role) =>
+    role === 'TA' ||
+    role === 'TG' ||
+    role === 'TUTOR' ||
+    role.includes('TRO GIANG') ||
+    role.includes('TEACHING ASSISTANT') ||
+    role.includes('TEACHER ASSISSTANT') ||
+    role.includes('ASSISTANT') ||
+    role.includes('SUPPORTER')
+  )) {
+    known = { code: 'TA', shortName: 'TA', name: 'Teacher Assisstant' };
+  }
+
+  return {
+    id: roleId,
+    code: known?.code || '',
+    shortName: known?.shortName || String(assignment?.role?.shortName || '').trim(),
+    name: known?.name || String(assignment?.role?.name || '').trim(),
+  };
+}
+
 function teacherMatches(assignment: any, userEmail: string): boolean {
   if (assignment?.isActive === false) return false;
 
@@ -210,41 +330,9 @@ function hasMatchingTeacherAttendance(slot: any, userEmail: string): boolean {
   });
 }
 
-function isLecAssignment(assignment: any, userEmail: string): boolean {
-  if (!teacherMatches(assignment, userEmail)) return false;
-
-  return roleValues(assignment).some((role) =>
-    role === 'LEC' ||
-    role.includes('LECTURER') ||
-    role.includes('GIANG VIEN')
-  );
-}
-
-function isTaAssignment(assignment: any, userEmail: string): boolean {
-  if (!teacherMatches(assignment, userEmail)) return false;
-
-  return roleValues(assignment).some(
-    (role) =>
-      role === 'TA' ||
-      role === 'TG' ||
-      role === 'TUTOR' ||
-      role.includes('TRO GIANG') ||
-      role.includes('TEACHING ASSISTANT') ||
-      role.includes('ASSISTANT') ||
-      role.includes('SUPPORTER'),
-  );
-}
-
 function isJudgeAssignment(assignment: any, userEmail: string): boolean {
   if (!teacherMatches(assignment, userEmail)) return false;
-
-  return roleValues(assignment).some(
-    (role) =>
-      role === 'JUDGE' ||
-      role === 'BGK' ||
-      role.includes('BAN GIAM KHAO') ||
-      role.includes('GIAM KHAO'),
-  );
+  return classRoleForAssignment(assignment).code === 'JUDGE';
 }
 
 function sortedSlots(cls: any): any[] {
@@ -253,13 +341,12 @@ function sortedSlots(cls: any): any[] {
 
 function teacherAccountFromAssignment(assignment: any) {
   const teacher = assignment?.teacher || {};
+  const role = classRoleForAssignment(assignment);
   const fullName = String(teacher?.fullName || '').trim();
   const email = String(teacher?.email || '').trim();
   const username = String(teacher?.username || '').trim();
   const code = String(teacher?.code || '').trim();
   const id = String(teacher?.id || '').trim();
-  const roleShortName = String(assignment?.role?.shortName || '').trim();
-  const roleName = String(assignment?.role?.name || '').trim();
 
   if (!fullName && !email && !username && !code && !id) return null;
 
@@ -269,8 +356,10 @@ function teacherAccountFromAssignment(assignment: any) {
     email,
     username,
     code,
-    roleShortName,
-    roleName,
+    roleId: role.id,
+    roleCode: role.code,
+    roleShortName: role.shortName,
+    roleName: role.name,
   };
 }
 
@@ -282,6 +371,8 @@ function uniqueTeacherAccounts(assignments: any[]) {
     email: string;
     username: string;
     code: string;
+    roleId: string;
+    roleCode: string;
     roleShortName: string;
     roleName: string;
   }> = [];
@@ -309,37 +400,41 @@ function userRolesForClass(cls: any, userEmail: string): string[] {
   const roles = new Set<string>();
   const slots = sortedSlots(cls);
   const session14 = slots[SESSION_COUNT - 1];
-  const classSiteAssignments = (cls?.classSites || []).flatMap((classSite: any) => [
-    ...(classSite?.teachers || []),
-    ...(classSite?.classSiteSlots || []).flatMap((slot: any) => slot?.teachers || []),
-  ]);
+  const classSiteAssignments = (cls?.classSites || []).flatMap((classSite: any) =>
+    classSite?.teachers || [],
+  );
+  const classSiteSlotAssignments = (cls?.classSites || []).flatMap((classSite: any) =>
+    (classSite?.classSiteSlots || []).flatMap((slot: any) => slot?.teachers || []),
+  );
   const assignments = [
     ...(cls?.teachers || []),
     ...slots.flatMap((slot: any) => slot?.teachers || []),
     ...classSiteAssignments,
+    ...classSiteSlotAssignments,
   ];
-  const hasTeacherAssignment = assignments.some((teacher: any) =>
-    teacherMatches(teacher, userEmail),
-  );
+  const matchingAssignments = assignments.filter((teacher: any) => teacherMatches(teacher, userEmail));
   const hasAttendedSlot = slots.some((slot: any) => hasMatchingTeacherAttendance(slot, userEmail));
 
-  if (assignments.some((teacher: any) => isLecAssignment(teacher, userEmail))) {
-    roles.add('LEC');
-  }
+  matchingAssignments.forEach((assignment: any) => {
+    const roleCode = classRoleForAssignment(assignment).code;
+    if (roleCode) roles.add(roleCode);
+  });
 
-  if (assignments.some((teacher: any) => isTaAssignment(teacher, userEmail))) {
-    roles.add('TA');
-  }
-
-  if (assignments.some((teacher: any) => isJudgeAssignment(teacher, userEmail))) {
-    roles.add('JUDGE');
-  }
-
-  if ((session14?.teachers || []).some((teacher: any) => isJudgeAssignment(teacher, userEmail))) {
+  const session14Id = String(session14?._id || '');
+  const session14SiteAssignments = (cls?.classSites || []).flatMap((classSite: any) =>
+    (classSite?.classSiteSlots || [])
+      .filter((slot: any) => String(slot?.classSlotId || '') === session14Id)
+      .flatMap((slot: any) => slot?.teachers || []),
+  );
+  const session14Assignments = [
+    ...(session14?.teachers || []),
+    ...session14SiteAssignments,
+  ];
+  if (session14Assignments.some((teacher: any) => isJudgeAssignment(teacher, userEmail))) {
     roles.add('JUDGE_SESSION_14');
   }
 
-  if (hasTeacherAssignment && !roles.has('LEC') && !roles.has('TA') && !roles.has('JUDGE')) {
+  if (matchingAssignments.length > 0 && roles.size === 0) {
     roles.add('ASSIGNED_TEACHER');
   }
 
@@ -384,6 +479,26 @@ function compareDateLike(a: any, b: any): number {
 function slotTimestamp(slot: any): number | null {
   const time = new Date(slot?.startTime || slot?.date || 0).getTime();
   return Number.isFinite(time) && time > 0 ? time : null;
+}
+
+function slotEndTimestamp(slot: any): number | null {
+  const explicitEnd = new Date(slot?.endTime || 0).getTime();
+  if (Number.isFinite(explicitEnd) && explicitEnd > 0) return explicitEnd;
+
+  const startTime = slotTimestamp(slot);
+  if (startTime === null) return null;
+  const sessionHours = Number(slot?.sessionHour);
+  const durationHours = Number.isFinite(sessionHours) && sessionHours > 0 ? sessionHours : 2;
+  return startTime + durationHours * 60 * 60 * 1000;
+}
+
+function attendanceWindowForSlot(slot: any): { startTime: number | null; closeTime: number | null } {
+  const startTime = slotTimestamp(slot);
+  const endTime = slotEndTimestamp(slot);
+  return {
+    startTime,
+    closeTime: endTime === null ? null : endTime + ATTENDANCE_CLOSE_GRACE_MS,
+  };
 }
 
 function progressSessionForClass(cls: any, slots: any[]): { progressSession: number; progressTotal: number } {
@@ -479,7 +594,12 @@ function mapSlot(slot: any, index: number, studentsCount: number) {
   };
 }
 
-function mapClass(cls: any, userEmail: string, isSuperAdmin = false) {
+function mapClass(
+  cls: any,
+  userEmail: string,
+  isSuperAdmin = false,
+  hasScopedManagerAccess = false,
+) {
   const students = (cls?.students || [])
     .filter((row: any) => row?.activeInClass !== false)
     .map(mapStudent)
@@ -507,6 +627,12 @@ function mapClass(cls: any, userEmail: string, isSuperAdmin = false) {
   });
   const rawSlotTeacherAssignments = rawSortedSlots.flatMap((slot: any) => slot?.teachers || []);
   const rawSlotTeacherAttendance = rawSortedSlots.flatMap((slot: any) => slot?.teacherAttendance || []);
+  const allRawTeacherAssignments = [
+    ...(cls?.teachers || []),
+    ...rawSlotTeacherAssignments,
+    ...rawClassSiteTeachers,
+    ...rawClassSiteSlotTeachers,
+  ];
   const { progressSession, progressTotal } = progressSessionForClass(cls, rawSortedSlots);
   const numberOfSessions = Number(cls?.numberOfSessions || rawSortedSlots.length || SESSION_COUNT) || SESSION_COUNT;
   const slots = rawSortedSlots
@@ -525,18 +651,13 @@ function mapClass(cls: any, userEmail: string, isSuperAdmin = false) {
     ...rawSlotTeacherAttendance,
   ]);
   const allTeachers = uniqueTeacherAccounts([
-    ...(cls?.teachers || []),
-    ...rawSlotTeacherAssignments,
+    ...allRawTeacherAssignments,
     ...rawSlotTeacherAttendance,
-    ...rawClassSiteTeachers,
-    ...rawClassSiteSlotTeachers,
   ]);
 
-  const lecTeachers = (cls?.teachers || [])
+  const lecTeachers = allRawTeacherAssignments
     .filter((teacher: any) => teacher?.isActive !== false)
-    .filter((teacher: any) =>
-      roleValues(teacher).some((role) => role === 'LEC' || role.includes('LECTURER')),
-    )
+    .filter((teacher: any) => classRoleForAssignment(teacher).code === 'LEC')
     .map((teacher: any) => teacherDisplayName(teacherAccountFromAssignment(teacher) || {
       fullName: '',
       username: '',
@@ -595,7 +716,9 @@ function mapClass(cls: any, userEmail: string, isSuperAdmin = false) {
     lecTeachers: Array.from(new Set(lecTeachers)),
     accessRoles: isSuperAdmin
       ? Array.from(new Set(['MANAGER', 'SUPER_ADMIN', ...userRolesForClass(cls, userEmail)]))
-      : userRolesForClass(cls, userEmail),
+      : hasScopedManagerAccess
+        ? Array.from(new Set(['MANAGER', ...userRolesForClass(cls, userEmail)]))
+        : userRolesForClass(cls, userEmail),
     students,
     slots,
   };
@@ -884,13 +1007,23 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   const isSuperAdmin = auth.privileged || auth.resolvedAccess?.role === 'super_admin';
+  const accessRoleCodes = [
+    auth.resolvedAccess?.role,
+    ...(auth.resolvedAccess?.userRoles || []),
+  ]
+    .map((role) => String(role || '').trim().toUpperCase())
+    .filter(Boolean);
+  const isLeaderRole = accessRoleCodes.some((role) => LEADER_ROLE_CODES.has(role));
+  const hasScopedLeaderAccess = !isSuperAdmin && auth.accessibleCenters.length > 0 && (
+    isLeaderRole || auth.resolvedAccess?.role === 'manager'
+  );
   const userEmail = normalizeEmail(auth.sessionEmail);
 
   let tokenSession: LmsTokenSession | null = null;
   let firebaseToken = request.cookies.get('lms_firebase_token')?.value || '';
 
-  if (isSuperAdmin) {
-    // Tài khoản Super Admin tự động dùng tài khoản LMS fallback trong .env (LMS_FALLBACK_EMAIL, LMS_FALLBACK_PASSWORD)
+  if (isSuperAdmin || hasScopedLeaderAccess) {
+    // Quyền đọc rộng vẫn được giới hạn lại bằng phạm vi cơ sở TPS ở phía dưới.
     tokenSession = await getOrRefreshLmsToken(request);
     firebaseToken = tokenSession.token || firebaseToken;
   } else if (!firebaseToken) {
@@ -916,11 +1049,31 @@ export async function GET(request: NextRequest) {
       ? [statusParam]
       : ['RUNNING', 'FINISHED', 'PREPARING'];
     const classIdParam = request.nextUrl.searchParams.get('classId')?.trim();
+    const centreParam = request.nextUrl.searchParams.get('centre')?.trim() || '';
+    const teacherParam = request.nextUrl.searchParams.get('teacher')?.trim() || '';
     const fromParam = request.nextUrl.searchParams.get('from');
     const toParam = request.nextUrl.searchParams.get('to');
     const haveSlotFrom = dateInputToIso(fromParam, false);
     const haveSlotTo = dateInputToIso(toParam, true);
     const authHeader = `Bearer ${firebaseToken}`;
+
+    if (
+      hasScopedLeaderAccess &&
+      centreParam &&
+      !auth.accessibleCenters.some((centre) =>
+        lookupTokensMatch(centre.full_name, centreParam) ||
+        lookupTokensMatch(centre.short_code, centreParam),
+      )
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          classes: [],
+          message: 'Bạn không được phân công phụ trách cơ sở đã chọn.',
+        },
+        { status: 403 },
+      );
+    }
 
     const firstResult = await callAttendanceRead<any>(
       {
@@ -972,7 +1125,13 @@ export async function GET(request: NextRequest) {
       new Map(
         allClasses
           .filter((cls: any) => ALLOWED_STATUSES.has(normalizeStatus(cls?.status)))
-          .filter((cls: any) => isSuperAdmin || hasTeacherAccessToClass(cls, userEmail))
+          .filter((cls: any) =>
+            isSuperAdmin ||
+            (hasScopedLeaderAccess && auth.accessibleCenters.some((centre) => classMatchesCentre(cls, centre))) ||
+            hasTeacherAccessToClass(cls, userEmail),
+          )
+          .filter((cls: any) => classMatchesCentreFilter(cls, centreParam))
+          .filter((cls: any) => classMatchesTeacherFilter(cls, teacherParam))
           .filter((cls: any) => !classIdParam || String(cls?.id || '') === classIdParam)
           .map((cls: any) => [String(cls.id), cls]),
       ).values(),
@@ -982,7 +1141,7 @@ export async function GET(request: NextRequest) {
     const todayMs = new Date(nowVn.getFullYear(), nowVn.getMonth(), nowVn.getDate()).getTime();
 
     const classes = uniqueClasses
-      .map((cls) => mapClass(cls, userEmail, isSuperAdmin))
+      .map((cls) => mapClass(cls, userEmail, isSuperAdmin, hasScopedLeaderAccess))
       .filter((cls) => cls.id)
       .sort((a, b) => compareClassesByRecency(a, b, todayMs));
 
@@ -998,7 +1157,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    if (tokenSession) {
+    if (tokenSession && (!tokenSession.isFallback || isSuperAdmin)) {
       applyRefreshedCookies(response, tokenSession);
     }
 
@@ -1101,10 +1260,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const startTime = new Date(slot.startTime || slot.date || '').getTime();
-    if (!Number.isFinite(startTime) || Date.now() < startTime) {
+    const attendanceWindow = attendanceWindowForSlot(slot);
+    if (attendanceWindow.startTime === null || Date.now() < attendanceWindow.startTime) {
       return NextResponse.json(
         { success: false, message: 'Buổi học chưa bắt đầu nên chưa thể mở điểm danh.' },
+        { status: 409 },
+      );
+    }
+    if (attendanceWindow.closeTime === null || Date.now() > attendanceWindow.closeTime) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Đã hết thời gian điểm danh. TPS chỉ cho phép cập nhật đến 30 phút sau giờ kết thúc buổi học.',
+        },
         { status: 409 },
       );
     }

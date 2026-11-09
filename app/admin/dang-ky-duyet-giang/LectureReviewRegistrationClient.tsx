@@ -25,7 +25,14 @@ import {
   X,
 } from 'lucide-react'
 import Link from 'next/link'
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 
 type Leader = {
   code: string
@@ -46,6 +53,7 @@ type Candidate = {
   code: string
   full_name: string
   center_name: string | null
+  manager_name: string | null
 }
 
 const REVIEWERS = [
@@ -64,6 +72,17 @@ const TEACHING_BLOCKS = [
 
 const MAX_FILE_SIZE = 100 * 1024 * 1024
 const ACCEPTED_EXTENSIONS = /\.(pdf|ppt|pptx|odp)$/i
+
+function normalizeLookup(value: string | null | undefined): string {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
@@ -138,7 +157,7 @@ export function LectureReviewRegistrationClient() {
   const [material, setMaterial] = useState<File | null>(null)
   const [candidateResults, setCandidateResults] = useState<Candidate[]>([])
   const [candidateSearch, setCandidateSearch] = useState<{
-    field: 'name' | 'lms'
+    field: 'lms'
     query: string
   } | null>(null)
   const [searchingCandidates, setSearchingCandidates] = useState(false)
@@ -175,6 +194,39 @@ export function LectureReviewRegistrationClient() {
     return () => controller.abort()
   }, [authLoading, token])
 
+  const applyCandidate = useCallback(
+    (candidate: Candidate) => {
+      setCandidateName(candidate.full_name)
+      setLmsCode(candidate.code)
+
+      const managerKey = normalizeLookup(candidate.manager_name)
+      const matchingLeader = managerKey
+        ? leaders.find(
+            (leader) => normalizeLookup(leader.full_name) === managerKey,
+          )
+        : undefined
+      setLeaderCode(matchingLeader?.code || '')
+
+      const centerTokens = String(candidate.center_name || '')
+        .split(/[,;|]+/)
+        .map(normalizeLookup)
+        .filter(Boolean)
+      const matchingCenter = centers.find((center) => {
+        const aliases = [center.full_name, center.display_name]
+          .map(normalizeLookup)
+          .filter((alias) => alias.length >= 4)
+        return centerTokens.some((token) =>
+          aliases.some(
+            (alias) =>
+              token === alias || token.includes(alias) || alias.includes(token),
+          ),
+        )
+      })
+      setCenterId(matchingCenter ? String(matchingCenter.id) : '')
+    },
+    [centers, leaders],
+  )
+
   useEffect(() => {
     const query = candidateSearch?.query.trim() || ''
     if (!query) {
@@ -199,14 +251,12 @@ export function LectureReviewRegistrationClient() {
         })
         .then((candidates) => {
           setCandidateResults(candidates)
-          const exact = candidates.find((candidate) =>
-            candidateSearch?.field === 'lms'
-              ? candidate.code.toLowerCase() === query.toLowerCase()
-              : candidate.full_name.toLowerCase() === query.toLowerCase(),
+          const exact = candidates.find(
+            (candidate) =>
+              candidate.code.toLowerCase() === query.toLowerCase(),
           )
           if (exact) {
-            if (candidateSearch?.field === 'lms') setCandidateName(exact.full_name)
-            else setLmsCode(exact.code)
+            applyCandidate(exact)
           }
         })
         .catch(() => {
@@ -221,7 +271,7 @@ export function LectureReviewRegistrationClient() {
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [candidateSearch, token])
+  }, [applyCandidate, candidateSearch, token])
 
   const leaderOptions = useMemo<SearchableSelectOption[]>(
     () =>
@@ -241,8 +291,7 @@ export function LectureReviewRegistrationClient() {
   )
 
   function selectCandidate(candidate: Candidate) {
-    setCandidateName(candidate.full_name)
-    setLmsCode(candidate.code)
+    applyCandidate(candidate)
     setCandidateResults([])
     setCandidateSearch(null)
   }
@@ -404,59 +453,11 @@ export function LectureReviewRegistrationClient() {
                   </div>
                   <div>
                     <h2 className="font-bold text-slate-900">Thông tin quản lý & ứng viên</h2>
-                    <p className="mt-0.5 text-sm text-slate-500">Chọn dữ liệu từ hệ thống TPS/LMS.</p>
+                    <p className="mt-0.5 text-sm text-slate-500">Nhập mã LMS để tự động điền tên ứng viên, Leader/TE và cơ sở.</p>
                   </div>
                 </div>
               </div>
               <div className="grid gap-5 p-5 sm:grid-cols-2 sm:p-7">
-                <div>
-                  <FieldLabel>Leader/TE quản lý</FieldLabel>
-                  <SearchableSelect
-                    value={leaderCode}
-                    onChange={setLeaderCode}
-                    options={leaderOptions}
-                    placeholder={loadingOptions ? 'Đang tải...' : 'Chọn Leader/TE'}
-                    searchPlaceholder="Tìm theo tên..."
-                    disabled={loadingOptions}
-                  />
-                </div>
-                <div>
-                  <FieldLabel>Cơ sở</FieldLabel>
-                  <SearchableSelect
-                    value={centerId}
-                    onChange={setCenterId}
-                    options={centerOptions}
-                    placeholder={loadingOptions ? 'Đang tải...' : 'Chọn cơ sở'}
-                    searchPlaceholder="Tìm kiếm cơ sở..."
-                    disabled={loadingOptions}
-                  />
-                </div>
-
-                <div className="relative">
-                  <FieldLabel>Họ và tên ứng viên</FieldLabel>
-                  <div className="relative">
-                    <UserRound className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <input
-                      value={candidateName}
-                      onFocus={() => {
-                        if (candidateName) setCandidateSearch({ field: 'name', query: candidateName })
-                      }}
-                      onChange={(event) => {
-                        setCandidateName(event.target.value)
-                        setCandidateSearch({ field: 'name', query: event.target.value })
-                      }}
-                      placeholder="Nhập tên để tìm trên LMS"
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-10 text-sm font-semibold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-[#b00020] focus:ring-4 focus:ring-[#b00020]/10"
-                    />
-                    {searchingCandidates && candidateSearch?.field === 'name' ? (
-                      <Loader2 className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-[#b00020]" />
-                    ) : null}
-                  </div>
-                  {candidateDropdown && candidateSearch.field === 'name' ? (
-                    <CandidateDropdown candidates={candidateResults} onSelect={selectCandidate} />
-                  ) : null}
-                </div>
-
                 <div className="relative">
                   <FieldLabel>Mã LMS</FieldLabel>
                   <div className="relative">
@@ -467,8 +468,12 @@ export function LectureReviewRegistrationClient() {
                         if (lmsCode) setCandidateSearch({ field: 'lms', query: lmsCode })
                       }}
                       onChange={(event) => {
-                        setLmsCode(event.target.value)
-                        setCandidateSearch({ field: 'lms', query: event.target.value })
+                        const value = event.target.value
+                        setLmsCode(value)
+                        setCandidateName('')
+                        setLeaderCode('')
+                        setCenterId('')
+                        setCandidateSearch({ field: 'lms', query: value })
                       }}
                       placeholder="VD: daitk"
                       className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-10 text-sm font-semibold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-[#b00020] focus:ring-4 focus:ring-[#b00020]/10"
@@ -480,6 +485,46 @@ export function LectureReviewRegistrationClient() {
                   {candidateDropdown && candidateSearch.field === 'lms' ? (
                     <CandidateDropdown candidates={candidateResults} onSelect={selectCandidate} />
                   ) : null}
+                </div>
+
+                <div className="relative">
+                  <FieldLabel>Họ và tên ứng viên</FieldLabel>
+                  <div className="relative">
+                    <UserRound className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={candidateName}
+                      onFocus={() => {
+                        setCandidateSearch(null)
+                        setCandidateResults([])
+                      }}
+                      onChange={(event) => setCandidateName(event.target.value)}
+                      placeholder="Tên sẽ tự điền theo mã LMS"
+                      className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-[#b00020] focus:ring-4 focus:ring-[#b00020]/10"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <FieldLabel>Leader/TE quản lý</FieldLabel>
+                  <SearchableSelect
+                    value={leaderCode}
+                    onChange={setLeaderCode}
+                    options={leaderOptions}
+                    placeholder={loadingOptions ? 'Đang tải...' : 'Tự điền theo mã LMS'}
+                    searchPlaceholder="Tìm theo tên..."
+                    disabled={loadingOptions}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Cơ sở</FieldLabel>
+                  <SearchableSelect
+                    value={centerId}
+                    onChange={setCenterId}
+                    options={centerOptions}
+                    placeholder={loadingOptions ? 'Đang tải...' : 'Tự điền theo mã LMS'}
+                    searchPlaceholder="Tìm kiếm cơ sở..."
+                    disabled={loadingOptions}
+                  />
                 </div>
               </div>
             </section>

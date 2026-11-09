@@ -1,4 +1,6 @@
+import { requireBearerSession } from '@/lib/datasource-api-auth'
 import pool from '@/lib/db'
+import { canAccessLectureReviewCalendar } from '@/lib/lecture-review-calendar-access'
 import { clientIpFromRequest, rateLimitOr429Async } from '@/lib/rate-limit-memory'
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -23,8 +25,17 @@ function parseMonth(value: string | null): { month: string; nextMonth: string } 
 }
 
 export async function GET(request: NextRequest) {
+  const auth = await requireBearerSession(request)
+  if (!auth.ok) return auth.response
+  if (!canAccessLectureReviewCalendar(auth.sessionEmail)) {
+    return NextResponse.json(
+      { success: false, error: 'Tài khoản không có quyền xem lịch duyệt giảng' },
+      { status: 403 },
+    )
+  }
+
   const limited = await rateLimitOr429Async(
-    `public-lecture-review-calendar:${clientIpFromRequest(request)}`,
+    `lecture-review-calendar:${auth.sessionEmail}:${clientIpFromRequest(request)}`,
     120,
     60_000,
   )
@@ -64,7 +75,7 @@ export async function GET(request: NextRequest) {
       },
       {
         headers: {
-          'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+          'Cache-Control': 'private, no-store',
         },
       },
     )

@@ -14,6 +14,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { toast } from '@/lib/app-toast'
 import { useAuth } from '@/lib/auth-context'
+import { getStaticCommunication } from '@/lib/static-communications'
+import { StaticCommunicationDetail } from '@/components/StaticCommunicationDetail'
 
 const Comments = dynamic(() => import('@/components/Comments'), {
     ssr: false,
@@ -61,6 +63,13 @@ const MAX_TOOLTIP_REACTION_USERS = 5
 const VALID_REACTION_TYPES = new Set(['like', 'love', 'haha', 'sad', 'angry'])
 
 export function TruyenThongPostDetailView({ mode }: TruyenThongPostDetailViewProps) {
+    const params = useParams()
+    const slug = typeof params?.slug === 'string' ? params.slug : ''
+    if (getStaticCommunication(slug)) return <StaticCommunicationDetail mode={mode} />
+    return <DatabasePostDetailView mode={mode} />
+}
+
+function DatabasePostDetailView({ mode }: TruyenThongPostDetailViewProps) {
     const params = useParams()
     const pathname = usePathname()
     const { user } = useAuth()

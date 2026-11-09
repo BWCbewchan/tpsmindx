@@ -10,6 +10,10 @@ import { PageLayout, PageLayoutContent } from '@/components/ui/page-layout'
 import { toast } from '@/lib/app-toast'
 import { authHeaders } from '@/lib/auth-headers'
 import { useAuth } from '@/lib/auth-context'
+import {
+  canAccessLectureReviewCalendar,
+  LECTURE_REVIEW_CALENDAR_PATH,
+} from '@/lib/lecture-review-calendar-access'
 import { cn } from '@/lib/utils'
 import {
   ArrowUpDown,
@@ -138,7 +142,8 @@ function FilterField({
 }
 
 export function LectureReviewManagementClient() {
-  const { token, isLoading: authLoading } = useAuth()
+  const { user, token, isLoading: authLoading } = useAuth()
+  const canViewLectureReviewCalendar = canAccessLectureReviewCalendar(user?.email)
   const [leaders, setLeaders] = useState<Leader[]>([])
   const [centers, setCenters] = useState<Center[]>([])
   const [rows, setRows] = useState<RegistrationRow[]>([])
@@ -280,15 +285,17 @@ export function LectureReviewManagementClient() {
           description="Theo dõi phiếu đã đăng ký, mở tài liệu slide và lọc theo Leader, cơ sở hoặc ngày duyệt giảng."
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href="/public/lich-duyet-giang"
-                target="_blank"
-                className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
-              >
-                <CalendarDays className="h-4 w-4 text-[#b00020]" />
-                Lịch public
-                <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
-              </Link>
+              {canViewLectureReviewCalendar ? (
+                <Link
+                  href={LECTURE_REVIEW_CALENDAR_PATH}
+                  target="_blank"
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-50"
+                >
+                  <CalendarDays className="h-4 w-4 text-[#b00020]" />
+                  Lịch duyệt giảng
+                  <ExternalLink className="h-3.5 w-3.5 text-slate-400" />
+                </Link>
+              ) : null}
               <Link
                 href="/admin/dang-ky-duyet-giang"
                 className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#b00020] px-4 text-sm font-bold text-white shadow-lg shadow-[#b00020]/15 transition hover:bg-[#92001a]"

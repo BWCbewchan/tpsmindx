@@ -38,7 +38,6 @@ function Layout({ children }: { children: React.ReactNode }) {
     pathname.startsWith('/public/teacher-portfolio') ||
     pathname.startsWith('/public/checkout') ||
     pathname.startsWith('/public/quan-ly-qc') ||
-    isPublicLectureReviewCalendar ||
     isPublicTeachingSchedule ||
     pathname.startsWith('/bao-tri') ||
     pathname.startsWith('/hr-candidate-application') ||

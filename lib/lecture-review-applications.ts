@@ -46,6 +46,18 @@ export const LECTURE_REVIEW_LEGACY_LEADERS = [
     role_code: 'LEGACY',
     email: null,
   },
+  {
+    code: 'legacy-nguyen-vu-ngoc-phuong',
+    full_name: 'Nguyễn Vũ Ngọc Phương',
+    role_code: 'LEGACY',
+    email: null,
+  },
+  {
+    code: 'legacy-vu-nam-dan',
+    full_name: 'Vũ Nam Đàn',
+    role_code: 'LEGACY',
+    email: null,
+  },
 ] as const
 
 export const LECTURE_REVIEW_ROUTES = [

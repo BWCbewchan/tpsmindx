@@ -5,6 +5,10 @@ import { canSwitchInterface } from '@/lib/teacher-session-routing'
 import { useAuth } from '@/lib/auth-context'
 import { useSidebar } from '@/lib/sidebar-context'
 import { isTempHiddenUserRoute } from '@/lib/temp-hidden-user-routes'
+import {
+  canAccessLectureReviewCalendar,
+  LECTURE_REVIEW_CALENDAR_PATH,
+} from '@/lib/lecture-review-calendar-access'
 import { getFilteredAdminMenuItems, checkHrefPermission } from '@/lib/menu-permissions'
 import { cn } from '@/lib/utils'
 import {
@@ -514,6 +518,7 @@ export function DockNav() {
       ),
     [user?.role, roleCodes],
   )
+  const canViewLectureReviewCalendar = canAccessLectureReviewCalendar(user?.email)
 
   // ── User area ── 8 desktop items  /  5 mobile items
   const userDesktopItems: NavDockItem[] = useMemo(() => [
@@ -540,6 +545,9 @@ export function DockNav() {
       submenu: ([
         { href: '/user/hoat-dong-hang-thang', label: 'Hoạt động hàng tháng' },
         { href: '/user/lich-cua-toi', label: 'Lịch cá nhân' },
+        ...(canViewLectureReviewCalendar
+          ? [{ href: LECTURE_REVIEW_CALENDAR_PATH, label: 'Lịch Duyệt Giảng' }]
+          : []),
       ] as SubItem[]).filter(i => !isTempHiddenUserRoute(i.href)),
     },
     {
@@ -562,7 +570,7 @@ export function DockNav() {
       ] as SubItem[],
     },
     { id: 'phanhoi', label: 'Phản hồi', icon: FileText, href: '/user/quan-ly-phan-hoi' },
-  ], [unreadCount, hasManagementRole])
+  ], [unreadCount, hasManagementRole, canViewLectureReviewCalendar])
 
   // Mobile: 5 core items (drop Lịch and Phản hồi — go in settings)
   const userMobileItems: NavDockItem[] = useMemo(() => [
@@ -603,6 +611,7 @@ export function DockNav() {
         { href: '/admin/phieu-danh-gia-giao-vien', label: 'Phiếu đánh giá giáo viên' },
         { href: '/admin/dang-ky-duyet-giang', label: 'Đăng Ký Duyệt Giảng' },
         { href: '/admin/quan-ly-dang-ky-duyet-giang', label: 'Quản Lý Đăng Ký Duyệt Giảng' },
+        { href: LECTURE_REVIEW_CALENDAR_PATH, label: 'Lịch Duyệt Giảng' },
         { href: '/admin/schedule', label: 'Đăng ký lịch làm việc' },
         { href: '/admin/page4/quan-ly-lich-lam-viec', label: 'Quản lý lịch làm việc' },
         { href: '/admin/page4/lich-danh-gia', label: 'Lịch sự kiện' },
@@ -681,6 +690,7 @@ export function DockNav() {
         { href: '/admin/phieu-danh-gia-giao-vien', label: 'Phiếu đánh giá GV' },
         { href: '/admin/dang-ky-duyet-giang', label: 'Đăng ký duyệt giảng' },
         { href: '/admin/quan-ly-dang-ky-duyet-giang', label: 'QL đăng ký duyệt giảng' },
+        { href: LECTURE_REVIEW_CALENDAR_PATH, label: 'Lịch Duyệt Giảng' },
         { href: '/admin/schedule', label: 'Đăng ký lịch tháng' },
         { href: '/admin/page4/quan-ly-lich-lam-viec', label: 'Lịch làm việc' },
         { href: '/admin/xin-nghi-mot-buoi', label: 'Tiếp nhận xin nghỉ' },
@@ -724,6 +734,9 @@ export function DockNav() {
     { href: '/user/checkout/manage', label: 'Phiếu kết quả trải nghiệm - Quản lý phiếu' },
     { href: '/user/hoat-dong-hang-thang', label: 'Hoạt động hàng tháng' },
     { href: '/user/lich-cua-toi', label: 'Lịch cá nhân' },
+    ...(canViewLectureReviewCalendar
+      ? [{ href: LECTURE_REVIEW_CALENDAR_PATH, label: 'Lịch Duyệt Giảng' }]
+      : []),
     { href: '/user/quan-ly-phan-hoi', label: 'Trung tâm phản hồi' },
     ...(hasManagementRole
       ? [{ href: '/user/quy-trinh-quy-dinh-leader', label: 'Quy Trình, Quy Định - Leader/TE/TC' }]
@@ -737,6 +750,7 @@ export function DockNav() {
     { href: '/admin/phieu-danh-gia-giao-vien', label: 'Phiếu đánh giá giáo viên' },
     { href: '/admin/dang-ky-duyet-giang', label: 'Đăng Ký Duyệt Giảng' },
     { href: '/admin/quan-ly-dang-ky-duyet-giang', label: 'Quản Lý Đăng Ký Duyệt Giảng' },
+    { href: LECTURE_REVIEW_CALENDAR_PATH, label: 'Lịch Duyệt Giảng' },
     { href: '/admin/page4/lich-danh-gia', label: 'Lịch sự kiện' },
     { href: '/admin/deal-luong?type=salary_reduction', label: 'Hạ lương' },
     { href: '/admin/deal-luong?type=bonus', label: 'Nâng lương' },

@@ -66,7 +66,11 @@ export async function GET(request: NextRequest) {
                  NULLIF(TRIM(main_centre), ''),
                  NULLIF(TRIM("Main centre"), ''),
                  NULLIF(TRIM(centers), '')
-               ) AS center_name
+               ) AS center_name,
+               COALESCE(
+                 NULLIF(TRIM(te_quan_ly), ''),
+                 NULLIF(TRIM(leader_quan_ly), '')
+               ) AS manager_name
              FROM teachers
              WHERE NULLIF(TRIM(COALESCE(code, '')), '') IS NOT NULL
                AND (

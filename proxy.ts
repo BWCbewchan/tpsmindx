@@ -7,15 +7,21 @@ import {
   verifySessionCookieValue,
 } from '@/lib/session-cookie';
 import { buildLoginRedirectPath } from '@/lib/auth-redirect';
+import {
+  canAccessLectureReviewCalendar,
+  isLectureReviewCalendarPath,
+} from '@/lib/lecture-review-calendar-access';
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const isLectureReviewCalendar = isLectureReviewCalendarPath(pathname);
 
   if (isTempHiddenUserRoute(pathname)) {
     return NextResponse.rewrite(new URL('/temp-hidden-404', request.url));
   }
 
   const needsSessionCookie =
+    isLectureReviewCalendar ||
     pathname.startsWith('/admin') ||
     pathname.startsWith('/api/admin') ||
     pathname.startsWith('/api/database') ||
@@ -55,6 +61,18 @@ export async function proxy(request: NextRequest) {
           request.url,
         ),
       );
+    }
+
+    if (
+      isLectureReviewCalendar &&
+      !canAccessLectureReviewCalendar(session.email)
+    ) {
+      const url = request.nextUrl.clone();
+      url.pathname = session.canAdminPortal
+        ? '/admin/dashboard'
+        : '/user/thong-tin-giao-vien';
+      url.search = '';
+      return NextResponse.redirect(url);
     }
 
     const needsAdminPortal =

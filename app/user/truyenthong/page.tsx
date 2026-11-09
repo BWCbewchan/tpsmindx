@@ -1,5 +1,7 @@
 'use client'
 import { useQueryState } from '@/lib/use-query-state'
+import { mergeStaticCommunications } from '@/lib/static-communications'
+import { TeacherEventRegistrationModal } from '@/components/TeacherEventRegistrationModal'
 
 
 import { Filter, Search } from 'lucide-react'
@@ -71,13 +73,15 @@ export default function CommunicationsPage() {
         dedupingInterval: 300_000,
       },
     )
-    const posts = Array.isArray(rawPosts) ? rawPosts : []
+    const posts = mergeStaticCommunications(Array.isArray(rawPosts) ? rawPosts : [])
     const [selectedFilter, setSelectedFilter] = useQueryState<string>('filter', 'all')
     const [searchQuery, setSearchQuery] = useQueryState<string>('search', '')
     const [isPopupOpen, setIsPopupOpen] = useState(false)
 
   // Auto-open popup on first visit, re-open every week
   useEffect(() => {
+    // Let teachers scan the event banner without an automatic popup covering it.
+    if (Date.now() < Date.parse('2026-11-13T00:00:00+07:00')) return
     const KEY = 'tms_honors_popup_seen_at'
     try {
       const seenAt = localStorage.getItem(KEY)
@@ -145,13 +149,14 @@ export default function CommunicationsPage() {
   ]
 
   // Show full page skeleton while loading
-  if (isLoading) {
+  if (isLoading && posts.length === 0) {
     return <PageSkeleton variant="grid" itemCount={6} showHeader={true} />
   }
 
   return (
     <PageContainer>
       <div className="bg-white pb-20">
+        <TeacherEventRegistrationModal />
         {/* Hero Section - Slider + Sidebar */}
         {posts.length > 0 && (
           <HeroSection 

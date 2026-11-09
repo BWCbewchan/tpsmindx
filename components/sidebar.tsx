@@ -7,6 +7,10 @@ import { filterManagementPermissions } from '@/lib/admin-permission-routes'
 import { useSidebar } from '@/lib/sidebar-context'
 import { getFilteredAdminMenuItems as getFilteredAdminMenuItemsUtil } from '@/lib/menu-permissions'
 import { isTempHiddenUserRoute } from '@/lib/temp-hidden-user-routes'
+import {
+  canAccessLectureReviewCalendar,
+  LECTURE_REVIEW_CALENDAR_PATH,
+} from '@/lib/lecture-review-calendar-access'
 import { cn } from '@/lib/utils'
 import {
   BarChart3,
@@ -208,6 +212,7 @@ export function Sidebar() {
   // Determine menu items based on current path (admin or user)
   const isCandidatePortalArea = pathname.startsWith('/candidate-portal')
   const isUserArea = pathname.startsWith('/user') || isCandidatePortalArea
+  const canViewLectureReviewCalendar = canAccessLectureReviewCalendar(user?.email)
   const trainingDocsBasePath = isCandidatePortalArea
     ? '/candidate-portal'
     : '/user'
@@ -288,6 +293,11 @@ export function Sidebar() {
           href: '/admin/quan-ly-dang-ky-duyet-giang',
           label: 'Quản Lý Đăng Ký Duyệt Giảng',
           icon: ClipboardCheck,
+        },
+        {
+          href: LECTURE_REVIEW_CALENDAR_PATH,
+          label: 'Lịch Duyệt Giảng',
+          icon: CalendarDays,
         },
         { href: '/admin/check-cong', label: 'Kiểm tra công' },
         {
@@ -481,6 +491,14 @@ export function Sidebar() {
       submenu: [
         { href: '/user/hoat-dong-hang-thang', label: 'Hoạt động hàng tháng' },
         { href: '/user/lich-cua-toi', label: 'Lịch cá nhân' },
+        ...(canViewLectureReviewCalendar
+          ? [
+              {
+                href: LECTURE_REVIEW_CALENDAR_PATH,
+                label: 'Lịch Duyệt Giảng',
+              },
+            ]
+          : []),
       ].filter((item) => !isTempHiddenUserRoute(item.href)),
     },
     {

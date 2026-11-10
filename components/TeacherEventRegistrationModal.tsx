@@ -44,7 +44,7 @@ export function TeacherEventRegistrationModal({ mode = 'user' }: { mode?: 'user'
   return (
     <dialog ref={dialogRef} aria-labelledby="teacher-event-title" aria-describedby="teacher-event-deadline" onClick={event => { if (event.target === event.currentTarget) dialogRef.current?.close() }} className="fixed inset-0 m-auto max-h-[94dvh] w-[calc(100%_-_1.5rem)] max-w-xl overflow-y-auto rounded-2xl border-0 bg-white p-0 shadow-2xl backdrop:bg-black/65 backdrop:backdrop-blur-sm">
       <div className="relative">
-        <header className="space-y-3 border-b border-red-100 bg-red-50 p-4 pr-14 text-center">
+        <header className="space-y-3 border-b border-red-100 bg-red-50 px-4 pb-4 pt-14 text-center sm:px-14 sm:pt-4">
           <h2 id="teacher-event-title" className="text-lg font-bold text-[#a1001f]">Đăng ký TEACHER BEHIND TEACHER</h2>
           <p id="teacher-event-deadline" className="text-sm text-gray-700">Đóng form lúc 23:59 ngày 12/11/2026 (giờ Việt Nam)</p>
           {remaining === null ? <p className="text-sm text-gray-600">Đang tải thời gian còn lại…</p> : remaining === 0 ? (
@@ -61,8 +61,8 @@ export function TeacherEventRegistrationModal({ mode = 'user' }: { mode?: 'user'
         <button type="button" onClick={() => dialogRef.current?.close()} aria-label="Đóng thông báo đăng ký sự kiện" className="absolute right-3 top-3 rounded-full border border-gray-200 bg-white p-2 text-gray-600 shadow-sm hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700">
           <X className="h-5 w-5" />
         </button>
-        <a href="/communications/teacher-behind-teacher-2026-registration-extension.png" target="_blank" rel="noopener noreferrer" aria-label="Phóng to ảnh và mã QR đăng ký miền Bắc, miền Nam" className="block">
-          <img src="/communications/teacher-behind-teacher-2026-registration-extension.png" alt="Quét mã QR miền Bắc bên trái hoặc miền Nam bên phải để đăng ký tham dự sự kiện 20/11" width={1080} height={1080} className="mx-auto max-h-[calc(94dvh_-_240px)] min-h-56 w-full object-contain" />
+        <a href="/communications/teacher-behind-teacher-2026-registration-extension-v2.png" target="_blank" rel="noopener noreferrer" aria-label="Phóng to ảnh và mã QR đăng ký miền Bắc, miền Nam" className="block">
+          <img src="/communications/teacher-behind-teacher-2026-registration-extension-v2.png" alt="Quét mã QR miền Bắc bên trái hoặc miền Nam bên phải để đăng ký tham dự sự kiện 20/11" width={1080} height={1080} className="mx-auto max-h-[calc(94dvh_-_240px)] min-h-56 w-full object-contain" />
         </a>
         <footer className="flex flex-wrap items-center justify-center gap-3 border-t border-gray-100 p-3">
           <span className="text-xs text-gray-600">Bấm ảnh để phóng to mã QR</span>

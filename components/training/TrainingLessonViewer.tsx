@@ -1446,7 +1446,7 @@ function LessonContent() {
       console.error('[Lesson] Video error:', video.error, errorEvent)
       if (video.error && video.error.code === 4) {
         toastRef.current?.error(
-          'Không thể ghép nối video trên bộ nhớ Cloudinary (Vượt size 100MB!).',
+          'Không tải được video: file không tồn tại, hết hạn link hoặc định dạng không hỗ trợ.',
         )
       } else {
         toastRef.current?.error(
@@ -1805,7 +1805,7 @@ function LessonContent() {
                 id={`video-part-${idx}`}
                 ref={isActive ? videoRef : null}
                 src={segment.url}
-                preload={isActive || isNext ? 'auto' : 'none'}
+                preload={isActive ? 'auto' : isNext ? 'metadata' : 'none'}
                 className={`w-full h-full object-contain ${isActive ? 'block' : 'hidden'}`}
                 style={{ maxHeight: '100%' }}
                 onClick={isActive ? togglePlayPause : undefined}

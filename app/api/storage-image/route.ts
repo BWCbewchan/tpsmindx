@@ -231,12 +231,17 @@ export async function GET(request: NextRequest) {
     // Keep legacy proxy=1 URLs working, but stream public images by default.
     // This avoids browsers caching old signed redirects while still keeping a
     // redirect escape hatch via redirect=1 for diagnostics.
-    // Force proxy streaming for videos to avoid Range request/seeking issues over 307 redirects.
+    // Videos are NOT streamed through this function: proxying `Range: bytes=X-`
+    // makes Supabase ship the whole remainder of the file to the server on every
+    // seek/reconnect, which exhausted the Storage egress quota. The browser
+    // follows the 307 to the signed URL and does Range requests directly.
+    // `stream=1` remains as an escape hatch.
     const forceStream =
       searchParams.get('stream') === '1' ||
       bucket === TEACHER_CERTIFICATES_BUCKET ||
-      isVideo ||
-      (searchParams.get('redirect') !== '1' && shouldStreamObjectByDefault(bucket, key));
+      (!isVideo &&
+        searchParams.get('redirect') !== '1' &&
+        shouldStreamObjectByDefault(bucket, key));
     if (!forceStream) {
       const signedRedirectTtl =
         SIGNED_REDIRECT_BUCKET_TTLS.get(bucket) ?? DEFAULT_SIGNED_REDIRECT_TTL;

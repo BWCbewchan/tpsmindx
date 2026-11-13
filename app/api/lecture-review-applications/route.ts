@@ -9,6 +9,7 @@ import {
   LECTURE_REVIEW_REVIEWER_BY_EMAIL,
   resolveLectureReviewAccess,
 } from '@/lib/lecture-review-applications'
+import { sendLectureReviewHcInvitation } from '@/lib/lecture-review-hc-emails'
 import {
   LECTURE_REVIEW_BUCKET,
   LECTURE_REVIEW_MAX_FILE_BYTES,
@@ -38,6 +39,10 @@ function isIsoDate(value: string): boolean {
     parsed.getUTCMonth() === month - 1 &&
     parsed.getUTCDate() === day
   )
+}
+
+function isHourMinute(value: string): boolean {
+  return /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value)
 }
 
 function missingTable(error: unknown): boolean {
@@ -133,9 +138,11 @@ export async function GET(request: NextRequest) {
          manager_role_code,
          center_id,
          center_name,
+         room_name,
          candidate_name,
          lms_code,
          review_date::text AS review_date,
+         TO_CHAR(review_time, 'HH24:MI') AS review_time,
          reviewer_name,
          teaching_block,
          material_file_name,
@@ -223,9 +230,11 @@ export async function POST(request: NextRequest) {
 
     const leaderCode = text(body.leaderCode, 80)
     const centerId = Number.parseInt(text(body.centerId, 20), 10)
+    const roomName = text(body.roomName, 120)
     const candidateName = text(body.candidateName, 255)
     const lmsCode = text(body.lmsCode, 80)
     const reviewDate = text(body.reviewDate, 10)
+    const reviewTime = text(body.reviewTime, 5)
     const reviewerName = text(body.reviewerName, 255)
     const teachingBlock = text(body.teachingBlock, 30)
     const material = (body.material || {}) as Record<string, unknown>
@@ -247,9 +256,21 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       )
     }
+    if (!roomName) {
+      return NextResponse.json(
+        { success: false, error: 'Vui lòng nhập phòng duyệt giảng' },
+        { status: 400 },
+      )
+    }
     if (!isIsoDate(reviewDate)) {
       return NextResponse.json(
         { success: false, error: 'Ngày đăng ký duyệt giảng không hợp lệ' },
+        { status: 400 },
+      )
+    }
+    if (!isHourMinute(reviewTime)) {
+      return NextResponse.json(
+        { success: false, error: 'Giờ duyệt giảng không hợp lệ' },
         { status: 400 },
       )
     }
@@ -297,7 +318,7 @@ export async function POST(request: NextRequest) {
         [leaderCode, LECTURE_REVIEW_MANAGER_ROLE_CODES],
       ),
       pool.query(
-        `SELECT id, full_name
+        `SELECT id, full_name, region
          FROM centers
          WHERE id = $1
            AND REGEXP_REPLACE(
@@ -351,9 +372,11 @@ export async function POST(request: NextRequest) {
          manager_role_code,
          center_id,
          center_name,
+         room_name,
          candidate_name,
          lms_code,
          review_date,
+         review_time,
          reviewer_name,
          teaching_block,
          material_bucket,
@@ -365,8 +388,8 @@ export async function POST(request: NextRequest) {
          registered_by_email
        )
        VALUES (
-         $1, $2, $3, $4, $5, $6, $7, $8::date, $9, $10,
-         $11, $12, $13, $14, $15, $16, $17
+         $1, $2, $3, $4, $5, $6, $7, $8, $9::date, $10::time, $11, $12,
+         $13, $14, $15, $16, $17, $18, $19
        )
        RETURNING id, created_at`,
       [
@@ -375,9 +398,11 @@ export async function POST(request: NextRequest) {
         leader.role_code,
         center.id,
         center.full_name,
+        roomName,
         candidateName,
         canonicalLmsCode,
         reviewDate,
+        reviewTime,
         reviewerName,
         teachingBlock,
         materialBucket,
@@ -389,12 +414,40 @@ export async function POST(request: NextRequest) {
         access.email,
       ],
     )
+    const newApplication = insertResult.rows[0]
+
+    // Từ thời điểm này phiếu và tài liệu đã được lưu thành công. Lỗi gửi mail
+    // không được xóa tài liệu hoặc bắt người dùng đăng ký lại.
+    uploaded = null
+    const emailDelivery = await sendLectureReviewHcInvitation(
+      {
+        applicationId: newApplication.id,
+        candidateName,
+        lmsCode: canonicalLmsCode,
+        reviewDate,
+        reviewTime,
+        teachingBlock,
+        centerId: Number(center.id),
+        centerName: String(center.full_name),
+        roomName,
+        centerRegion: center.region ? String(center.region) : null,
+        leaderName: String(leader.full_name),
+        reviewerName,
+        registeredByName: access.displayName,
+        registeredByEmail: access.email,
+      },
+      {
+        action: 'create',
+        initiatedBy: access.email,
+      },
+    )
 
     return NextResponse.json(
       {
         success: true,
-        data: insertResult.rows[0],
+        data: newApplication,
         message: 'Đã gửi phiếu đăng ký duyệt giảng',
+        email_delivery: emailDelivery,
       },
       { status: 201 },
     )

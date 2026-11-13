@@ -3716,6 +3716,20 @@ const migrations: Migration[] = [
       END $$;
     `,
   },
+  {
+    name: 'V131_lecture_review_room_and_time',
+    version: 131,
+    sql: `
+      ALTER TABLE lecture_review_applications
+        ADD COLUMN IF NOT EXISTS room_name VARCHAR(120),
+        ADD COLUMN IF NOT EXISTS review_time TIME WITHOUT TIME ZONE;
+
+      COMMENT ON COLUMN lecture_review_applications.room_name IS
+        'Phòng học hoặc phòng tổ chức buổi duyệt giảng';
+      COMMENT ON COLUMN lecture_review_applications.review_time IS
+        'Giờ bắt đầu buổi duyệt giảng theo giờ địa phương';
+    `,
+  },
 ]
 
 // ========== HÀM CHẠY MIGRATIONS ==========

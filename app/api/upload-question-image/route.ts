@@ -48,7 +48,8 @@ export async function POST(req: NextRequest): Promise<Response> {
     });
   } catch (error) {
     console.error('Upload question image error:', error);
-    return NextResponse.json({ error: 'Loi server khi upload anh' }, { status: 500 });
+    const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+    return NextResponse.json({ error: `Loi server khi upload anh (${detail})` }, { status: 500 });
   }
 }
 

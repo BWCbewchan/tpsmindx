@@ -15,6 +15,8 @@ import {
   BookOpenCheck,
   CalendarDays,
   CircleDot,
+  Clock3,
+  DoorOpen,
   FileText,
   Loader2,
   Search,
@@ -149,9 +151,11 @@ export function LectureReviewRegistrationClient() {
   const [submittingStage, setSubmittingStage] = useState('')
   const [leaderCode, setLeaderCode] = useState('')
   const [centerId, setCenterId] = useState('')
+  const [roomName, setRoomName] = useState('')
   const [candidateName, setCandidateName] = useState('')
   const [lmsCode, setLmsCode] = useState('')
   const [reviewDate, setReviewDate] = useState('')
+  const [reviewTime, setReviewTime] = useState('')
   const [reviewerName, setReviewerName] = useState('')
   const [teachingBlock, setTeachingBlock] = useState('')
   const [material, setMaterial] = useState<File | null>(null)
@@ -312,9 +316,11 @@ export function LectureReviewRegistrationClient() {
   function resetForm() {
     setLeaderCode('')
     setCenterId('')
+    setRoomName('')
     setCandidateName('')
     setLmsCode('')
     setReviewDate('')
+    setReviewTime('')
     setReviewerName('')
     setTeachingBlock('')
     setMaterial(null)
@@ -328,9 +334,11 @@ export function LectureReviewRegistrationClient() {
     if (
       !leaderCode ||
       !centerId ||
+      !roomName.trim() ||
       !candidateName.trim() ||
       !lmsCode.trim() ||
       !reviewDate ||
+      !reviewTime ||
       !reviewerName ||
       !teachingBlock ||
       !material
@@ -392,9 +400,11 @@ export function LectureReviewRegistrationClient() {
         body: JSON.stringify({
           leaderCode,
           centerId,
+          roomName: roomName.trim(),
           candidateName: candidateName.trim(),
           lmsCode: lmsCode.trim(),
           reviewDate,
+          reviewTime,
           reviewerName,
           teachingBlock,
           material: {
@@ -526,6 +536,22 @@ export function LectureReviewRegistrationClient() {
                     disabled={loadingOptions}
                   />
                 </div>
+                <div className="sm:col-span-2">
+                  <FieldLabel>Phòng</FieldLabel>
+                  <div className="relative">
+                    <DoorOpen className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      value={roomName}
+                      onChange={(event) => setRoomName(event.target.value)}
+                      maxLength={120}
+                      placeholder="VD: Phòng 1, Phòng Lab A"
+                      className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-[#b00020] focus:ring-4 focus:ring-[#b00020]/10"
+                    />
+                  </div>
+                  <p className="mt-2 text-xs text-slate-500">
+                    Có thể nhập số hoặc chữ theo tên phòng thực tế.
+                  </p>
+                </div>
               </div>
             </section>
 
@@ -540,14 +566,28 @@ export function LectureReviewRegistrationClient() {
                 </div>
               </div>
               <div className="space-y-6">
-                <div className="max-w-sm">
-                  <FieldLabel>Ngày đăng ký duyệt giảng</FieldLabel>
-                  <input
-                    type="date"
-                    value={reviewDate}
-                    onChange={(event) => setReviewDate(event.target.value)}
-                    className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#b00020] focus:ring-4 focus:ring-[#b00020]/10"
-                  />
+                <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+                  <div>
+                    <FieldLabel>Ngày đăng ký duyệt giảng</FieldLabel>
+                    <input
+                      type="date"
+                      value={reviewDate}
+                      onChange={(event) => setReviewDate(event.target.value)}
+                      className="h-12 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#b00020] focus:ring-4 focus:ring-[#b00020]/10"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel>Giờ duyệt giảng</FieldLabel>
+                    <div className="relative">
+                      <Clock3 className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="time"
+                        value={reviewTime}
+                        onChange={(event) => setReviewTime(event.target.value)}
+                        className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm font-semibold text-slate-900 outline-none transition focus:border-[#b00020] focus:ring-4 focus:ring-[#b00020]/10"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <div>
                   <FieldLabel>Giám khảo đánh giá</FieldLabel>

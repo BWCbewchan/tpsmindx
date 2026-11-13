@@ -51,7 +51,7 @@ import {
     Users,
     X,
 } from 'lucide-react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import TeacherPortfolioTab from './components/TeacherPortfolioTab'
@@ -686,7 +686,6 @@ export default function Page1() {
   const profileRefreshLock = useRef(false)
   const { mutate: globalMutate } = useSWRConfig()
   const router = useRouter()
-  const searchParams = useSearchParams()
   const dispatch = useAppDispatch()
   const [searchCode, setSearchCode] = useState('')
   const [submitCode, setSubmitCode] = useState('')
@@ -698,7 +697,10 @@ export default function Page1() {
     String(new Date().getFullYear()),
   )
   const [teacherInfoTab, setTeacherInfoTab] =
-    useQueryState<TeacherInfoTab>('tab', 'profile', { values: ["profile","checkCong","checkCongFeedback"], history: 'push' })
+    useQueryState<TeacherInfoTab>('tab', 'profile', {
+      values: ['profile', 'portfolio', 'checkCong', 'checkCongFeedback'],
+      history: 'push',
+    })
   const [checkCongMonth, setCheckCongMonth] = useState('all')
   const [checkCongStatusFilter, setCheckCongStatusFilter] =
     useQueryState<CheckCongStatusFilter>('attendanceStatus', 'all', { values: ["all","CHECKED","UNCHECKED"] })
@@ -1001,27 +1003,9 @@ export default function Page1() {
     return records.filter((record) => record.status === checkCongStatusFilter)
   }, [checkCongData?.records, checkCongStatusFilter])
 
-  useEffect(() => {
-    const tabParam = searchParams.get('tab')
-    if (
-      tabParam === 'profile' ||
-      tabParam === 'portfolio' ||
-      tabParam === 'checkCong' ||
-      tabParam === 'checkCongFeedback'
-    ) {
-      setTeacherInfoTab(tabParam)
-    }
-  }, [searchParams])
-
   const handleTeacherInfoTabChange = useCallback((tab: TeacherInfoTab) => {
     setTeacherInfoTab(tab)
-
-    const params = new URLSearchParams(window.location.search)
-    params.set('tab', tab)
-    const query = params.toString()
-    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`
-    window.history.replaceState(null, '', nextUrl)
-  }, [])
+  }, [setTeacherInfoTab])
 
   const uncheckedCheckCongRecords = useMemo(
     () => (checkCongData?.records ?? []).filter((record) => record.status === 'UNCHECKED'),
@@ -1966,7 +1950,7 @@ export default function Page1() {
                     label: 'Phản hồi công',
                     icon: MessageSquare,
                   },
-                ].filter((tab) => tab.value !== 'portfolio').map((tab) => {
+                ].map((tab) => {
                   const ActiveIcon = tab.icon
                   const active = teacherInfoTab === tab.value
                   return (

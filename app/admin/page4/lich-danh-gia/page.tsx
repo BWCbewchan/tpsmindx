@@ -10,11 +10,16 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Copy,
   Download,
+  Edit,
   ExternalLink,
+  Heart,
   MapPin,
   Plus,
+  Sparkles,
+  Trash2,
   Users,
   X,
 } from "lucide-react";
@@ -30,7 +35,8 @@ type EventCategory =
   | "meeting"
   | "teaching_review"
   | "advanced_training_release"
-  | "holiday";
+  | "holiday"
+  | "teachers_day";
 type EventMode = "online" | "offline";
 type RegistrationTemplate = "official" | "supplement";
 
@@ -191,6 +197,7 @@ const EVENT_TYPE_LABELS: Record<EventCategory, string> = {
   teaching_review: "F: Duyệt giảng chuyên môn",
   advanced_training_release: "G: Lịch phát hành đào tạo nâng cao",
   holiday: "H: Lịch nghỉ",
+  teachers_day: "I: Ngày Nhà giáo Việt Nam",
 };
 
 const LECTURE_REVIEWERS = [
@@ -258,10 +265,25 @@ function getEventClass(eventType: EventCategory | undefined) {
       return "bg-indigo-200 text-indigo-900";
     case "holiday":
       return "bg-amber-200 text-amber-900";
+    case "teachers_day":
+      return "bg-rose-100 text-rose-900 border border-rose-200";
     case "exam":
     default:
       return "bg-green-200 text-green-900";
   }
+}
+
+function isTeachersDayEvent(event: { eventType?: EventCategory; title?: string }) {
+  if (event.eventType === "teachers_day") return true;
+  const title = (event.title || "").toLowerCase();
+  return (
+    title.includes("20/11") ||
+    title.includes("20-11") ||
+    title.includes("nhà giáo") ||
+    title.includes("nha giao") ||
+    title.includes("tri ân thầy cô") ||
+    title.includes("tri an thay co")
+  );
 }
 
 function getEventDetailSectionClass(_eventType: EventCategory) {
@@ -460,11 +482,11 @@ export default function ProfessionalEvaluationSchedulePage() {
     return () => clearInterval(timer);
   }, []);
 
-  const fetchEvents = async () => {
+  const fetchEvents = async (targetDate?: Date) => {
     try {
       setIsLoadingEvents(true);
-      const now = new Date();
-      const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const dateToFetch = targetDate || focusDate;
+      const month = `${dateToFetch.getFullYear()}-${String(dateToFetch.getMonth() + 1).padStart(2, '0')}`;
       const response = await fetch(`/api/event-schedules?month=${month}`);
       const data = await response.json();
 
@@ -484,8 +506,8 @@ export default function ProfessionalEvaluationSchedulePage() {
   };
 
   useEffect(() => {
-    fetchEvents();
-  }, []);
+    fetchEvents(focusDate);
+  }, [focusDate.getFullYear(), focusDate.getMonth()]);
 
   useEffect(() => {
     const fetchCenters = async () => {
@@ -639,6 +661,10 @@ export default function ProfessionalEvaluationSchedulePage() {
     if (!selectedDate) return [];
     return eventsByDateKey.get(formatDateKey(selectedDate)) || [];
   }, [eventsByDateKey, selectedDate]);
+
+  const hasTeachersDayInSelected = useMemo(() => {
+    return selectedDayEvents.some(isTeachersDayEvent);
+  }, [selectedDayEvents]);
 
   const dayViewEvents = useMemo(() => {
     if (view !== "day") return { registration: [] as EvaluationEvent[], exam: [] as EvaluationEvent[] };
@@ -1103,9 +1129,10 @@ export default function ProfessionalEvaluationSchedulePage() {
         teaching_review: "Duyệt giảng chuyên môn",
         advanced_training_release: "Phát hành đào tạo nâng cao",
         holiday: "Lịch nghỉ",
+        teachers_day: "Ngày Nhà giáo Việt Nam",
       };
 
-      if (formData.mode === "offline" && !formData.centerId) {
+      if (formData.eventType !== "teachers_day" && formData.mode === "offline" && !formData.centerId) {
         toast.error("Sự kiện offline bắt buộc chọn cơ sở tổ chức");
         return;
       }
@@ -1130,12 +1157,12 @@ export default function ProfessionalEvaluationSchedulePage() {
           startAt,
           endAt,
           note: formData.note.trim(),
-          mode: formData.mode,
-          centerId: formData.centerId,
-          centerName: selectedCenter?.center_name || null,
-          centerAddress: selectedCenter?.address || null,
-          centerFullAddress: selectedCenter?.full_address || null,
-          centerMapUrl: selectedCenter?.map_url || null,
+          mode: formData.eventType === "teachers_day" ? "offline" : formData.mode,
+          centerId: formData.eventType === "teachers_day" ? null : formData.centerId,
+          centerName: formData.eventType === "teachers_day" ? null : (selectedCenter?.center_name || null),
+          centerAddress: formData.eventType === "teachers_day" ? null : (selectedCenter?.address || null),
+          centerFullAddress: formData.eventType === "teachers_day" ? null : (selectedCenter?.full_address || null),
+          centerMapUrl: formData.eventType === "teachers_day" ? null : (selectedCenter?.map_url || null),
           room: formData.room.trim() || null,
           lectureReviewer: formData.lectureReviewer.trim() || null,
           allowRegistration: Boolean(formData.allowRegistration),
@@ -1262,94 +1289,101 @@ export default function ProfessionalEvaluationSchedulePage() {
   return (
     <PageContainer title="Lịch sự kiện">
       <Card className="overflow-hidden" padding="sm">
-        <div className="px-4 py-2 border-b flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-gray-700" />
-            <select
-              value={focusDate.getMonth()}
-              onChange={(event) => {
-                const next = new Date(focusDate);
-                next.setMonth(Number(event.target.value));
-                setFocusDate(next);
-              }}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-            >
-              {Array.from({ length: 12 }, (_, index) => (
-                <option key={index} value={index}>
-                  Tháng {index + 1}
-                </option>
-              ))}
-            </select>
+        <div className="p-3 sm:px-4 sm:py-3 border-b flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white">
+          <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-gray-700 shrink-0" />
+              <select
+                value={focusDate.getMonth()}
+                onChange={(event) => {
+                  const next = new Date(focusDate);
+                  next.setMonth(Number(event.target.value));
+                  setFocusDate(next);
+                }}
+                className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs sm:text-sm bg-white"
+              >
+                {Array.from({ length: 12 }, (_, index) => (
+                  <option key={index} value={index}>
+                    Tháng {index + 1}
+                  </option>
+                ))}
+              </select>
 
-            <select
-              value={focusDate.getFullYear()}
-              onChange={(event) => {
-                const next = new Date(focusDate);
-                next.setFullYear(Number(event.target.value));
-                setFocusDate(next);
-              }}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-            >
-              {yearOptions.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
+              <select
+                value={focusDate.getFullYear()}
+                onChange={(event) => {
+                  const next = new Date(focusDate);
+                  next.setFullYear(Number(event.target.value));
+                  setFocusDate(next);
+                }}
+                className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs sm:text-sm bg-white"
+              >
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => stepDate(-1)}
+                className="rounded-md border border-gray-300 bg-white p-1.5 sm:p-2 hover:bg-gray-50 text-gray-700"
+                aria-label="Trước"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => stepDate(1)}
+                className="rounded-md border border-gray-300 bg-white p-1.5 sm:p-2 hover:bg-gray-50 text-gray-700"
+                aria-label="Sau"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <button
+                onClick={goToToday}
+                className="rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs sm:text-sm font-semibold hover:bg-gray-50 text-gray-700"
+              >
+                Hôm nay
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => stepDate(-1)}
-              className="rounded-md border border-gray-300 bg-white p-2 hover:bg-gray-50"
-              aria-label="Trước"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => stepDate(1)}
-              className="rounded-md border border-gray-300 bg-white p-2 hover:bg-gray-50"
-              aria-label="Sau"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
+          <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2">
+            <div className="inline-flex rounded-md border border-gray-300 p-0.5 bg-gray-50">
+              {VIEW_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setView(option.value)}
+                  className={`rounded px-2.5 py-1 text-xs sm:text-sm font-semibold transition-all ${
+                    view === option.value
+                      ? "bg-blue-600 text-white shadow-2xs"
+                      : "text-gray-700 hover:text-gray-900 hover:bg-white/50"
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
 
-            {VIEW_OPTIONS.map((option) => (
+            <div className="flex items-center gap-2">
+              {canManageCalendar && (
+                <button
+                  onClick={openCreateModal}
+                  className="inline-flex items-center gap-1 rounded-md bg-blue-700 px-3 py-1.5 text-xs sm:text-sm font-semibold text-white hover:bg-blue-800 cursor-pointer shadow-2xs"
+                >
+                  <Plus className="h-4 w-4" /> Thêm mới
+                </button>
+              )}
+
               <button
-                key={option.value}
-                onClick={() => setView(option.value)}
-                className={`rounded-md border px-3 py-1.5 text-sm font-semibold ${
-                  view === option.value
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                }`}
+                onClick={exportEvents}
+                className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs sm:text-sm font-semibold text-gray-700 hover:bg-gray-50"
               >
-                {option.label}
+                <Download className="h-4 w-4" /> Xuất file
               </button>
-            ))}
-
-            <button
-              onClick={goToToday}
-              className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold hover:bg-gray-50"
-            >
-              Hôm nay
-            </button>
-
-            {canManageCalendar && (
-              <button
-                onClick={openCreateModal}
-                className="inline-flex items-center gap-1 rounded-md bg-blue-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-blue-800"
-              >
-                <Plus className="h-4 w-4" /> Thêm mới
-              </button>
-            )}
-
-            <button
-              onClick={exportEvents}
-              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold hover:bg-gray-50"
-            >
-              <Download className="h-4 w-4" /> Xuất file
-            </button>
+            </div>
           </div>
         </div>
 
@@ -1466,59 +1500,74 @@ export default function ProfessionalEvaluationSchedulePage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-7 border-l border-t border-gray-200">
-            {WEEKDAY_LABELS.map((label) => (
-              <div
-                key={label}
-                className="h-10 border-r border-b border-gray-200 bg-gray-50 text-sm font-semibold text-gray-600 flex items-center justify-center"
-              >
-                {label}
-              </div>
-            ))}
+          <div className="overflow-x-auto custom-scrollbar">
+            <div className="min-w-[780px] lg:min-w-0 grid grid-cols-7 border-l border-t border-gray-200">
+              {WEEKDAY_LABELS.map((label) => (
+                <div
+                  key={label}
+                  className="h-10 border-r border-b border-gray-200 bg-gray-50 text-xs sm:text-sm font-semibold text-gray-600 flex items-center justify-center"
+                >
+                  {label}
+                </div>
+              ))}
 
             {calendarCells.map(({ date, inCurrentMonth }) => {
               const isToday = isSameDate(startOfDay(date), startOfDay(currentTime));
               const dateKey = formatDateKey(date);
               const dayEvents = eventsByDateKey.get(dateKey) || [];
+              const hasTeachersDay = dayEvents.some(isTeachersDayEvent);
 
               return (
                 <div
                   key={dateKey}
-                  className={`min-h-28 border-r border-b border-gray-200 p-2 ${
-                    isToday
-                      ? "bg-yellow-50 border-yellow-300"
-                      : inCurrentMonth
-                        ? "bg-white"
-                        : "bg-gray-50"
-                  } cursor-pointer hover:bg-blue-50`}
+                  className={`min-h-28 border-r border-b border-gray-200 p-1.5 sm:p-2 ${
+                    hasTeachersDay
+                      ? "bg-gradient-to-br from-rose-50/80 via-amber-50/40 to-white border-rose-300 ring-1 ring-rose-200/70"
+                      : isToday
+                        ? "bg-yellow-50 border-yellow-300"
+                        : inCurrentMonth
+                          ? "bg-white"
+                          : "bg-gray-50"
+                  } cursor-pointer hover:bg-rose-50/60 transition-colors flex flex-col`}
                   onClick={() => {
                     setSelectedDate(date);
                     setShowDayEventsModal(true);
                   }}
                 >
-                  <div className="mb-1 flex items-center justify-between">
+                  <div className="mb-1 flex items-center justify-between gap-1 min-w-0">
                     {isToday ? (
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-yellow-300 text-sm font-bold text-yellow-900">
+                      <span className="inline-flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-yellow-300 text-xs sm:text-sm font-bold text-yellow-900 shadow-2xs shrink-0">
                         {date.getDate()}
                       </span>
                     ) : (
                       <span
-                        className={`text-sm font-medium ${
-                          inCurrentMonth ? "text-gray-900" : "text-gray-400"
+                        className={`text-xs sm:text-sm shrink-0 ${
+                          hasTeachersDay
+                            ? "font-extrabold text-rose-900 flex items-center gap-1"
+                            : inCurrentMonth
+                              ? "font-medium text-gray-900"
+                              : "text-gray-400"
                         }`}
                       >
                         {date.getDate()}
+                        {hasTeachersDay && <span className="text-xs" title="Ngày Nhà giáo Việt Nam">💐</span>}
+                      </span>
+                    )}
+
+                    {hasTeachersDay && (
+                      <span className="shrink-0 whitespace-nowrap inline-flex items-center gap-0.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold text-rose-700 border border-rose-200 shadow-2xs">
+                        <Sparkles className="h-2.5 w-2.5 text-amber-500 shrink-0" /> Tri ân
                       </span>
                     )}
                   </div>
 
-                  <div className="space-y-1">
+                  <div className="space-y-1.5 flex-1">
                     {dayEvents.map((event) => {
                       if (event.eventType === "registration") {
                         return (
                           <div
                             key={event.id}
-                            className="py-1 text-center text-[12px] leading-4 font-bold text-red-700 whitespace-pre-line"
+                            className="py-1 text-center text-[11px] sm:text-[12px] leading-4 font-bold text-red-700 whitespace-pre-line"
                             title={event.title.replace(/\n/g, " ")}
                           >
                             {event.title}
@@ -1532,12 +1581,12 @@ export default function ProfessionalEvaluationSchedulePage() {
                           : event.title;
 
                       return (
-                        <div key={event.id} className="flex items-start gap-1">
-                          <div className="w-18 shrink-0 text-[11px] font-semibold text-blue-700 leading-4">
+                        <div key={event.id} className="w-full">
+                          <div className={`text-[10px] sm:text-[11px] font-semibold leading-tight mb-0.5 ${isTeachersDayEvent(event) ? 'text-rose-700 font-bold' : 'text-blue-700'}`}>
                             {formatEventTimeRange(event.startAt, event.endAt)}
                           </div>
                           <div
-                            className={`flex-1 rounded-sm px-1 py-1 text-[11px] leading-4 font-semibold text-center ${getEventClass(event.eventType)}`}
+                            className={`w-full rounded px-1.5 py-1 text-[11px] leading-snug font-semibold text-center line-clamp-2 break-words ${getEventClass(event.eventType)}`}
                             title={eventTitle}
                           >
                             {eventTitle}
@@ -1549,6 +1598,7 @@ export default function ProfessionalEvaluationSchedulePage() {
                 </div>
               );
             })}
+            </div>
           </div>
         )}
       </Card>
@@ -1576,7 +1626,7 @@ export default function ProfessionalEvaluationSchedulePage() {
                 </div>
               )}
               <div>
-                <label className="mb-1 block text-sm font-medium">Loại sự kiện</label>
+                <label className="mb-1 block text-sm font-medium">Loại sự kiện *</label>
                 <select
                   value={formData.eventType}
                   onChange={(event) => {
@@ -1584,6 +1634,8 @@ export default function ProfessionalEvaluationSchedulePage() {
                     setFormData((previous) => ({
                       ...previous,
                       eventType,
+                      mode: eventType === "teachers_day" ? "offline" : previous.mode,
+                      centerId: eventType === "teachers_day" ? null : previous.centerId,
                       title:
                         eventType === "teaching_review"
                           ? "Duyệt giảng chuyên môn"
@@ -1896,23 +1948,33 @@ export default function ProfessionalEvaluationSchedulePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       <div>
                         <label className="mb-1 block text-sm font-medium">Hình thức tổ chức *</label>
-                        <select
-                          value={formData.mode}
-                          onChange={(event) =>
-                            setFormData((previous) => ({
-                              ...previous,
-                              mode: event.target.value as EventMode,
-                              centerId:
-                                event.target.value === "online"
-                                  ? null
-                                  : previous.centerId,
-                            }))
-                          }
-                          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white"
-                        >
-                          <option value="online">ONLINE</option>
-                          <option value="offline">OFFLINE</option>
-                        </select>
+                        {formData.eventType === "teachers_day" ? (
+                          <select
+                            value="offline"
+                            disabled
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-gray-100 text-gray-700 cursor-not-allowed font-medium"
+                          >
+                            <option value="offline">OFFLINE</option>
+                          </select>
+                        ) : (
+                          <select
+                            value={formData.mode}
+                            onChange={(event) =>
+                              setFormData((previous) => ({
+                                ...previous,
+                                mode: event.target.value as EventMode,
+                                centerId:
+                                  event.target.value === "online"
+                                    ? null
+                                    : previous.centerId,
+                              }))
+                            }
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white"
+                          >
+                            <option value="online">ONLINE</option>
+                            <option value="offline">OFFLINE</option>
+                          </select>
+                        )}
                       </div>
 
                       {formData.eventType === "teaching_review" && (
@@ -1937,9 +1999,24 @@ export default function ProfessionalEvaluationSchedulePage() {
                           </select>
                         </div>
                       )}
+
+                      {formData.eventType === "teachers_day" && (
+                        <div>
+                          <label className="mb-1 block text-sm font-medium">Địa điểm</label>
+                          <input
+                            type="text"
+                            value={formData.room}
+                            onChange={(event) =>
+                              setFormData((previous) => ({ ...previous, room: event.target.value }))
+                            }
+                            placeholder="Nhập địa điểm tổ chức"
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm bg-white"
+                          />
+                        </div>
+                      )}
                     </div>
 
-                    {formData.mode === "offline" && (
+                    {formData.eventType !== "teachers_day" && formData.mode === "offline" && (
                       <>
                         <div>
                           <label className="mb-1 block text-sm font-medium">Cơ sở tổ chức *</label>
@@ -2170,134 +2247,246 @@ export default function ProfessionalEvaluationSchedulePage() {
       )}
 
       {showDayEventsModal && selectedDate && (
-        <div className="fixed inset-0 z-modal-backdrop-custom flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl rounded-xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-              <h3 className="text-lg font-bold text-foreground">
+        <div
+          className="fixed inset-0 z-modal-backdrop-custom flex items-center justify-center p-2 sm:p-4 bg-black/45 backdrop-blur-[0.5px] transition-all"
+        >
+          {hasTeachersDayInSelected && (
+            <div
+              className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-35"
+              style={{
+                backgroundImage: `url('/images/teachers-day-bg.jpg')`,
+              }}
+            />
+          )}
+
+          <div
+            className={`relative z-10 w-full ${
+              hasTeachersDayInSelected ? 'max-w-4xl' : 'max-w-2xl'
+            } max-h-[92vh] flex flex-col rounded-xl shadow-2xl transition-all overflow-hidden ${
+              hasTeachersDayInSelected
+                ? "border-2 border-rose-300/80 bg-white/95 backdrop-blur-sm"
+                : "bg-white"
+            }`}
+          >
+            <div
+              className={`flex items-center justify-between border-b px-3 sm:px-4 py-2.5 sm:py-3 shrink-0 ${
+                hasTeachersDayInSelected
+                  ? "border-rose-200 bg-rose-50/70"
+                  : "border-gray-200"
+              }`}
+            >
+              <h3
+                className={`text-base sm:text-lg font-bold flex items-center gap-2 ${
+                  hasTeachersDayInSelected ? "text-rose-950" : "text-foreground"
+                }`}
+              >
+                {hasTeachersDayInSelected && <span>💐</span>}
                 Sự kiện ngày {selectedDate.toLocaleDateString("vi-VN")}
               </h3>
               <div className="flex items-center gap-2">
                 {canManageCalendar && (
                   <button
                     onClick={() => openCreateModalForDay(selectedDate)}
-                    className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+                    className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
                   >
-                    <Plus className="h-4 w-4" /> Thêm sự kiện mới
+                    <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Thêm sự kiện mới</span><span className="sm:hidden">Thêm</span>
                   </button>
                 )}
                 <button
                   onClick={() => setShowDayEventsModal(false)}
-                  className="rounded-md p-1 hover:bg-muted"
+                  className={`rounded-md p-1 ${
+                    hasTeachersDayInSelected
+                      ? "hover:bg-rose-100 text-rose-900"
+                      : "hover:bg-muted"
+                  }`}
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
             </div>
 
-            <div className="max-h-[65vh] overflow-y-auto p-4 space-y-3">
+            <div
+              className={`space-y-3 overflow-y-auto p-3 sm:p-4 max-h-[78vh]`}
+            >
               {selectedDayEvents.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
                   Không có sự kiện trong ngày này.
                 </div>
               ) : (
-                selectedDayEvents.map((event) => (
-                  <div key={event.id} className="rounded-lg border border-border bg-card p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="mb-1 text-xs font-semibold text-muted-foreground">
-                          {EVENT_TYPE_LABELS[event.eventType || "exam"]}
-                        </div>
-                        <div className="whitespace-pre-line text-sm font-bold text-foreground">{event.title}</div>
-                        <div className="mt-1 text-xs text-primary">
-                          {formatEventTimeRange(event.startAt, event.endAt)}
-                        </div>
-                        <div className="mt-1 text-xs text-muted-foreground">{event.specialty}</div>
-                        {event.lectureReviewer && (
-                          <div className="mt-1 text-xs text-primary">
-                            Reviewer: <span className="font-semibold">{event.lectureReviewer}</span>
-                          </div>
-                        )}
-                        {event.mode && (
-                          <div className="mt-1 text-xs text-muted-foreground">Hình thức: {event.mode.toUpperCase()}</div>
-                        )}
-                        {event.centerName && (
-                          <div className="mt-2 rounded-md border border-primary/20 bg-primary/5 p-2 text-xs text-foreground">
-                            <p className="font-semibold">{event.centerName}</p>
-                            <p className="mt-1 leading-5 text-muted-foreground">{event.centerFullAddress || event.centerAddress || "Chưa có địa chỉ"}</p>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const address = event.centerFullAddress || event.centerAddress || "";
-                                  if (!address) return;
-                                  navigator.clipboard.writeText(address);
-                                  toast.success("Đã copy địa chỉ");
-                                }}
-                                className="inline-flex items-center gap-1 rounded border border-primary/20 bg-card px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/5"
+                selectedDayEvents.map((event) => {
+                  const isTeacher = isTeachersDayEvent(event);
+                  return (
+                    <div
+                      key={event.id}
+                      className={`relative overflow-hidden rounded-xl transition-all ${
+                        isTeacher
+                          ? "border-2 border-rose-300 shadow-md p-3.5 sm:p-5 sm:min-h-[320px] bg-gradient-to-b from-rose-50/50 to-white"
+                          : "border border-border bg-card p-3 sm:p-3.5"
+                      }`}
+                    >
+                      {isTeacher && (
+                        <>
+                          {/* Banner on mobile */}
+                          <div
+                            className="sm:hidden w-full aspect-[16/7] rounded-lg overflow-hidden mb-3 bg-cover bg-center border border-rose-200 shadow-2xs"
+                            style={{
+                              backgroundImage: `url('/images/teachers-day-bg.jpg')`,
+                            }}
+                          />
+                          {/* Panoramic right-anchored background on desktop */}
+                          <div
+                            className="hidden sm:block pointer-events-none absolute inset-0 bg-contain bg-right bg-no-repeat"
+                            style={{
+                              backgroundImage: `url('/images/teachers-day-bg.jpg')`,
+                            }}
+                          />
+                          <div className="hidden sm:block pointer-events-none absolute inset-0 bg-gradient-to-r from-white via-white/85 to-transparent" />
+                        </>
+                      )}
+
+                      <div className={`relative z-10 ${isTeacher ? 'sm:max-w-[430px]' : ''}`}>
+                        <div className={`flex items-start justify-between gap-3 ${isTeacher ? 'flex-col' : ''}`}>
+                          <div>
+                            <div className="mb-1.5">
+                              <span
+                                className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                                  isTeacher
+                                    ? "bg-white/90 text-rose-900 border border-rose-300 shadow-2xs"
+                                    : getEventClass(event.eventType)
+                                }`}
                               >
-                                <Copy className="h-3.5 w-3.5" /> Copy địa chỉ
-                              </button>
-                              {event.centerMapUrl && (
+                                {EVENT_TYPE_LABELS[event.eventType || "exam"]}
+                              </span>
+                            </div>
+                            <div
+                              className={`whitespace-pre-line text-sm font-bold ${
+                                isTeacher ? "text-rose-950 text-base font-extrabold" : "text-foreground"
+                              }`}
+                            >
+                              {event.title}
+                            </div>
+                            <div
+                              className={`mt-1 text-xs font-semibold ${
+                                isTeacher ? "text-rose-700 font-bold" : "text-primary"
+                              }`}
+                            >
+                              {formatEventTimeRange(event.startAt, event.endAt)}
+                            </div>
+                            <div
+                              className={`mt-1 text-xs ${
+                                isTeacher ? "text-gray-900 font-medium" : "text-muted-foreground"
+                              }`}
+                            >
+                              {event.specialty}
+                            </div>
+                            {event.lectureReviewer && (
+                              <div
+                                className="mt-1 text-xs text-primary"
+                              >
+                                Reviewer: <span className="font-semibold">{event.lectureReviewer}</span>
+                              </div>
+                            )}
+                            {event.mode && (
+                              <div
+                                className={`mt-1 text-xs ${
+                                  isTeacher ? "text-gray-900" : "text-muted-foreground"
+                                }`}
+                              >
+                                Hình thức: {event.mode.toUpperCase()}
+                              </div>
+                            )}
+                            {event.note && (
+                              <div
+                                className={`mt-2 rounded-lg p-2.5 text-xs ${
+                                  isTeacher
+                                    ? "border border-amber-300/80 bg-amber-50/90 text-amber-950 italic shadow-2xs flex items-start gap-1.5"
+                                    : "border border-gray-200 bg-gray-50 text-gray-700 italic"
+                                }`}
+                              >
+                                {isTeacher && <Heart className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5 fill-rose-400" />}
+                                <span>"{event.note}"</span>
+                              </div>
+                            )}
+                          {event.centerName && (
+                            <div className="mt-2 rounded-md border border-primary/20 bg-primary/5 p-2 text-xs text-foreground">
+                              <p className="font-semibold">{event.centerName}</p>
+                              <p className="mt-1 leading-5 text-muted-foreground">{event.centerFullAddress || event.centerAddress || "Chưa có địa chỉ"}</p>
+                              <div className="mt-2 flex flex-wrap gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => window.open(event.centerMapUrl || "", "_blank", "noopener,noreferrer")}
-                                  className="inline-flex items-center gap-1 rounded border border-primary/20 bg-card px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/5"
+                                  onClick={() => {
+                                    const address = event.centerFullAddress || event.centerAddress || "";
+                                    if (!address) return;
+                                    navigator.clipboard.writeText(address);
+                                    toast.success("Đã copy địa chỉ");
+                                  }}
+                                  className="inline-flex items-center gap-1 rounded border border-primary/20 bg-card px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/5 cursor-pointer"
                                 >
-                                  <MapPin className="h-3.5 w-3.5" /> Xem bản đồ
+                                  <Copy className="h-3.5 w-3.5" /> Copy địa chỉ
                                 </button>
-                              )}
+                                {event.centerMapUrl && (
+                                  <button
+                                    type="button"
+                                    onClick={() => window.open(event.centerMapUrl || "", "_blank", "noopener,noreferrer")}
+                                    className="inline-flex items-center gap-1 rounded border border-primary/20 bg-card px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/5 cursor-pointer"
+                                  >
+                                    <MapPin className="h-3.5 w-3.5" /> Xem bản đồ
+                                  </button>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                        {event.meetingUrl && (
-                          <div className="mt-2">
+                          )}
+                          {event.meetingUrl && (
+                            <div className="mt-2">
+                              <button
+                                type="button"
+                                onClick={() => window.open(event.meetingUrl || "", "_blank", "noopener,noreferrer")}
+                                className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 cursor-pointer"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" /> Join Meeting
+                              </button>
+                            </div>
+                          )}
+                          {event.eventType === "teaching_review" && Boolean(event.allowRegistration) && canRegisterLectureReview && (
+                            <div className="mt-2">
+                              <button
+                                type="button"
+                                onClick={() => openLectureRegisterModal(event)}
+                                className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 cursor-pointer"
+                              >
+                                <Plus className="h-3.5 w-3.5" /> Đăng ký duyệt giảng
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {canManageCalendar && (
+                          <div className={`flex items-center gap-2 ${isTeacher ? 'mt-3 pt-2 border-t border-rose-200/60' : ''}`}>
                             <button
-                              type="button"
-                              onClick={() => window.open(event.meetingUrl || "", "_blank", "noopener,noreferrer")}
-                              className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+                              onClick={() => handleViewParticipants(event)}
+                              className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 cursor-pointer"
                             >
-                              <ExternalLink className="h-3.5 w-3.5" /> Join Meeting
+                              <Users className="h-3.5 w-3.5" /> Xem tham gia
                             </button>
-                          </div>
-                        )}
-                        {event.eventType === "teaching_review" && Boolean(event.allowRegistration) && canRegisterLectureReview && (
-                          <div className="mt-2">
                             <button
-                              type="button"
-                              onClick={() => openLectureRegisterModal(event)}
-                              className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10"
+                              onClick={() => openEditEvent(event)}
+                              className="rounded-md border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 cursor-pointer"
                             >
-                              <Plus className="h-3.5 w-3.5" /> Đăng ký duyệt giảng
+                              Sửa
+                            </button>
+                            <button
+                              onClick={() => handleDeleteEvent(event.id)}
+                              className="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 cursor-pointer"
+                            >
+                              Xóa
                             </button>
                           </div>
                         )}
                       </div>
-
-                      {canManageCalendar && (
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleViewParticipants(event)}
-                            className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10"
-                          >
-                            <Users className="h-3.5 w-3.5" /> Xem tham gia
-                          </button>
-                          <button
-                            onClick={() => openEditEvent(event)}
-                            className="rounded-md border border-primary/20 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10"
-                          >
-                            Sửa
-                          </button>
-                          <button
-                            onClick={() => handleDeleteEvent(event.id)}
-                            className="rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100"
-                          >
-                            Xóa
-                          </button>
-                        </div>
-                      )}
                     </div>
                   </div>
-                ))
+                );
+                })
               )}
             </div>
 

@@ -22,6 +22,7 @@ const EVENT_TYPES = [
   'teaching_review',
   'advanced_training_release',
   'holiday',
+  'teachers_day',
 ] as const;
 
 const EVENT_MODES = ['online', 'offline'] as const;

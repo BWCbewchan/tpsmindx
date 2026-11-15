@@ -16,6 +16,7 @@ import {
   ExternalLink,
   MapPin,
   Plus,
+  Sparkles,
   X,
 } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -32,6 +33,7 @@ type EventCategory =
   | 'teaching_review'
   | 'advanced_training_release'
   | 'holiday'
+  | 'teachers_day'
 
 type CalendarView = 'month' | 'week' | 'day'
 
@@ -102,6 +104,7 @@ const EVENT_TYPE_LABELS: Record<EventCategory, string> = {
   teaching_review: 'E: Duyệt giảng chuyên môn',
   advanced_training_release: 'E: Lịch phát hành đào tạo nâng cao',
   holiday: 'F: Lịch nghỉ',
+  teachers_day: 'G: Ngày Nhà giáo Việt Nam',
 }
 
 const REGISTRATION_TEMPLATE_LABELS: Record<RegistrationTemplate, string> = {
@@ -155,6 +158,8 @@ function getEventClass(eventType: EventCategory | undefined) {
       return 'bg-indigo-200 text-indigo-900'
     case 'holiday':
       return 'bg-amber-200 text-amber-900'
+    case 'teachers_day':
+      return 'bg-rose-100 text-rose-900 border border-rose-200'
     case 'thi':
     case 'exam':
     default:
@@ -194,6 +199,11 @@ function getCalendarEventStyle(eventType: EventCategory | undefined) {
         timeClassName: 'text-amber-700',
         titleClassName: 'bg-amber-200 text-amber-900',
       }
+    case 'teachers_day':
+      return {
+        timeClassName: 'text-rose-700 font-semibold',
+        titleClassName: 'bg-rose-100 text-rose-900 border border-rose-200 font-medium',
+      }
     case 'thi':
     case 'exam':
     default:
@@ -218,6 +228,8 @@ function getEventDotClass(eventType: EventCategory | undefined) {
       return 'bg-indigo-500'
     case 'holiday':
       return 'bg-amber-500'
+    case 'teachers_day':
+      return 'bg-rose-500'
     case 'thi':
     case 'exam':
     default:
@@ -243,6 +255,8 @@ function getTimelineEventContainerClass(eventType: EventCategory | undefined) {
       return 'border-indigo-300 bg-indigo-50/80 text-indigo-900'
     case 'holiday':
       return 'border-amber-300 bg-amber-50/80 text-amber-900'
+    case 'teachers_day':
+      return 'border-rose-400 bg-gradient-to-r from-rose-50/90 via-amber-50/60 to-white text-rose-950 font-medium'
     case 'thi':
     case 'exam':
     default:
@@ -1115,6 +1129,10 @@ export default function MonthlyActivitiesPage() {
     return visibleEventsByDateKey.get(formatDateKey(selectedDate)) || []
   }, [visibleEventsByDateKey, selectedDate])
 
+  const hasTeachersDayInSelected = useMemo(() => {
+    return selectedDayEvents.some((e) => e.eventType === 'teachers_day')
+  }, [selectedDayEvents])
+
   useEffect(() => {
     if (view !== 'month' || !isMobileViewport) {
       return
@@ -1591,11 +1609,7 @@ export default function MonthlyActivitiesPage() {
       return
     }
 
-    if (view === 'month' && isMobileViewport) {
-      setSelectedDate(date)
-      setShowDayEventsModal(false)
-      return
-    }
+    setSelectedDate(date)
 
     const dateEvents = visibleEventsByDateKey.get(formatDateKey(date)) || []
     if (dateEvents.length === 0) {
@@ -1621,7 +1635,6 @@ export default function MonthlyActivitiesPage() {
       return
     }
 
-    setSelectedDate(date)
     setShowDayEventsModal(true)
   }
 
@@ -2146,73 +2159,81 @@ export default function MonthlyActivitiesPage() {
           <h2 className="text-2xl font-bold text-gray-900">Lịch Sự Kiện</h2>
         </div>
 
-        <div className="px-4 py-2 border-b border-gray-200 bg-white flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-gray-700" />
-            <select
-              value={focusDate.getMonth()}
-              onChange={(event) => {
-                const next = new Date(focusDate)
-                next.setMonth(Number(event.target.value))
-                setFocusDate(next)
-              }}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-            >
-              {Array.from({ length: 12 }, (_, index) => (
-                <option key={index} value={index}>
-                  Tháng {index + 1}
-                </option>
-              ))}
-            </select>
+        <div className="p-3 sm:px-4 sm:py-2.5 border-b border-gray-200 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2">
+            <div className="flex items-center gap-2">
+              <CalendarDays className="h-5 w-5 text-gray-700 shrink-0" />
+              <select
+                value={focusDate.getMonth()}
+                onChange={(event) => {
+                  const next = new Date(focusDate)
+                  next.setMonth(Number(event.target.value))
+                  setFocusDate(next)
+                }}
+                className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs sm:text-sm bg-white"
+              >
+                {Array.from({ length: 12 }, (_, index) => (
+                  <option key={index} value={index}>
+                    Tháng {index + 1}
+                  </option>
+                ))}
+              </select>
 
-            <select
-              value={focusDate.getFullYear()}
-              onChange={(event) => {
-                const next = new Date(focusDate)
-                next.setFullYear(Number(event.target.value))
-                setFocusDate(next)
-              }}
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-            >
-              {yearOptions.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
+              <select
+                value={focusDate.getFullYear()}
+                onChange={(event) => {
+                  const next = new Date(focusDate)
+                  next.setFullYear(Number(event.target.value))
+                  setFocusDate(next)
+                }}
+                className="rounded-md border border-gray-300 px-2.5 py-1.5 text-xs sm:text-sm bg-white"
+              >
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => stepDate(-1)}
+                className="rounded-md border border-gray-300 bg-white p-1.5 sm:p-2 hover:bg-gray-50 text-gray-700"
+                aria-label="Trước"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => stepDate(1)}
+                className="rounded-md border border-gray-300 bg-white p-1.5 sm:p-2 hover:bg-gray-50 text-gray-700"
+                aria-label="Sau"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => stepDate(-1)}
-              className="rounded-md border border-gray-300 bg-white p-2 hover:bg-gray-50"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => stepDate(1)}
-              className="rounded-md border border-gray-300 bg-white p-2 hover:bg-gray-50"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-
-            {[
-              { value: 'day' as CalendarView, label: 'Ngày' },
-              { value: 'week' as CalendarView, label: 'Tuần' },
-              { value: 'month' as CalendarView, label: 'Tháng' },
-            ].map((option) => (
-              <button
-                key={option.value}
-                onClick={() => setView(option.value)}
-                className={`rounded-md border px-3 py-1.5 text-sm font-semibold ${
-                  view === option.value
-                    ? 'bg-[#a1001f] text-white border-[#a1001f]'
-                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
+          <div className="flex items-center justify-between sm:justify-end gap-2">
+            <div className="inline-flex rounded-md border border-gray-300 p-0.5 bg-gray-50 w-full sm:w-auto justify-center">
+              {[
+                { value: 'day' as CalendarView, label: 'Ngày' },
+                { value: 'week' as CalendarView, label: 'Tuần' },
+                { value: 'month' as CalendarView, label: 'Tháng' },
+              ].map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => setView(option.value)}
+                  className={`flex-1 sm:flex-initial rounded px-3 py-1 text-xs sm:text-sm font-semibold transition-all ${
+                    view === option.value
+                      ? 'bg-[#a1001f] text-white shadow-2xs'
+                      : 'text-gray-700 hover:text-gray-900 hover:bg-white/50'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -2475,17 +2496,22 @@ export default function MonthlyActivitiesPage() {
                   const hasActiveRegistration =
                     !isPastCalendarDate &&
                     Boolean(activeRegistrationEventByDate(date))
+                  const hasTeachersDay = dayEvents.some(
+                    (e) => e.eventType === 'teachers_day',
+                  )
 
                   return (
                     <div
                       key={`week-grid-${dateKey}`}
                       className={`min-h-36 flex flex-col border-r border-b border-gray-200 p-2 ${
-                        isPastCalendarDate
-                          ? 'bg-gray-100'
-                          : isToday
-                            ? 'bg-yellow-50 border-yellow-300'
-                            : 'bg-white'
-                      } ${dayEvents.length > 0 && !isPastCalendarDate ? 'cursor-pointer hover:bg-blue-50' : ''}`}
+                        hasTeachersDay && !isPastCalendarDate
+                          ? 'bg-gradient-to-br from-rose-50/80 via-amber-50/40 to-white border-rose-300 ring-1 ring-rose-200/70'
+                          : isPastCalendarDate
+                            ? 'bg-gray-100'
+                            : isToday
+                              ? 'bg-yellow-50 border-yellow-300'
+                              : 'bg-white'
+                      } ${dayEvents.length > 0 && !isPastCalendarDate ? 'cursor-pointer hover:bg-rose-50/60' : ''}`}
                       onClick={() => handleDayClick(date)}
                     >
                       <div className="mb-1 flex items-center justify-between">
@@ -2494,12 +2520,25 @@ export default function MonthlyActivitiesPage() {
                             Hôm nay {date.getDate()}
                           </span>
                         ) : (
-                          <span className="text-sm font-semibold text-gray-700">
+                          <span
+                            className={`text-sm ${
+                              hasTeachersDay
+                                ? 'font-extrabold text-rose-900 flex items-center gap-1'
+                                : 'font-semibold text-gray-700'
+                            }`}
+                          >
                             {date.getDate()}
+                            {hasTeachersDay && <span className="text-xs" title="Ngày Nhà giáo Việt Nam">💐</span>}
                           </span>
                         )}
 
-                        {hasActiveRegistration && (
+                        {hasTeachersDay && (
+                          <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200 shadow-2xs">
+                            <Sparkles className="h-2.5 w-2.5 text-amber-500" /> Tri ân
+                          </span>
+                        )}
+
+                        {hasActiveRegistration && !hasTeachersDay && (
                           <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
                             Đang mở
                           </span>
@@ -2534,15 +2573,16 @@ export default function MonthlyActivitiesPage() {
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-7 border-l border-t border-gray-200">
-            {WEEKDAY_LABELS.map((label) => (
-              <div
-                key={label}
-                className="h-10 border-r border-b border-gray-200 bg-gray-50 text-xs md:text-sm font-semibold text-gray-600 flex items-center justify-center"
-              >
-                {label}
-              </div>
-            ))}
+          <div className="overflow-x-auto custom-scrollbar">
+            <div className="min-w-[680px] lg:min-w-0 grid grid-cols-7 border-l border-t border-gray-200">
+              {WEEKDAY_LABELS.map((label) => (
+                <div
+                  key={label}
+                  className="h-10 border-r border-b border-gray-200 bg-gray-50 text-xs md:text-sm font-semibold text-gray-600 flex items-center justify-center"
+                >
+                  {label}
+                </div>
+              ))}
 
             {calendarCells.map(({ date, inCurrentMonth }) => {
               const isToday = isSameDate(
@@ -2557,6 +2597,9 @@ export default function MonthlyActivitiesPage() {
               const hasActiveRegistration =
                 !isPastCalendarDate &&
                 Boolean(activeRegistrationEventByDate(date))
+              const hasTeachersDay = dayEvents.some(
+                (e) => e.eventType === 'teachers_day',
+              )
               const isSelectedMobileDate =
                 isMobileViewport &&
                 selectedDate !== null &&
@@ -2566,14 +2609,16 @@ export default function MonthlyActivitiesPage() {
                 <div
                   key={dateKey}
                   className={`min-h-20 md:min-h-28 flex flex-col border-r border-b border-gray-200 p-1.5 md:p-2 ${
-                    isPastCalendarDate
-                      ? 'bg-gray-100'
-                      : isToday
-                        ? 'bg-yellow-50 border-yellow-300'
-                        : inCurrentMonth
-                          ? 'bg-white'
-                          : 'bg-gray-50'
-                  } ${isSelectedMobileDate ? 'ring-2 ring-blue-400 ring-inset' : ''} ${!isPastCalendarDate ? 'cursor-pointer hover:bg-blue-50' : ''}`}
+                    hasTeachersDay && !isPastCalendarDate
+                      ? 'bg-gradient-to-br from-rose-50/80 via-amber-50/40 to-white border-rose-300 ring-1 ring-rose-200/70'
+                      : isPastCalendarDate
+                        ? 'bg-gray-100'
+                        : isToday
+                          ? 'bg-yellow-50 border-yellow-300'
+                          : inCurrentMonth
+                            ? 'bg-white'
+                            : 'bg-gray-50'
+                  } ${isSelectedMobileDate ? 'ring-2 ring-blue-400 ring-inset' : ''} ${!isPastCalendarDate ? 'cursor-pointer hover:bg-rose-50/60' : ''}`}
                   onClick={() => handleDayClick(date)}
                 >
                   <div className="mb-1 flex items-center justify-between">
@@ -2583,15 +2628,27 @@ export default function MonthlyActivitiesPage() {
                       </span>
                     ) : (
                       <span
-                        className={`text-xs md:text-sm font-medium ${
-                          inCurrentMonth ? 'text-gray-900' : 'text-gray-400'
+                        className={`text-xs md:text-sm ${
+                          hasTeachersDay
+                            ? 'font-extrabold text-rose-900 flex items-center gap-1'
+                            : inCurrentMonth
+                              ? 'font-medium text-gray-900'
+                              : 'text-gray-400'
                         }`}
                       >
                         {date.getDate()}
+                        {hasTeachersDay && <span className="text-xs" title="Ngày Nhà giáo Việt Nam">💐</span>}
+                      </span>
+                    )}
+
+                    {hasTeachersDay && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 border border-rose-200 shadow-2xs">
+                        <Sparkles className="h-2.5 w-2.5 text-amber-500" /> Tri ân
                       </span>
                     )}
 
                     {hasActiveRegistration &&
+                      !hasTeachersDay &&
                       !isPastCalendarDate &&
                       !isFutureDate(date) && (
                         <span className="hidden lg:inline rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-semibold text-blue-700">
@@ -2664,120 +2721,164 @@ export default function MonthlyActivitiesPage() {
                 </div>
               )
             })}
+            </div>
           </div>
         )}
       </Card>
 
       {view === 'month' && isMobileViewport && selectedDate && (
         <Card className="mt-4" padding="sm">
-          <div className="border-b border-gray-200 py-3">
-            <h3 className="text-base font-bold text-gray-900">
-              Ngày {selectedDate.toLocaleDateString('vi-VN')}
+          <div className="border-b border-gray-200 py-3 flex items-center justify-between">
+            <h3 className="text-base font-bold text-gray-900 flex items-center gap-1.5">
+              <span>📅</span> Sự kiện ngày {selectedDate.toLocaleDateString('vi-VN')}
             </h3>
+            {selectedDayEvents.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setShowDayEventsModal(true)}
+                className="text-xs font-semibold text-rose-700 hover:text-rose-800 hover:underline"
+              >
+                Mở popup ({selectedDayEvents.length})
+              </button>
+            )}
           </div>
 
-          <div className=" py-3">
-            <div className="overflow-hidden rounded-lg border border-gray-200">
-              <div className="grid grid-cols-[52px_1fr] bg-white">
-                <div className="border-r border-gray-200 bg-gray-50/80">
-                  {dayTimelineHours.map((hour) => (
-                    <div
-                      key={`mobile-month-label-${hour}`}
-                      className="relative border-b border-gray-200 last:border-b-0"
-                      style={{ height: `${DAY_TIMELINE_ROW_HEIGHT}px` }}
-                    >
-                      <span className="absolute top-1.5 right-1.5 text-[10px] font-semibold text-gray-500">
-                        {String(hour).padStart(2, '0')}:00
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div>
-                  {dayTimelineHours.map((hour) => {
-                    const hourEvents =
-                      selectedMonthTimelineEventsByHour[hour] || []
-
-                    return (
-                      <div
-                        key={`mobile-month-slot-${hour}`}
-                        className="border-b border-gray-200 px-2 py-1.5 last:border-b-0"
-                        style={{ minHeight: `${DAY_TIMELINE_ROW_HEIGHT}px` }}
-                      >
-                        <div className="space-y-1.5">
-                          {hourEvents.map((event) => {
-                            const calendarEventStyle = getCalendarEventStyle(
-                              event.eventType,
-                            )
-
-                            return (
-                              <button
-                                type="button"
-                                key={`mobile-month-event-${event.id}`}
-                                onClick={() =>
-                                  handleDayEventClick(selectedDate, event)
-                                }
-                                title={event.title.replace(/\n/g, ' ')}
-                                className={`w-full rounded-lg border-l-4 px-2.5 py-2 text-left shadow-sm transition hover:shadow-md ${getTimelineEventContainerClass(event.eventType)}`}
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <p
-                                    className={`text-[11px] font-semibold ${calendarEventStyle.timeClassName}`}
-                                  >
-                                    {formatEventTimeRange(
-                                      event.startAt,
-                                      event.endAt,
-                                    )}
-                                  </p>
-                                  <span
-                                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getEventClass(event.eventType)}`}
-                                  >
-                                    {
-                                      EVENT_TYPE_LABELS[
-                                        event.eventType || 'exam'
-                                      ]
-                                    }
-                                  </span>
-                                </div>
-                                <p className="mt-1 text-xs font-bold leading-4 text-gray-900 whitespace-pre-line">
-                                  {event.title}
-                                </p>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {selectedDayEvents.length === 0 && (
-              <p className="mt-3 text-center text-xs font-medium text-gray-500">
-                Ngày này chưa có sự kiện trong timeline.
+          <div className="py-3">
+            {selectedDayEvents.length === 0 ? (
+              <p className="text-xs text-gray-500 text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-200">
+                Không có sự kiện nào trong ngày này.
               </p>
+            ) : (
+              <div className="space-y-2.5">
+                {selectedDayEvents.map((event) => {
+                  const isTeachers = event.eventType === 'teachers_day'
+                  return (
+                    <div
+                      key={`mobile-selected-day-${event.id}`}
+                      className={`rounded-xl p-3.5 border transition-all ${
+                        isTeachers
+                          ? 'border-rose-300 bg-gradient-to-r from-rose-50/95 via-amber-50/40 to-white shadow-2xs'
+                          : 'border-gray-200 bg-white shadow-2xs'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            isTeachers
+                              ? 'bg-rose-600 text-white'
+                              : getEventClass(event.eventType)
+                          }`}
+                        >
+                          {EVENT_TYPE_LABELS[event.eventType || 'exam']}
+                        </span>
+                        <span
+                          className={`text-xs font-bold ${
+                            isTeachers ? 'text-rose-700' : 'text-blue-700'
+                          }`}
+                        >
+                          {formatEventTimeRange(event.startAt, event.endAt)}
+                        </span>
+                      </div>
+                      <p
+                        className={`mt-1.5 text-sm font-bold ${
+                          isTeachers ? 'text-rose-950 font-extrabold' : 'text-gray-900'
+                        }`}
+                      >
+                        {event.title}
+                      </p>
+                      {event.specialty && (
+                        <p className="text-xs text-gray-600 mt-1">
+                          <span className="font-semibold text-gray-900">Chuyên môn:</span> {event.specialty}
+                        </p>
+                      )}
+                      {event.note && (
+                        <div
+                          className={`mt-2 text-xs italic ${
+                            isTeachers
+                              ? 'rounded-lg border border-amber-300/80 bg-amber-50/90 p-2.5 text-amber-950 shadow-2xs'
+                              : 'text-gray-600'
+                          }`}
+                        >
+                          💬 "{event.note}"
+                        </div>
+                      )}
+                      <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDate(selectedDate)
+                            setShowDayEventsModal(true)
+                          }}
+                          className={`rounded-md px-3 py-1.5 text-xs font-semibold shadow-2xs ${
+                            isTeachers
+                              ? 'bg-rose-600 text-white hover:bg-rose-700'
+                              : 'bg-primary text-white hover:bg-primary/90'
+                          }`}
+                        >
+                          Xem chi tiết đầy đủ
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             )}
           </div>
         </Card>
       )}
 
       {showDayEventsModal && selectedDate && (
-        <div className="fixed inset-0 z-modal-backdrop-custom flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-3xl rounded-xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-              <h3 className="text-lg font-bold text-gray-900">
+        <div
+          className="fixed inset-0 z-modal-backdrop-custom flex items-center justify-center p-2 sm:p-4 bg-black/45 backdrop-blur-[0.5px] transition-all"
+        >
+          {hasTeachersDayInSelected && (
+            <div
+              className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-35"
+              style={{
+                backgroundImage: `url('/images/teachers-day-bg.jpg')`,
+              }}
+            />
+          )}
+
+          <div
+            className={`relative z-10 w-full ${
+              hasTeachersDayInSelected ? 'max-w-4xl' : 'max-w-3xl'
+            } max-h-[92vh] flex flex-col rounded-xl shadow-2xl transition-all overflow-hidden ${
+              hasTeachersDayInSelected
+                ? 'border-2 border-rose-300/80 bg-white/95 backdrop-blur-sm'
+                : 'bg-white'
+            }`}
+          >
+            <div
+              className={`flex items-center justify-between border-b px-3 sm:px-4 py-2.5 sm:py-3 shrink-0 ${
+                hasTeachersDayInSelected
+                  ? 'border-rose-200 bg-rose-50/70'
+                  : 'border-gray-200'
+              }`}
+            >
+              <h3
+                className={`text-base sm:text-lg font-bold flex items-center gap-2 ${
+                  hasTeachersDayInSelected ? 'text-rose-950' : 'text-gray-900'
+                }`}
+              >
+                {hasTeachersDayInSelected && <span>💐</span>}
                 Sự kiện ngày {selectedDate.toLocaleDateString('vi-VN')}
               </h3>
               <button
                 onClick={() => setShowDayEventsModal(false)}
-                className="rounded-md p-1 hover:bg-gray-100"
+                className={`rounded-md p-1 ${
+                  hasTeachersDayInSelected
+                    ? 'hover:bg-rose-100 text-rose-900'
+                    : 'hover:bg-gray-100'
+                }`}
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
 
-            <div className="max-h-[65vh] space-y-3 overflow-y-auto p-4">
+            <div
+              className={`space-y-3 overflow-y-auto p-3 sm:p-4 max-h-[78vh]`}
+            >
               {selectedDayEvents.length === 0 ? (
                 <div className="rounded-md border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
                   Không có sự kiện nào trong ngày này.
@@ -2805,55 +2906,106 @@ export default function MonthlyActivitiesPage() {
                     matchedExamAssignment?.can_take,
                   )
 
+                  const isTeachersDay = event.eventType === 'teachers_day'
+
                   return (
                     <div
                       key={event.id}
-                      className="rounded-lg border border-gray-200 p-3"
+                      className={`relative overflow-hidden rounded-xl transition-all ${
+                        isTeachersDay
+                          ? 'border-2 border-rose-300 shadow-md p-3.5 sm:p-5 sm:min-h-[320px] bg-gradient-to-b from-rose-50/50 to-white'
+                          : 'border border-gray-200 bg-white p-3.5'
+                      }`}
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-semibold ${getEventClass(event.eventType)}`}
-                        >
-                          {EVENT_TYPE_LABELS[event.eventType || 'exam']}
-                        </span>
-                        <span className="text-xs font-semibold text-blue-700">
-                          {formatEventTimeRange(event.startAt, event.endAt)}
-                        </span>
-                      </div>
+                      {isTeachersDay && (
+                        <>
+                          {/* Banner on mobile */}
+                          <div
+                            className="sm:hidden w-full aspect-[16/7] rounded-lg overflow-hidden mb-3 bg-cover bg-center border border-rose-200 shadow-2xs"
+                            style={{
+                              backgroundImage: `url('/images/teachers-day-bg.jpg')`,
+                            }}
+                          />
+                          {/* Panoramic right-anchored background on desktop */}
+                          <div
+                            className="hidden sm:block pointer-events-none absolute inset-0 bg-contain bg-right bg-no-repeat"
+                            style={{
+                              backgroundImage: `url('/images/teachers-day-bg.jpg')`,
+                            }}
+                          />
+                          <div className="hidden sm:block pointer-events-none absolute inset-0 bg-gradient-to-r from-white via-white/85 to-transparent" />
+                        </>
+                      )}
 
-                      <p className="mt-2 text-sm font-semibold whitespace-pre-line text-gray-900">
-                        {event.title}
-                      </p>
+                      <div className={`relative z-10 ${isTeachersDay ? 'sm:max-w-[430px]' : ''}`}>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span
+                            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                              isTeachersDay
+                                ? 'bg-white/90 text-rose-900 border border-rose-300 shadow-2xs'
+                                : getEventClass(event.eventType)
+                            }`}
+                          >
+                              {EVENT_TYPE_LABELS[event.eventType || 'exam']}
+                            </span>
+                            <span
+                              className={`text-xs font-bold ${
+                                isTeachersDay
+                                  ? 'rounded-full bg-white/80 px-2 py-0.5 text-rose-700 border border-rose-200 shadow-2xs'
+                                  : 'text-blue-700'
+                              }`}
+                            >
+                              {formatEventTimeRange(event.startAt, event.endAt)}
+                            </span>
+                          </div>
 
-                      <div className="mt-2 grid gap-1 text-sm text-gray-700">
-                        <p>
-                          <span className="font-semibold">Chuyên môn:</span>{' '}
-                          {event.specialty || '-'}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Bắt đầu:</span>{' '}
-                          {formatDateTime(event.startAt)}
-                        </p>
-                        <p>
-                          <span className="font-semibold">Kết thúc:</span>{' '}
-                          {formatDateTime(event.endAt)}
-                        </p>
-                        {event.registrationTemplate && (
-                          <p>
-                            <span className="font-semibold">Mẫu đăng ký:</span>{' '}
-                            {
-                              REGISTRATION_TEMPLATE_LABELS[
-                                event.registrationTemplate
-                              ]
-                            }
+                          <p
+                            className={`mt-2 whitespace-pre-line text-sm font-bold ${
+                              isTeachersDay ? 'text-rose-950 text-base font-extrabold' : 'text-gray-900'
+                            }`}
+                          >
+                            {event.title}
                           </p>
-                        )}
-                        {event.note && (
-                          <p className="whitespace-pre-line">
-                            <span className="font-semibold">Ghi chú:</span>{' '}
-                            {event.note}
-                          </p>
-                        )}
+
+                          <div
+                            className={`mt-2 grid gap-1 text-sm ${
+                              isTeachersDay ? 'text-gray-900 font-medium' : 'text-gray-700'
+                            }`}
+                          >
+                            <p>
+                              <span className="font-semibold text-gray-950">Chuyên môn:</span>{' '}
+                              {event.specialty || '-'}
+                            </p>
+                            <p>
+                              <span className="font-semibold text-gray-950">Bắt đầu:</span>{' '}
+                              {formatDateTime(event.startAt)}
+                            </p>
+                            <p>
+                              <span className="font-semibold text-gray-950">Kết thúc:</span>{' '}
+                              {formatDateTime(event.endAt)}
+                            </p>
+                            {event.registrationTemplate && (
+                              <p>
+                                <span className="font-semibold text-gray-950">Mẫu đăng ký:</span>{' '}
+                                {
+                                  REGISTRATION_TEMPLATE_LABELS[
+                                    event.registrationTemplate
+                                  ]
+                                }
+                              </p>
+                            )}
+                            {event.note && (
+                              <div
+                                className={`whitespace-pre-line ${
+                                  isTeachersDay
+                                    ? 'mt-2.5 rounded-lg border border-amber-300/80 bg-amber-50/90 p-3 text-xs text-amber-950 italic shadow-2xs'
+                                    : ''
+                                }`}
+                              >
+                                <span className="font-semibold not-italic">Ghi chú:</span>{' '}
+                                {event.note}
+                              </div>
+                            )}
                         {event.eventType === 'teaching_review' && event.lectureReviewer && (
                           <p>
                             <span className="font-semibold">Reviewer:</span>{' '}
@@ -3009,8 +3161,9 @@ export default function MonthlyActivitiesPage() {
                           </div>
                         </div>
                       )}
-                    </div>
-                  )
+                        </div>
+                      </div>
+                    )
                 })
               )}
             </div>

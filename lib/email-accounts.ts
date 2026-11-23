@@ -4,7 +4,7 @@ import pool from '@/lib/db'
 import { decryptEmailCredential, encryptEmailCredential } from '@/lib/email-account-crypto'
 import { chooseNextEmailAccountId } from '@/lib/email-account-router'
 
-export type EmailAccountSource = 'env' | 'database'
+export type EmailAccountSource = 'database'
 
 export interface EmailSenderAccount {
   id: number
@@ -36,14 +36,6 @@ type AccountRow = {
   sort_order: unknown
 }
 
-type EnvAccountDefinition = {
-  accountKey: string
-  email: string
-  appPassword: string
-  displayName: string
-  sortOrder: number
-}
-
 function getEncryptionSecret(): string {
   const secret = process.env.EMAIL_CREDENTIAL_ENCRYPTION_KEY?.trim()
   if (!secret) {
@@ -52,48 +44,13 @@ function getEncryptionSecret(): string {
   return secret
 }
 
-function getEnvAccountDefinitions(): EnvAccountDefinition[] {
-  const primaryEmail = (
-    process.env.GMAIL_USER ||
-    process.env.MAILDEV_INCOMING_USER ||
-    ''
-  ).trim()
-  const primaryPassword = (
-    process.env.GMAIL_APP_PASSWORD ||
-    process.env.MAILDEV_INCOMING_PASS ||
-    ''
-  ).trim()
-  const secondaryEmail = (process.env.EMAIL_ACCOUNT_2_USER || '').trim()
-  const secondaryPassword = (
-    process.env.EMAIL_ACCOUNT_2_APP_PASSWORD || ''
-  ).trim()
-
-  return [
-    {
-      accountKey: 'env-primary',
-      email: primaryEmail,
-      appPassword: primaryPassword,
-      displayName: process.env.EMAIL_ACCOUNT_1_NAME?.trim() || 'TPS Teaching',
-      sortOrder: 10,
-    },
-    {
-      accountKey: 'env-secondary',
-      email: secondaryEmail,
-      appPassword: secondaryPassword,
-      displayName:
-        process.env.EMAIL_ACCOUNT_2_NAME?.trim() || 'TPS HR Teaching',
-      sortOrder: 20,
-    },
-  ].filter((account) => account.email && account.appPassword)
-}
-
 function mapAccountRow(row: AccountRow): EmailSenderAccount {
   return {
     id: Number(row.id),
     accountKey: String(row.account_key),
     email: String(row.email),
     displayName: String(row.display_name || 'TPS Teaching'),
-    source: row.source === 'env' ? 'env' : 'database',
+    source: 'database',
     encryptedAppPassword: row.encrypted_app_password
       ? String(row.encrypted_app_password)
       : null,
@@ -104,91 +61,13 @@ function mapAccountRow(row: AccountRow): EmailSenderAccount {
   }
 }
 
-export async function syncEnvEmailAccounts(): Promise<void> {
-  const definitions = getEnvAccountDefinitions()
-  const configuredKeys = definitions.map((account) => account.accountKey)
-  const client = await pool.connect()
-
-  try {
-    await client.query('BEGIN')
-    const settingsResult = await client.query(
-      `SELECT default_to_limit, default_cc_limit
-       FROM email_monitor_settings
-       WHERE id = 1`,
-    )
-    const defaultToLimit = Number(
-      settingsResult.rows[0]?.default_to_limit || 2000,
-    )
-    const defaultCcLimit = Number(
-      settingsResult.rows[0]?.default_cc_limit || 2000,
-    )
-
-    for (const account of definitions) {
-      await client.query(
-        `INSERT INTO email_sender_accounts (
-          account_key, email, display_name, source, is_active,
-          daily_to_limit, daily_cc_limit, sort_order, updated_at
-        ) VALUES ($1, $2, $3, 'env', TRUE, $4, $5, $6, CURRENT_TIMESTAMP)
-        ON CONFLICT (account_key) DO UPDATE SET
-          email = EXCLUDED.email,
-          display_name = EXCLUDED.display_name,
-          source = 'env',
-          sort_order = EXCLUDED.sort_order,
-          updated_at = CURRENT_TIMESTAMP`,
-        [
-          account.accountKey,
-          account.email.toLowerCase(),
-          account.displayName,
-          defaultToLimit,
-          defaultCcLimit,
-          account.sortOrder,
-        ],
-      )
-    }
-
-    if (configuredKeys.length > 0) {
-      await client.query(
-        `UPDATE email_sender_accounts
-         SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP
-         WHERE source = 'env'
-           AND NOT (account_key = ANY($1::text[]))`,
-        [configuredKeys],
-      )
-    } else {
-      await client.query(
-        `UPDATE email_sender_accounts
-         SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP
-         WHERE source = 'env'`,
-      )
-    }
-
-    await client.query('COMMIT')
-  } catch (error) {
-    await client.query('ROLLBACK')
-    throw error
-  } finally {
-    client.release()
-  }
-}
-
 function resolveCredential(account: EmailSenderAccount): string {
-  if (account.source === 'env') {
-    const definition = getEnvAccountDefinitions().find(
-      (candidate) => candidate.accountKey === account.accountKey,
-    )
-    if (!definition?.appPassword) {
-      throw new Error(`Tài khoản ${account.email} thiếu App Password trong env.`)
-    }
-    return definition.appPassword
-  }
-
   if (!account.encryptedAppPassword) {
-    throw new Error(`Tài khoản ${account.email} chưa có App Password.`)
+    throw new Error(`Tài khoản ${account.email} chưa có App Password trong database. Chọn Sửa để thiết lập.`)
   }
-  return decryptEmailCredential(
-    account.encryptedAppPassword,
-    getEncryptionSecret(),
-  )
+  const password = decryptEmailCredential(account.encryptedAppPassword, getEncryptionSecret()).replace(/\s+/g, '')
+  if (!password) throw new Error('App Password được lưu đang trống.')
+  return password
 }
 
 async function getAccountRows(
@@ -212,7 +91,6 @@ async function getAccountRows(
 export async function getEmailSenderAccount(
   accountId: number,
 ): Promise<ResolvedEmailSenderAccount | null> {
-  await syncEnvEmailAccounts()
   const client = await pool.connect()
   try {
     const accounts = await getAccountRows(client, 'id = $1', [accountId])
@@ -228,23 +106,22 @@ export async function getEmailSenderAccount(
 export async function getFirstActiveEmailSenderAccount(): Promise<
   ResolvedEmailSenderAccount | null
 > {
-  await syncEnvEmailAccounts()
   const client = await pool.connect()
   try {
     const accounts = await getAccountRows(client, 'is_active = TRUE')
-    const account = accounts[0]
-    return account
-      ? { ...account, appPassword: resolveCredential(account) }
-      : null
+    for (const account of accounts) {
+      try { return { ...account, appPassword: resolveCredential(account) } }
+      catch { /* A broken credential must not hide another configured account. */ }
+    }
+    return null
   } finally {
     client.release()
   }
 }
 
-export async function selectNextEmailSenderAccount(): Promise<
+export async function selectNextEmailSenderAccount(excludedIds: number[] = []): Promise<
   ResolvedEmailSenderAccount | null
 > {
-  await syncEnvEmailAccounts()
   const client = await pool.connect()
 
   try {
@@ -260,7 +137,16 @@ export async function selectNextEmailSenderAccount(): Promise<
        WHERE id = 1
        FOR UPDATE`,
     )
-    const accounts = await getAccountRows(client, 'is_active = TRUE')
+    const candidates = await getAccountRows(client, `is_active = TRUE AND (
+      last_verify_ok IS DISTINCT FROM FALSE OR last_verified_at IS NULL
+      OR last_verified_at <= NOW() - INTERVAL '2 minutes'
+    )`)
+    const credentials = new Map<number, string>()
+    const accounts = candidates.filter(account => {
+      if (excludedIds.includes(account.id)) return false
+      try { credentials.set(account.id, resolveCredential(account)); return true }
+      catch { return false }
+    })
     const nextId = chooseNextEmailAccountId(
       accounts.map((account) => account.id),
       stateResult.rows[0]?.last_account_id
@@ -280,7 +166,7 @@ export async function selectNextEmailSenderAccount(): Promise<
 
     const resolved = {
       ...selected,
-      appPassword: resolveCredential(selected),
+      appPassword: credentials.get(selected.id)!,
     }
     await client.query(
       `UPDATE email_sender_routing_state
@@ -310,22 +196,13 @@ export async function getEmailAccountConfigurationSummary(): Promise<{
   totalAccountCount: number
   senderEmail: string | null
 }> {
-  await syncEnvEmailAccounts()
-  const result = await pool.query(
-    `SELECT
-       COUNT(*)::int AS total_count,
-       COUNT(*) FILTER (WHERE is_active)::int AS active_count,
-       (ARRAY_AGG(email ORDER BY sort_order, id)
-         FILTER (WHERE is_active))[1] AS sender_email
-     FROM email_sender_accounts`,
-  )
-  const row = result.rows[0] || {}
-  const activeAccountCount = Number(row.active_count || 0)
+  const accounts = await listEmailSenderAccountsWithQuota()
+  const ready = accounts.filter(account => account.isActive && account.credentialConfigured)
   return {
-    configured: activeAccountCount > 0,
-    activeAccountCount,
-    totalAccountCount: Number(row.total_count || 0),
-    senderEmail: row.sender_email ? String(row.sender_email) : null,
+    configured: ready.length > 0,
+    activeAccountCount: ready.length,
+    totalAccountCount: accounts.length,
+    senderEmail: ready[0]?.email || null,
   }
 }
 
@@ -366,6 +243,10 @@ export interface EmailSenderAccountListItem {
   lastVerifiedAt: string | null
   lastVerifyOk: boolean | null
   lastVerifyError: string | null
+  credentialConfigured: boolean
+  configurationError: string | null
+  cooldownUntil: string | null
+  credentialSource: EmailAccountSource | null
 }
 
 type AccountQuotaRow = AccountRow & {
@@ -379,8 +260,28 @@ type AccountQuotaRow = AccountRow & {
 
 function mapAccountListRow(row: AccountQuotaRow): EmailSenderAccountListItem {
   const account = mapAccountRow(row)
+  let credentialConfigured = false
+  let configurationError: string | null = null
+  try { credentialConfigured = Boolean(resolveCredential(account)) }
+  catch { configurationError = account.encryptedAppPassword
+    ? 'Không giải mã được App Password. Kiểm tra khóa mã hóa hoặc lưu lại mật khẩu.'
+    : 'Thiếu App Password ở môi trường đang chạy. Lưu App Password trong TPS hoặc bổ sung cấu hình máy chủ.' }
   return {
-    ...account,
+    id: account.id,
+    accountKey: account.accountKey,
+    email: account.email,
+    displayName: account.displayName,
+    source: account.source,
+    isActive: account.isActive,
+    dailyToLimit: account.dailyToLimit,
+    dailyCcLimit: account.dailyCcLimit,
+    sortOrder: account.sortOrder,
+    credentialConfigured,
+    credentialSource: credentialConfigured ? 'database' : null,
+    configurationError,
+    cooldownUntil: row.last_verify_ok === false && row.last_verified_at
+      ? new Date(new Date(String(row.last_verified_at)).getTime() + 120_000).toISOString()
+      : null,
     toUsed24h: Number(row.to_used_24h || 0),
     ccUsed24h: Number(row.cc_used_24h || 0),
     lastSelectedAt: row.last_selected_at
@@ -402,7 +303,6 @@ function mapAccountListRow(row: AccountQuotaRow): EmailSenderAccountListItem {
 export async function listEmailSenderAccountsWithQuota(): Promise<
   EmailSenderAccountListItem[]
 > {
-  await syncEnvEmailAccounts()
   const result = await pool.query<AccountQuotaRow>(
     `SELECT
        a.id, a.account_key, a.email, a.display_name, a.source,
@@ -460,7 +360,13 @@ export async function createDatabaseEmailSenderAccount(input: {
     throw new Error('App Password không được để trống.')
   }
 
-  await syncEnvEmailAccounts()
+  const existingEmail = await pool.query(
+    'SELECT id FROM email_sender_accounts WHERE LOWER(email) = $1 LIMIT 1',
+    [email],
+  )
+  if (existingEmail.rows.length > 0) {
+    throw new Error('Email này đã có trong danh sách. Chọn Sửa để cập nhật App Password hoặc bật lại tài khoản.')
+  }
   const settingsResult = await pool.query(
     `SELECT default_to_limit, default_cc_limit
      FROM email_monitor_settings WHERE id = 1`,
@@ -521,6 +427,9 @@ export async function createDatabaseEmailSenderAccount(input: {
           ? String((error as { code?: string }).code)
           : ''
       if (code === '23505') {
+        if (error && typeof error === 'object' && 'constraint' in error && error.constraint === 'uq_email_sender_accounts_email') {
+          throw new Error('Email này đã có trong danh sách. Chọn Sửa để cập nhật tài khoản.')
+        }
         accountKey = `${slugifyAccountKey(email)}-${attempt + 2}`
         continue
       }
@@ -539,7 +448,6 @@ export async function updateEmailSenderAccount(input: {
   dailyCcLimit?: number
   appPassword?: string
 }): Promise<EmailSenderAccountListItem | null> {
-  await syncEnvEmailAccounts()
   const existing = await pool.query<AccountRow>(
     `SELECT
        id, account_key, email, display_name, source,
@@ -572,9 +480,6 @@ export async function updateEmailSenderAccount(input: {
     updates.push(`daily_cc_limit = $${values.length}`)
   }
   if (input.appPassword !== undefined) {
-    if (account.source !== 'database') {
-      throw new Error('Không thể đổi App Password của tài khoản cấu hình từ env.')
-    }
     if (!isEmailCredentialEncryptionConfigured()) {
       throw new Error('EMAIL_CREDENTIAL_ENCRYPTION_KEY chưa được cấu hình.')
     }
@@ -586,6 +491,7 @@ export async function updateEmailSenderAccount(input: {
       encryptEmailCredential(normalized, getEncryptionSecret()),
     )
     updates.push(`encrypted_app_password = $${values.length}`)
+    updates.push('last_verify_ok = NULL', 'last_verify_error = NULL')
   }
 
   if (updates.length === 0) {
@@ -608,7 +514,6 @@ export async function updateEmailSenderAccount(input: {
 export async function deleteDatabaseEmailSenderAccount(
   accountId: number,
 ): Promise<{ deleted: boolean; reason?: string }> {
-  await syncEnvEmailAccounts()
   const existing = await pool.query(
     `SELECT id, source FROM email_sender_accounts WHERE id = $1`,
     [accountId],
@@ -616,9 +521,6 @@ export async function deleteDatabaseEmailSenderAccount(
   const account = existing.rows[0]
   if (!account) {
     return { deleted: false, reason: 'NOT_FOUND' }
-  }
-  if (account.source !== 'database') {
-    return { deleted: false, reason: 'ENV_ACCOUNT' }
   }
 
   await pool.query(`DELETE FROM email_sender_accounts WHERE id = $1`, [

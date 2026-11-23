@@ -1,13 +1,5 @@
 import { renderTemplate } from '@/app/api/emails/render'
-import nodemailer from 'nodemailer'
-import {
-  ensureEmailLogoInHtml,
-  prepareEmailForSend,
-} from '@/lib/email-branding'
-import {
-  normalizeEmailRecipients,
-  recordEmailDelivery,
-} from '@/lib/email-delivery-log'
+import { sendMail } from '@/app/api/emails/transporter'
 import {
   getLectureReviewHcRecipient,
   resolveLectureReviewHcArea,
@@ -31,22 +23,11 @@ type LectureReviewMailSendResult = {
   senderEmail?: string
 }
 
-type LectureReviewEmailSender = {
-  accountKey: string
-  email: string
-  appPassword: string
-  displayName: string
-}
-
 type LectureReviewMailPayload = {
   to: string | string[]
   subject: string
   html: string
   metadata?: Record<string, unknown>
-}
-
-function normalizeAppPassword(value: unknown): string {
-  return String(value ?? '').replace(/\s+/g, '')
 }
 
 export type LectureReviewHcInvitationData = {
@@ -123,157 +104,8 @@ function toEmailResult(
   }
 }
 
-/**
- * Chỉ dùng cho mail duyệt giảng. Đọc credential trực tiếp từ environment của
- * instance hiện tại, không đồng bộ hoặc thay đổi trạng thái tài khoản email
- * trong database dùng chung với luồng xin nghỉ.
- */
-function getLectureReviewEmailSender(): LectureReviewEmailSender | null {
-  const candidates: LectureReviewEmailSender[] = [
-    {
-      accountKey: 'lecture-review-dedicated',
-      email: String(process.env.LECTURE_REVIEW_EMAIL_USER || '').trim(),
-      appPassword: normalizeAppPassword(
-        process.env.LECTURE_REVIEW_EMAIL_APP_PASSWORD,
-      ),
-      displayName:
-        String(process.env.LECTURE_REVIEW_EMAIL_SENDER_NAME || '').trim() ||
-        'TPS Teaching',
-    },
-    {
-      accountKey: 'env-secondary',
-      email: String(process.env.EMAIL_ACCOUNT_2_USER || '').trim(),
-      appPassword: normalizeAppPassword(
-        process.env.EMAIL_ACCOUNT_2_APP_PASSWORD,
-      ),
-      displayName:
-        String(process.env.EMAIL_ACCOUNT_2_NAME || '').trim() ||
-        'TPS HR Teaching',
-    },
-    {
-      accountKey: 'env-primary',
-      email: String(
-        process.env.GMAIL_USER || process.env.MAILDEV_INCOMING_USER || '',
-      ).trim(),
-      appPassword: normalizeAppPassword(
-        process.env.GMAIL_APP_PASSWORD ||
-          process.env.MAILDEV_INCOMING_PASS ||
-          '',
-      ),
-      displayName:
-        String(process.env.EMAIL_ACCOUNT_1_NAME || '').trim() ||
-        'TPS Teaching',
-    },
-  ]
-
-  return (
-    candidates.find((candidate) => candidate.email && candidate.appPassword) ||
-    null
-  )
-}
-
-async function sendLectureReviewMail(
-  payload: LectureReviewMailPayload,
-): Promise<LectureReviewMailSendResult> {
-  const startedAt = Date.now()
-  const toRecipients = normalizeEmailRecipients(payload.to)
-  const sender = getLectureReviewEmailSender()
-
-  if (!sender) {
-    const durationMs = Date.now() - startedAt
-    const error = Object.assign(
-      new Error('Không có Gmail credential trên instance gửi mail duyệt giảng.'),
-      { code: 'LECTURE_REVIEW_GMAIL_NOT_CONFIGURED' },
-    )
-    await recordEmailDelivery({
-      status: 'skipped',
-      senderEmail: null,
-      toRecipients,
-      ccRecipients: [],
-      subject: payload.subject,
-      emailType: 'lecture_review_hc_invitation',
-      source: LECTURE_REVIEW_EMAIL_SOURCE,
-      durationMs,
-      error,
-      metadata: payload.metadata,
-    })
-    return {
-      sent: false,
-      warning: 'LECTURE_REVIEW_GMAIL_NOT_CONFIGURED',
-      durationMs,
-    }
-  }
-
-  try {
-    const html = ensureEmailLogoInHtml(payload.html)
-    const { html: preparedHtml, attachments } = prepareEmailForSend(html)
-    const info = await nodemailer
-      .createTransport({
-        service: 'gmail',
-        auth: {
-          user: sender.email,
-          pass: sender.appPassword,
-        },
-      })
-      .sendMail({
-        from: `"${sender.displayName}" <${sender.email}>`,
-        to: toRecipients,
-        subject: payload.subject,
-        html: preparedHtml,
-        ...(attachments.length > 0 ? { attachments } : {}),
-      })
-    const durationMs = Date.now() - startedAt
-    const messageId = String(info?.messageId ?? '')
-    const response = String(info?.response ?? '')
-
-    await recordEmailDelivery({
-      status: 'sent',
-      senderEmail: sender.email,
-      toRecipients,
-      ccRecipients: [],
-      subject: payload.subject,
-      emailType: 'lecture_review_hc_invitation',
-      source: LECTURE_REVIEW_EMAIL_SOURCE,
-      durationMs,
-      providerMessageId: messageId,
-      smtpResponse: response,
-      metadata: {
-        ...payload.metadata,
-        senderAccountKey: sender.accountKey,
-        senderAccountSource: 'instance_environment',
-        accepted: Array.isArray(info?.accepted) ? info.accepted : [],
-        rejected: Array.isArray(info?.rejected) ? info.rejected : [],
-        pending: Array.isArray(info?.pending) ? info.pending : [],
-      },
-    })
-
-    return {
-      sent: true,
-      messageId: messageId || undefined,
-      response: response || undefined,
-      durationMs,
-      senderEmail: sender.email,
-    }
-  } catch (error) {
-    const durationMs = Date.now() - startedAt
-    await recordEmailDelivery({
-      status: 'failed',
-      senderEmail: sender.email,
-      toRecipients,
-      ccRecipients: [],
-      subject: payload.subject,
-      emailType: 'lecture_review_hc_invitation',
-      source: LECTURE_REVIEW_EMAIL_SOURCE,
-      durationMs,
-      error,
-      metadata: {
-        ...payload.metadata,
-        senderAccountKey: sender.accountKey,
-        senderAccountSource: 'instance_environment',
-      },
-    })
-    throw error
-  }
+async function sendLectureReviewMail(payload: LectureReviewMailPayload): Promise<LectureReviewMailSendResult> {
+  return sendMail({ ...payload, emailType: 'lecture_review_hc_invitation', source: LECTURE_REVIEW_EMAIL_SOURCE })
 }
 
 export async function sendLectureReviewHcInvitation(

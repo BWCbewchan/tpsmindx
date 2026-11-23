@@ -62,8 +62,12 @@ export interface EmailSenderAccountItem {
   accountKey: string
   email: string
   displayName: string
-  source: 'env' | 'database'
+  source: 'database'
   isActive: boolean
+  credentialConfigured: boolean
+  configurationError: string | null
+  cooldownUntil: string | null
+  credentialSource: 'database' | null
   dailyToLimit: number
   dailyCcLimit: number
   sortOrder: number

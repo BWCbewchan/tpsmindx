@@ -27,6 +27,7 @@ import {
   BarChart3,
   Building2,
   CheckCircle2,
+  CheckSquare,
   ChevronLeft,
   ChevronRight,
   Eye,
@@ -39,12 +40,14 @@ import {
   Search,
   ShieldAlert,
   Sparkles,
+  Square,
   TrendingUp,
   UserCheck,
   Users,
   X,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { cn } from '@/lib/utils'
 
 const ITEMS_PER_PAGE = 20
 
@@ -295,6 +298,7 @@ type QCAnswerRecord = {
     guide?: string
     score?: number
   }>
+  maxScore?: number
   score?: number
   note?: string
 }
@@ -511,6 +515,54 @@ export default function QuanLyQCPage() {
     })
     return Array.from(groups.entries())
   }, [activeTemplate])
+
+  const handleSelectOption = useCallback(
+    (criterionId: string, optionId: string, isMultiple: boolean) => {
+      setAnswers((current) => {
+        const previous = current[criterionId] ?? {
+          optionIds: [],
+          note: '',
+        }
+        const exists = previous.optionIds.includes(optionId)
+        let nextIds: string[]
+        if (isMultiple) {
+          nextIds = exists
+            ? previous.optionIds.filter((id) => id !== optionId)
+            : [...previous.optionIds, optionId]
+        } else {
+          nextIds = [optionId]
+        }
+
+        return {
+          ...current,
+          [criterionId]: {
+            optionIds: nextIds,
+            note: previous.note,
+          },
+        }
+      })
+    },
+    [],
+  )
+
+  const handleCriterionNoteChange = useCallback(
+    (criterionId: string, note: string) => {
+      setAnswers((current) => {
+        const previous = current[criterionId] ?? {
+          optionIds: [],
+          note: '',
+        }
+        return {
+          ...current,
+          [criterionId]: {
+            optionIds: previous.optionIds,
+            note,
+          },
+        }
+      })
+    },
+    [],
+  )
 
   // Danh sách Cơ sở tổng hợp từ phân quyền và dữ liệu lớp
   const allCentres = useMemo(() => {
@@ -1251,76 +1303,135 @@ export default function QuanLyQCPage() {
                 </div>
               ) : (
                 <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Lớp / Khóa học</TableHead>
-                        <TableHead>Khối</TableHead>
-                        <TableHead>Cơ sở</TableHead>
-                        <TableHead>Giáo viên</TableHead>
-                        <TableHead>Sĩ số</TableHead>
-                        <TableHead>Thời gian</TableHead>
-                        <TableHead className="text-right">Thao tác</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {paginatedClasses.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <p className="font-semibold text-gray-950">{item.name}</p>
-                            <p className="text-xs text-gray-500">
-                              {item.courseName || 'Chưa có khóa học'}
-                            </p>
-                          </TableCell>
-                          <TableCell>
-                            {item.courseLineName ? (
-                              <Badge variant="violet" size="xs" shape="pill">
-                                {item.courseLineName}
-                              </Badge>
-                            ) : (
-                              <span className="text-xs text-gray-400">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="slate" shape="pill">
-                              {item.centreShortName || item.centreName || '-'}
+                  {/* Danh sách lớp dạng Card trên Mobile */}
+                  <div className="divide-y divide-gray-100 md:hidden">
+                    {paginatedClasses.map((item) => (
+                      <div key={item.id} className="p-3.5 space-y-2.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="font-bold text-sm text-gray-950 leading-snug">{item.name}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{item.courseName || 'Chưa có khóa học'}</p>
+                          </div>
+                          {item.courseLineName && (
+                            <Badge variant="violet" size="xs" shape="pill" className="shrink-0">
+                              {item.courseLineName}
                             </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-[260px]">
-                            <p className="truncate text-sm text-gray-800">
-                              {item.teacherNames.join(', ') || '-'}
-                            </p>
-                            <p className="truncate text-[11px] text-gray-400">
-                              {teacherAccountLabel((item.teacherAccounts ?? [])[0]) || 'Chưa có tài khoản LEC'}
-                            </p>
-                          </TableCell>
-                          <TableCell>{item.studentCount}</TableCell>
-                          <TableCell>
-                            <p className="text-xs text-gray-600">
-                              {formatDate(item.startDate)} - {formatDate(item.endDate)}
-                            </p>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="mindx"
-                              onClick={() => openCreateModal(item)}
-                              disabled={templates.length === 0 || item.slots.length === 0}
-                              title={
-                                item.slots.length > 0
-                                  ? 'Tạo phiếu QC'
-                                  : 'Lớp chưa có buổi học nào trên LMS'
-                              }
-                            >
-                              <FileSignature className="h-4 w-4" />
-                              Tạo phiếu QC
-                            </Button>
-                          </TableCell>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 bg-gray-50/70 p-2.5 rounded-lg border border-gray-100">
+                          <div>
+                            <span className="text-[10px] text-gray-400 font-bold uppercase block">Cơ sở</span>
+                            <span className="font-semibold text-gray-800">{item.centreShortName || item.centreName || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-gray-400 font-bold uppercase block">Sĩ số</span>
+                            <span className="font-semibold text-gray-800">{item.studentCount} học viên</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-[10px] text-gray-400 font-bold uppercase block">Giáo viên</span>
+                            <span className="font-semibold text-gray-800 truncate block">{item.teacherNames.join(', ') || '-'}</span>
+                            <span className="text-[11px] text-gray-400 truncate block">{teacherAccountLabel((item.teacherAccounts ?? [])[0]) || ''}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-[10px] text-gray-400 font-bold uppercase block">Thời gian</span>
+                            <span className="text-[11px] text-gray-600">{formatDate(item.startDate)} - {formatDate(item.endDate)}</span>
+                          </div>
+                        </div>
+
+                        <Button
+                          type="button"
+                          variant="mindx"
+                          size="sm"
+                          onClick={() => openCreateModal(item)}
+                          disabled={templates.length === 0 || item.slots.length === 0}
+                          className="w-full justify-center h-9 font-semibold text-xs gap-1.5"
+                          title={
+                            item.slots.length > 0
+                              ? 'Tạo phiếu QC'
+                              : 'Lớp chưa có buổi học nào trên LMS'
+                          }
+                        >
+                          <FileSignature className="h-4 w-4" />
+                          Tạo phiếu QC
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Danh sách lớp dạng Table trên Desktop */}
+                  <div className="hidden md:block">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Lớp / Khóa học</TableHead>
+                          <TableHead>Khối</TableHead>
+                          <TableHead>Cơ sở</TableHead>
+                          <TableHead>Giáo viên</TableHead>
+                          <TableHead>Sĩ số</TableHead>
+                          <TableHead>Thời gian</TableHead>
+                          <TableHead className="text-right">Thao tác</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedClasses.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <p className="font-semibold text-gray-950">{item.name}</p>
+                              <p className="text-xs text-gray-500">
+                                {item.courseName || 'Chưa có khóa học'}
+                              </p>
+                            </TableCell>
+                            <TableCell>
+                              {item.courseLineName ? (
+                                <Badge variant="violet" size="xs" shape="pill">
+                                  {item.courseLineName}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-gray-400">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="slate" shape="pill">
+                                {item.centreShortName || item.centreName || '-'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="max-w-[260px]">
+                              <p className="truncate text-sm text-gray-800">
+                                {item.teacherNames.join(', ') || '-'}
+                              </p>
+                              <p className="truncate text-[11px] text-gray-400">
+                                {teacherAccountLabel((item.teacherAccounts ?? [])[0]) || 'Chưa có tài khoản LEC'}
+                              </p>
+                            </TableCell>
+                            <TableCell>{item.studentCount}</TableCell>
+                            <TableCell>
+                              <p className="text-xs text-gray-600">
+                                {formatDate(item.startDate)} - {formatDate(item.endDate)}
+                              </p>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="mindx"
+                                onClick={() => openCreateModal(item)}
+                                disabled={templates.length === 0 || item.slots.length === 0}
+                                title={
+                                  item.slots.length > 0
+                                    ? 'Tạo phiếu QC'
+                                    : 'Lớp chưa có buổi học nào trên LMS'
+                                }
+                              >
+                                <FileSignature className="h-4 w-4" />
+                                Tạo phiếu QC
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                   {filteredClasses.length === 0 ? (
                     <div className="p-8 text-center text-sm text-gray-500">
                       Không có lớp phù hợp với phạm vi cơ sở hoặc bộ lọc hiện tại.
@@ -1784,38 +1895,19 @@ export default function QuanLyQCPage() {
                 </span>
               </div>
 
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[120px]">Ngày tạo</TableHead>
-                    <TableHead>Lớp &amp; Cơ sở</TableHead>
-                    <TableHead>Giáo viên</TableHead>
-                    <TableHead>Người tạo (Leader)</TableHead>
-                    <TableHead className="w-[110px]">Điểm số</TableHead>
-                    <TableHead className="min-w-[200px]">Mức độ &amp; Hướng xử lý</TableHead>
-                    <TableHead className="w-[90px]">Ký tên</TableHead>
-                    <TableHead className="w-[70px] text-right">Chi tiết</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedRecords.map((record) => {
-                    const total = Number(record.total_score) || 0
-                    const max = Number(record.max_score) || 10
-                    const displayTotal = max > 0 && max !== 10 ? (total / max) * 10 : total
-                    const scoreLevel = getQCScoreLevel(displayTotal)
+              {/* Danh sách phiếu QC dạng Card trên Mobile */}
+              <div className="divide-y divide-gray-100 md:hidden">
+                {paginatedRecords.map((record) => {
+                  const total = Number(record.total_score) || 0
+                  const max = Number(record.max_score) || 10
+                  const displayTotal = max > 0 && max !== 10 ? (total / max) * 10 : total
+                  const scoreLevel = getQCScoreLevel(displayTotal)
 
-                    return (
-                      <TableRow key={record.id} className="hover:bg-gray-50/80">
-                        {/* Ngày tạo */}
-                        <TableCell className="text-xs text-gray-600 whitespace-nowrap">
-                          {formatDateTime(record.created_at)}
-                        </TableCell>
-
-                        {/* Lớp & Cơ sở */}
-                        <TableCell>
-                          <p className="font-bold text-sm text-gray-950 leading-tight">
-                            {record.class_name}
-                          </p>
+                  return (
+                    <div key={record.id} className="p-3.5 space-y-2.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm text-gray-950 leading-snug">{record.class_name}</p>
                           <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                             <Badge variant="slate" size="xs" shape="pill">
                               {record.center_name}
@@ -1831,92 +1923,198 @@ export default function QuanLyQCPage() {
                               </span>
                             )}
                           </div>
-                        </TableCell>
-
-                        {/* Giáo viên */}
-                        <TableCell>
-                          <p className="font-semibold text-sm text-gray-900 leading-tight">
-                            {record.teacher_name || '-'}
-                          </p>
-                          {(record.teacher_rank || record.assistant_name) && (
-                            <p className="mt-0.5 text-[11px] text-gray-500">
-                              {record.teacher_rank ? `Rank: ${record.teacher_rank}` : ''}
-                              {record.teacher_rank && record.assistant_name ? ' · ' : ''}
-                              {record.assistant_name ? `TG: ${record.assistant_name}` : ''}
-                            </p>
-                          )}
-                        </TableCell>
-
-                        {/* Người tạo (Leader) */}
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <UserCheck className="h-3.5 w-3.5 text-[#a1001f] shrink-0" />
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-gray-900 truncate">
-                                {record.created_by_name || record.created_by_email}
-                              </p>
-                              <p className="text-[10px] text-gray-400 truncate">
-                                {record.created_by_email}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-
-                        {/* Điểm số */}
-                        <TableCell>
-                          <div className="font-black text-sm text-gray-900">
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="font-black text-base text-[#a1001f] font-mono">
                             {formatScore(displayTotal)}{' '}
-                            <span className="text-[10px] font-normal text-gray-400">/ 10</span>
+                            <span className="text-[11px] font-normal text-gray-400">/ 10</span>
                           </div>
-                          <span className="text-[10px] text-gray-500 truncate block">
-                            {record.template_title}
-                          </span>
-                        </TableCell>
-
-                        {/* Mức độ & Hướng xử lý */}
-                        <TableCell>
-                          <div className="space-y-1">
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold ${scoreLevel.colorClass}`}
-                            >
-                              <span className={`h-1.5 w-1.5 rounded-full ${scoreLevel.dotClass}`} />
-                              {scoreLevel.rangeLabel}: {scoreLevel.label}
-                            </span>
-                            <p className="text-[11px] text-gray-600 leading-tight">
-                              {scoreLevel.actionNote}
-                            </p>
-                          </div>
-                        </TableCell>
-
-                        {/* Trạng thái ký */}
-                        <TableCell>
                           <Badge
                             variant={record.signed ? 'success' : 'warning'}
                             size="xs"
                             shape="pill"
+                            className="mt-1"
                           >
                             {record.signed ? 'Đã ký' : 'Chưa ký'}
                           </Badge>
-                        </TableCell>
+                        </div>
+                      </div>
 
-                        {/* Chi tiết */}
-                        <TableCell className="text-right">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setSelectedViewRecord(record)}
-                            className="h-8 px-2 text-xs text-[#a1001f] hover:bg-[#a1001f]/10"
-                          >
-                            <Eye className="h-3.5 w-3.5 mr-1" />
-                            Xem
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
+                      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600 bg-gray-50/70 p-2.5 rounded-lg border border-gray-100">
+                        <div>
+                          <span className="text-[10px] text-gray-400 font-bold uppercase block">Giáo viên</span>
+                          <span className="font-semibold text-gray-800 truncate block">{record.teacher_name || '-'}</span>
+                          {record.teacher_rank && (
+                            <span className="text-[10px] text-gray-400">Rank: {record.teacher_rank}</span>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-[10px] text-gray-400 font-bold uppercase block">Người tạo (Leader)</span>
+                          <span className="font-semibold text-gray-800 truncate block">{record.created_by_name || record.created_by_email}</span>
+                          <span className="text-[10px] text-gray-400">{formatDateTime(record.created_at)}</span>
+                        </div>
+                        <div className="col-span-2 pt-1 border-t border-gray-200/50">
+                          <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold ${scoreLevel.colorClass}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${scoreLevel.dotClass}`} />
+                            {scoreLevel.rangeLabel}: {scoreLevel.label}
+                          </span>
+                          <p className="text-[11px] text-gray-600 leading-tight mt-1">
+                            {scoreLevel.actionNote}
+                          </p>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedViewRecord(record)}
+                        className="w-full justify-center h-8 text-xs font-semibold text-[#a1001f] border-[#a1001f]/30 hover:bg-[#a1001f]/5 gap-1.5"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        Xem chi tiết phiếu QC
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Danh sách phiếu QC dạng Table trên Desktop */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[120px]">Ngày tạo</TableHead>
+                      <TableHead>Lớp &amp; Cơ sở</TableHead>
+                      <TableHead>Giáo viên</TableHead>
+                      <TableHead>Người tạo (Leader)</TableHead>
+                      <TableHead className="w-[110px]">Điểm số</TableHead>
+                      <TableHead className="min-w-[200px]">Mức độ &amp; Hướng xử lý</TableHead>
+                      <TableHead className="w-[90px]">Ký tên</TableHead>
+                      <TableHead className="w-[70px] text-right">Chi tiết</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedRecords.map((record) => {
+                      const total = Number(record.total_score) || 0
+                      const max = Number(record.max_score) || 10
+                      const displayTotal = max > 0 && max !== 10 ? (total / max) * 10 : total
+                      const scoreLevel = getQCScoreLevel(displayTotal)
+
+                      return (
+                        <TableRow key={record.id} className="hover:bg-gray-50/80">
+                          {/* Ngày tạo */}
+                          <TableCell className="text-xs text-gray-600 whitespace-nowrap">
+                            {formatDateTime(record.created_at)}
+                          </TableCell>
+
+                          {/* Lớp & Cơ sở */}
+                          <TableCell>
+                            <p className="font-bold text-sm text-gray-950 leading-tight">
+                              {record.class_name}
+                            </p>
+                            <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                              <Badge variant="slate" size="xs" shape="pill">
+                                {record.center_name}
+                              </Badge>
+                              {record.session_index && (
+                                <span className="text-[11px] text-gray-500 font-medium">
+                                  Buổi {record.session_index}
+                                </span>
+                              )}
+                              {record.student_count > 0 && (
+                                <span className="text-[11px] text-gray-400">
+                                  · {record.student_count} HV
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+
+                          {/* Giáo viên */}
+                          <TableCell>
+                            <p className="font-semibold text-sm text-gray-900 leading-tight">
+                              {record.teacher_name || '-'}
+                            </p>
+                            {(record.teacher_rank || record.assistant_name) && (
+                              <p className="mt-0.5 text-[11px] text-gray-500">
+                                {record.teacher_rank ? `Rank: ${record.teacher_rank}` : ''}
+                                {record.teacher_rank && record.assistant_name ? ' · ' : ''}
+                                {record.assistant_name ? `TG: ${record.assistant_name}` : ''}
+                              </p>
+                            )}
+                          </TableCell>
+
+                          {/* Người tạo (Leader) */}
+                          <TableCell>
+                            <div className="flex items-center gap-1.5">
+                              <UserCheck className="h-3.5 w-3.5 text-[#a1001f] shrink-0" />
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-gray-900 truncate">
+                                  {record.created_by_name || record.created_by_email}
+                                </p>
+                                <p className="text-[10px] text-gray-400 truncate">
+                                  {record.created_by_email}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+
+                          {/* Điểm số */}
+                          <TableCell>
+                            <div className="font-black text-sm text-gray-900">
+                              {formatScore(displayTotal)}{' '}
+                              <span className="text-[10px] font-normal text-gray-400">/ 10</span>
+                            </div>
+                            <span className="text-[10px] text-gray-500 truncate block">
+                              {record.template_title}
+                            </span>
+                          </TableCell>
+
+                          {/* Mức độ & Hướng xử lý */}
+                          <TableCell>
+                            <div className="space-y-1">
+                              <span
+                                className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold ${scoreLevel.colorClass}`}
+                              >
+                                <span className={`h-1.5 w-1.5 rounded-full ${scoreLevel.dotClass}`} />
+                                {scoreLevel.rangeLabel}: {scoreLevel.label}
+                              </span>
+                              <p className="text-[11px] text-gray-600 leading-tight">
+                                {scoreLevel.actionNote}
+                              </p>
+                            </div>
+                          </TableCell>
+
+                          {/* Trạng thái ký */}
+                          <TableCell>
+                            <Badge
+                              variant={record.signed ? 'success' : 'warning'}
+                              size="xs"
+                              shape="pill"
+                            >
+                              {record.signed ? 'Đã ký' : 'Chưa ký'}
+                            </Badge>
+                          </TableCell>
+
+                          {/* Chi tiết */}
+                          <TableCell className="text-right">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedViewRecord(record)}
+                              className="h-8 px-2 text-xs text-[#a1001f] hover:bg-[#a1001f]/10"
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-1" />
+                              Xem
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
 
               {!loading && filteredRecords.length === 0 ? (
                 <div className="p-8 text-center text-sm text-gray-500">
@@ -2006,7 +2204,7 @@ export default function QuanLyQCPage() {
         onClose={() => setSelectedViewRecord(null)}
         title={selectedViewRecord ? `Chi tiết phiếu QC - ${selectedViewRecord.class_name}` : 'Chi tiết phiếu QC'}
         subtitle={selectedViewRecord ? `${selectedViewRecord.template_title} · Tạo ngày ${formatDateTime(selectedViewRecord.created_at)}` : undefined}
-        maxWidth="5xl"
+        maxWidth="7xl"
       >
         {selectedViewRecord && (
           <div className="space-y-4">
@@ -2108,94 +2306,100 @@ export default function QuanLyQCPage() {
                     )}
                   </div>
 
-                  {/* Chi tiết từng mục / tiêu chí Leader đã chấm */}
-                  <div className="rounded-xl border border-gray-200 bg-white shadow-2xs overflow-hidden">
-                    <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/70 px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <ListChecks className="h-4 w-4 text-[#a1001f]" />
-                        <h3 className="text-sm font-bold text-gray-950 uppercase tracking-wide">
-                          Chi tiết các mục Leader đã chấm ({parsedAnswers.length} tiêu chí)
-                        </h3>
-                      </div>
-                      <span className="text-xs text-gray-500 font-medium">
-                        Tổng điểm: <strong className="text-gray-900">{formatScore(displayTotal)} / 10</strong>
-                      </span>
-                    </div>
-
+                  {/* Chế độ xem Mobile: Danh sách tiêu chí dạng Card (block lg:hidden) */}
+                  <div className="space-y-3 block lg:hidden">
                     {parsedAnswers.length > 0 ? (
-                      <div className="p-4 sm:p-5 space-y-5">
-                        {Object.entries(groupedAnswers).map(([category, items]) => (
-                          <div key={category} className="space-y-3">
-                            <div className="flex items-center justify-between rounded-lg border border-[#f3d5da] bg-[#fff7f8] px-3.5 py-2 text-sm font-bold text-[#a1001f] shadow-2xs">
-                              <div className="flex items-center gap-2">
-                                <span className="h-1.5 w-1.5 rounded-full bg-[#a1001f]" />
-                                <span>{category}</span>
-                              </div>
-                              <span className="text-xs font-semibold text-[#a1001f]/80">
-                                {items.length} tiêu chí
-                              </span>
+                      Object.entries(groupedAnswers).map(([category, items]) => {
+                        const catMaxScore = items.reduce(
+                          (sum, it) => sum + (Number(it.maxScore) || 0),
+                          0,
+                        )
+                        return (
+                          <div
+                            key={category}
+                            className="rounded-lg border border-red-900 overflow-hidden bg-white shadow-2xs"
+                          >
+                            <div className="bg-[#a1001f] text-white px-3 py-2 text-xs font-bold uppercase tracking-wide flex items-center justify-between">
+                              <span>{category}</span>
+                              {catMaxScore > 0 && (
+                                <span className="text-[11px] font-semibold opacity-90">
+                                  {formatScore(catMaxScore)} điểm
+                                </span>
+                              )}
                             </div>
-
-                            <div className="grid grid-cols-1 gap-2.5">
+                            <div className="divide-y divide-gray-100 p-2.5 sm:p-3 space-y-3">
                               {items.map((ans, idx) => {
                                 const scoreVal = Number(ans.score) || 0
-                                const hasScore = scoreVal > 0
+                                const maxVal = Number(ans.maxScore) || 0
+                                const isFull = scoreVal === maxVal && scoreVal > 0
+                                const isZeroOrNeg = scoreVal <= 0
+
                                 return (
                                   <div
                                     key={ans.criterionId || idx}
-                                    className={`rounded-xl border p-3.5 transition-all ${
-                                      hasScore
-                                        ? 'border-emerald-200 bg-emerald-50/20'
-                                        : 'border-gray-200 bg-gray-50/40'
-                                    }`}
+                                    className="pt-3 first:pt-0 space-y-2"
                                   >
                                     <div className="flex items-start justify-between gap-2">
-                                      <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2 flex-wrap">
-                                          <span className="text-xs font-bold text-gray-400">
-                                            #{idx + 1}
-                                          </span>
-                                          <h4 className="text-sm font-bold text-gray-900 leading-snug">
-                                            {ans.criterion}
-                                          </h4>
-                                        </div>
-                                      </div>
-                                      <span
-                                        className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-black ${
-                                          hasScore
-                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                                            : 'bg-gray-100 text-gray-600 border border-gray-200'
-                                        }`}
-                                      >
-                                        +{scoreVal} đ
+                                      <span className="font-bold text-xs text-gray-950 flex-1 leading-snug">
+                                        {idx + 1}. {ans.criterion}
+                                      </span>
+                                      <span className="text-[11px] font-mono font-bold text-gray-500 shrink-0">
+                                        Tối đa: {formatScore(maxVal)}đ
                                       </span>
                                     </div>
 
                                     {/* Lựa chọn đã chấm */}
-                                    {ans.selectedOptions && ans.selectedOptions.length > 0 && (
-                                      <div className="mt-2.5 space-y-1.5">
+                                    {ans.selectedOptions && ans.selectedOptions.length > 0 ? (
+                                      <div className="space-y-1.5">
                                         {ans.selectedOptions.map((opt, optIdx) => (
                                           <div
                                             key={opt.optionId || optIdx}
-                                            className="flex items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50/70 px-3 py-1.5 text-xs font-medium text-emerald-950 shadow-2xs"
+                                            className="flex items-center justify-between gap-2 rounded-lg border border-emerald-300 bg-emerald-50/80 px-2.5 py-1.5 text-xs text-emerald-950"
                                           >
-                                            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
-                                            <span className="flex-1">{opt.guide}</span>
+                                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                                              <span className="leading-tight text-xs">
+                                                {opt.guide}
+                                              </span>
+                                            </div>
                                             {opt.score !== undefined && (
-                                              <span className="font-bold text-emerald-700 shrink-0">
+                                              <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-800 shrink-0">
                                                 +{opt.score} đ
                                               </span>
                                             )}
                                           </div>
                                         ))}
                                       </div>
+                                    ) : (
+                                      <span className="text-gray-400 italic text-[11px] block">
+                                        Chưa có lựa chọn
+                                      </span>
                                     )}
 
-                                    {/* Ghi chú riêng của tiêu chí nếu có */}
+                                    {/* Điểm đạt */}
+                                    <div className="flex items-center justify-between text-xs pt-1">
+                                      <span className="text-gray-500">Điểm đạt:</span>
+                                      <span
+                                        className={cn(
+                                          'px-2 py-0.5 rounded font-mono font-bold border',
+                                          isFull
+                                            ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                            : !isZeroOrNeg
+                                            ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                            : 'bg-rose-50 text-rose-800 border-rose-300',
+                                        )}
+                                      >
+                                        {formatScore(scoreVal)} / {formatScore(maxVal)}đ
+                                      </span>
+                                    </div>
+
+                                    {/* Ghi chú */}
                                     {ans.note && (
-                                      <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900 flex items-start gap-1.5">
-                                        <span className="font-bold shrink-0">Ghi chú:</span>
-                                        <span className="whitespace-pre-wrap">{ans.note}</span>
+                                      <div className="p-2 rounded bg-amber-50/60 border border-amber-200 text-amber-900 text-xs leading-relaxed whitespace-pre-wrap">
+                                        <span className="font-bold text-[10px] uppercase text-amber-800 block mb-0.5">
+                                          Ghi chú:
+                                        </span>
+                                        {ans.note}
                                       </div>
                                     )}
                                   </div>
@@ -2203,13 +2407,225 @@ export default function QuanLyQCPage() {
                               })}
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        )
+                      })
                     ) : (
-                      <div className="p-6 text-center text-sm text-gray-500">
+                      <div className="p-6 text-center text-sm text-gray-500 bg-white border border-gray-200 rounded-lg">
                         Chưa có dữ liệu chi tiết các tiêu chí đã chấm cho phiếu này.
                       </div>
                     )}
+                  </div>
+
+                  {/* Bảng điểm tiêu chí chi tiết theo đúng thiết kế Demo trên Desktop (hidden lg:block) */}
+                  <div className="hidden lg:block border border-red-900 rounded-md overflow-x-auto shadow-xs bg-white">
+                    <table className="w-full table-fixed text-left text-xs border-collapse min-w-[960px]">
+                      <colgroup>
+                        <col className="w-[150px]" />
+                        <col className="w-[220px]" />
+                        <col className="w-[65px]" />
+                        <col className="w-[320px]" />
+                        <col className="w-[75px]" />
+                        <col className="w-[160px]" />
+                        <col className="w-[115px]" />
+                      </colgroup>
+                      <thead>
+                        <tr className="bg-[#a1001f] text-white font-bold text-center border-b border-red-900 divide-x divide-red-800">
+                          <th className="py-2.5 px-3 text-center">Tiêu chí đầu ra</th>
+                          <th className="py-2.5 px-3 text-center">Nội dung đánh giá</th>
+                          <th className="py-2.5 px-2 text-center">Điểm tối đa</th>
+                          <th className="py-2.5 px-2 text-center">
+                            <div>Mức độ đạt được</div>
+                            <div className="text-[10px] font-normal opacity-90">(Lựa chọn đã chấm)</div>
+                          </th>
+                          <th className="py-2.5 px-2 text-center">
+                            <div>Điểm đạt được</div>
+                            <div className="text-[10px] font-normal opacity-90">(Leader chấm)</div>
+                          </th>
+                          <th className="py-2.5 px-2 text-center">Ghi chú</th>
+                          <th className="py-2.5 px-2 text-center">Tổng Điểm</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {parsedAnswers.length > 0 ? (
+                          (() => {
+                            let globalRowIndex = 0
+                            const totalItemsCount = parsedAnswers.length
+
+                            return Object.entries(groupedAnswers).map(([category, items]) => {
+                              const catMaxScore = items.reduce(
+                                (sum, it) => sum + (Number(it.maxScore) || 0),
+                                0,
+                              )
+
+                              return (
+                                <Fragment key={category}>
+                                  {items.map((ans, idx) => {
+                                    const isFirstInCat = idx === 0
+                                    const isGlobalFirst = globalRowIndex === 0
+                                    globalRowIndex++
+
+                                    const scoreVal = Number(ans.score) || 0
+                                    const maxVal = Number(ans.maxScore) || 0
+                                    const isFull = scoreVal === maxVal && scoreVal > 0
+                                    const isZeroOrNeg = scoreVal <= 0
+
+                                    return (
+                                      <tr
+                                        key={ans.criterionId || idx}
+                                        className="hover:bg-red-50/20 divide-x divide-gray-200 transition-colors"
+                                      >
+                                        {/* Cột 1: Tiêu chí đầu ra */}
+                                        {isFirstInCat && (
+                                          <td
+                                            rowSpan={items.length}
+                                            className="py-3 px-3 font-bold text-gray-950 bg-gray-50/80 align-top text-xs"
+                                          >
+                                            <div className="font-bold text-gray-900 leading-snug">
+                                              {category}
+                                            </div>
+                                            {catMaxScore > 0 && (
+                                              <div className="text-[11px] text-gray-500 font-mono mt-1 font-normal">
+                                                ({formatScore(catMaxScore)} điểm)
+                                              </div>
+                                            )}
+                                          </td>
+                                        )}
+
+                                        {/* Cột 2: Nội dung đánh giá */}
+                                        <td className="py-2.5 px-3 text-gray-800 align-middle text-xs break-words leading-relaxed font-medium">
+                                          {ans.criterion}
+                                        </td>
+
+                                        {/* Cột 3: Điểm tối đa */}
+                                        <td className="py-2.5 px-2 text-center font-mono font-semibold text-gray-900 align-middle">
+                                          {formatScore(maxVal)}
+                                        </td>
+
+                                        {/* Cột 4: Mức độ đạt được */}
+                                        <td className="py-2 px-2 align-middle">
+                                          {ans.selectedOptions && ans.selectedOptions.length > 0 ? (
+                                            <div className="flex flex-col gap-1.5">
+                                              {ans.selectedOptions.map((opt, optIdx) => (
+                                                <div
+                                                  key={opt.optionId || optIdx}
+                                                  className="flex items-center justify-between gap-2 rounded-lg border border-emerald-300 bg-emerald-50/80 px-2.5 py-1.5 text-xs font-medium text-emerald-950 shadow-2xs"
+                                                >
+                                                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                                                    <span className="line-clamp-2 leading-tight">
+                                                      {opt.guide}
+                                                    </span>
+                                                  </div>
+                                                  {opt.score !== undefined && (
+                                                    <span className="font-mono font-bold text-[10px] px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-800 shrink-0">
+                                                      +{opt.score} đ
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          ) : (
+                                            <span className="text-gray-400 italic text-[11px]">
+                                              Chưa có lựa chọn
+                                            </span>
+                                          )}
+                                        </td>
+
+                                        {/* Cột 5: Điểm đạt được */}
+                                        <td className="py-2 px-1 text-center align-middle">
+                                          <div
+                                            className={cn(
+                                              'inline-flex items-center justify-center min-w-[50px] px-2 py-1 rounded text-xs font-mono font-bold border',
+                                              isFull
+                                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                                : !isZeroOrNeg
+                                                ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                                : 'bg-rose-50 text-rose-800 border-rose-300',
+                                            )}
+                                          >
+                                            {formatScore(scoreVal)}
+                                          </div>
+                                        </td>
+
+                                        {/* Cột 6: Ghi chú tiêu chí */}
+                                        <td className="py-2 px-2 align-middle text-xs">
+                                          {ans.note ? (
+                                            <div className="p-1.5 rounded bg-amber-50/60 border border-amber-200 text-amber-900 leading-relaxed whitespace-pre-wrap">
+                                              {ans.note}
+                                            </div>
+                                          ) : (
+                                            <span className="text-gray-300 italic text-[11px]">
+                                              -
+                                            </span>
+                                          )}
+                                        </td>
+
+                                        {/* Cột 7: Tổng Điểm (Gộp toàn bảng) */}
+                                        {isGlobalFirst && (
+                                          <td
+                                            rowSpan={totalItemsCount}
+                                            className="text-center align-middle bg-red-50/20 p-2.5 border-l border-red-900"
+                                          >
+                                            <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mb-1">
+                                              TỔNG ĐIỂM
+                                            </div>
+                                            <div className="font-black font-mono text-2xl md:text-3xl text-[#a1001f] leading-none my-1">
+                                              {formatScore(displayTotal)}
+                                            </div>
+                                            <div className="text-xs font-semibold text-gray-600 mt-1">
+                                              / 10
+                                            </div>
+                                            <div className="mt-2.5">
+                                              <span
+                                                className={cn(
+                                                  'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold shadow-2xs',
+                                                  lvl.colorClass,
+                                                )}
+                                              >
+                                                <span
+                                                  className={cn(
+                                                    'h-1.5 w-1.5 rounded-full',
+                                                    lvl.dotClass,
+                                                  )}
+                                                />
+                                                {lvl.label}
+                                              </span>
+                                            </div>
+                                            <div className="mt-3 pt-2 border-t border-red-200/60">
+                                              <Badge
+                                                variant={
+                                                  selectedViewRecord.signed
+                                                    ? 'success'
+                                                    : 'warning'
+                                                }
+                                                shape="pill"
+                                              >
+                                                {selectedViewRecord.signed
+                                                  ? 'Đã ký duyệt'
+                                                  : 'Chưa ký'}
+                                              </Badge>
+                                            </div>
+                                          </td>
+                                        )}
+                                      </tr>
+                                    )
+                                  })}
+                                </Fragment>
+                              )
+                            })
+                          })()
+                        ) : (
+                          <tr>
+                            <td
+                              colSpan={7}
+                              className="p-6 text-center text-sm text-gray-500"
+                            >
+                              Chưa có dữ liệu chi tiết các tiêu chí đã chấm cho phiếu này.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )
@@ -2366,199 +2782,511 @@ export default function QuanLyQCPage() {
               </div>
             </div>
 
-            {/* 3. Bộ tiêu chí QC thoáng, dễ thao tác */}
-            <div className="rounded-xl border border-gray-200 bg-white shadow-2xs overflow-hidden">
-              {/* Header bộ tiêu chí với Score summary trực quan */}
-              <div className="flex flex-col gap-2 border-b border-gray-100 bg-gray-50/70 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-gray-950 uppercase tracking-wide">
-                      Bộ tiêu chí đánh giá QC
-                    </h3>
-                    <Badge variant="violet" size="xs" shape="pill">
-                      {activeTemplate.criteria.length} tiêu chí
-                    </Badge>
+            {/* 3A. Giao diện Chấm điểm QC dạng Card trên Mobile (block lg:hidden) */}
+            <div className="space-y-3 block lg:hidden">
+              {/* Sticky Top Bar hiển thị tổng điểm & xếp loại */}
+              <div className="sticky top-0 z-10 rounded-lg border border-red-900 bg-white p-3 shadow-md">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 block">
+                      Tổng Điểm QC
+                    </span>
+                    <div className="flex items-baseline gap-1 mt-0.5">
+                      <span className="text-2xl font-black font-mono text-[#a1001f]">
+                        {formatScore(normalizedTotalScore)}
+                      </span>
+                      <span className="text-xs font-semibold text-gray-500">
+                        / 10
+                      </span>
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">{activeTemplate.title}</p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-500 font-medium">
-                    Điểm tạm tính:
-                  </span>
-                  <Badge
-                    variant={resultLabel === 'ĐẠT' ? 'success' : 'danger'}
-                    size="md"
-                    shape="pill"
-                    className="font-bold text-sm px-3 py-1"
-                  >
-                    {formatScore(normalizedTotalScore)} / 10 · {resultLabel}
-                  </Badge>
+                  <div className="text-right">
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold shadow-2xs',
+                        currentScoreLevel.colorClass,
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'h-1.5 w-1.5 rounded-full',
+                          currentScoreLevel.dotClass,
+                        )}
+                      />
+                      {currentScoreLevel.label}
+                    </span>
+                    <div className="text-[10px] mt-1 font-medium">
+                      {missingSingleChoiceCount > 0 ? (
+                        <span className="text-amber-700 font-semibold">
+                          Còn {missingSingleChoiceCount} mục cần chọn
+                        </span>
+                      ) : (
+                        <span className="text-emerald-700 font-semibold">
+                          ✓ Đã chọn đủ
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Danh sách tiêu chí */}
-              <div className="p-4 sm:p-5 space-y-6">
-                {groupedCriteria.map(([category, criteria]) => (
-                  <section key={category} className="space-y-3.5">
-                    <div className="sticky top-0 z-10 flex items-center justify-between rounded-lg border border-[#f3d5da] bg-[#fff7f8] px-3.5 py-2 text-sm font-bold text-[#a1001f] shadow-2xs backdrop-blur-xs">
-                      <div className="flex items-center gap-2">
-                        <ListChecks className="h-4 w-4 shrink-0" />
-                        <span>{category}</span>
-                      </div>
-                      <span className="text-xs font-semibold text-[#a1001f]/80">
-                        {criteria.length} tiêu chí
+              {/* Danh sách tiêu chí theo nhóm dạng Card */}
+              {groupedCriteria.map(([category, criteria]) => {
+                const groupMaxScore = criteria.reduce(
+                  (sum, c) => sum + (c.maxScore || 0),
+                  0,
+                )
+
+                return (
+                  <div
+                    key={category}
+                    className="rounded-lg border border-red-900 overflow-hidden bg-white shadow-2xs"
+                  >
+                    <div className="bg-[#a1001f] text-white px-3 py-2 text-xs font-bold uppercase tracking-wide flex items-center justify-between">
+                      <span>{category}</span>
+                      <span className="text-[11px] font-semibold opacity-90">
+                        {formatScore(groupMaxScore)} điểm · {criteria.length} tiêu chí
                       </span>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="divide-y divide-gray-100 p-2.5 sm:p-3 space-y-3">
                       {criteria.map((criterion, cIdx) => {
-                        const selectedIds = new Set(answers[criterion.id]?.optionIds ?? [])
-                        const score = criterion.options.reduce(
-                          (sum, option) => sum + (selectedIds.has(option.id) ? option.score : 0),
+                        const selectedIds = new Set(
+                          answers[criterion.id]?.optionIds ?? [],
+                        )
+                        const earnedScore = criterion.options.reduce(
+                          (sum, option) =>
+                            sum + (selectedIds.has(option.id) ? option.score : 0),
                           0,
                         )
                         const isMultiple = criterion.selectionMode === 'multiple'
-                        const isAnswered = selectedIds.size > 0
+                        const isFullScore =
+                          earnedScore === criterion.maxScore && earnedScore > 0
+                        const isZeroOrNeg = earnedScore <= 0
 
                         return (
                           <div
                             key={criterion.id}
-                            className={`rounded-xl border transition-all duration-150 ${
-                              isAnswered
-                                ? 'border-gray-300 bg-white shadow-xs'
-                                : 'border-amber-200/80 bg-amber-50/20'
-                            }`}
+                            className="pt-3 first:pt-0 space-y-2"
                           >
-                            {/* Tiêu đề tiêu chí */}
-                            <div className="flex flex-col gap-1.5 border-b border-gray-100 bg-gray-50/60 px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between rounded-t-xl">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-200 text-[11px] font-bold text-gray-700">
-                                  {cIdx + 1}
-                                </span>
-                                <h4 className="text-sm font-semibold text-gray-900 leading-snug">
-                                  {criterion.criterion}
-                                </h4>
-                                <span
-                                  className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm ${
-                                    isMultiple
-                                      ? 'bg-blue-100 text-blue-700'
-                                      : 'bg-emerald-100 text-emerald-700'
-                                  }`}
-                                >
-                                  {isMultiple ? 'Chọn nhiều' : 'Chọn 1'}
-                                </span>
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-xs text-gray-950 leading-snug">
+                                    {cIdx + 1}. {criterion.criterion}
+                                  </span>
+                                  <span
+                                    className={cn(
+                                      'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded-sm inline-block',
+                                      isMultiple
+                                        ? 'bg-blue-100 text-blue-700'
+                                        : 'bg-emerald-100 text-emerald-700',
+                                    )}
+                                  >
+                                    {isMultiple ? 'Chọn nhiều' : 'Chọn 1'}
+                                  </span>
+                                </div>
                               </div>
-
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-xs font-bold text-gray-700">
-                                  {formatScore(score)} / {formatScore(criterion.maxScore)} đ
+                              <div className="shrink-0 text-right">
+                                <span className="text-[10px] font-semibold text-gray-400 block">
+                                  Tối đa
+                                </span>
+                                <span className="text-xs font-mono font-bold text-gray-800">
+                                  {formatScore(criterion.maxScore)}đ
                                 </span>
                               </div>
                             </div>
 
-                            {/* Các lựa chọn (Tile options) */}
-                            <div className="p-3 sm:p-4 space-y-2.5">
-                              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                                {criterion.options.map((option) => {
-                                  const checked = selectedIds.has(option.id)
-                                  return (
-                                    <label
-                                      key={option.id}
-                                      className={`group relative flex min-h-[56px] cursor-pointer items-center justify-between gap-3 rounded-xl border p-3 text-sm transition-all duration-150 select-none ${
-                                        checked
-                                          ? 'border-[#a1001f] bg-[#fff5f6] ring-1.5 ring-[#a1001f] shadow-xs text-gray-950 font-medium'
-                                          : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/70 text-gray-700'
-                                      }`}
-                                    >
-                                      <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                                        <input
-                                          type={isMultiple ? 'checkbox' : 'radio'}
-                                          name={criterion.id}
-                                          checked={checked}
-                                          onChange={() =>
-                                            setAnswers((current) => {
-                                              const previous = current[criterion.id] ?? {
-                                                optionIds: [],
-                                                note: '',
-                                              }
-                                              const nextIds = isMultiple
-                                                ? checked
-                                                  ? previous.optionIds.filter((id) => id !== option.id)
-                                                  : [...previous.optionIds, option.id]
-                                                : [option.id]
+                            {/* Danh sách các option có thể chọn */}
+                            <div className="space-y-1.5">
+                              {criterion.options.map((option) => {
+                                const checked = selectedIds.has(option.id)
+                                const optMax =
+                                  option.score === criterion.maxScore &&
+                                  option.score > 0
+                                const optZero = option.score <= 0
 
-                                              return {
-                                                ...current,
-                                                [criterion.id]: {
-                                                  optionIds: nextIds,
-                                                  note: previous.note,
-                                                },
-                                              }
-                                            })
-                                          }
-                                          className="mt-0.5 h-4 w-4 shrink-0 border-gray-300 text-[#a1001f] focus:ring-[#a1001f] accent-[#a1001f]"
+                                return (
+                                  <button
+                                    key={option.id}
+                                    type="button"
+                                    onClick={() =>
+                                      handleSelectOption(
+                                        criterion.id,
+                                        option.id,
+                                        isMultiple,
+                                      )
+                                    }
+                                    className={cn(
+                                      'w-full text-left p-2 rounded-lg border text-xs transition-all flex items-center justify-between gap-2 shadow-2xs cursor-pointer',
+                                      checked
+                                        ? optMax
+                                          ? 'bg-emerald-600 text-white border-emerald-700 font-bold shadow-xs'
+                                          : optZero
+                                          ? 'bg-rose-600 text-white border-rose-700 font-bold shadow-xs'
+                                          : 'bg-amber-500 text-white border-amber-600 font-bold shadow-xs'
+                                        : 'bg-gray-50/70 text-gray-700 border-gray-200 hover:bg-gray-100',
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                      {isMultiple ? (
+                                        checked ? (
+                                          <CheckSquare className="h-3.5 w-3.5 shrink-0" />
+                                        ) : (
+                                          <Square className="h-3.5 w-3.5 shrink-0 opacity-40" />
+                                        )
+                                      ) : (
+                                        <span
+                                          className={cn(
+                                            'h-2.5 w-2.5 rounded-full shrink-0 border',
+                                            checked
+                                              ? 'bg-white border-white ring-2 ring-white/50'
+                                              : 'border-gray-400 bg-white',
+                                          )}
                                         />
-                                        <span className="leading-snug text-sm">
-                                          {option.guide}
-                                        </span>
-                                      </div>
-
-                                      <span
-                                        className={`shrink-0 rounded-lg px-2 py-0.5 text-xs font-bold transition-colors ${
-                                          checked
-                                            ? 'bg-[#a1001f] text-white shadow-2xs'
-                                            : 'bg-gray-100 text-gray-600 group-hover:bg-gray-200'
-                                        }`}
-                                      >
-                                        {option.score > 0 ? `+${formatScore(option.score)}` : formatScore(option.score)}
+                                      )}
+                                      <span className="leading-relaxed text-xs">
+                                        {option.guide}
                                       </span>
-                                    </label>
-                                  )
-                                })}
-                              </div>
+                                    </div>
+                                    <span
+                                      className={cn(
+                                        'shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold',
+                                        checked
+                                          ? 'bg-black/20 text-white'
+                                          : 'bg-white text-gray-700 border border-gray-200',
+                                      )}
+                                    >
+                                      {option.score > 0
+                                        ? `+${formatScore(option.score)}`
+                                        : formatScore(option.score)}
+                                    </span>
+                                  </button>
+                                )
+                              })}
+                            </div>
 
-                              {/* Ghi chú ngắn cho tiêu chí */}
-                              <details className="rounded-lg border border-dashed border-gray-200 bg-gray-50/60 px-3 py-1.5 group">
-                                <summary className="cursor-pointer text-[11px] font-semibold text-gray-500 hover:text-gray-800 transition-colors">
-                                  + Thêm nhận xét riêng cho tiêu chí này (tùy chọn)
-                                </summary>
-                                <Textarea
-                                  value={answers[criterion.id]?.note ?? ''}
-                                  onChange={(event) =>
-                                    setAnswers((current) => ({
-                                      ...current,
-                                      [criterion.id]: {
-                                        optionIds: current[criterion.id]?.optionIds ?? [],
-                                        note: event.target.value,
-                                      },
-                                    }))
-                                  }
-                                  placeholder="Nhận xét cụ thể cho tiêu chí này..."
-                                  className="mt-2 min-h-[50px] bg-white text-xs"
-                                />
-                              </details>
+                            {/* Điểm đạt được */}
+                            <div className="flex items-center justify-between pt-1">
+                              <span className="text-xs text-gray-500 font-medium">
+                                Điểm đạt:
+                              </span>
+                              <span
+                                className={cn(
+                                  'px-2 py-0.5 rounded text-xs font-mono font-bold border',
+                                  isFullScore
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                    : !isZeroOrNeg
+                                    ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                    : 'bg-rose-50 text-rose-800 border-rose-300',
+                                )}
+                              >
+                                {formatScore(earnedScore)} / {formatScore(criterion.maxScore)}đ
+                              </span>
+                            </div>
+
+                            {/* Ghi chú tiêu chí */}
+                            <div>
+                              <input
+                                type="text"
+                                value={answers[criterion.id]?.note ?? ''}
+                                onChange={(e) =>
+                                  handleCriterionNoteChange(
+                                    criterion.id,
+                                    e.target.value,
+                                  )
+                                }
+                                placeholder="Ghi chú thêm cho tiêu chí này (tùy chọn)..."
+                                className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 focus:border-[#a1001f] focus:outline-none bg-white text-gray-800 placeholder:text-gray-400"
+                              />
                             </div>
                           </div>
                         )
                       })}
                     </div>
-                  </section>
-                ))}
-              </div>
+                  </div>
+                )
+              })}
             </div>
 
-            {/* 4. Ghi chú chung */}
-            <div>
-              <label className="text-xs font-bold uppercase tracking-wide text-gray-500">
-                Ghi chú chung
-              </label>
-              <Textarea
-                value={generalNote}
-                onChange={(event) => setGeneralNote(event.target.value)}
-                placeholder="Nhận xét tổng quan sau buổi QC..."
-                className="mt-1"
-              />
+            {/* 3B. Bảng điểm Tiêu chí đúng theo thiết kế Bảng điểm Demo trên Desktop (hidden lg:block) */}
+            <div className="hidden lg:block border border-red-900 rounded-md overflow-x-auto shadow-xs bg-white">
+              <table className="w-full table-fixed text-left text-xs border-collapse min-w-[960px]">
+                <colgroup>
+                  <col className="w-[150px]" />
+                  <col className="w-[220px]" />
+                  <col className="w-[65px]" />
+                  <col className="w-[320px]" />
+                  <col className="w-[75px]" />
+                  <col className="w-[160px]" />
+                  <col className="w-[115px]" />
+                </colgroup>
+                <thead>
+                  <tr className="bg-[#a1001f] text-white font-bold text-center border-b border-red-900 divide-x divide-red-800">
+                    <th className="py-2.5 px-3 text-center">Tiêu chí đầu ra</th>
+                    <th className="py-2.5 px-3 text-center">Nội dung đánh giá</th>
+                    <th className="py-2.5 px-2 text-center">Điểm tối đa</th>
+                    <th className="py-2.5 px-2 text-center">
+                      <div>Mức độ đạt được</div>
+                      <div className="text-[10px] font-normal opacity-90">(Lựa chọn tiêu chí)</div>
+                    </th>
+                    <th className="py-2.5 px-2 text-center">
+                      <div>Điểm đạt được</div>
+                      <div className="text-[10px] font-normal opacity-90">(Tự động tính)</div>
+                    </th>
+                    <th className="py-2.5 px-2 text-center">Ghi chú</th>
+                    <th className="py-2.5 px-2 text-center">Tổng Điểm</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {(() => {
+                    let globalRowIndex = 0
+                    const totalCriteriaCount = activeTemplate.criteria.length
+
+                    return groupedCriteria.map(([category, criteria]) => {
+                      const groupMaxScore = criteria.reduce(
+                        (sum, c) => sum + (c.maxScore || 0),
+                        0,
+                      )
+
+                      return (
+                        <Fragment key={category}>
+                          {criteria.map((criterion, cIdx) => {
+                            const isFirstInCategory = cIdx === 0
+                            const isGlobalFirst = globalRowIndex === 0
+                            globalRowIndex++
+
+                            const selectedIds = new Set(
+                              answers[criterion.id]?.optionIds ?? [],
+                            )
+                            const earnedScore = criterion.options.reduce(
+                              (sum, option) =>
+                                sum + (selectedIds.has(option.id) ? option.score : 0),
+                              0,
+                            )
+                            const isMultiple = criterion.selectionMode === 'multiple'
+                            const isFullScore =
+                              earnedScore === criterion.maxScore && earnedScore > 0
+                            const isZeroOrNeg = earnedScore <= 0
+
+                            return (
+                              <tr
+                                key={criterion.id}
+                                className="hover:bg-red-50/20 divide-x divide-gray-200 transition-colors"
+                              >
+                                {/* Cột 1: Tiêu chí đầu ra (Gộp nhóm rowSpan) */}
+                                {isFirstInCategory && (
+                                  <td
+                                    rowSpan={criteria.length}
+                                    className="py-3 px-3 font-bold text-gray-950 bg-gray-50/80 align-top text-xs"
+                                  >
+                                    <div className="font-bold text-gray-900 leading-snug">
+                                      {category}
+                                    </div>
+                                    <div className="text-[11px] text-gray-500 font-mono mt-1 font-normal">
+                                      ({formatScore(groupMaxScore)} điểm)
+                                    </div>
+                                  </td>
+                                )}
+
+                                {/* Cột 2: Nội dung đánh giá */}
+                                <td className="py-2.5 px-3 text-gray-800 align-middle text-xs break-words leading-relaxed">
+                                  <div className="font-medium text-gray-900 leading-snug">
+                                    {criterion.criterion}
+                                  </div>
+                                  <div className="mt-1">
+                                    <span
+                                      className={cn(
+                                        'text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm inline-block',
+                                        isMultiple
+                                          ? 'bg-blue-100 text-blue-700'
+                                          : 'bg-emerald-100 text-emerald-700',
+                                      )}
+                                    >
+                                      {isMultiple ? 'Chọn nhiều' : 'Chọn 1'}
+                                    </span>
+                                  </div>
+                                </td>
+
+                                {/* Cột 3: Điểm tối đa */}
+                                <td className="py-2.5 px-2 text-center font-mono font-semibold text-gray-900 align-middle">
+                                  {formatScore(criterion.maxScore)}
+                                </td>
+
+                                {/* Cột 4: Mức độ đạt được (Các options nút chọn) */}
+                                <td className="py-2 px-2 align-middle">
+                                  <div className="flex flex-col gap-1.5">
+                                    {criterion.options.map((option) => {
+                                      const checked = selectedIds.has(option.id)
+                                      const optMax =
+                                        option.score === criterion.maxScore &&
+                                        option.score > 0
+                                      const optZero = option.score <= 0
+
+                                      return (
+                                        <button
+                                          key={option.id}
+                                          type="button"
+                                          onClick={() =>
+                                            handleSelectOption(
+                                              criterion.id,
+                                              option.id,
+                                              isMultiple,
+                                            )
+                                          }
+                                          className={cn(
+                                            'w-full text-left px-2.5 py-1.5 rounded-lg border text-xs transition-all flex items-center justify-between gap-2 shadow-2xs',
+                                            checked
+                                              ? optMax
+                                                ? 'bg-emerald-600 text-white border-emerald-700 font-bold shadow-xs'
+                                                : optZero
+                                                ? 'bg-rose-600 text-white border-rose-700 font-bold shadow-xs'
+                                                : 'bg-amber-500 text-white border-amber-600 font-bold shadow-xs'
+                                              : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50 hover:border-gray-300',
+                                          )}
+                                          title={option.guide}
+                                        >
+                                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                            {isMultiple ? (
+                                              checked ? (
+                                                <CheckSquare className="h-3.5 w-3.5 shrink-0" />
+                                              ) : (
+                                                <Square className="h-3.5 w-3.5 shrink-0 opacity-40" />
+                                              )
+                                            ) : (
+                                              <span
+                                                className={cn(
+                                                  'h-2.5 w-2.5 rounded-full shrink-0 border',
+                                                  checked
+                                                    ? 'bg-white border-white ring-2 ring-white/50'
+                                                    : 'border-gray-400 bg-white',
+                                                )}
+                                              />
+                                            )}
+                                            <span className="line-clamp-2 leading-tight">
+                                              {option.guide}
+                                            </span>
+                                          </div>
+                                          <span
+                                            className={cn(
+                                              'shrink-0 text-[10px] px-1.5 py-0.5 rounded font-mono font-bold',
+                                              checked
+                                                ? 'bg-black/20 text-white'
+                                                : 'bg-gray-100 text-gray-700',
+                                            )}
+                                          >
+                                            {option.score > 0
+                                              ? `+${formatScore(option.score)}`
+                                              : formatScore(option.score)}
+                                          </span>
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                </td>
+
+                                {/* Cột 5: Điểm đạt được */}
+                                <td className="py-2 px-1 text-center align-middle">
+                                  <div
+                                    className={cn(
+                                      'inline-flex items-center justify-center min-w-[50px] px-2 py-1 rounded text-xs font-mono font-bold border',
+                                      isFullScore
+                                        ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                        : !isZeroOrNeg
+                                        ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                        : 'bg-rose-50 text-rose-800 border-rose-300',
+                                    )}
+                                    title="Điểm tự động tính"
+                                  >
+                                    {formatScore(earnedScore)}
+                                  </div>
+                                </td>
+
+                                {/* Cột 6: Ghi chú tiêu chí */}
+                                <td className="py-2 px-1.5 align-middle">
+                                  <textarea
+                                    rows={2}
+                                    value={answers[criterion.id]?.note ?? ''}
+                                    onChange={(e) =>
+                                      handleCriterionNoteChange(
+                                        criterion.id,
+                                        e.target.value,
+                                      )
+                                    }
+                                    placeholder="Nhận xét tiêu chí..."
+                                    className="w-full text-xs p-1.5 rounded border border-gray-300 focus:border-[#a1001f] focus:outline-none resize-none bg-white text-gray-800 transition"
+                                  />
+                                </td>
+
+                                {/* Cột 7: Tổng Điểm (Gộp toàn bảng thành 1 ô lớn như bên Demo) */}
+                                {isGlobalFirst && (
+                                  <td
+                                    rowSpan={totalCriteriaCount}
+                                    className="text-center align-middle bg-red-50/20 p-2.5 border-l border-red-900"
+                                  >
+                                    <div className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mb-1">
+                                      TỔNG ĐIỂM
+                                    </div>
+                                    <div className="font-black font-mono text-2xl md:text-3xl text-[#a1001f] leading-none my-1">
+                                      {formatScore(normalizedTotalScore)}
+                                    </div>
+                                    <div className="text-xs font-semibold text-gray-600 mt-1">
+                                      / 10
+                                    </div>
+                                    <div className="mt-2.5">
+                                      <span
+                                        className={cn(
+                                          'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-bold shadow-2xs',
+                                          currentScoreLevel.colorClass,
+                                        )}
+                                      >
+                                        <span
+                                          className={cn(
+                                            'h-1.5 w-1.5 rounded-full',
+                                            currentScoreLevel.dotClass,
+                                          )}
+                                        />
+                                        {currentScoreLevel.label}
+                                      </span>
+                                    </div>
+                                    <div className="mt-3 pt-2 border-t border-red-200/60 text-[10px]">
+                                      {missingSingleChoiceCount > 0 ? (
+                                        <span className="text-amber-700 font-semibold block">
+                                          Còn {missingSingleChoiceCount} mục chưa chọn
+                                        </span>
+                                      ) : (
+                                        <span className="text-emerald-700 font-semibold block">
+                                          ✓ Đã chọn đủ
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                )}
+                              </tr>
+                            )
+                          })}
+                        </Fragment>
+                      )
+                    })
+                  })()}
+                </tbody>
+              </table>
+            </div>
+
+            {/* 4. Khung Nhận xét & Ghi chú chung (đồng bộ thiết kế khung đỏ như Demo) */}
+            <div className="border border-red-900 rounded-md overflow-hidden shadow-xs bg-white">
+              <div className="bg-[#a1001f] text-white font-bold text-center py-2 text-sm uppercase tracking-wide">
+                Nhận xét &amp; Ghi chú chung sau buổi QC
+              </div>
+              <div className="p-3">
+                <Textarea
+                  rows={4}
+                  value={generalNote}
+                  onChange={(event) => setGeneralNote(event.target.value)}
+                  placeholder="Nhận xét tổng quan về buổi học, tác phong giảng dạy, tương tác với học sinh và các điểm cần lưu ý..."
+                  className="w-full text-xs"
+                />
+              </div>
             </div>
           </div>
         ) : (

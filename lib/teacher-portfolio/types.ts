@@ -81,7 +81,7 @@ export type TeacherPortfolioDemoSection =
   | 'onboarding'
   | 'internal_training'
 
-export type TeacherPortfolioTemplate = 1 | 2 | 3 | 4
+export type TeacherPortfolioTemplate = 1 | 2
 
 export type TeacherPortfolioDto = {
   meta: {
@@ -102,6 +102,7 @@ export type TeacherPortfolioDto = {
     centerName: string | null
     courseLines: string[]
     avatarUrl: string | null
+    imageSource: 'portfolio' | 'avatar' | null
   }
   education: TeacherPortfolioEducation[]
   experiences: TeacherPortfolioExperience[]

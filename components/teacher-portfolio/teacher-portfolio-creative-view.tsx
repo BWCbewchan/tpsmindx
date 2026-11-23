@@ -25,6 +25,7 @@ import {
   teacherPortfolioInitials,
   type TeacherPortfolioPresentation,
 } from './teacher-portfolio-presentation'
+import styles from './teacher-portfolio-mature.module.css'
 
 type CreativeViewProps = {
   data: TeacherPortfolioDto
@@ -82,8 +83,8 @@ export function TeacherPortfolioCreativeView({ data, demoMode: _demoMode, presen
   const nextSection = visibleSections[1]?.id ?? 'profile'
 
   return (
-    <main className="portfolio-theme min-h-screen overflow-hidden bg-[#F8FAFC] text-[#0F172A]">
-      <TeacherPortfolioProgressRail sections={visibleSections} themeColor="#DC2626" />
+    <main className={`${styles.mature} ${styles.editorial} portfolio-theme min-h-screen overflow-hidden bg-[#F8FAFC] text-[#0F172A]`}>
+      <TeacherPortfolioProgressRail sections={visibleSections} themeColor="#9D1737" />
 
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-md print:hidden">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
@@ -94,13 +95,13 @@ export function TeacherPortfolioCreativeView({ data, demoMode: _demoMode, presen
           <nav className="hidden items-center gap-6 xl:flex" aria-label="Điều hướng portfolio">
             {visibleSections.slice(1).map((section) => <a key={section.id} href={`#${section.id}`} className="text-[11px] font-bold text-slate-600 transition-colors hover:text-[#DC2626]">{section.label}</a>)}
           </nav>
-          <div className="flex items-center gap-2"><PortfolioPdfDownloadButton /><PortfolioMobileMenu sections={visibleSections} themeColor="#DC2626" /></div>
+          <div className="flex items-center gap-2"><PortfolioPdfDownloadButton /><PortfolioMobileMenu sections={visibleSections} themeColor="#9D1737" /></div>
         </div>
       </header>
 
       <section id="profile" className="relative scroll-mt-20 overflow-hidden border-b border-slate-100 bg-white">
-        <div className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-amber-100/70" aria-hidden="true" />
-        <div className="pointer-events-none absolute -left-28 bottom-0 h-64 w-64 rounded-full bg-red-50" aria-hidden="true" />
+        <div className={`${styles.editorialHeroAccent} pointer-events-none absolute -right-8 -top-20 h-64 w-28 bg-amber-100/70`} aria-hidden="true" />
+        <div className={`${styles.editorialHeroAccent} pointer-events-none absolute -left-16 bottom-0 h-28 w-64 bg-red-50`} aria-hidden="true" />
         <div className="relative mx-auto grid min-h-[660px] max-w-7xl items-center gap-14 px-5 py-16 sm:px-8 lg:grid-cols-12 lg:py-20">
           <div className="lg:col-span-7">
             <div className="animate-fade-in-up inline-flex items-center gap-3">
@@ -117,8 +118,8 @@ export function TeacherPortfolioCreativeView({ data, demoMode: _demoMode, presen
           </div>
 
           <div className="animate-slide-in-right animation-delay-200 relative mx-auto w-full max-w-[410px] lg:col-span-5 lg:justify-self-end">
-            <div className="absolute -right-4 -top-4 h-48 w-48 rounded-3xl bg-[#F59E0B]" aria-hidden="true" />
-            <div className="absolute -bottom-5 -left-5 h-36 w-36 -rotate-6 rounded-3xl bg-[#DC2626]" aria-hidden="true" />
+            <div className={`${styles.editorialHeroAccent} absolute -right-4 -top-4 h-48 w-24 bg-[#F59E0B]`} aria-hidden="true" />
+            <div className={`${styles.editorialHeroAccent} absolute -bottom-5 -left-5 h-20 w-36 bg-[#DC2626]`} aria-hidden="true" />
             <div className="relative overflow-hidden rounded-3xl border-4 border-white bg-slate-100 shadow-[0_22px_60px_rgba(15,23,42,0.18)]">
               <div className="absolute right-4 top-4 z-10 rounded-full bg-white/90 px-3 py-1 text-[10px] font-black text-[#0F172A] backdrop-blur">Mentor MindX</div>
               <div className="relative aspect-[4/5] overflow-hidden">
@@ -130,7 +131,7 @@ export function TeacherPortfolioCreativeView({ data, demoMode: _demoMode, presen
         </div>
       </section>
 
-      {hasOperations ? <section className="relative z-10 bg-[#DC2626] text-white shadow-[0_12px_30px_rgba(185,28,28,0.18)]"><div className="mx-auto grid max-w-7xl grid-cols-2 px-5 sm:px-8 lg:grid-cols-4">{metrics.map((metric, index) => <div key={metric.label} className={`relative flex flex-col items-center justify-center px-4 py-9 text-center ${index % 2 ? 'border-l border-red-400/50' : ''} ${index > 1 ? 'border-t border-red-400/50 lg:border-t-0' : ''} ${index > 0 ? 'lg:border-l' : ''}`}><p className="text-4xl font-black tracking-[-0.05em] sm:text-5xl">{metric.value ?? '—'}</p><p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-red-100">{metric.label}</p>{demoOperations ? <span className="absolute right-3 top-3 h-1.5 w-1.5 rounded-full bg-[#F59E0B]" aria-label="Dữ liệu minh họa" /> : null}</div>)}</div></section> : null}
+      {hasOperations ? <section className="relative z-10 border-t-4 border-[#DC2626] bg-[#0F172A] text-white"><div className="mx-auto grid max-w-7xl grid-cols-2 px-5 sm:px-8 lg:grid-cols-4">{metrics.map((metric, index) => <div key={metric.label} className={`relative flex flex-col items-center justify-center px-4 py-9 text-center ${index % 2 ? 'border-l border-red-400/50' : ''} ${index > 1 ? 'border-t border-red-400/50 lg:border-t-0' : ''} ${index > 0 ? 'lg:border-l' : ''}`}><p className="text-4xl font-black tracking-[-0.05em] sm:text-5xl">{metric.value ?? '—'}</p><p className="mt-2 text-[10px] font-black uppercase tracking-[0.16em] text-red-100">{metric.label}</p>{demoOperations ? <span className="absolute right-3 top-3 h-1.5 w-1.5 rounded-full bg-[#F59E0B]" aria-label="Dữ liệu minh họa" /> : null}</div>)}</div></section> : null}
 
       {hasBackground ? <section id="background" className="scroll-mt-24 border-b border-slate-200 bg-white py-20 sm:py-28"><div className="mx-auto max-w-7xl px-5 sm:px-8"><SectionHeading number="01" eyebrow="Nền tảng" title="Mỗi chặng đường đều để lại một phương pháp giảng dạy." /><div className="grid gap-12 lg:grid-cols-2">{data.education.length > 0 ? <div><div className="mb-6 flex items-center gap-2 border-b-2 border-[#DC2626] pb-3"><GraduationCap className="h-5 w-5 text-[#DC2626]" /><h3 className="text-xs font-black uppercase tracking-[0.16em]">Học vấn</h3></div><div className="space-y-4">{data.education.map((item, index) => <article key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-7"><div className="flex items-start gap-5"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-red-100 text-lg font-black text-[#DC2626]">{String(index + 1).padStart(2, '0')}</span><div><h4 className="text-xl font-black">{item.institution}</h4><p className="mt-2 inline-flex rounded-md border border-slate-200 bg-white px-3 py-1 text-xs font-bold text-slate-700">{item.qualification}{item.fieldOfStudy ? ` · ${item.fieldOfStudy}` : ''}</p><p className="mt-3 text-xs font-bold text-slate-500">{item.startYear || '—'} — {item.endYear || 'Nay'}</p>{item.description ? <p className="mt-4 text-sm leading-7 text-slate-600">{item.description}</p> : null}</div></div></article>)}</div></div> : null}{data.experiences.length > 0 ? <div><div className="mb-6 flex items-center gap-2 border-b-2 border-[#0F172A] pb-3"><BriefcaseBusiness className="h-5 w-5 text-[#0F172A]" /><h3 className="text-xs font-black uppercase tracking-[0.16em]">Kinh nghiệm</h3></div><div className="space-y-4">{data.experiences.map((item, index) => <article key={item.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-7"><div className="flex items-start gap-5"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[#0F172A] text-lg font-black text-[#F59E0B]">{String(index + 1).padStart(2, '0')}</span><div className="min-w-0 flex-1"><div className="flex flex-wrap justify-between gap-3"><h4 className="text-xl font-black">{item.jobTitle}</h4><p className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[10px] font-bold text-slate-500">{formatTeacherPortfolioDate(item.startDate)} — {item.isCurrent ? 'Hiện tại' : formatTeacherPortfolioDate(item.endDate)}</p></div><p className="mt-2 text-sm font-black text-[#DC2626]">{item.organization}</p>{item.description ? <p className="mt-4 text-sm leading-7 text-slate-600">{item.description}</p> : null}</div></div></article>)}</div></div> : null}</div></div></section> : null}
 

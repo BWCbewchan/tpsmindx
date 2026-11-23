@@ -277,9 +277,10 @@ export function LectureReviewManagementClient() {
       background="white"
       maxWidth="full"
       padding="responsive"
+      fullHeight={false}
       className="px-4 sm:px-6 lg:px-8"
     >
-      <PageLayoutContent spacing="xl" className="min-w-0 pb-24">
+      <PageLayoutContent spacing="xl" className="min-w-0 pb-4 sm:pb-6">
         <PageHeader
           title="Quản Lý Đăng Ký Duyệt Giảng"
           description="Theo dõi phiếu đã đăng ký, mở tài liệu slide và lọc theo Leader, cơ sở hoặc ngày duyệt giảng."

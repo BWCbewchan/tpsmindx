@@ -11,6 +11,11 @@ import {
   canAccessLectureReviewCalendar,
   LECTURE_REVIEW_CALENDAR_PATH,
 } from '@/lib/lecture-review-calendar-access'
+import {
+  HC_TEACHER_PORTFOLIO_PATH,
+  HC_TEACHING_SCHEDULE_PATH,
+  isHcTeachingSchedulePath,
+} from '@/lib/hc-operations-access'
 import { cn } from '@/lib/utils'
 import {
   BarChart3,
@@ -306,8 +311,13 @@ export function Sidebar() {
           icon: CalendarDays,
         },
         {
-          href: '/admin/page4/quan-ly-lich-lam-viec',
-          label: 'Quản lý lịch làm việc',
+          href: HC_TEACHING_SCHEDULE_PATH,
+          label: 'Lịch Làm Việc Cơ Sở',
+        },
+        {
+          href: HC_TEACHER_PORTFOLIO_PATH,
+          label: 'Quản Lý Portfolio Giáo Viên',
+          icon: FileText,
         },
         { href: '/admin/page4/lich-danh-gia', label: 'Lịch sự kiện' },
         {
@@ -556,6 +566,9 @@ export function Sidebar() {
     if (href.includes('?')) {
       const [hrefPath, hrefSearch] = href.split('?')
       return pathname === hrefPath && searchParams.toString() === hrefSearch
+    }
+    if (href === HC_TEACHING_SCHEDULE_PATH) {
+      return isHcTeachingSchedulePath(pathname)
     }
     // Sibling routes in submenu: only exact match, not startsWith
     // So /admin/page2 only matches /admin/page2, NOT /admin/page2/manage

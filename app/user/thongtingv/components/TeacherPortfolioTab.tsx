@@ -7,6 +7,7 @@ import {
   BriefcaseBusiness,
   Building2,
   CalendarDays,
+  Camera,
   CheckCircle2,
   Clipboard,
   Clock3,
@@ -24,6 +25,7 @@ import {
   Trophy,
   Users,
 } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import useSWR from 'swr'
@@ -182,22 +184,29 @@ export default function TeacherPortfolioTab({ teacher }: TeacherPortfolioTabProp
   ]
 
   return (
-    <div className="bg-[#f5f0e8] p-3 sm:p-5">
-      <div className="relative overflow-hidden rounded-[26px] bg-[#201b18] px-5 py-7 text-white shadow-xl sm:px-8 sm:py-9">
-        <div className="absolute inset-0 opacity-80 [background:radial-gradient(circle_at_90%_10%,rgba(189,0,38,.72),transparent_36%),radial-gradient(circle_at_10%_100%,rgba(200,155,75,.22),transparent_35%)]" />
-        <div className="relative flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between">
+    <div className="bg-white p-3 sm:p-5">
+      <div className="relative overflow-hidden rounded-[26px] bg-[#bd0026] px-5 py-7 text-white shadow-[0_20px_55px_rgba(145,0,32,0.22)] sm:px-8 sm:py-9">
+        <div className="absolute inset-0 [background:radial-gradient(circle_at_86%_12%,rgba(248,196,49,.38),transparent_28%),radial-gradient(circle_at_12%_105%,rgba(0,138,75,.28),transparent_34%)]" />
+        <div className="relative grid gap-7 lg:grid-cols-[1fr_auto] lg:items-end">
           <div className="max-w-2xl">
-            <div className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/60"><span className="h-px w-8 bg-[#efc46e]" /> Teacher Portfolio</div>
+            <div className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em] text-white/75"><span className="h-px w-8 bg-[#f8c431]" /> Teacher Portfolio</div>
             <h2 className="text-3xl font-black tracking-[-0.04em] sm:text-4xl">{data.profile.displayName || teacher.name}</h2>
-            <p className="mt-2 text-sm font-semibold text-white/70">{data.profile.professionalTitle}</p>
+            <p className="mt-2 text-sm font-semibold text-white/80">{data.profile.professionalTitle}</p>
             <div className="mt-5 flex flex-wrap gap-2">
-              {data.profile.centerName ? <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold"><Building2 className="h-3.5 w-3.5 text-[#efc46e]" />{data.profile.centerName}</span> : null}
-              <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold"><ShieldCheck className="h-3.5 w-3.5 text-[#efc46e]" />Phân quyền theo cơ sở/khu vực</span>
+              {data.profile.centerName ? <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold"><Building2 className="h-3.5 w-3.5 text-[#f8c431]" />{data.profile.centerName}</span> : null}
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold"><ShieldCheck className="h-3.5 w-3.5 text-[#8fe0ae]" />Phân quyền theo cơ sở/khu vực</span>
+            </div>
+            <div className="mt-7 flex flex-wrap gap-2">
+              {data.access.canEditSelfReported ? <Button type="button" variant="outline" className="border-white/30 bg-white text-[#9b0024] hover:bg-[#fff5e5] hover:text-[#7b001d]" onClick={() => setEditorOpen(true)}><PencilLine /> Cập nhật hồ sơ & ảnh</Button> : null}
+              <Button type="button" className="bg-[#f8c431] text-[#351b08] hover:bg-[#ffd95e]" onClick={copyLink}><Link2 /> Sao chép link</Button>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {data.access.canEditSelfReported ? <Button type="button" variant="outline" className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => setEditorOpen(true)}><PencilLine /> Cập nhật Nhóm 1</Button> : null}
-            <Button type="button" variant="mindx" onClick={copyLink}><Link2 /> Sao chép link</Button>
+          <div className="relative mx-auto w-36 lg:mx-0">
+            <div className="absolute -right-3 -top-3 h-full w-full rounded-2xl border-2 border-[#f8c431]" aria-hidden="true" />
+            <div className="relative aspect-[4/5] overflow-hidden rounded-2xl border-4 border-white bg-[#fff4e6] shadow-xl">
+              {data.profile.avatarUrl ? <Image src={data.profile.avatarUrl} alt={`Ảnh portfolio ${data.profile.displayName}`} fill sizes="144px" className="object-cover object-top" unoptimized /> : <div className="grid h-full place-items-center bg-white text-4xl font-black text-[#bd0026]">{data.profile.displayName.split(/\s+/).filter(Boolean).slice(-2).map((part) => part[0]).join('').toUpperCase()}</div>}
+            </div>
+            <span className="absolute -bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-[#078348] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.1em] text-white"><Camera className="h-3 w-3" />{data.profile.imageSource === 'portfolio' ? 'Ảnh portfolio' : 'Avatar TPS'}</span>
           </div>
         </div>
       </div>
@@ -211,7 +220,7 @@ export default function TeacherPortfolioTab({ teacher }: TeacherPortfolioTabProp
           <div className="flex flex-wrap gap-2">
             <div className="flex items-center border border-[#d8cec2] bg-[#fbf8f3] p-0.5" role="group" aria-label="Chọn mẫu Teacher Portfolio">
               <span className="px-2 text-[10px] font-black uppercase tracking-[0.1em] text-[#8a7b70]">Mẫu</span>
-              {([1, 2, 3, 4] as const).map((template) => (
+              {([1, 2] as const).map((template) => (
                 <button
                   key={template}
                   type="button"
@@ -228,7 +237,7 @@ export default function TeacherPortfolioTab({ teacher }: TeacherPortfolioTabProp
             <Button size="sm" variant="outline" asChild><a href={`${selectedSharePath}&demo=1`} target="_blank" rel="noopener noreferrer"><Sparkles /> Xem bản mẫu</a></Button>
           </div>
         </div>
-        <p className="mt-3 rounded-lg bg-sky-50 px-3 py-2 text-xs leading-5 text-sky-800">Link chia sẻ là trang công khai, bất kỳ ai có link đều xem được. Quyền cơ sở/khu vực chỉ áp dụng cho Leader khi tra cứu portfolio giáo viên trong TPS.</p>
+        <p className="mt-3 rounded-lg border-l-4 border-[#078348] bg-[#f2f9f4] px-3 py-2 text-xs leading-5 text-[#17633d]">Link chia sẻ là trang công khai, bất kỳ ai có link đều xem được. Quyền cơ sở/khu vực chỉ áp dụng cho Leader khi tra cứu portfolio giáo viên trong TPS.</p>
       </div>
 
       {data.meta.demoSections.length > 0 ? <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold leading-5 text-amber-900">Tài khoản trình bày đang dùng dữ liệu minh họa cho: {data.meta.demoSections.map((section) => section === 'certificates' ? 'chứng chỉ' : section === 'onboarding' ? 'đào tạo đầu vào' : 'training nội bộ').join(', ')}. Các mục này chưa phải dữ liệu vận hành thật.</div> : null}

@@ -3730,6 +3730,74 @@ const migrations: Migration[] = [
         'Giờ bắt đầu buổi duyệt giảng theo giờ địa phương';
     `,
   },
+  {
+    name: 'V132_hc_operations_view',
+    version: 132,
+    sql: `
+      INSERT INTO app_screens (
+        route_path,
+        label,
+        group_name,
+        sort_order,
+        description,
+        is_active
+      )
+      VALUES (
+        '/admin/quan-ly-portfolio-giao-vien',
+        'Quản Lý Portfolio Giáo Viên',
+        'Quản lý Giáo viên & Vận hành',
+        24,
+        'Danh sách Portfolio giáo viên và đường dẫn xem công khai dành cho HC',
+        true
+      )
+      ON CONFLICT (route_path) DO UPDATE SET
+        label = EXCLUDED.label,
+        group_name = EXCLUDED.group_name,
+        sort_order = EXCLUDED.sort_order,
+        description = EXCLUDED.description,
+        is_active = true;
+
+      INSERT INTO role_permissions (role_code, route_path)
+      SELECT role_code, '/admin/quan-ly-portfolio-giao-vien'
+      FROM roles
+      WHERE UPPER(role_code) = 'HC'
+      ON CONFLICT DO NOTHING;
+
+      INSERT INTO app_permissions (user_id, route_path, can_access)
+      SELECT id, '/account/interface-switch-disabled', true
+      FROM app_users
+      WHERE LOWER(TRIM(email)) = 'hc@mindx.edu.vn'
+      ON CONFLICT (user_id, route_path) DO UPDATE SET can_access = true;
+    `,
+  },
+  {
+    name: 'V133_remove_legacy_work_schedule',
+    version: 133,
+    sql: `
+      DELETE FROM app_permissions
+      WHERE route_path = '/admin/page4/quan-ly-lich-lam-viec';
+
+      DELETE FROM role_permissions
+      WHERE route_path = '/admin/page4/quan-ly-lich-lam-viec';
+
+      DELETE FROM app_screens
+      WHERE route_path = '/admin/page4/quan-ly-lich-lam-viec';
+    `,
+  },
+  {
+    name: 'V134_teacher_portfolio_portrait',
+    version: 134,
+    sql: `
+      ALTER TABLE teacher_portfolios
+        ADD COLUMN IF NOT EXISTS portrait_url TEXT,
+        ADD COLUMN IF NOT EXISTS portrait_storage_key VARCHAR(600);
+
+      COMMENT ON COLUMN teacher_portfolios.portrait_url IS
+        'Ảnh chân dung do giáo viên chọn riêng cho portfolio; để trống sẽ dùng avatar TPS.';
+      COMMENT ON COLUMN teacher_portfolios.portrait_storage_key IS
+        'Object key trong bucket mindx-teacher-portfolios để dọn ảnh khi thay hoặc xóa.';
+    `,
+  },
 ]
 
 // ========== HÀM CHẠY MIGRATIONS ==========

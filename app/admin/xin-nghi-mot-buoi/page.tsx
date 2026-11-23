@@ -119,7 +119,7 @@ function getStatusMeta(status: LeaveRequest['status']): {
 }
 
 export default function AdminXinNghiMotBuoiPage() {
-  const { user, token } = useAuth()
+  const { user, token, isLoading: authLoading } = useAuth()
 
   const [items, setItems] = useState<LeaveRequest[]>([])
   const [searchQuery, setSearchQuery] = useQueryState<string>('search', '')
@@ -146,6 +146,7 @@ export default function AdminXinNghiMotBuoiPage() {
   )
 
   const fetchData = useCallback(async (showToast = false) => {
+    if (authLoading || !user?.email) return
     try {
       setLoading(true)
       setLoadingError(null)
@@ -171,7 +172,7 @@ export default function AdminXinNghiMotBuoiPage() {
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [authLoading, token, user?.email])
 
   useEffect(() => {
     fetchData()

@@ -50,7 +50,7 @@ const EVENT_ICON: Record<string, string> = {
 
 function eventActorLabel(event: AuditEvent): string {
   if (event.user_email) return event.user_email;
-  return event.event_type === 'SYSTEM' ? 'system-event' : 'invalid-session-email';
+  return event.event_type === 'SYSTEM' ? 'system-event' : 'unauthenticated';
 }
 
 // ─── Core alert function ──────────────────────────────────────
@@ -65,7 +65,7 @@ export function sendSecurityAlert(event: AuditEvent & { id?: number }): void {
 
   // Bỏ qua các event type không cần alert (DATA_MUTATION bình thường không alert)
   const isPrivEsc    = event.event_type === 'PRIVILEGE_ESCALATION';
-  const isBruteForce = event.action?.includes('BRUTE_FORCE');
+  const isBruteForce = event.action?.includes('BRUTE_FORCE') || event.action === 'AUTH_FAILURE_BURST';
   const isCritical   = event.severity === 'CRITICAL';
   const isMissingActor = event.threat_flags?.includes('MISSING_ACTOR_EMAIL') === true;
   const actorLabel = eventActorLabel(event);
@@ -142,7 +142,7 @@ async function sendTelegramAlert(event: AuditEvent & { id?: number }): Promise<v
 // ─── Email alert (backup nếu không dùng Telegram) ─────────────
 
 /**
- * Gửi email cảnh báo qua nodemailer (dùng config SMTP trong .env)
+ * Gửi email cảnh báo qua tài khoản được cấu hình trong database
  * Chỉ dùng khi TELEGRAM_BOT_TOKEN chưa được setup
  */
 export async function sendEmailAlert(event: AuditEvent & { id?: number }): Promise<void> {
@@ -154,25 +154,9 @@ export async function sendEmailAlert(event: AuditEvent & { id?: number }): Promi
   const now  = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
   const icon = SEVERITY_ICON[event.severity] ?? '⚠️';
 
-  const startedAt = Date.now();
-  const { normalizeEmailRecipients, recordEmailDelivery } =
-    await import('@/lib/email-delivery-log');
-  const toRecipients = normalizeEmailRecipients(adminEmail);
-
   try {
-    const nodemailer = await import('nodemailer');
-    const { ensureEmailLogoInHtml, prepareEmailForSend } = await import('@/lib/email-branding');
-    const transporter = nodemailer.createTransport({
-      host:   process.env.MAIL_HOST    ?? 'smtp.gmail.com',
-      port:   parseInt(process.env.MAIL_PORT ?? '465', 10),
-      secure: true,
-      auth: {
-        user: process.env.MAILDEV_INCOMING_USER,
-        pass: process.env.MAILDEV_INCOMING_PASS,
-      },
-    });
-
-    const alertHtml = ensureEmailLogoInHtml(`
+    const { sendMail } = await import('@/app/api/emails/transporter');
+    const alertHtml = (`
         <h2>${icon} Security Alert — ${event.severity}</h2>
         <table border="1" cellpadding="8" cellspacing="0" style="border-collapse:collapse;font-family:monospace">
           <tr><td><b>Action</b></td><td>${event.action}</td></tr>
@@ -187,49 +171,15 @@ export async function sendEmailAlert(event: AuditEvent & { id?: number }): Promi
           ${event.new_data ? `<tr><td><b>After</b></td><td><pre>${JSON.stringify(event.new_data, null, 2)}</pre></td></tr>` : ''}
         </table>
       `);
-    const { html, attachments } = prepareEmailForSend(alertHtml);
-
-    const info = await transporter.sendMail({
-      from:    `"TMS Security" <${process.env.MAILDEV_INCOMING_USER}>`,
-      to:      adminEmail,
+    await sendMail({
+      to: adminEmail,
       subject: `${icon} [${event.severity}] Security Alert — ${event.action}`,
-      html,
-      ...(attachments.length > 0 ? { attachments } : {}),
-    });
-    await recordEmailDelivery({
-      status: 'sent',
-      senderEmail: process.env.MAILDEV_INCOMING_USER,
-      toRecipients,
-      ccRecipients: [],
-      subject: `${icon} [${event.severity}] Security Alert — ${event.action}`,
+      html: alertHtml,
       emailType: 'security_alert',
       source: 'lib/security-alert',
-      durationMs: Date.now() - startedAt,
-      providerMessageId: String(info?.messageId ?? ''),
-      smtpResponse: String(info?.response ?? ''),
-      metadata: {
-        severity: event.severity,
-        action: event.action,
-        auditEventId: event.id ?? null,
-      },
+      metadata: { severity: event.severity, action: event.action, auditEventId: event.id ?? null },
     });
   } catch (err) {
-    await recordEmailDelivery({
-      status: 'failed',
-      senderEmail: process.env.MAILDEV_INCOMING_USER,
-      toRecipients,
-      ccRecipients: [],
-      subject: `${icon} [${event.severity}] Security Alert — ${event.action}`,
-      emailType: 'security_alert',
-      source: 'lib/security-alert',
-      durationMs: Date.now() - startedAt,
-      error: err,
-      metadata: {
-        severity: event.severity,
-        action: event.action,
-        auditEventId: event.id ?? null,
-      },
-    });
     console.error('[SecurityAlert] Email failed:', (err as Error).message);
   }
 }

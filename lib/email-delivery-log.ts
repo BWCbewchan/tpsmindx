@@ -1,4 +1,5 @@
 import pool from '@/lib/db'
+import { alertEmailFailure } from '@/lib/email-failure-alert'
 import {
   classifyEmailError,
   type EmailErrorCategory,
@@ -61,7 +62,7 @@ export async function recordEmailDelivery(
           retryable: false,
         }
 
-    await pool.query(
+    const result = await pool.query(
       `INSERT INTO email_delivery_logs (
         status,
         sender_account_id,
@@ -87,7 +88,7 @@ export async function recordEmailDelivery(
       ) VALUES (
         $1, $2, $3, $4::text[], $5::text[], $6, $7, $8, $9, $10, $11,
         $12, $13, $14, $15, $16, $17, $18, $19, $20::jsonb, CURRENT_TIMESTAMP
-      )`,
+      ) RETURNING id`,
       [
         input.status,
         input.senderAccountId || null,
@@ -111,6 +112,16 @@ export async function recordEmailDelivery(
         JSON.stringify(input.metadata || {}),
       ],
     )
+    const logId = Number(result.rows[0]?.id)
+    if ((input.status === 'failed' || input.status === 'skipped' ||
+      (Array.isArray(input.metadata?.rejected) && input.metadata.rejected.length > 0)) && logId) {
+      await alertEmailFailure(input.status === 'sent' ? {
+        ...input,
+        error: { code: 'PARTIAL_RECIPIENT_REJECTION', message: 'recipient address rejected', responseCode: 550 },
+      } : input, logId).catch(() => {
+        console.error('[email-monitor] Telegram alert failed; delivery log retained:', logId)
+      })
+    }
   } catch (error) {
     console.error('[email-monitor] Failed to write delivery log:', error)
   }

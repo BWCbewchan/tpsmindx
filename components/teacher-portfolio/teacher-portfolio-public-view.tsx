@@ -20,10 +20,9 @@ import Image from 'next/image'
 import { PortfolioMobileMenu } from '@/components/student-portfolio/portfolio-mobile-menu'
 import { PortfolioPdfDownloadButton } from '@/components/student-portfolio/portfolio-pdf-download-button'
 import { TeacherPortfolioCaseStudyView } from '@/components/teacher-portfolio/teacher-portfolio-case-study-view'
-import { TeacherPortfolioCreativeView } from '@/components/teacher-portfolio/teacher-portfolio-creative-view'
+import { TeacherPortfolioEditorialView } from '@/components/teacher-portfolio/teacher-portfolio-editorial-view'
 import { TeacherPortfolioProgressRail } from '@/components/teacher-portfolio/teacher-portfolio-progress-rail'
 import { resolveTeacherPortfolioPresentation } from '@/components/teacher-portfolio/teacher-portfolio-presentation'
-import { TeacherPortfolioSwissGridView } from '@/components/teacher-portfolio/teacher-portfolio-swiss-grid-view'
 import type { TeacherPortfolioDto, TeacherPortfolioTemplate } from '@/lib/teacher-portfolio/types'
 import logoTechAi from '@/logo_tech_ai_trong_suot.png'
 import { AchievementReviewControls } from './achievement-review-controls'
@@ -118,14 +117,11 @@ export function TeacherPortfolioPublicView({
   template?: TeacherPortfolioTemplate
 }) {
   const presentation = resolveTeacherPortfolioPresentation(data, demoMode)
+  if (template === 1) {
+    return <TeacherPortfolioEditorialView data={data} demoMode={demoMode} presentation={presentation} />
+  }
   if (template === 2) {
-    return <TeacherPortfolioCreativeView data={data} demoMode={demoMode} presentation={presentation} />
-  }
-  if (template === 3) {
     return <TeacherPortfolioCaseStudyView data={data} demoMode={demoMode} presentation={presentation} />
-  }
-  if (template === 4) {
-    return <TeacherPortfolioSwissGridView data={data} demoMode={demoMode} presentation={presentation} />
   }
 
   const operations = data.operations

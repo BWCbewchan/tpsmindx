@@ -120,14 +120,6 @@
     "is_active": true
   },
   {
-    "route_path": "/admin/page4/quan-ly-lich-lam-viec",
-    "label": "Quản lý lịch làm việc",
-    "group_name": "Sự kiện",
-    "sort_order": 11,
-    "description": "",
-    "is_active": true
-  },
-  {
     "route_path": "/admin/page4/lich-danh-gia",
     "label": "Lịch sự kiện",
     "group_name": "Sự kiện",

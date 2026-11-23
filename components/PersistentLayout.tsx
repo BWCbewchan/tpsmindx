@@ -38,7 +38,6 @@ function Layout({ children }: { children: React.ReactNode }) {
     pathname.startsWith('/public/teacher-portfolio') ||
     pathname.startsWith('/public/checkout') ||
     pathname.startsWith('/public/quan-ly-qc') ||
-    isPublicTeachingSchedule ||
     pathname.startsWith('/bao-tri') ||
     pathname.startsWith('/hr-candidate-application') ||
     isCandidatePortal ||
@@ -64,7 +63,7 @@ function Layout({ children }: { children: React.ReactNode }) {
   const isDockMode = navMode === 'dock'
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground lg:h-screen lg:min-h-0 lg:overflow-hidden">
       {mounted && shouldShowSidebar && (
         <>
           {/* Always render Sidebar (it handles its own open/close state) */}
@@ -92,7 +91,7 @@ function Layout({ children }: { children: React.ReactNode }) {
       <main
         data-tour="tour-content"
         className={`
-          transition-all duration-500 ease-in-out min-h-screen lg:will-change-transform
+          transition-all duration-500 ease-in-out min-h-screen lg:h-screen lg:min-h-0 lg:overflow-hidden lg:will-change-transform
           ${
             mounted && shouldShowSidebar && !isDockMode
               ? isOpen
@@ -103,8 +102,8 @@ function Layout({ children }: { children: React.ReactNode }) {
           ${shouldShowSidebar ? 'relative' : ''}
         `}
       >
-        <div className="w-full min-h-screen lg:h-screen">
-          <div id="main-scroll-container" className={`min-h-screen lg:h-full custom-scrollbar ${isStandaloneLesson ? 'overflow-y-auto' : 'lg:overflow-y-auto'}`}>
+        <div className="w-full min-h-screen lg:h-full lg:min-h-0">
+          <div id="main-scroll-container" className={`min-h-screen lg:h-full lg:min-h-0 custom-scrollbar lg:overscroll-y-contain ${isStandaloneLesson ? 'overflow-y-auto' : 'lg:overflow-y-auto'}`}>
             <div
               className={
                 isStandaloneLesson || isPublicPortfolio || isPublicTeacherPortfolio || isPublicCheckout || isPublicQuanLyQc || isPublicLectureReviewCalendar || isPublicTeachingSchedule

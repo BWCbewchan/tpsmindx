@@ -9,6 +9,10 @@ import {
   canAccessLectureReviewCalendar,
   LECTURE_REVIEW_CALENDAR_PATH,
 } from '@/lib/lecture-review-calendar-access'
+import {
+  HC_TEACHER_PORTFOLIO_PATH,
+  HC_TEACHING_SCHEDULE_PATH,
+} from '@/lib/hc-operations-access'
 import { getFilteredAdminMenuItems, checkHrefPermission } from '@/lib/menu-permissions'
 import { cn } from '@/lib/utils'
 import {
@@ -613,7 +617,8 @@ export function DockNav() {
         { href: '/admin/quan-ly-dang-ky-duyet-giang', label: 'Quản Lý Đăng Ký Duyệt Giảng' },
         { href: LECTURE_REVIEW_CALENDAR_PATH, label: 'Lịch Duyệt Giảng' },
         { href: '/admin/schedule', label: 'Đăng ký lịch làm việc' },
-        { href: '/admin/page4/quan-ly-lich-lam-viec', label: 'Quản lý lịch làm việc' },
+        { href: HC_TEACHING_SCHEDULE_PATH, label: 'Lịch Làm Việc Cơ Sở' },
+        { href: HC_TEACHER_PORTFOLIO_PATH, label: 'Quản Lý Portfolio Giáo Viên' },
         { href: '/admin/page4/lich-danh-gia', label: 'Lịch sự kiện' },
         { href: '/admin/xin-nghi-mot-buoi', label: 'Tiếp nhận xin nghỉ 1 buổi' },
         { href: '/admin/deal-luong?type=salary_deal', label: 'Thỏa thuận lương' },
@@ -692,7 +697,8 @@ export function DockNav() {
         { href: '/admin/quan-ly-dang-ky-duyet-giang', label: 'QL đăng ký duyệt giảng' },
         { href: LECTURE_REVIEW_CALENDAR_PATH, label: 'Lịch Duyệt Giảng' },
         { href: '/admin/schedule', label: 'Đăng ký lịch tháng' },
-        { href: '/admin/page4/quan-ly-lich-lam-viec', label: 'Lịch làm việc' },
+        { href: HC_TEACHING_SCHEDULE_PATH, label: 'Lịch Làm Việc Cơ Sở' },
+        { href: HC_TEACHER_PORTFOLIO_PATH, label: 'Portfolio Giáo Viên' },
         { href: '/admin/xin-nghi-mot-buoi', label: 'Tiếp nhận xin nghỉ' },
         { href: '/admin/deal-luong?type=salary_deal', label: 'Thỏa thuận lương' },
       ] as SubItem[],
@@ -751,6 +757,7 @@ export function DockNav() {
     { href: '/admin/dang-ky-duyet-giang', label: 'Đăng Ký Duyệt Giảng' },
     { href: '/admin/quan-ly-dang-ky-duyet-giang', label: 'Quản Lý Đăng Ký Duyệt Giảng' },
     { href: LECTURE_REVIEW_CALENDAR_PATH, label: 'Lịch Duyệt Giảng' },
+    { href: HC_TEACHER_PORTFOLIO_PATH, label: 'Quản Lý Portfolio Giáo Viên' },
     { href: '/admin/page4/lich-danh-gia', label: 'Lịch sự kiện' },
     { href: '/admin/deal-luong?type=salary_reduction', label: 'Hạ lương' },
     { href: '/admin/deal-luong?type=bonus', label: 'Nâng lương' },

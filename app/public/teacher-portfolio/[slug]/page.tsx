@@ -27,6 +27,6 @@ export default async function TeacherPortfolioSharePage({
   if (result.status !== 'ok') notFound()
 
   const rawTemplate = Array.isArray(query.template) ? query.template[0] : query.template
-  const template: TeacherPortfolioTemplate = rawTemplate === '2' ? 2 : rawTemplate === '3' ? 3 : rawTemplate === '4' ? 4 : 1
+  const template: TeacherPortfolioTemplate = rawTemplate === '2' ? 2 : 1
   return <TeacherPortfolioPublicView data={result.data} demoMode={query.demo === '1'} template={template} />
 }

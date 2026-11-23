@@ -2,7 +2,15 @@ import { filterManagementPermissions, normalizeRoutePath } from '@/lib/admin-per
 import {
   canAccessLectureReviewCalendar,
   isLectureReviewCalendarPath,
+  LECTURE_REVIEW_CALENDAR_PATH,
 } from '@/lib/lecture-review-calendar-access'
+import {
+  HC_TEACHER_PORTFOLIO_PATH,
+  HC_TEACHING_SCHEDULE_PATH,
+  isHcAccountEmail,
+  isHcOperationsUser,
+  isHcTeachingSchedulePath,
+} from '@/lib/hc-operations-access'
 
 export function normalizeRoleToken(value?: string): string {
   return (value || '')
@@ -124,6 +132,9 @@ export function checkHrefPermission(href: string, user: any): boolean {
   if (isLectureReviewCalendarPath(path)) {
     return canAccessLectureReviewCalendar(user.email)
   }
+  if (isHcTeachingSchedulePath(path)) {
+    return isHcOperationsUser(user)
+  }
   if (path === '/user' || path.startsWith('/user/') ||
       path === '/candidate-portal' || path.startsWith('/candidate-portal/')) return true
   if (normalizeRoleToken(user.role) === 'super_admin') return true
@@ -162,6 +173,22 @@ export function getFilteredAdminMenuItems(adminMenuItems: any[], user: any, _pat
         : item.href
       return [{ ...item, ...(item.href ? { href } : {}), [childKey]: children }]
     }
-    return item.href && checkHrefPermission(item.href, user) ? [item] : []
+    if (!item.href || !checkHrefPermission(item.href, user)) return []
+
+    // The dedicated HC account has a deliberately compact navigation with
+    // two groups. This only shapes the menu; server-side permission checks
+    // remain authoritative for every route.
+    if (isHcAccountEmail(user.email)) {
+      const path = normalizeRoutePath(item.href.split('#')[0])
+      const visibleHcPaths = new Set([
+        LECTURE_REVIEW_CALENDAR_PATH,
+        HC_TEACHING_SCHEDULE_PATH,
+        HC_TEACHER_PORTFOLIO_PATH,
+        '/admin/page2',
+      ])
+      return visibleHcPaths.has(path) ? [item] : []
+    }
+
+    return [item]
   })
 }

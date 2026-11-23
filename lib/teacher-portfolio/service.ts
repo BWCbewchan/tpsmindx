@@ -10,6 +10,7 @@ import {
   resolveTeacherPortfolioAccess,
   type TeacherPortfolioOwnerRow,
 } from './access'
+import { loadTeacherClassMetrics } from './class-metrics'
 import type {
   TeacherPortfolioAchievement,
   TeacherPortfolioDemoSection,
@@ -40,6 +41,8 @@ type PortfolioRow = {
   teacher_code: string
   public_slug: string
   status: 'published' | 'revoked'
+  portrait_url: string | null
+  portrait_storage_key: string | null
   created_at: unknown
   updated_at: unknown
 }
@@ -147,7 +150,8 @@ async function ensurePortfolio(
          ) VALUES ($1, $2, $3, 'published')
          ON CONFLICT (teacher_code) DO UPDATE SET
            teacher_email_snapshot = EXCLUDED.teacher_email_snapshot
-         RETURNING id, teacher_code, public_slug, status, created_at, updated_at`,
+         RETURNING id, teacher_code, public_slug, status,
+                   portrait_url, portrait_storage_key, created_at, updated_at`,
         [code, email || null, slug],
       )
       return result.rows[0] as PortfolioRow
@@ -165,7 +169,8 @@ async function findPortfolioForTeacher(
   teacher: TeacherPortfolioOwnerRow,
 ): Promise<PortfolioRow> {
   const result = await client.query(
-    `SELECT id, teacher_code, public_slug, status, created_at, updated_at
+    `SELECT id, teacher_code, public_slug, status,
+            portrait_url, portrait_storage_key, created_at, updated_at
      FROM teacher_portfolios
      WHERE teacher_code = $1
      LIMIT 1`,
@@ -442,26 +447,38 @@ async function loadTraining(teacher: TeacherPortfolioOwnerRow) {
   }
 }
 
-async function loadOperations(teacher: TeacherPortfolioOwnerRow) {
-  try {
-    const result = await getTeacherCheckCong({
+async function loadOperations(
+  teacher: TeacherPortfolioOwnerRow,
+  options: { includeLmsClassMetrics?: boolean } = {},
+) {
+  const lmsMetricsPromise = options.includeLmsClassMetrics === false
+    ? Promise.resolve(null)
+    : loadTeacherClassMetrics(teacher).catch((error) => {
+        console.warn('[teacher-portfolio] LMS class metrics unavailable:', error)
+        return null
+      })
+  const checkCongPromise = getTeacherCheckCong({
       email: profileEmail(teacher),
       personalEmail: text(teacher.personal_email),
       username: text(teacher.user_name || teacher['User name']),
       code: text(teacher.code),
       fullName: teacherName(teacher),
       month: 'all',
-    })
+    }).catch(() => null)
+  const [lmsMetrics, result] = await Promise.all([
+    lmsMetricsPromise,
+    checkCongPromise,
+  ])
+
+  if (result) {
     const teachingRecords = result.records.filter(
       (record) => normalize(record.type) === 'class' && normalize(record.status) === 'checked',
     )
-    const classNames = new Set<string>()
     const studentsByClass = new Map<string, number>()
     for (const record of teachingRecords) {
       const className = text(record.className)
       if (!className) continue
       const classKey = normalize(className)
-      classNames.add(classKey)
       const count = finiteNumber(record.studentCount)
       if (count !== null) {
         studentsByClass.set(classKey, Math.max(studentsByClass.get(classKey) ?? 0, count))
@@ -476,27 +493,27 @@ async function loadOperations(teacher: TeacherPortfolioOwnerRow) {
     )
     return {
       provenance: TPS_SYNCED,
-      available: teachingRecords.length > 0,
-      periodLabel: result.summary.monthLabel || 'Toàn bộ dữ liệu',
-      classCount: classNames.size || null,
-      studentCount,
+      available: lmsMetrics !== null || teachingRecords.length > 0,
+      periodLabel: lmsMetrics ? 'Tổng lớp từ LMS · buổi/giờ từ Check Công' : result.summary.monthLabel || 'Toàn bộ dữ liệu',
+      classCount: lmsMetrics?.classCount ?? null,
+      studentCount: lmsMetrics?.studentCount ?? studentCount,
       classSessions: teachingRecords.length || null,
       teachingHours: teachingRecords.length > 0 ? Math.round(teachingHours * 10) / 10 : null,
       cpr: null,
       retention: null,
     }
-  } catch {
-    return {
-      provenance: TPS_SYNCED,
-      available: false,
-      periodLabel: 'Toàn bộ dữ liệu',
-      classCount: null,
-      studentCount: null,
-      classSessions: null,
-      teachingHours: null,
-      cpr: null,
-      retention: null,
-    }
+  }
+
+  return {
+    provenance: TPS_SYNCED,
+    available: lmsMetrics !== null,
+    periodLabel: lmsMetrics ? 'Tổng lớp từ LMS' : 'Toàn bộ dữ liệu',
+    classCount: lmsMetrics?.classCount ?? null,
+    studentCount: lmsMetrics?.studentCount ?? null,
+    classSessions: null,
+    teachingHours: null,
+    cpr: null,
+    retention: null,
   }
 }
 
@@ -533,14 +550,17 @@ async function composeDto(
     mode: 'self' | 'shared'
     canEditSelfReported: boolean
     canVerifyAchievements: boolean
+    includeLmsClassMetrics?: boolean
   },
 ): Promise<TeacherPortfolioDto> {
-  const [selfReported, loadedCertificates, avatarUrl, loadedTraining, operations, honors] = await Promise.all([
+  const [selfReported, loadedCertificates, fallbackAvatarUrl, loadedTraining, operations, honors] = await Promise.all([
     loadSelfReported(portfolio.id),
     loadCertificates(teacher),
     loadAvatar(teacher),
     loadTraining(teacher),
-    loadOperations(teacher),
+    loadOperations(teacher, {
+      includeLmsClassMetrics: options.includeLmsClassMetrics,
+    }),
     loadHonors(teacher.code),
   ])
   const demoSections: TeacherPortfolioDemoSection[] = []
@@ -612,6 +632,8 @@ async function composeDto(
   }))
 
   const courseLines = splitValues(teacher.course_line || teacher['Course Line'])
+  const portfolioPortraitUrl = nullableText(portfolio.portrait_url)
+  const avatarUrl = portfolioPortraitUrl ?? fallbackAvatarUrl
   return {
     meta: {
       slug: portfolio.public_slug,
@@ -633,6 +655,7 @@ async function composeDto(
       centerName: teacherCenter(teacher),
       courseLines,
       avatarUrl,
+      imageSource: portfolioPortraitUrl ? 'portfolio' : fallbackAvatarUrl ? 'avatar' : null,
     },
     education: selfReported.education,
     experiences: selfReported.experiences,
@@ -871,7 +894,8 @@ export async function updateTeacherPortfolioForSelf(
     )
     await client.query('COMMIT')
     const refreshed = await client.query(
-      `SELECT id, teacher_code, public_slug, status, created_at, updated_at
+      `SELECT id, teacher_code, public_slug, status,
+              portrait_url, portrait_storage_key, created_at, updated_at
        FROM teacher_portfolios WHERE id = $1`,
       [portfolio.id],
     )
@@ -880,6 +904,48 @@ export async function updateTeacherPortfolioForSelf(
       canEditSelfReported: true,
       canVerifyAchievements: false,
     })
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+export async function updateTeacherPortfolioPortraitForSelf(
+  sessionEmail: string,
+  portrait: { url: string; storageKey: string } | null,
+): Promise<{ data: TeacherPortfolioDto; previousStorageKey: string | null } | null> {
+  await waitForMigrations()
+  const teacher = await findTeacherForPortfolioSession(sessionEmail)
+  if (!teacher) return null
+
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    const portfolio = await findPortfolioForTeacher(client, teacher)
+    const previousStorageKey = nullableText(portfolio.portrait_storage_key)
+    const updated = await client.query(
+      `UPDATE teacher_portfolios
+       SET portrait_url = $1,
+           portrait_storage_key = $2,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3
+       RETURNING id, teacher_code, public_slug, status,
+                 portrait_url, portrait_storage_key, created_at, updated_at`,
+      [portrait?.url ?? null, portrait?.storageKey ?? null, portfolio.id],
+    )
+    const data = await composeDto(updated.rows[0] as PortfolioRow, teacher, {
+        mode: 'self',
+        canEditSelfReported: true,
+        canVerifyAchievements: false,
+      })
+    await client.query('COMMIT')
+
+    return {
+      data,
+      previousStorageKey,
+    }
   } catch (error) {
     await client.query('ROLLBACK')
     throw error
@@ -900,7 +966,8 @@ export async function getTeacherPortfolioShareView(
   }
   if (!decodedSlug || decodedSlug.length > 180) return { status: 'not_found' }
   const result = await pool.query(
-    `SELECT p.id, p.teacher_code, p.public_slug, p.status, p.created_at, p.updated_at,
+    `SELECT p.id, p.teacher_code, p.public_slug, p.status,
+            p.portrait_url, p.portrait_storage_key, p.created_at, p.updated_at,
             to_jsonb(t.*) AS teacher
      FROM teacher_portfolios p
      JOIN teachers t ON t.code = p.teacher_code

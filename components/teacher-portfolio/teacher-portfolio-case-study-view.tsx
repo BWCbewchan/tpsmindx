@@ -22,6 +22,7 @@ import {
   teacherPortfolioInitials,
   type TeacherPortfolioPresentation,
 } from './teacher-portfolio-presentation'
+import styles from './teacher-portfolio-mature.module.css'
 
 type CaseStudyViewProps = {
   data: TeacherPortfolioDto
@@ -78,8 +79,8 @@ export function TeacherPortfolioCaseStudyView({ data, demoMode: _demoMode, prese
   const visibleSections = sections.filter((section) => section.id !== 'journey' || hasRecognition)
 
   return (
-    <main className="portfolio-theme min-h-screen bg-[#F8FAFC] text-[#0F172A]">
-      <TeacherPortfolioProgressRail sections={visibleSections} themeColor="#DC2626" />
+    <main className={`${styles.mature} ${styles.caseStudy} portfolio-theme min-h-screen bg-[#F8FAFC] text-[#0F172A]`}>
+      <TeacherPortfolioProgressRail sections={visibleSections} themeColor="#9D1737" />
 
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur-md print:hidden">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
@@ -87,7 +88,7 @@ export function TeacherPortfolioCaseStudyView({ data, demoMode: _demoMode, prese
             <Image src={logoTechAi} alt="MindX Tech & AI School" className="h-9 w-auto shrink-0 object-contain sm:h-11" priority />
             <div className="hidden border-l border-slate-300 pl-4 sm:block"><p className="text-[10px] font-black uppercase tracking-[0.15em] text-[#0F172A]">Hồ sơ năng lực giáo viên</p><p className="mt-1 text-[9px] font-bold uppercase tracking-[0.12em] text-slate-500">Professional Case Study</p></div>
           </a>
-          <div className="flex items-center gap-2"><PortfolioPdfDownloadButton /><PortfolioMobileMenu sections={visibleSections} themeColor="#DC2626" /></div>
+          <div className="flex items-center gap-2"><PortfolioPdfDownloadButton /><PortfolioMobileMenu sections={visibleSections} themeColor="#9D1737" /></div>
         </div>
       </header>
 
@@ -101,7 +102,7 @@ export function TeacherPortfolioCaseStudyView({ data, demoMode: _demoMode, prese
             <div className="absolute -bottom-4 right-0 flex h-9 w-36 items-center justify-center bg-[#DC2626] text-[9px] font-black uppercase tracking-[0.16em] text-white">Teacher / Mentor</div>
           </div>
           <div>
-            <div className="animate-fade-in-up inline-flex items-center gap-3 border border-slate-200 bg-white px-3 py-2 shadow-[4px_4px_0_#F59E0B]"><span className="h-2 w-8 bg-[#DC2626]" /><p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600">Professional profile</p></div>
+            <div className="animate-fade-in-up inline-flex items-center gap-3 border-l-4 border-[#DC2626] bg-[#F8FAFC] px-3 py-2"><span className="h-px w-8 bg-[#F59E0B]" /><p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-600">Professional profile</p></div>
             <h1 className="animate-fade-in-up animation-delay-200 mt-7 max-w-4xl text-[clamp(3.2rem,6.8vw,6.4rem)] font-black leading-[0.9] tracking-[-0.065em] text-[#0F172A]">{data.profile.displayName}</h1>
             <p className="animate-fade-in-up animation-delay-300 mt-7 max-w-3xl text-xl font-semibold leading-8 text-slate-600 sm:text-2xl">{data.profile.professionalTitle}</p>
             <div className="animate-fade-in-up animation-delay-400 mt-10 grid gap-5 border-y border-slate-300 py-6 sm:grid-cols-2">
@@ -112,7 +113,7 @@ export function TeacherPortfolioCaseStudyView({ data, demoMode: _demoMode, prese
         </div>
       </section>
 
-      {hasOperations ? <section className="border-b border-red-700 bg-[#DC2626] text-white"><div className="mx-auto grid max-w-7xl grid-cols-2 px-5 sm:px-8 lg:grid-cols-4">{metrics.map((metric, index) => <div key={metric.label} className={`relative px-4 py-9 ${index % 2 ? 'border-l border-red-400/50' : ''} ${index > 1 ? 'border-t border-red-400/50 lg:border-t-0' : ''} ${index > 0 ? 'lg:border-l' : ''}`}><metric.icon className="h-5 w-5 text-[#FDE68A]" /><p className="mt-6 text-4xl font-black tracking-[-0.045em]">{metric.value ?? '—'}</p><p className="mt-2 text-[9px] font-black uppercase tracking-[0.15em] text-red-100">{metric.label}</p>{demoOperations ? <span className="absolute right-3 top-3 h-1.5 w-1.5 bg-[#F59E0B]" aria-label="Dữ liệu minh họa" /> : null}</div>)}</div></section> : null}
+      {hasOperations ? <section className="border-y border-slate-700 border-t-4 border-t-[#DC2626] bg-[#0F172A] text-white"><div className="mx-auto grid max-w-7xl grid-cols-2 px-5 sm:px-8 lg:grid-cols-4">{metrics.map((metric, index) => <div key={metric.label} className={`relative px-4 py-9 ${index % 2 ? 'border-l border-red-400/50' : ''} ${index > 1 ? 'border-t border-red-400/50 lg:border-t-0' : ''} ${index > 0 ? 'lg:border-l' : ''}`}><metric.icon className="h-5 w-5 text-[#FDE68A]" /><p className="mt-6 text-4xl font-black tracking-[-0.045em]">{metric.value ?? '—'}</p><p className="mt-2 text-[9px] font-black uppercase tracking-[0.15em] text-red-100">{metric.label}</p>{demoOperations ? <span className="absolute right-3 top-3 h-1.5 w-1.5 bg-[#F59E0B]" aria-label="Dữ liệu minh họa" /> : null}</div>)}</div></section> : null}
 
       <div className="mx-auto grid max-w-7xl gap-12 px-5 py-20 sm:px-8 sm:py-28 xl:grid-cols-[220px_1fr] xl:gap-16">
         <aside className="hidden xl:block print:hidden"><div className="sticky top-28 border-t-4 border-[#0F172A] pt-5"><p className="inline-flex bg-[#F59E0B] px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-[#0F172A]">Mục lục hồ sơ</p><nav className="mt-5" aria-label="Mục lục hồ sơ">{visibleSections.slice(1).map((section, index) => <a key={section.id} href={`#${section.id}`} className="grid grid-cols-[26px_1fr] gap-3 border-b border-slate-300 py-4 text-xs font-bold text-slate-600 transition-all duration-300 hover:translate-x-1 hover:text-[#DC2626]"><span className="text-[10px] text-[#DC2626]">{String(index + 1).padStart(2, '0')}</span>{section.label}</a>)}</nav></div></aside>

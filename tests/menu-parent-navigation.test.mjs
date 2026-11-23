@@ -14,8 +14,15 @@ function loadModule(path, dependencies = {}) {
   } });
   return exports;
 }
+const adminPermissionRoutes = loadModule('../lib/admin-permission-routes.ts');
+const hcOperationsAccess = loadModule('../lib/hc-operations-access.ts');
+const lectureReviewCalendarAccess = loadModule('../lib/lecture-review-calendar-access.ts', {
+  '@/lib/hc-operations-access': hcOperationsAccess,
+});
 const { getFilteredAdminMenuItems, checkHrefPermission } = loadModule('../lib/menu-permissions.ts', {
-  '@/lib/admin-permission-routes': loadModule('../lib/admin-permission-routes.ts'),
+  '@/lib/admin-permission-routes': adminPermissionRoutes,
+  '@/lib/hc-operations-access': hcOperationsAccess,
+  '@/lib/lecture-review-calendar-access': lectureReviewCalendarAccess,
 });
 const calendar = '/admin/hr-candidates/training-calendar';
 const manager = { role: 'manager', isAdmin: true, permissions: [calendar] };
@@ -67,6 +74,75 @@ test('heading-only groups retain their toggle behavior and inaccessible groups d
 
 test('super administrators retain the parent route', () => {
   assert.equal(getFilteredAdminMenuItems([training], { role: 'super_admin' })[0].href, '/admin/hr-candidates');
+});
+
+test('the dedicated HC account sees only the two requested navigation groups', () => {
+  const hc = {
+    email: 'hc@mindx.edu.vn',
+    role: 'manager',
+    isAdmin: true,
+    userRoles: ['HC'],
+    permissions: [
+      '/admin/dang-ky-duyet-giang',
+      '/admin/page2',
+      '/admin/quan-ly-portfolio-giao-vien',
+    ],
+  };
+  const menu = [
+    {
+      label: 'Quản lý Giáo viên & Vận hành',
+      submenu: [
+        { href: '/admin/dang-ky-duyet-giang', label: 'Đăng ký duyệt giảng' },
+        { href: '/public/lich-duyet-giang', label: 'Lịch Duyệt Giảng' },
+        { href: '/public/teaching-schedule', label: 'Lịch Làm Việc Cơ Sở' },
+        { href: '/admin/quan-ly-portfolio-giao-vien', label: 'Portfolio Giáo Viên' },
+      ],
+    },
+    {
+      label: 'Tài Liệu Nội Bộ',
+      submenu: [
+        { label: 'Quy Trình, Quy Định', submenu: [
+          { href: '/admin/page2', label: 'Xem Tài Liệu' },
+          { href: '/admin/page2/manage', label: 'Quản Lý Tài Liệu' },
+        ] },
+      ],
+    },
+    { href: '/admin/dashboard', label: 'Dashboard' },
+  ];
+
+  const filtered = getFilteredAdminMenuItems(menu, hc);
+  assert.deepEqual(
+    Array.from(filtered, group => ({
+      label: group.label,
+      children: Array.from(group.submenu || [], child => ({
+        label: child.label,
+        href: child.href,
+        children: Array.from(child.submenu || [], nested => nested.href),
+      })),
+    })),
+    [
+      {
+        label: 'Quản lý Giáo viên & Vận hành',
+        children: [
+          { label: 'Lịch Duyệt Giảng', href: '/public/lich-duyet-giang', children: [] },
+          { label: 'Lịch Làm Việc Cơ Sở', href: '/public/teaching-schedule', children: [] },
+          { label: 'Portfolio Giáo Viên', href: '/admin/quan-ly-portfolio-giao-vien', children: [] },
+        ],
+      },
+      {
+        label: 'Tài Liệu Nội Bộ',
+        children: [
+          { label: 'Quy Trình, Quy Định', href: undefined, children: ['/admin/page2'] },
+        ],
+      },
+    ],
+  );
+});
+
+test('the HC work schedule remains active on monthly public routes', () => {
+  assert.equal(hcOperationsAccess.isHcTeachingSchedulePath('/public/teaching-schedule'), true);
+  assert.equal(hcOperationsAccess.isHcTeachingSchedulePath('/public/teaching-schedule/2026-11'), true);
+  assert.equal(hcOperationsAccess.isHcTeachingSchedulePath('/public/lich-duyet-giang'), false);
 });
 
 test('teacher evaluations require an explicit screen grant for managers and admins', () => {

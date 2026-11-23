@@ -25,6 +25,7 @@ const ANONYMOUS_READ_BUCKETS = new Set([
 ]);
 const AUTHENTICATED_READ_BUCKETS = new Set([
   'mindx-avatars',
+  'mindx-teacher-portfolios',
   'mindx-question-images',
   'mindx-videos',
 ]);

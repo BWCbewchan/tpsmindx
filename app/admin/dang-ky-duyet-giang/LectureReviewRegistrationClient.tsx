@@ -148,7 +148,6 @@ export function LectureReviewRegistrationClient() {
   const [centers, setCenters] = useState<Center[]>([])
   const [loadingOptions, setLoadingOptions] = useState(true)
   const [submitting, setSubmitting] = useState(false)
-  const [submittingStage, setSubmittingStage] = useState('')
   const [leaderCode, setLeaderCode] = useState('')
   const [centerId, setCenterId] = useState('')
   const [roomName, setRoomName] = useState('')
@@ -161,7 +160,7 @@ export function LectureReviewRegistrationClient() {
   const [material, setMaterial] = useState<File | null>(null)
   const [candidateResults, setCandidateResults] = useState<Candidate[]>([])
   const [candidateSearch, setCandidateSearch] = useState<{
-    field: 'lms'
+    field: 'lms' | 'name'
     query: string
   } | null>(null)
   const [searchingCandidates, setSearchingCandidates] = useState(false)
@@ -255,12 +254,14 @@ export function LectureReviewRegistrationClient() {
         })
         .then((candidates) => {
           setCandidateResults(candidates)
-          const exact = candidates.find(
-            (candidate) =>
-              candidate.code.toLowerCase() === query.toLowerCase(),
-          )
-          if (exact) {
-            applyCandidate(exact)
+          if (candidateSearch?.field === 'lms') {
+            const exact = candidates.find(
+              (candidate) =>
+                candidate.code.toLowerCase() === query.toLowerCase(),
+            )
+            if (exact) {
+              applyCandidate(exact)
+            }
           }
         })
         .catch(() => {
@@ -348,7 +349,6 @@ export function LectureReviewRegistrationClient() {
     }
 
     setSubmitting(true)
-    setSubmittingStage('Đang chuẩn bị tài liệu...')
     try {
       const contentType = material.type || 'application/octet-stream'
       const uploadInitResponse = await fetch(
@@ -380,17 +380,15 @@ export function LectureReviewRegistrationClient() {
         contentType: string
         fileSize: number
       }
-      setSubmittingStage('Đang tải slide lên Supabase...')
       const storageResponse = await fetch(upload.uploadUrl, {
         method: 'PUT',
         headers: upload.headers,
         body: material,
       })
       if (!storageResponse.ok) {
-        throw new Error('Không thể tải slide lên Supabase Storage')
+        throw new Error('Không thể tải tài liệu lên hệ thống')
       }
 
-      setSubmittingStage('Đang lưu phiếu đăng ký...')
       const response = await fetch('/api/lecture-review-applications', {
         method: 'POST',
         headers: {
@@ -426,7 +424,6 @@ export function LectureReviewRegistrationClient() {
       toast.error(error instanceof Error ? error.message : 'Không thể gửi phiếu đăng ký')
     } finally {
       setSubmitting(false)
-      setSubmittingStage('')
     }
   }
 
@@ -437,9 +434,10 @@ export function LectureReviewRegistrationClient() {
       background="white"
       maxWidth="full"
       padding="responsive"
+      fullHeight={false}
       className="bg-[radial-gradient(circle_at_top_right,rgba(176,0,32,0.08),transparent_32rem)] px-4 sm:px-6 lg:px-8"
     >
-      <PageLayoutContent spacing="xl" className="min-w-0 pb-24">
+      <PageLayoutContent spacing="xl" className="min-w-0 pb-4 sm:pb-6">
         <PageHeader
           title="Đăng Ký Duyệt Giảng"
           description="Hoàn thiện thông tin ứng viên và gửi tài liệu duyệt giảng trong một bước."
@@ -463,7 +461,7 @@ export function LectureReviewRegistrationClient() {
                   </div>
                   <div>
                     <h2 className="font-bold text-slate-900">Thông tin quản lý & ứng viên</h2>
-                    <p className="mt-0.5 text-sm text-slate-500">Nhập mã LMS để tự động điền tên ứng viên, Leader/TE và cơ sở.</p>
+                    <p className="mt-0.5 text-sm text-slate-500">Nhập mã LMS hoặc họ tên để tự động điền thông tin ứng viên, Leader/TE và cơ sở.</p>
                   </div>
                 </div>
               </div>
@@ -504,14 +502,31 @@ export function LectureReviewRegistrationClient() {
                     <input
                       value={candidateName}
                       onFocus={() => {
-                        setCandidateSearch(null)
-                        setCandidateResults([])
+                        if (candidateName) {
+                          setCandidateSearch({
+                            field: 'name',
+                            query: candidateName,
+                          })
+                        }
                       }}
-                      onChange={(event) => setCandidateName(event.target.value)}
-                      placeholder="Tên sẽ tự điền theo mã LMS"
-                      className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm font-semibold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-[#b00020] focus:ring-4 focus:ring-[#b00020]/10"
+                      onChange={(event) => {
+                        const value = event.target.value
+                        setCandidateName(value)
+                        setCandidateSearch(
+                          value ? { field: 'name', query: value } : null,
+                        )
+                        if (!value) setCandidateResults([])
+                      }}
+                      placeholder="Nhập họ tên để tìm ứng viên"
+                      className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-10 text-sm font-semibold text-slate-900 outline-none transition placeholder:font-normal placeholder:text-slate-400 focus:border-[#b00020] focus:ring-4 focus:ring-[#b00020]/10"
                     />
+                    {searchingCandidates && candidateSearch?.field === 'name' ? (
+                      <Loader2 className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-[#b00020]" />
+                    ) : null}
                   </div>
+                  {candidateDropdown && candidateSearch.field === 'name' ? (
+                    <CandidateDropdown candidates={candidateResults} onSelect={selectCandidate} />
+                  ) : null}
                 </div>
 
                 <div>
@@ -687,7 +702,7 @@ export function LectureReviewRegistrationClient() {
                 className="inline-flex h-12 min-w-44 items-center justify-center gap-2 rounded-xl bg-[#b00020] px-6 text-sm font-bold text-white shadow-lg shadow-[#b00020]/20 transition hover:bg-[#93001b] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                {submitting ? submittingStage || 'Đang gửi phiếu...' : 'Gửi phiếu'}
+                {submitting ? 'Đang gửi phiếu...' : 'Gửi phiếu'}
               </button>
             </div>
         </form>

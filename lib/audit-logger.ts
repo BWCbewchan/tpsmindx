@@ -8,6 +8,7 @@
  */
 
 import pool from '@/lib/db';
+import { classifyUnauthorizedAccess } from '@/lib/unauthorized-access-policy';
 import { NextRequest } from 'next/server';
 import { normalizeAuthenticatedEmail } from '@/lib/security-identity';
 
@@ -260,21 +261,32 @@ export function logUnauthorizedAccess(args: {
     flags.push('SUSPICIOUS_CLIENT');
   }
 
-  writeAuditLog({
-    event_type:    'PRIVILEGE_ESCALATION',
-    action:        'UNAUTHORIZED_ACCESS',
-    severity:      'HIGH',
-    user_email:    args.email,
-    user_role:     args.role,
-    resource_type: 'endpoint',
-    resource_id:   args.endpoint,
-    new_data:      { required_role: args.requiredRole ?? null },
-    endpoint:      args.endpoint,
-    ip_address:    args.ip,
-    user_agent:    args.userAgent,
-    risk_score:    75,
-    threat_flags:  flags,
-  });
+  const emit = (recentFailures = 0, alreadyAlerted = false) => {
+    const policy = classifyUnauthorizedAccess(Boolean(args.email), recentFailures, alreadyAlerted);
+    writeAuditLog({
+      event_type: policy.eventType, action: policy.action, severity: policy.severity,
+      user_email: args.email, user_role: args.role,
+      resource_type: 'endpoint', resource_id: args.endpoint,
+      new_data: { required_role: args.requiredRole ?? null, recent_failures: recentFailures },
+      endpoint: args.endpoint, ip_address: args.ip, user_agent: args.userAgent,
+      risk_score: policy.risk,
+      threat_flags: [...flags, ...(policy.action === 'AUTH_FAILURE_BURST' ? ['AUTH_FAILURE_BURST'] : [])],
+    });
+  };
+  if (args.email) { emit(); return; }
+  // Database-backed window works across serverless instances. Keep every rejection
+  // in the audit trail, but notify only once per burst window.
+  void pool.query(
+    `SELECT COUNT(*)::int AS failures,
+       COUNT(*) FILTER (WHERE severity = 'HIGH')::int AS alerted
+     FROM public.security_audit_logs
+     WHERE ip_address = $1 AND endpoint = $2
+       AND user_email IS NULL
+       AND created_at >= NOW() - INTERVAL '5 minutes'
+       AND action IN ('AUTHENTICATION_REQUIRED', 'AUTH_FAILURE_BURST', 'UNAUTHORIZED_ACCESS')`,
+    [args.ip, args.endpoint],
+  ).then(result => emit(Number(result.rows[0]?.failures || 0) + 1, Number(result.rows[0]?.alerted || 0) > 0))
+    .catch(() => emit());
 }
 
 /** Thay đổi role của user */

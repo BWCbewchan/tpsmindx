@@ -400,7 +400,7 @@ export async function POST(request: NextRequest) {
               ? '`audit-system@tps.internal`'
               : row.event_type === 'SYSTEM'
                 ? '_system-event_'
-                : '_invalid-session-email_';
+                : '_unauthenticated_';
           const ipStr = row.ip_address && row.ip_address !== 'unknown' ? ` (IP: \`${row.ip_address}\`)` : '';
           const endpointStr = row.endpoint ? ` | Endpoint: \`${row.endpoint}\`` : '';
           const resourceStr = row.resource_type ? ` | Resource: \`${row.resource_type}${row.resource_id ? `#${row.resource_id}` : ''}\`` : '';
@@ -428,7 +428,7 @@ export async function POST(request: NextRequest) {
         const recentLines = recentRes.rows.map((row, idx) => {
           const time = new Date(row.created_at).toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
           const sevIcon = row.severity === 'CRITICAL' ? '🚨' : '🔴';
-          const actor = row.user_email ?? (row.event_type === 'SYSTEM' ? 'system-event' : 'invalid-session-email');
+          const actor = row.user_email ?? (row.event_type === 'SYSTEM' ? 'system-event' : 'unauthenticated');
           return `${idx + 1}. ${sevIcon} [${row.severity}] *${row.action}*\n    👤 Đối tượng: \`${actor}\` | 🕐 Lúc: \`${time}\``;
         }).join('\n\n') || '🟢 Không phát hiện sự cố nghiêm trọng nào.';
 

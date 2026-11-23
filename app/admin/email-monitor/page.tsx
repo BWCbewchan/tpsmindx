@@ -71,7 +71,6 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 const SOURCE_LABELS: Record<string, string> = {
-  env: 'Biến môi trường',
   database: 'Thêm từ UI',
 }
 
@@ -180,15 +179,17 @@ function QuotaBar({
   limit,
   percent,
   hint,
+  compact = false,
 }: {
   label: string
   value: number
   limit: number
   percent: number
   hint: string
+  compact?: boolean
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className={`border border-slate-200 bg-white ${compact ? 'rounded-lg p-3' : 'rounded-2xl p-5 shadow-sm'}`}>
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-slate-800">{label}</p>
@@ -253,9 +254,13 @@ export default function EmailMonitorPage() {
   const [error, setError] = useState('')
   const [period, setPeriod] = useQueryState<'24h' | '7d' | '30d'>('period', '24h', { values: ["24h","7d","30d"] })
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [activeTab, setActiveTab] = useQueryState<'overview' | 'accounts' | 'logs'>('tab', 'overview', { values: ['overview', 'accounts', 'logs'] })
+  const [senderAccount, setSenderAccount] = useQueryState<string>('account', '')
+  const [authenticationRequired, setAuthenticationRequired] = useState(false)
+  const settingsOpenRef = useRef(false)
   const [page, setPage] = useQueryState<number>('page', 1)
   const [search, setSearch] = useQueryState<string>('search', '')
-  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState(search)
   const [status, setStatus] = useQueryState<string>('status', '')
   const [category, setCategory] = useQueryState<string>('category', '')
   const [emailType, setEmailType] = useQueryState<string>('emailType', '')
@@ -284,6 +289,7 @@ export default function EmailMonitorPage() {
     appPassword: '',
   })
   const activeRequestRef = useRef<AbortController | null>(null)
+  useEffect(() => { settingsOpenRef.current = settingsOpen }, [settingsOpen])
 
   useEffect(() => {
     if (!authLoading && user?.role !== 'super_admin') {
@@ -301,13 +307,14 @@ export default function EmailMonitorPage() {
 
   const loadData = useCallback(
     async (silent = false) => {
-      if (user?.role !== 'super_admin') return
+      if (authLoading || user?.role !== 'super_admin') return
       if (silent && activeRequestRef.current) return
 
       activeRequestRef.current?.abort()
       const controller = new AbortController()
       activeRequestRef.current = controller
-      const timeout = window.setTimeout(() => controller.abort(), 12_000)
+      let timedOut = false
+      const timeout = window.setTimeout(() => { timedOut = true; controller.abort() }, 30_000)
 
       if (silent) setRefreshing(true)
       else setLoading(true)
@@ -321,6 +328,7 @@ export default function EmailMonitorPage() {
         if (status) params.set('status', status)
         if (category) params.set('category', category)
         if (emailType) params.set('emailType', emailType)
+        if (senderAccount) params.set('accountId', senderAccount)
 
         const response = await fetch(`/api/admin/email-monitor?${params}`, {
           cache: 'no-store',
@@ -328,16 +336,20 @@ export default function EmailMonitorPage() {
           signal: controller.signal,
         })
         const payload = await response.json()
+        if (activeRequestRef.current !== controller || controller.signal.aborted) return
+        if (response.status === 401) setAuthenticationRequired(true)
         if (!response.ok || payload.success !== true) {
           throw new Error(payload.error || 'Không tải được dữ liệu email')
         }
+        setAuthenticationRequired(false)
         setData(payload)
-        setSettingsForm(payload.settings)
+        if (!settingsOpenRef.current) setSettingsForm(payload.settings)
         setError('')
       } catch (loadError) {
+        if (activeRequestRef.current !== controller || (controller.signal.aborted && !timedOut)) return
         setError(
           loadError instanceof DOMException && loadError.name === 'AbortError'
-            ? 'Máy chủ phản hồi quá 12 giây. Vui lòng kiểm tra kết nối database hoặc thử Làm mới.'
+            ? 'Máy chủ chưa phản hồi sau 30 giây. Dữ liệu gần nhất được giữ lại; hệ thống sẽ thử cập nhật tiếp.'
             : loadError instanceof Error
               ? loadError.message
               : 'Không tải được dữ liệu email',
@@ -347,11 +359,13 @@ export default function EmailMonitorPage() {
         if (activeRequestRef.current === controller) {
           activeRequestRef.current = null
         }
-        setLoading(false)
-        setRefreshing(false)
+        if (activeRequestRef.current === null) {
+          setLoading(false)
+          setRefreshing(false)
+        }
       }
     },
-    [category, debouncedSearch, emailType, page, period, status, token, user?.role],
+    [authLoading, category, debouncedSearch, emailType, senderAccount, page, period, status, token, user?.role],
   )
 
   useEffect(() => {
@@ -360,30 +374,44 @@ export default function EmailMonitorPage() {
   }, [loadData])
 
   useEffect(() => {
-    if (!autoRefresh) return
-    const timer = window.setInterval(() => void loadData(true), 15_000)
-    return () => window.clearInterval(timer)
-  }, [autoRefresh, loadData])
+    if (!autoRefresh || authenticationRequired) return
+    const refresh = () => {
+      if (document.visibilityState !== 'hidden' && navigator.onLine) void loadData(true)
+    }
+    const timer = window.setInterval(refresh, 15_000)
+    window.addEventListener('online', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('online', refresh)
+      document.removeEventListener('visibilitychange', refresh)
+    }
+  }, [autoRefresh, authenticationRequired, loadData])
 
   const mutate = async (
     method: 'POST' | 'PATCH' | 'DELETE',
     body?: Record<string, unknown>,
   ) => {
-    const response = await fetch('/api/admin/email-monitor', {
-      method,
-      headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-    })
-    const payload = await response.json()
-    if (!response.ok || payload.success !== true) {
-      throw new Error(
-        payload.error ||
-          payload.result?.error ||
-          payload.result?.warning ||
-          'Thao tác thất bại',
-      )
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => controller.abort(), 65_000)
+    try {
+      const response = await fetch('/api/admin/email-monitor', {
+        method,
+        headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok || payload?.success !== true) {
+        throw new Error(payload?.error || 'Máy chủ chưa thực hiện được yêu cầu. Vui lòng thử lại sau.')
+      }
+      return payload
+    } catch (error) {
+      if (controller.signal.aborted) throw new Error('Yêu cầu mất quá nhiều thời gian. Kiểm tra nhật ký trước khi gửi lại để tránh gửi trùng.')
+      throw error
+    } finally {
+      window.clearTimeout(timer)
     }
-    return payload
   }
 
   const saveSettings = async () => {
@@ -421,7 +449,8 @@ export default function EmailMonitorPage() {
         action: 'test_send',
         recipient: testRecipient || user?.email,
       })
-      toast.success(`Đã gửi mail thử trong ${formatDuration(result.result.durationMs)}`)
+      if (result.result.warning) toast.warning('SMTP chỉ nhận một phần người nhận. Xem nhật ký trước khi gửi lại.')
+      else toast.success(`Đã gửi mail thử trong ${formatDuration(result.result.durationMs)}`)
       await loadData(true)
     } catch (sendError) {
       toast.error(sendError instanceof Error ? sendError.message : 'Gửi mail thử thất bại')
@@ -466,7 +495,8 @@ export default function EmailMonitorPage() {
         recipient,
       })
       const sender = result.result?.senderEmail || account.email
-      toast.success(`Đã gửi từ ${sender} trong ${formatDuration(result.result.durationMs)}`)
+      if (result.result.warning) toast.warning('SMTP chỉ nhận một phần người nhận. Xem nhật ký trước khi gửi lại.')
+      else toast.success(`Đã gửi từ ${sender} trong ${formatDuration(result.result.durationMs)}`)
       await loadData(true)
     } catch (sendError) {
       toast.error(sendError instanceof Error ? sendError.message : 'Gửi mail thử thất bại')
@@ -640,12 +670,25 @@ export default function EmailMonitorPage() {
         </div>
       }
     >
+      <nav aria-label="Điều hướng giám sát email" className="mb-5 flex flex-wrap gap-1 border-b border-slate-200">
+        {([
+          ['overview', 'Tổng quan', Activity],
+          ['accounts', 'Tài khoản gửi', Inbox],
+          ['logs', 'Nhật ký gửi', MailCheck],
+        ] as const).map(([value, label, Icon]) => (
+          <button key={value} type="button" aria-current={activeTab === value ? 'page' : undefined} onClick={() => setActiveTab(value)} className={`flex items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition-colors ${activeTab === value ? 'border-[#a1001f] text-[#a1001f]' : 'border-transparent text-slate-500 hover:text-slate-900'}`}>
+            <Icon className="h-4 w-4" />{label}
+            {value === 'accounts' && data && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">{data.accounts.length}</span>}
+          </button>
+        ))}
+      </nav>
       {error && (
         <div className="flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
           <div>
-            <p className="font-semibold">Không tải được dashboard</p>
+            <p className="font-semibold">{authenticationRequired ? 'Cần đăng nhập lại' : data ? 'Chưa cập nhật được dữ liệu mới' : 'Không tải được dữ liệu email'}</p>
             <p className="mt-1 text-sm">{error}</p>
+            {authenticationRequired && <Button onClick={() => router.push('/login?next=%2Fadmin%2Femail-monitor')} className="mt-3">Đăng nhập lại</Button>}
           </div>
         </div>
       )}
@@ -656,54 +699,13 @@ export default function EmailMonitorPage() {
         </div>
       ) : data ? (
         <>
-          <section className="overflow-hidden rounded-3xl border border-slate-200 bg-slate-950 text-white shadow-xl">
-            <div className="grid gap-6 p-6 lg:grid-cols-[1.3fr_.7fr] lg:p-8">
-              <div>
-                <div className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold ${healthMeta.className}`}>
-                  <span className={`h-2 w-2 rounded-full ${healthMeta.dot}`} />
-                  {healthMeta.label}
-                </div>
-                <h2 className="mt-5 max-w-2xl text-2xl font-black tracking-tight sm:text-3xl">
-                  {data.health.status === 'healthy'
-                    ? 'Luồng email đang vận hành ổn định.'
-                    : data.health.status === 'no_data'
-                      ? 'Chưa có lần gửi nào trong 24 giờ gần nhất.'
-                      : 'Dashboard đã phát hiện tín hiệu cần xử lý.'}
-                </h2>
-                <div className="mt-4 space-y-2">
-                  {data.health.reasons.length > 0 ? (
-                    data.health.reasons.map((reason) => (
-                      <div key={reason.code} className="flex items-start gap-2 text-sm text-slate-300">
-                        {reason.severity === 'critical' ? (
-                          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
-                        ) : (
-                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-                        )}
-                        <span>{reason.message}</span>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-slate-300">
-                      Không có lỗi cấu hình, tỷ lệ lỗi hoặc độ trễ vượt ngưỡng.
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Lỗi liên tiếp</p>
-                  <p className="mt-2 text-3xl font-black">{data.diagnostics.consecutiveFailures}</p>
-                </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Đỉnh theo giờ</p>
-                  <p className="mt-2 text-3xl font-black">{formatNumber(data.diagnostics.peakHour?.attempts || 0)}</p>
-                </div>
-                <div className="col-span-2 rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Cập nhật gần nhất</p>
-                  <p className="mt-2 font-mono text-sm text-slate-200">{formatDateTime(data.generatedAt)}</p>
-                </div>
-              </div>
+          <section className="mb-5 flex flex-wrap items-start justify-between gap-4 rounded-xl border border-slate-200 border-l-4 border-l-[#a1001f] bg-white p-5">
+            <div className="space-y-2">
+              <span className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs font-semibold ${healthMeta.className}`}><span className={`h-2 w-2 rounded-full ${healthMeta.dot}`} />{healthMeta.label}</span>
+              <p className="text-sm text-slate-700">{data.accounts.filter(account => account.isActive && account.credentialConfigured && (!account.cooldownUntil || Date.parse(account.cooldownUntil) <= Date.parse(data.generatedAt))).length} / {data.accounts.length} tài khoản sẵn sàng gửi mail</p>
+              {data.health.reasons.slice(0, 3).map(reason => <p key={reason.code} className="flex items-start gap-2 text-sm text-amber-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{reason.message}</p>)}
             </div>
+            <div className="text-right text-xs text-slate-500"><p>{refreshing ? 'Đang cập nhật…' : autoRefresh ? 'Tự cập nhật khi đang mở trang' : 'Đã tạm dừng cập nhật'}</p><p className="mt-1 font-mono">{formatDateTime(data.generatedAt)}</p></div>
           </section>
 
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -732,10 +734,11 @@ export default function EmailMonitorPage() {
             </p>
           </div>
 
+          {activeTab === 'overview' && <>
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <MetricCard label="Lần gửi" value={formatNumber(data.summary.attempts)} helper={`${formatNumber(data.summary.sent)} thành công`} icon={Send} />
             <MetricCard label="Người nhận" value={formatNumber(data.summary.recipients)} helper="To và CC đã gửi" icon={Users} tone="teal" />
-            <MetricCard label="Thành công" value={`${Math.max(0, 100 - data.health.failureRatePercent).toFixed(1)}%`} helper={`${formatNumber(data.summary.failed)} lần lỗi`} icon={MailCheck} tone="green" />
+            <MetricCard label="Thành công" value={data.summary.attempts ? `${(100 * data.summary.sent / data.summary.attempts).toFixed(1)}%` : '—'} helper={`${formatNumber(data.summary.failed)} lần lỗi`} icon={MailCheck} tone="green" />
             <MetricCard label="Độ trễ TB" value={formatDuration(data.summary.avgLatencyMs)} helper={`P95: ${formatDuration(data.summary.p95LatencyMs)}`} icon={Timer} tone="amber" />
             <MetricCard label="Độ trễ cao nhất" value={formatDuration(data.summary.maxLatencyMs)} helper="Trong khoảng đang xem" icon={Zap} tone="amber" />
             <MetricCard label="Bỏ qua" value={formatNumber(data.summary.skipped)} helper="Thường do thiếu cấu hình" icon={MailWarning} tone={data.summary.skipped > 0 ? 'red' : 'slate'} />
@@ -758,12 +761,16 @@ export default function EmailMonitorPage() {
             />
           </section>
 
+          </>}
+
+          {activeTab === 'accounts' && <>
+            {!data.credentialEncryptionConfigured && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-semibold">Chưa thể lưu App Password trong TPS</p><p className="mt-1">Máy chủ chưa cấu hình EMAIL_CREDENTIAL_ENCRYPTION_KEY. Cần bổ sung khóa này trước khi lưu mật khẩu mã hóa. Các môi trường dùng chung database phải dùng cùng khóa mã hóa.</p></div>}
           <section className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-bold text-slate-900">Quản lý tài khoản gửi mail</h3>
                 <p className="mt-1 text-xs text-slate-500">
-                  Round-robin giữa các tài khoản active. Quota To/CC tính riêng trong 24 giờ.
+                  Luân phiên tài khoản đủ cấu hình. Không tự tắt tài khoản khi lỗi kết nối; kiểm tra riêng từng tài khoản bên dưới.
                 </p>
               </div>
               <Button
@@ -778,7 +785,7 @@ export default function EmailMonitorPage() {
 
             {!data.credentialEncryptionConfigured && (
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                Chưa cấu hình <code className="font-mono">EMAIL_CREDENTIAL_ENCRYPTION_KEY</code> — chỉ dùng được tài khoản từ env, không thêm mới từ UI.
+                Chưa cấu hình <code className="font-mono">EMAIL_CREDENTIAL_ENCRYPTION_KEY</code> — cần cấu hình khóa mã hóa trên máy chủ trước khi lưu App Password.
               </div>
             )}
 
@@ -793,8 +800,9 @@ export default function EmailMonitorPage() {
                 const busy = accountBusyId === account.id
                 const testSending = accountTestSendingId === account.id
 
+                const coolingDown = !!account.cooldownUntil && Date.parse(account.cooldownUntil) > Date.parse(data.generatedAt)
                 return (
-                  <Card key={account.id} className={!account.isActive ? 'opacity-70' : ''}>
+                  <Card key={account.id} className={!account.isActive ? 'border-slate-200' : 'border-emerald-200'}>
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
@@ -805,27 +813,33 @@ export default function EmailMonitorPage() {
                         </div>
                         <div className="flex shrink-0 flex-wrap justify-end gap-1.5">
                           <Badge variant={account.isActive ? 'success' : 'default'}>
-                            {account.isActive ? 'Đang bật' : 'Đã tắt'}
+                            {account.isActive ? 'Đã bật' : 'Đã tắt'}
                           </Badge>
-                          <Badge variant="info">{SOURCE_LABELS[account.source] || account.source}</Badge>
+                          <Badge variant="info">{account.credentialSource === 'database' ? 'Mật khẩu lưu trong TPS' : SOURCE_LABELS[account.source] || account.source}</Badge>
                         </div>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <QuotaBar
+                      <div className={`rounded-lg border p-3 text-sm ${!account.credentialConfigured || account.lastVerifyOk === false ? 'border-amber-200 bg-amber-50 text-amber-900' : 'border-emerald-100 bg-emerald-50 text-emerald-900'}`}>
+                        <p className="font-semibold">{!account.credentialConfigured ? 'Cần bổ sung cấu hình' : coolingDown ? `Tạm nghỉ đến ${formatDateTime(account.cooldownUntil)}` : account.lastVerifyOk === false ? 'Lần kiểm tra SMTP gần nhất thất bại' : account.lastVerifyOk === true ? 'Lần kiểm tra SMTP gần nhất thành công' : 'Đủ cấu hình · Chưa kiểm tra kết nối'}</p>
+                        <p className="mt-1 text-xs leading-relaxed">{account.configurationError || (coolingDown ? 'Tự cho phép thử lại sau 2 phút. Có thể bấm Kiểm tra để xác minh và phục hồi sớm; tài khoản không bị tắt.' : account.lastVerifyOk === false ? 'Kiểm tra App Password và chính sách Gmail. Sau khi sửa, bấm Kiểm tra để xác minh lại.' : 'Trạng thái bật/tắt do quản trị viên quyết định. Email được gửi từ máy chủ, kể cả khi bạn đóng trang này.')}</p>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                      <QuotaBar compact
                         label="Quota To (24h)"
                         value={account.toUsed24h}
                         limit={account.dailyToLimit}
                         percent={toPercent}
                         hint="Số địa chỉ người nhận To đã gửi."
                       />
-                      <QuotaBar
+                      <QuotaBar compact
                         label="Quota CC (24h)"
                         value={account.ccUsed24h}
                         limit={account.dailyCcLimit}
                         percent={ccPercent}
                         hint="Số địa chỉ CC đã gửi."
                       />
+                      </div>
                       <div className="grid grid-cols-2 gap-3 text-xs text-slate-500">
                         <div>
                           <p className="font-semibold uppercase tracking-wide">Kiểm tra gần nhất</p>
@@ -847,8 +861,8 @@ export default function EmailMonitorPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                        <p className="text-xs font-semibold text-slate-600">Gửi mail thử từ tài khoản này</p>
+                      <details className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                        <summary className="cursor-pointer text-xs font-semibold text-slate-600">Gửi mail thử từ tài khoản này</summary>
                         <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                           <Input
                             type="email"
@@ -864,7 +878,7 @@ export default function EmailMonitorPage() {
                           />
                           <Button
                             size="sm"
-                            disabled={testSending || busy}
+                            disabled={testSending || busy || !account.isActive || !account.credentialConfigured}
                             onClick={() => void sendAccountTestEmail(account)}
                             className="shrink-0 bg-slate-950 hover:bg-slate-800"
                           >
@@ -872,9 +886,10 @@ export default function EmailMonitorPage() {
                             Gửi mail thử
                           </Button>
                         </div>
-                      </div>
+                      </details>
                     </CardContent>
                     <CardFooter className="flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+                      <Button size="sm" variant="outline" onClick={() => { setSenderAccount(String(account.id)); setPage(1); setActiveTab('logs') }}>Nhật ký tài khoản</Button>
                       <Button
                         variant="outline"
                         size="sm"
@@ -921,11 +936,14 @@ export default function EmailMonitorPage() {
 
             {(data.accounts || []).length === 0 && (
               <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center text-sm text-slate-500">
-                Chưa có tài khoản email nào. Thêm tài khoản hoặc cấu hình biến môi trường Gmail.
+                Chưa có tài khoản email nào. Thêm tài khoản và App Password để bắt đầu gửi mail.
               </div>
             )}
           </section>
 
+          </>}
+
+          {activeTab === 'overview' && <>
           <section className="grid gap-4 xl:grid-cols-[1.5fr_.5fr]">
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between">
@@ -1057,11 +1075,15 @@ export default function EmailMonitorPage() {
             </div>
           </section>
 
+          </>}
+
+          {activeTab === 'logs' && <>
           <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div className="border-b border-slate-200 p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="font-bold text-slate-900">Nhật ký gửi email</h3>
+                  {senderAccount && <button className="mt-1 text-xs text-[#a1001f] underline" onClick={() => { setSenderAccount(''); setPage(1) }}>Đang lọc tài khoản #{senderAccount} · Xóa bộ lọc</button>}
                   <p className="mt-1 text-xs text-slate-500">{formatNumber(data.pagination.total)} bản ghi phù hợp.</p>
                 </div>
                 <button
@@ -1151,6 +1173,7 @@ export default function EmailMonitorPage() {
               </div>
             </div>
           </section>
+          </>}
         </>
       ) : null}
 
@@ -1286,7 +1309,7 @@ export default function EmailMonitorPage() {
                 />
               </div>
             </div>
-            {editAccount?.source === 'database' && (
+            {data?.credentialEncryptionConfigured && (
               <div className="space-y-2">
                 <AppPasswordFieldHeader
                   htmlFor="edit-password"
@@ -1301,6 +1324,7 @@ export default function EmailMonitorPage() {
                   }
                   placeholder="Để trống nếu không đổi"
                 />
+                <p className="text-xs text-slate-500">Mật khẩu mới được mã hóa và lưu trong database. Để trống để giữ cấu hình hiện tại.</p>
               </div>
             )}
           </DialogBody>

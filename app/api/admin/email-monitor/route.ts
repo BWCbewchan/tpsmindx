@@ -19,6 +19,8 @@ import {
 import { deriveEmailHealth } from '@/lib/email-monitoring'
 import { NextRequest, NextResponse } from 'next/server'
 
+export const maxDuration = 60
+
 const PERIODS = {
   '24h': '24 hours',
   '7d': '7 days',
@@ -96,6 +98,11 @@ function buildLogFilters(searchParams: URLSearchParams, interval: string) {
   const conditions = [`created_at >= NOW() - $1::interval`]
   const values: unknown[] = [interval]
 
+  const accountId = Number(searchParams.get('accountId'))
+  if (Number.isSafeInteger(accountId) && accountId > 0) {
+    values.push(accountId)
+    conditions.push(`sender_account_id = $${values.length}`)
+  }
   const status = searchParams.get('status')?.trim()
   if (status && ['sent', 'failed', 'skipped'].includes(status)) {
     values.push(status)
@@ -370,7 +377,8 @@ export async function GET(request: NextRequest) {
     const recentRows: DashboardRow[] = Array.isArray(dashboard.recent)
       ? dashboard.recent as DashboardRow[]
       : []
-    const configuration = await getMailTransportConfiguration()
+    const accounts = await listEmailSenderAccountsWithQuota()
+    const configuration = await getMailTransportConfiguration(accounts)
     const health = deriveEmailHealth(quota24h, settings, {
       gmailConfigured: configuration.configured,
       internalSecretConfigured: Boolean(
@@ -505,7 +513,7 @@ export async function GET(request: NextRequest) {
           Math.ceil(toInteger(dashboard.log_count) / pageSize),
         ),
       },
-      accounts: await listEmailSenderAccountsWithQuota(),
+      accounts,
       credentialEncryptionConfigured: isEmailCredentialEncryptionConfigured(),
     })
   } catch (error) {
@@ -801,13 +809,10 @@ export async function DELETE(request: NextRequest) {
       }
       const result = await deleteDatabaseEmailSenderAccount(accountId)
       if (!result.deleted) {
-        const message =
-          result.reason === 'ENV_ACCOUNT'
-            ? 'Tài khoản cấu hình từ env chỉ có thể tắt, không thể xóa.'
-            : 'Không tìm thấy tài khoản email.'
+        const message = 'Không tìm thấy tài khoản email.'
         return NextResponse.json(
           { success: false, error: message },
-          { status: result.reason === 'ENV_ACCOUNT' ? 400 : 404 },
+          { status: 404 },
         )
       }
       return NextResponse.json({ success: true, deletedAccountId: accountId })

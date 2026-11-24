@@ -1,6 +1,7 @@
 'use client'
 
 import { PageHeader } from '@/components/PageHeader'
+import { TrialTimeRangeField } from '@/components/checkout/TrialTimeRangeField'
 import { PageLayout, PageLayoutContent } from '@/components/ui/page-layout'
 import { authHeaders } from '@/lib/auth-headers'
 import { useAuth } from '@/lib/auth-context'
@@ -29,6 +30,7 @@ import {
   CheckCircle2,
   ChevronDown,
   CircleDot,
+  CloudCheck,
   ClipboardCheck,
   ExternalLink,
   FileText,
@@ -68,6 +70,8 @@ type FormState = {
   studentName: string
   studentAge: string
   trialDate: string
+  trialTimeStart: string
+  trialTimeEnd: string
   track: TrialTrack | ''
   subject: string
   generalComment: string
@@ -95,6 +99,8 @@ const INITIAL_FORM: FormState = {
   studentName: '',
   studentAge: '',
   trialDate: '',
+  trialTimeStart: '',
+  trialTimeEnd: '',
   track: '',
   subject: '',
   generalComment: '',
@@ -230,6 +236,8 @@ const REQUIRED_LABELS: Record<keyof FormState, string> = {
   studentName: 'Họ tên học viên',
   studentAge: 'Tuổi',
   trialDate: 'Ngày trải nghiệm',
+  trialTimeStart: 'Giờ bắt đầu',
+  trialTimeEnd: 'Giờ kết thúc',
   track: 'Khối trải nghiệm',
   subject: 'Môn trải nghiệm',
   generalComment: 'Nhận xét chung',
@@ -279,6 +287,29 @@ function normalizeEmailName(email: string | undefined): string {
   const value = String(email ?? '').trim()
   if (!value) return ''
   return value.split('@')[0] || value
+}
+
+type CheckoutDraft = {
+  version: 1
+  form: FormState
+  scores: ScoreMap
+  phase: number
+  isCustomSubject: boolean
+  customSubjectInput: string
+  savedAt: string
+}
+
+const CHECKOUT_DRAFT_VERSION = 1 as const
+
+function checkoutDraftKey(email: string): string {
+  return `tps:checkout:create-draft:v${CHECKOUT_DRAFT_VERSION}:${email.trim().toLowerCase()}`
+}
+
+function isLaterTime(start: string, end: string): boolean {
+  if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end)) return false
+  const [startHour, startMinute] = start.split(':').map(Number)
+  const [endHour, endMinute] = end.split(':').map(Number)
+  return endHour * 60 + endMinute > startHour * 60 + startMinute
 }
 
 function PhaseProgress({ phase }: { phase: number }) {
@@ -581,6 +612,108 @@ export default function UserCheckoutCreatePage() {
   const [submittedData, setSubmittedData] = useState<SubmittedInfo | null>(null)
   const [isCustomSubject, setIsCustomSubject] = useState(false)
   const [customSubjectInput, setCustomSubjectInput] = useState('')
+  const [isDraftReady, setIsDraftReady] = useState(false)
+  const [draftSavedAt, setDraftSavedAt] = useState<Date | null>(null)
+  const [draftRestoredAt, setDraftRestoredAt] = useState<Date | null>(null)
+  const draftSnapshotRef = useRef<CheckoutDraft | null>(null)
+
+  useEffect(() => {
+    draftSnapshotRef.current = {
+      version: CHECKOUT_DRAFT_VERSION,
+      form,
+      scores,
+      phase,
+      isCustomSubject,
+      customSubjectInput,
+      savedAt: new Date().toISOString(),
+    }
+  }, [customSubjectInput, form, isCustomSubject, phase, scores])
+
+  useEffect(() => {
+    const email = user?.email?.trim().toLowerCase()
+    if (!email) {
+      setIsDraftReady(false)
+      return
+    }
+
+    try {
+      const stored = localStorage.getItem(checkoutDraftKey(email))
+      if (stored) {
+        const draft = JSON.parse(stored) as Partial<CheckoutDraft>
+        if (draft.version === CHECKOUT_DRAFT_VERSION && draft.form && typeof draft.form === 'object') {
+          const restoredForm = { ...INITIAL_FORM, ...draft.form }
+          if (!TRACKS.some((track) => track.value === restoredForm.track)) {
+            restoredForm.track = ''
+            restoredForm.subject = ''
+          }
+          if (!CASE_RESULT_OPTIONS.some((option) => option.value === restoredForm.caseResult)) {
+            restoredForm.caseResult = ''
+          }
+          setForm(restoredForm)
+          setScores(draft.scores && typeof draft.scores === 'object' ? draft.scores : {})
+          setPhase(Math.min(3, Math.max(1, Number(draft.phase) || 1)))
+          setIsCustomSubject(Boolean(draft.isCustomSubject))
+          setCustomSubjectInput(String(draft.customSubjectInput || ''))
+          const restoredAt = draft.savedAt ? new Date(draft.savedAt) : null
+          if (restoredAt && !Number.isNaN(restoredAt.getTime())) {
+            setDraftRestoredAt(restoredAt)
+            setDraftSavedAt(restoredAt)
+          }
+        }
+      }
+    } catch {
+      localStorage.removeItem(checkoutDraftKey(email))
+    } finally {
+      setIsDraftReady(true)
+    }
+  }, [user?.email])
+
+  useEffect(() => {
+    const email = user?.email?.trim().toLowerCase()
+    if (!email || !isDraftReady || submittedData) return
+
+    const timer = window.setTimeout(() => {
+      const snapshot = draftSnapshotRef.current
+      if (!snapshot) return
+      const savedAt = new Date()
+      try {
+        localStorage.setItem(
+          checkoutDraftKey(email),
+          JSON.stringify({ ...snapshot, savedAt: savedAt.toISOString() }),
+        )
+        setDraftSavedAt(savedAt)
+      } catch {
+        // Ignore storage quota/privacy-mode failures; the form remains usable.
+      }
+    }, 500)
+
+    return () => window.clearTimeout(timer)
+  }, [customSubjectInput, form, isCustomSubject, isDraftReady, phase, scores, submittedData, user?.email])
+
+  useEffect(() => {
+    const email = user?.email?.trim().toLowerCase()
+    if (!email || !isDraftReady || submittedData) return
+
+    const saveImmediately = () => {
+      const snapshot = draftSnapshotRef.current
+      if (!snapshot) return
+      try {
+        localStorage.setItem(checkoutDraftKey(email), JSON.stringify(snapshot))
+      } catch {
+        // Ignore storage quota/privacy-mode failures during tab shutdown.
+      }
+    }
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') saveImmediately()
+    }
+
+    window.addEventListener('beforeunload', saveImmediately)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => {
+      window.removeEventListener('beforeunload', saveImmediately)
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [isDraftReady, submittedData, user?.email])
 
   useEffect(() => {
     const fallbackTeacherName = user?.displayName || normalizeEmailName(user?.email)
@@ -647,7 +780,11 @@ export default function UserCheckoutCreatePage() {
 
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [key]: value }))
-    setErrors((current) => ({ ...current, [key]: '' }))
+    setErrors((current) => ({
+      ...current,
+      [key]: '',
+      ...((key === 'trialTimeStart' || key === 'trialTimeEnd') ? { trialTime: '' } : {}),
+    }))
   }
 
   function selectTrack(track: TrialTrack) {
@@ -689,6 +826,12 @@ export default function UserCheckoutCreatePage() {
       nextErrors.trialDate = 'Vui lòng nhập ngày trải nghiệm (dd/mm/yyyy)'
     } else if (!isValidDdMmYyyy(form.trialDate)) {
       nextErrors.trialDate = 'Ngày trải nghiệm không hợp lệ (định dạng đúng: dd/mm/yyyy)'
+    }
+
+    if (!form.trialTimeStart || !form.trialTimeEnd) {
+      nextErrors.trialTime = 'Vui lòng chọn đủ giờ bắt đầu và giờ kết thúc'
+    } else if (!isLaterTime(form.trialTimeStart, form.trialTimeEnd)) {
+      nextErrors.trialTime = 'Giờ kết thúc phải sau giờ bắt đầu'
     }
 
     setErrors(nextErrors)
@@ -749,6 +892,9 @@ export default function UserCheckoutCreatePage() {
         throw new Error(payload?.error || 'Không thể gửi phiếu kết quả trải nghiệm')
       }
       toast.success('Gửi phiếu thành công!', { message: 'Dữ liệu đã được lưu vào cơ sở dữ liệu' })
+      if (user?.email) {
+        localStorage.removeItem(checkoutDraftKey(user.email))
+      }
       setSubmittedData({
         id: Number(payload.data?.id || payload.data?.raw_id || 0),
         publicUrl: String(payload.data?.public_url || ''),
@@ -797,7 +943,17 @@ export default function UserCheckoutCreatePage() {
                 {phase === 3 && 'Phase 3: Thông tin chốt case'}
               </h2>
             </div>
-            <PhaseProgress phase={phase} />
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              <PhaseProgress phase={phase} />
+              {isDraftReady && (
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-gray-500">
+                  <CloudCheck className="h-3.5 w-3.5 text-[#087f80]" />
+                  {draftSavedAt
+                    ? `Đã tự động lưu ${draftSavedAt.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}`
+                    : 'Tự động lưu bản nháp đang bật'}
+                </span>
+              )}
+            </div>
           </div>
 
           {phase === 1 && (
@@ -805,6 +961,16 @@ export default function UserCheckoutCreatePage() {
               {contextError && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
                   {contextError}
+                </div>
+              )}
+
+              {draftRestoredAt && (
+                <div className="flex items-start gap-2 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-[#075f60]">
+                  <CloudCheck className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p>
+                    Đã khôi phục bản nháp lưu lúc{' '}
+                    <strong>{draftRestoredAt.toLocaleString('vi-VN')}</strong>. Dữ liệu sẽ tiếp tục được tự động lưu khi bạn nhập.
+                  </p>
                 </div>
               )}
 
@@ -923,6 +1089,18 @@ export default function UserCheckoutCreatePage() {
                     </div>
                   </div>
                   <FieldError message={errors.trialDate} />
+                </div>
+
+                <div className="space-y-2">
+                  <FieldLabel>Khung giờ trải nghiệm</FieldLabel>
+                  <TrialTimeRangeField
+                    startTime={form.trialTimeStart}
+                    endTime={form.trialTimeEnd}
+                    onStartTimeChange={(value) => updateField('trialTimeStart', value)}
+                    onEndTimeChange={(value) => updateField('trialTimeEnd', value)}
+                    hasError={Boolean(errors.trialTime)}
+                  />
+                  <FieldError message={errors.trialTime} />
                 </div>
               </div>
 
@@ -1204,12 +1382,22 @@ export default function UserCheckoutCreatePage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setForm(INITIAL_FORM)
+                    if (user?.email) {
+                      localStorage.removeItem(checkoutDraftKey(user.email))
+                    }
+                    setForm({
+                      ...INITIAL_FORM,
+                      teacherName: context?.teacherName || user?.displayName || normalizeEmailName(user?.email),
+                      lmsCode: context?.teacherCode || '',
+                      center: context?.defaultCenter || user?.assignedCenters?.[0]?.full_name || '',
+                    })
                     setScores({})
                     setIsCustomSubject(false)
                     setCustomSubjectInput('')
                     setPhase(1)
                     setSubmittedData(null)
+                    setDraftRestoredAt(null)
+                    setDraftSavedAt(null)
                   }}
                   className="mt-1 py-1.5 text-center text-xs font-semibold text-gray-500 hover:text-gray-800 transition-colors"
                 >

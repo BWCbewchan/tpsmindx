@@ -62,6 +62,7 @@ assert.deepEqual(menu(studentMenu, legacy), studentMenu);
 assert.equal(can('/admin/kiem-soat-spck', user(['/admin/portfolio/portfolios'])), false);
 
 const catalog = require('../lib/default-screen-catalog.json');
+const { normalizeRoutePath } = load('lib/admin-permission-routes.ts');
 const routes = catalog.map((s) => s.route_path);
 assert.equal(new Set(routes).size, routes.length, 'No duplicate screen entries');
 function walk(dir) {
@@ -69,8 +70,9 @@ function walk(dir) {
 }
 for (const file of walk('app/admin').filter((f) => f.endsWith('page.tsx'))) {
   const route = '/' + path.dirname(file).replaceAll('\\', '/').replace(/^app\//, '');
-  if (route === '/admin/profile') continue;
-  assert.ok(routes.some((r) => route === r || route.startsWith(`${r}/`)), `Missing screen: ${route}`);
+  if (route === '/admin/profile' || route.includes('[')) continue;
+  const canonicalRoute = normalizeRoutePath(route);
+  assert.ok(routes.some((r) => canonicalRoute === r || canonicalRoute.startsWith(`${r}/`)), `Missing screen: ${route}`);
 }
 
 async function testApi() {

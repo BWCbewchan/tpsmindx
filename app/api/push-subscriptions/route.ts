@@ -93,6 +93,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
+            requiresResubscribe: sent.status === 404 || sent.status === 410,
             error: sent.skipped
               ? 'Máy chủ chưa cấu hình Web Push'
               : 'Không thể gửi thông báo thử tới thiết bị',

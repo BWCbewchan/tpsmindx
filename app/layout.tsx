@@ -1,3 +1,4 @@
+import { DevicePushProvider } from "@/components/notifications/DevicePushProvider";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PersistentLayout } from "@/components/PersistentLayout";
 import { PwaInstallProvider } from "@/components/pwa/PwaInstallProvider";
@@ -43,6 +44,7 @@ export default function RootLayout({
           <ErrorBoundary>
             <StoreProvider>
               <AuthProvider>
+                <DevicePushProvider>
                 <TeacherProvider>
                   <TrackerProvider>
                     <PersistentLayout>
@@ -50,6 +52,7 @@ export default function RootLayout({
                     </PersistentLayout>
                   </TrackerProvider>
                 </TeacherProvider>
+                </DevicePushProvider>
               </AuthProvider>
             </StoreProvider>
           </ErrorBoundary>

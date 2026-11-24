@@ -27,10 +27,15 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const targetUrl = new URL(
-    event.notification.data?.url || '/user/thong-bao',
-    self.location.origin,
-  ).href
+  let targetUrl = new URL('/user/thong-bao', self.location.origin).href
+  try {
+    const requested = new URL(event.notification.data?.url || targetUrl, self.location.origin)
+    if (requested.origin === self.location.origin) targetUrl = requested.href
+  } catch { /* Keep a safe same-origin fallback. */ }
+
+  if ('clearAppBadge' in self.navigator) {
+    event.waitUntil(self.navigator.clearAppBadge().catch(() => {}))
+  }
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {

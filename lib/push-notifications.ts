@@ -31,15 +31,15 @@ export function getPushPlatformState(capabilities: PushPlatformCapabilities): {
   if (!capabilities.secureContext) {
     return { supported: false, reason: 'insecure-context' }
   }
+  if (capabilities.ios && !capabilities.standalone) {
+    return { supported: false, reason: 'ios-install-required' }
+  }
   if (
     !capabilities.notificationSupported ||
     !capabilities.serviceWorkerSupported ||
     !capabilities.pushManagerSupported
   ) {
     return { supported: false, reason: 'browser-unsupported' }
-  }
-  if (capabilities.ios && !capabilities.standalone) {
-    return { supported: false, reason: 'ios-install-required' }
   }
   return { supported: true, reason: null }
 }

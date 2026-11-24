@@ -157,6 +157,15 @@ export function getVapidConfig(): VapidConfig | null {
   ).trim()
 
   if (!publicKey || !privateKey || !subject) return null
+  try {
+    const decodedPublic = decodeBase64Url(publicKey)
+    const decodedPrivate = decodeBase64Url(privateKey)
+    const key = createECDH('prime256v1')
+    key.setPrivateKey(decodedPrivate)
+    if (decodedPrivate.length !== 32 || !key.getPublicKey().equals(decodedPublic)) return null
+    const subjectUrl = new URL(subject)
+    if (!['https:', 'mailto:'].includes(subjectUrl.protocol)) return null
+  } catch { return null }
   return { publicKey, privateKey, subject }
 }
 
@@ -235,6 +244,7 @@ export async function sendWebPush(
     },
     body,
     redirect: 'manual',
+    signal: AbortSignal.timeout(10000),
   })
 
   return {

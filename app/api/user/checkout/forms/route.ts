@@ -24,12 +24,16 @@ const VALID_SUBJECTS = new Set(ALL_SUBJECT_OPTIONS)
 const VALID_CASE_RESULTS = new Set<string>(CASE_RESULT_OPTIONS.map((item) => item.value))
 
 type SubmissionBody = {
+  id?: unknown
   teacherName?: unknown
   center?: unknown
   salesOwner?: unknown
   studentName?: unknown
   studentAge?: unknown
   trialDate?: unknown
+  trialTimeStart?: unknown
+  trialTimeEnd?: unknown
+  trialTimeRange?: unknown
   track?: unknown
   subject?: unknown
   scores?: Record<string, unknown>
@@ -95,6 +99,43 @@ function parseIsoDate(value: unknown): string | null {
   }
 
   return null
+}
+
+function parseTime(value: unknown): string | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(textValue(value, 10))
+  if (!match) return null
+  const hour = Number.parseInt(match[1], 10)
+  const minute = Number.parseInt(match[2], 10)
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`
+}
+
+function parseTrialTimeRange(body: SubmissionBody): {
+  start: string
+  end: string
+  range: string
+} | null {
+  let start = parseTime(body.trialTimeStart)
+  let end = parseTime(body.trialTimeEnd)
+
+  if ((!start || !end) && body.trialTimeRange) {
+    const match = /^(\d{1,2}:\d{2})\s*[-–]\s*(\d{1,2}:\d{2})$/.exec(
+      textValue(body.trialTimeRange, 40),
+    )
+    if (match) {
+      start = parseTime(match[1])
+      end = parseTime(match[2])
+    }
+  }
+
+  if (!start || !end) return null
+  const toMinutes = (value: string) => {
+    const [hour, minute] = value.split(':').map(Number)
+    return hour * 60 + minute
+  }
+  if (toMinutes(end) <= toMinutes(start)) return null
+
+  return { start, end, range: `${start} - ${end}` }
 }
 
 function parsePositiveInt(value: unknown, fallback: number): number {
@@ -362,6 +403,10 @@ export async function GET(request: NextRequest) {
           student_name,
           student_age_label,
           trial_date::text AS trial_date,
+          COALESCE(
+            NULLIF(TRIM(raw_payload->>'trialTimeRange'), ''),
+            NULLIF(TRIM(raw_payload->>'Khung giờ trải nghiệm'), '')
+          ) AS trial_time_range,
           track,
           trial_subject,
           center_name,
@@ -369,6 +414,13 @@ export async function GET(request: NextRequest) {
           case_result,
           general_comment,
           evidence_link,
+          ${SCORE_COLUMNS.join(',\n          ')},
+          COALESCE(
+            raw_payload->>'note',
+            raw_payload->>'specialNote',
+            raw_payload->>'Định hướng thêm',
+            raw_payload->>'Lưu ý thêm'
+          ) AS note,
           COALESCE(
             raw_payload->>'rubricType',
             CASE
@@ -379,6 +431,7 @@ export async function GET(request: NextRequest) {
             END
           ) AS rubric_type,
           raw_payload->>'publicToken' AS public_token,
+          imported_at + INTERVAL '48 hours' AS editable_until,
           COUNT(*) OVER()::integer AS total_count
        FROM trial_checkout_raw
        ${whereClause}
@@ -424,6 +477,7 @@ export async function POST(request: NextRequest) {
     const studentAge = textValue(body.studentAge, 80)
     const trialDateRaw = textValue(body.trialDate, 40)
     const trialDate = parseIsoDate(body.trialDate)
+    const trialTime = parseTrialTimeRange(body)
     const generalComment = textValue(body.generalComment, 5000)
     const note = textValue(body.note, 2000)
     const caseResult = textValue(body.caseResult, 40) as CaseResult
@@ -436,6 +490,12 @@ export async function POST(request: NextRequest) {
     }
     if (!center || !salesOwner || !studentName || !studentAge || !trialDate) {
       return NextResponse.json({ success: false, error: 'Thiếu thông tin Phase 1' }, { status: 400 })
+    }
+    if (!trialTime) {
+      return NextResponse.json(
+        { success: false, error: 'Khung giờ trải nghiệm không hợp lệ' },
+        { status: 400 },
+      )
     }
     if (!generalComment) {
       return NextResponse.json({ success: false, error: 'Thiếu nhận xét chung' }, { status: 400 })
@@ -521,6 +581,7 @@ export async function POST(request: NextRequest) {
         'Họ tên học viên': studentName,
         Tuổi: studentAge,
         'Ngày trải nghiệm': trialDateRawFormatted,
+        'Khung giờ trải nghiệm': trialTime.range,
         Khối: track,
         'Môn trải nghiệm': subject,
         'Cơ sở': normalizedCenter,
@@ -561,6 +622,9 @@ export async function POST(request: NextRequest) {
         studentAge,
         trialDate,
         trialDateRaw: trialDateRawFormatted,
+        trialTimeStart: trialTime.start,
+        trialTimeEnd: trialTime.end,
+        trialTimeRange: trialTime.range,
         track,
         subject,
         scores: scorePayload,
@@ -583,6 +647,9 @@ export async function POST(request: NextRequest) {
           studentAge,
           trialDate,
           trialDateRaw: trialDateRawFormatted,
+          trialTimeStart: trialTime.start,
+          trialTimeEnd: trialTime.end,
+          trialTimeRange: trialTime.range,
           track,
           subject,
         },
@@ -658,5 +725,244 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 },
     )
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const client = await pool.connect()
+
+  try {
+    const auth = await requireBearerSession(request)
+    if (!auth.ok) return auth.response
+
+    const body = (await request.json()) as SubmissionBody
+    const id = Number.parseInt(textValue(body.id, 30), 10)
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      return NextResponse.json({ success: false, error: 'Phiếu không hợp lệ' }, { status: 400 })
+    }
+
+    const track = textValue(body.track, 40) as TrialTrack
+    const subject = textValue(body.subject, 120)
+    const center = textValue(body.center, 160)
+    const salesOwner = textValue(body.salesOwner, 160)
+    const studentName = textValue(body.studentName, 160)
+    const studentAge = textValue(body.studentAge, 80)
+    const trialDateRaw = textValue(body.trialDate, 40)
+    const trialDate = parseIsoDate(body.trialDate)
+    const trialTime = parseTrialTimeRange(body)
+    const generalComment = textValue(body.generalComment, 5000)
+    const note = textValue(body.note, 2000)
+    const caseResult = textValue(body.caseResult, 40) as CaseResult
+
+    if (!VALID_TRACKS.has(track)) {
+      return NextResponse.json({ success: false, error: 'Khối trải nghiệm không hợp lệ' }, { status: 400 })
+    }
+    if (!subject || !center || !salesOwner || !studentName || !studentAge || !trialDate) {
+      return NextResponse.json({ success: false, error: 'Vui lòng điền đủ thông tin trải nghiệm' }, { status: 400 })
+    }
+    if (!trialTime) {
+      return NextResponse.json({ success: false, error: 'Khung giờ trải nghiệm không hợp lệ' }, { status: 400 })
+    }
+    if (!generalComment) {
+      return NextResponse.json({ success: false, error: 'Thiếu nhận xét chung' }, { status: 400 })
+    }
+    if (!VALID_CASE_RESULTS.has(caseResult)) {
+      return NextResponse.json({ success: false, error: 'Thông tin chốt case không hợp lệ' }, { status: 400 })
+    }
+
+    const scorePayload = getScorePayload(body.scores)
+    const requiredScoreKeys = getRequiredScoreKeys(track, subject)
+    if (requiredScoreKeys.some((key) => scorePayload[key] == null)) {
+      return NextResponse.json({ success: false, error: 'Vui lòng chấm đủ tất cả tiêu chí' }, { status: 400 })
+    }
+    const totalScore = calculateAverageScore(scorePayload, requiredScoreKeys)
+    if (totalScore == null) {
+      return NextResponse.json({ success: false, error: 'Không thể tính tổng điểm' }, { status: 400 })
+    }
+
+    await client.query('BEGIN')
+    const existingResult = await client.query(
+      `SELECT
+          raw_id,
+          trial_teacher_name,
+          lms_code,
+          raw_payload,
+          imported_at >= CURRENT_TIMESTAMP - INTERVAL '48 hours' AS within_edit_window
+       FROM trial_checkout_raw
+       WHERE raw_id = $1
+       FOR UPDATE`,
+      [id],
+    )
+    const existing = existingResult.rows[0]
+    if (!existing) {
+      await client.query('ROLLBACK')
+      return NextResponse.json({ success: false, error: 'Không tìm thấy phiếu' }, { status: 404 })
+    }
+
+    const email = auth.sessionEmail.trim().toLowerCase()
+    const existingPayload =
+      existing.raw_payload && typeof existing.raw_payload === 'object'
+        ? (existing.raw_payload as Record<string, unknown>)
+        : {}
+    const ownerEmail = textValue(existingPayload.submittedByEmail, 320).toLowerCase()
+    if (!ownerEmail || ownerEmail !== email) {
+      await client.query('ROLLBACK')
+      return NextResponse.json(
+        { success: false, error: 'Bạn chỉ có thể sửa phiếu do chính mình gửi' },
+        { status: 403 },
+      )
+    }
+    if (!existing.within_edit_window) {
+      await client.query('ROLLBACK')
+      return NextResponse.json(
+        { success: false, error: 'Phiếu đã quá thời hạn chỉnh sửa 48 giờ' },
+        { status: 403 },
+      )
+    }
+
+    const normalizedCenter = normalizeCenter(center)
+    const trialDateRawFormatted = formatTrialDateRaw(trialDate, trialDateRaw)
+    const rubricType = resolveRubricType(track, subject)
+    const existingPhase1 =
+      existingPayload.phase1 && typeof existingPayload.phase1 === 'object'
+        ? (existingPayload.phase1 as Record<string, unknown>)
+        : {}
+    const existingScoring =
+      existingPayload.scoring && typeof existingPayload.scoring === 'object'
+        ? (existingPayload.scoring as Record<string, unknown>)
+        : {}
+    const editedAt = new Date().toISOString()
+    const rawPayload: Record<string, unknown> = {
+      ...existingPayload,
+      'Tên sale phụ trách': salesOwner,
+      'Họ tên học viên': studentName,
+      Tuổi: studentAge,
+      'Ngày trải nghiệm': trialDateRawFormatted,
+      'Khung giờ trải nghiệm': trialTime.range,
+      Khối: track,
+      'Môn trải nghiệm': subject,
+      'Cơ sở': normalizedCenter,
+      'Tổng điểm': String(totalScore),
+      'Chốt case': caseResult,
+      'Nhận xét chung': generalComment,
+      'Định hướng thêm': note || null,
+      'Lưu ý thêm': note || null,
+      center: normalizedCenter,
+      salesOwner,
+      studentName,
+      studentAge,
+      trialDate,
+      trialDateRaw: trialDateRawFormatted,
+      trialTimeStart: trialTime.start,
+      trialTimeEnd: trialTime.end,
+      trialTimeRange: trialTime.range,
+      track,
+      subject,
+      scores: scorePayload,
+      totalScore,
+      generalComment,
+      note: note || null,
+      specialNote: note || null,
+      caseResult,
+      rubricType,
+      lastEditedAt: editedAt,
+      lastEditedByEmail: email,
+      phase1: {
+        ...existingPhase1,
+        center: normalizedCenter,
+        salesOwner,
+        studentName,
+        studentAge,
+        trialDate,
+        trialDateRaw: trialDateRawFormatted,
+        trialTimeStart: trialTime.start,
+        trialTimeEnd: trialTime.end,
+        trialTimeRange: trialTime.range,
+        track,
+        subject,
+      },
+      scoring: {
+        ...existingScoring,
+        rubricType,
+        scores: scorePayload,
+        totalScore,
+      },
+    }
+
+    for (const key of SCORE_COLUMNS) {
+      const payloadLabel = key.startsWith('art4p_')
+        ? `ART4+${key.slice(-1)}`
+        : key.startsWith('rob4b_')
+          ? `ROB4B-${key.slice(-1)}`
+          : key.toUpperCase()
+      rawPayload[payloadLabel] = scorePayload[key] != null
+        ? Number(scorePayload[key]).toFixed(2)
+        : null
+    }
+
+    const updateColumns = [
+      'sales_owner_name',
+      'student_name',
+      'student_age_label',
+      'trial_date_raw',
+      'trial_date',
+      'track',
+      'trial_subject',
+      'center_name',
+      ...SCORE_COLUMNS,
+      'total_score',
+      'case_result',
+      'general_comment',
+      'raw_payload',
+    ]
+    const updateValues: unknown[] = [
+      salesOwner,
+      studentName,
+      studentAge,
+      trialDateRawFormatted,
+      trialDate,
+      track,
+      subject,
+      normalizedCenter,
+      ...SCORE_COLUMNS.map((column) => scorePayload[column] ?? null),
+      totalScore,
+      caseResult,
+      generalComment,
+      JSON.stringify(rawPayload),
+    ]
+    const assignments = updateColumns.map((column, index) => `${column} = $${index + 1}`)
+    updateValues.push(id)
+    const updateResult = await client.query(
+      `UPDATE trial_checkout_raw
+       SET ${assignments.join(', ')}
+       WHERE raw_id = $${updateValues.length}
+       RETURNING
+          raw_id::integer AS id,
+          trial_date::text AS trial_date,
+          COALESCE(
+            NULLIF(TRIM(raw_payload->>'trialTimeRange'), ''),
+            NULLIF(TRIM(raw_payload->>'Khung giờ trải nghiệm'), '')
+          ) AS trial_time_range,
+          total_score,
+          case_result,
+          general_comment,
+          updated_at`,
+      updateValues,
+    )
+
+    await client.query('COMMIT')
+    return NextResponse.json({ success: true, data: updateResult.rows[0] })
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {})
+    console.error('Error updating checkout form:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Không thể cập nhật phiếu trải nghiệm',
+      },
+      { status: 500 },
+    )
+  } finally {
+    client.release()
   }
 }

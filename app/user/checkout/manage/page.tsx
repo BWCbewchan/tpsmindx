@@ -4,7 +4,9 @@ import { useQueryState } from '@/lib/use-query-state'
 
 
 import { PageHeader } from '@/components/PageHeader'
+import DateRangePicker from '@/components/portfolio/DateRangePicker'
 import { PageLayout, PageLayoutContent } from '@/components/ui/page-layout'
+import { EditCheckoutModal, type EditableCheckoutRow } from './edit-checkout-modal'
 import { authHeaders } from '@/lib/auth-headers'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
@@ -31,8 +33,11 @@ import {
   FilePlus2,
   Filter,
   GraduationCap,
+  Info,
   Loader2,
+  LockKeyhole,
   MapPin,
+  PencilLine,
   RefreshCcw,
   RotateCcw,
   Search,
@@ -56,27 +61,7 @@ type CheckoutContext = {
   centers: CenterOption[]
 }
 
-type CheckoutRow = {
-  id: number
-  submitted_at: string
-  teacher_email: string
-  teacher_code: string | null
-  lms_code: string | null
-  trial_teacher_name: string
-  sales_owner_name: string
-  student_name: string
-  student_age_label: string
-  trial_date: string
-  track: TrialTrack
-  trial_subject: string
-  center_name: string
-  total_score: string | number
-  case_result: string
-  general_comment: string
-  evidence_link: string | null
-  public_token: string | null
-  rubric_type: string
-}
+type CheckoutRow = EditableCheckoutRow
 
 type Filters = {
   teacher: string
@@ -100,53 +85,11 @@ const INITIAL_FILTERS: Filters = {
   toDate: '',
 }
 
-function toDdMmYyyy(value: string): string {
-  if (!value) return ''
-  const trimmed = value.trim()
-  const isoMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed)
-  if (isoMatch) {
-    return `${isoMatch[3]}/${isoMatch[2]}/${isoMatch[1]}`
-  }
-  const slashMatch = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(trimmed)
-  if (slashMatch) {
-    return `${slashMatch[1].padStart(2, '0')}/${slashMatch[2].padStart(2, '0')}/${slashMatch[3]}`
-  }
-  const parts = trimmed.split(/[-./]/)
-  if (parts.length === 3) {
-    if (parts[0].length === 4) {
-      return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`
-    }
-    return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[2]}`
-  }
-  return trimmed
-}
-
-function toIsoDate(value: string): string {
-  if (!value) return ''
-  const trimmed = value.trim()
-  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed
-  const parts = trimmed.split(/[/.-]/)
-  if (parts.length === 3) {
-    const [d, m, y] = parts
-    if (y && y.length === 4) {
-      return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
-    }
-    if (d && d.length === 4) {
-      return `${d}-${m.padStart(2, '0')}-${y.padStart(2, '0')}`
-    }
-    if (y && y.length === 2) {
-      const fullYear = Number.parseInt(y, 10) > 50 ? `19${y}` : `20${y}`
-      return `${fullYear}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`
-    }
-  }
-  return trimmed
-}
-
-function localDateDdMmYyyy(date: Date): string {
+function localDateYmd(date: Date): string {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
-  return `${day}/${month}/${year}`
+  return `${year}-${month}-${day}`
 }
 
 function addDays(date: Date, days: number): Date {
@@ -159,8 +102,8 @@ function monthRange(date: Date): { fromDate: string; toDate: string } {
   const first = new Date(date.getFullYear(), date.getMonth(), 1)
   const last = new Date(date.getFullYear(), date.getMonth() + 1, 0)
   return {
-    fromDate: localDateDdMmYyyy(first),
-    toDate: localDateDdMmYyyy(last),
+    fromDate: localDateYmd(first),
+    toDate: localDateYmd(last),
   }
 }
 
@@ -224,6 +167,19 @@ function checkoutLink(row: CheckoutRow): { href: string; label: string } | null 
     href: `/public/checkout/${encodeURIComponent(String(row.id))}`,
     label: 'Xem phiếu',
   }
+}
+
+function editRestriction(row: CheckoutRow, currentUserEmail?: string | null): string | null {
+  const ownerEmail = String(row.teacher_email || '').trim().toLowerCase()
+  const userEmail = String(currentUserEmail || '').trim().toLowerCase()
+  if (!ownerEmail || !userEmail || ownerEmail !== userEmail) {
+    return 'Chỉ người gửi phiếu mới có thể chỉnh sửa'
+  }
+  const deadline = row.editable_until ? new Date(row.editable_until) : null
+  if (!deadline || Number.isNaN(deadline.getTime()) || deadline.getTime() <= Date.now()) {
+    return 'Phiếu đã quá thời hạn chỉnh sửa 48 giờ'
+  }
+  return null
 }
 
 function FilterLabel({
@@ -408,7 +364,7 @@ function SearchableFilterSelect({
 }
 
 export default function UserCheckoutManagePage() {
-  const { token, isLoading: authLoading } = useAuth()
+  const { token, user, isLoading: authLoading } = useAuth()
   const pathname = usePathname()
   const [filters, setFilters] = useQueryFilters<Filters>(INITIAL_FILTERS, {"center":"centre","track":"track","subject":"subject","fromDate":"dateFrom","toDate":"dateTo"})
   const [sortBy, setSortBy] = useQueryState<string>('sort', 'trial_date_desc')
@@ -427,9 +383,13 @@ export default function UserCheckoutManagePage() {
   const [isLoadingContext, setIsLoadingContext] = useState(true)
   const [error, setError] = useState('')
   const [refreshSignal, setRefreshSignal] = useState(0)
+  const [editingRow, setEditingRow] = useState<CheckoutRow | null>(null)
+  const [, setEditClock] = useState(() => Date.now())
 
-  const fromDateInputRef = useRef<HTMLInputElement>(null)
-  const toDateInputRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    const timer = window.setInterval(() => setEditClock(Date.now()), 30_000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   // Debounce search text and dates
   useEffect(() => {
@@ -551,12 +511,10 @@ export default function UserCheckoutManagePage() {
     if (filters.track) params.set('track', filters.track)
     if (filters.subject) params.set('subject', filters.subject)
     if (debouncedFromDate) {
-      const iso = toIsoDate(debouncedFromDate)
-      if (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) params.set('fromDate', iso)
+      if (/^\d{4}-\d{2}-\d{2}$/.test(debouncedFromDate)) params.set('fromDate', debouncedFromDate)
     }
     if (debouncedToDate) {
-      const iso = toIsoDate(debouncedToDate)
-      if (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) params.set('toDate', iso)
+      if (/^\d{4}-\d{2}-\d{2}$/.test(debouncedToDate)) params.set('toDate', debouncedToDate)
     }
     if (sortBy) params.set('sort', sortBy)
     params.set('limit', '100')
@@ -634,20 +592,20 @@ export default function UserCheckoutManagePage() {
       return
     }
     if (type === 'today') {
-      const value = localDateDdMmYyyy(today)
+      const value = localDateYmd(today)
       setFilters((current) => ({ ...current, fromDate: value, toDate: value }))
       return
     }
     if (type === 'yesterday') {
-      const value = localDateDdMmYyyy(addDays(today, -1))
+      const value = localDateYmd(addDays(today, -1))
       setFilters((current) => ({ ...current, fromDate: value, toDate: value }))
       return
     }
     const days = type === '7days' ? 6 : 29
     setFilters((current) => ({
       ...current,
-      fromDate: localDateDdMmYyyy(addDays(today, -days)),
-      toDate: localDateDdMmYyyy(today),
+      fromDate: localDateYmd(addDays(today, -days)),
+      toDate: localDateYmd(today),
     }))
   }
 
@@ -832,90 +790,20 @@ export default function UserCheckoutManagePage() {
               />
             </div>
 
-            {/* Cột 6: Từ ngày */}
+            {/* Cột 6: Một ngày hoặc khoảng ngày */}
             <div className="space-y-1.5">
-              <FilterLabel icon={CalendarDays}>Từ ngày</FilterLabel>
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="dd/mm/yyyy"
-                  value={filters.fromDate}
-                  onChange={(event) => updateFilter('fromDate', event.target.value)}
-                  className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-3 pr-10 text-sm text-gray-900 outline-none transition-colors focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10"
-                />
-                <input
-                  ref={fromDateInputRef}
-                  type="date"
-                  aria-label="Chọn từ ngày"
-                  tabIndex={-1}
-                  className="sr-only"
-                  value={toIsoDate(filters.fromDate)}
-                  max={toIsoDate(filters.toDate) || undefined}
-                  onChange={(event) => {
-                    if (event.target.value) {
-                      updateFilter('fromDate', toDdMmYyyy(event.target.value))
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    try {
-                      fromDateInputRef.current?.showPicker()
-                    } catch {
-                      fromDateInputRef.current?.focus()
-                    }
-                  }}
-                  className="absolute right-2 flex h-7 w-7 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
-                  title="Mở lịch chọn từ ngày"
-                >
-                  <CalendarDays className="h-3.5 w-3.5 pointer-events-none" />
-                </button>
-              </div>
-            </div>
-
-            {/* Cột 7: Đến ngày */}
-            <div className="space-y-1.5">
-              <FilterLabel icon={CalendarDays}>Đến ngày</FilterLabel>
-              <div className="relative flex items-center">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="dd/mm/yyyy"
-                  value={filters.toDate}
-                  onChange={(event) => updateFilter('toDate', event.target.value)}
-                  className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-3 pr-10 text-sm text-gray-900 outline-none transition-colors focus:border-[#b00020] focus:ring-2 focus:ring-[#b00020]/10"
-                />
-                <input
-                  ref={toDateInputRef}
-                  type="date"
-                  aria-label="Chọn đến ngày"
-                  tabIndex={-1}
-                  className="sr-only"
-                  value={toIsoDate(filters.toDate)}
-                  min={toIsoDate(filters.fromDate) || undefined}
-                  onChange={(event) => {
-                    if (event.target.value) {
-                      updateFilter('toDate', toDdMmYyyy(event.target.value))
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    try {
-                      toDateInputRef.current?.showPicker()
-                    } catch {
-                      toDateInputRef.current?.focus()
-                    }
-                  }}
-                  className="absolute right-2 flex h-7 w-7 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
-                  title="Mở lịch chọn đến ngày"
-                >
-                  <CalendarDays className="h-3.5 w-3.5 pointer-events-none" />
-                </button>
-              </div>
+              <FilterLabel icon={CalendarDays}>Ngày trải nghiệm</FilterLabel>
+              <DateRangePicker
+                dateFrom={filters.fromDate}
+                dateTo={filters.toDate}
+                onChange={({ dateFrom, dateTo }) => {
+                  setActiveQuickFilter('')
+                  setPage(1)
+                  setFilters((current) => ({ ...current, fromDate: dateFrom, toDate: dateTo }))
+                }}
+                placeholder="Chọn ngày hoặc khoảng ngày"
+                className="w-full [&>button]:!h-10 [&>button]:!rounded-lg [&>button]:!bg-white"
+              />
             </div>
 
             {/* Cột 8: Sắp xếp theo */}
@@ -934,6 +822,21 @@ export default function UserCheckoutManagePage() {
           </div>
         </section>
 
+        {showHeaderActions && (
+          <aside className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-sm text-amber-950 shadow-sm">
+            <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700">
+              <Info className="h-4 w-4" />
+            </span>
+            <div>
+              <p className="font-bold">Lưu ý khi sửa phiếu trải nghiệm</p>
+              <p className="mt-1 leading-relaxed text-amber-900/80">
+                Bạn chỉ có thể sửa phiếu do chính mình gửi trong vòng <strong>48 giờ</strong> kể từ thời điểm gửi.
+                Sau thời hạn này, nút <strong>Sửa phiếu</strong> sẽ tự động bị khóa.
+              </p>
+            </div>
+          </aside>
+        )}
+
         {/* KẾT QUẢ TÌM KIẾM */}
         <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-gray-100 pb-4">
@@ -945,8 +848,10 @@ export default function UserCheckoutManagePage() {
               {(filters.fromDate || filters.toDate) && (
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 border border-amber-200 px-3 py-1 text-xs font-semibold text-amber-900">
                   <CalendarDays className="h-3.5 w-3.5 text-amber-700" />
-                  Ngày TN: {filters.fromDate ? `từ ${filters.fromDate}` : ''}{' '}
-                  {filters.toDate ? `đến ${filters.toDate}` : ''}
+                  Ngày TN:{' '}
+                  {filters.fromDate && filters.toDate && filters.fromDate === filters.toDate
+                    ? formatDate(filters.fromDate)
+                    : `${filters.fromDate ? `từ ${formatDate(filters.fromDate)}` : ''} ${filters.toDate ? `đến ${formatDate(filters.toDate)}` : ''}`}
                   <button
                     type="button"
                     onClick={() => {
@@ -967,12 +872,15 @@ export default function UserCheckoutManagePage() {
           </div>
 
           <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="min-w-[1440px] w-full border-separate border-spacing-0 text-left text-sm">
+            <table className="min-w-[1580px] w-full border-separate border-spacing-0 text-left text-sm">
               <thead>
                 <tr className="bg-gray-50/90 text-xs font-bold uppercase tracking-wider text-gray-600 border-b border-gray-200">
                   <th className="px-3 py-3.5 border-b border-gray-200">ID</th>
                   <th className="px-3 py-3.5 border-b border-gray-200 bg-amber-50/50 text-[#a1001f] whitespace-nowrap">
                     Ngày trải nghiệm
+                  </th>
+                  <th className="px-3 py-3.5 border-b border-gray-200 bg-amber-50/50 text-[#a1001f] whitespace-nowrap">
+                    Khung giờ
                   </th>
                   <th className="px-3 py-3.5 border-b border-gray-200 whitespace-nowrap">Thời gian gửi</th>
                   <th className="px-3 py-3.5 border-b border-gray-200">Mã LMS</th>
@@ -986,13 +894,13 @@ export default function UserCheckoutManagePage() {
                   <th className="px-3 py-3.5 border-b border-gray-200 text-center">Điểm TB</th>
                   <th className="px-3 py-3.5 border-b border-gray-200 text-center">Chốt case</th>
                   <th className="px-3 py-3.5 border-b border-gray-200">Nhận xét</th>
-                  <th className="px-3 py-3.5 border-b border-gray-200 text-center">Phiếu</th>
+                  <th className="px-3 py-3.5 border-b border-gray-200 text-center">Thao tác</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={15} className="px-3 py-16 text-center text-gray-500">
+                    <td colSpan={16} className="px-3 py-16 text-center text-gray-500">
                       <span className="inline-flex items-center gap-2 text-sm font-medium">
                         <Loader2 className="h-5 w-5 animate-spin text-[#087f80]" />
                         Đang tải danh sách phiếu kết quả trải nghiệm...
@@ -1001,7 +909,7 @@ export default function UserCheckoutManagePage() {
                   </tr>
                 ) : error ? (
                   <tr>
-                    <td colSpan={15} className="px-3 py-16 text-center text-red-600">
+                    <td colSpan={16} className="px-3 py-16 text-center text-red-600">
                       <p className="font-semibold">{error}</p>
                       <button
                         type="button"
@@ -1015,7 +923,7 @@ export default function UserCheckoutManagePage() {
                   </tr>
                 ) : rows.length === 0 ? (
                   <tr>
-                    <td colSpan={15} className="px-3 py-16 text-center text-gray-500">
+                    <td colSpan={16} className="px-3 py-16 text-center text-gray-500">
                       <div className="flex flex-col items-center justify-center">
                         <Search className="h-8 w-8 text-gray-300 mb-2" />
                         <p className="text-sm font-semibold text-gray-700">Không tìm thấy phiếu kết quả trải nghiệm phù hợp</p>
@@ -1036,6 +944,7 @@ export default function UserCheckoutManagePage() {
                 ) : (
                   rows.map((row) => {
                     const link = checkoutLink(row)
+                    const editDisabledReason = editRestriction(row, user?.email)
 
                     return (
                       <tr
@@ -1048,6 +957,16 @@ export default function UserCheckoutManagePage() {
                             <CalendarDays className="h-3 w-3 text-amber-700 shrink-0" />
                             {formatDate(row.trial_date)}
                           </span>
+                        </td>
+                        <td className="px-3 py-3.5 bg-amber-50/20 whitespace-nowrap">
+                          {row.trial_time_range ? (
+                            <span className="inline-flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-white px-2.5 py-1 text-xs font-bold text-amber-900">
+                              <Clock className="h-3 w-3 shrink-0 text-amber-700" />
+                              {row.trial_time_range}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-gray-400">—</span>
+                          )}
                         </td>
                         <td className="px-3 py-3.5 text-xs text-gray-500 whitespace-nowrap">{formatTimestamp(row.submitted_at)}</td>
                         <td className="px-3 py-3.5 font-mono text-xs font-semibold text-gray-700 whitespace-nowrap">
@@ -1081,19 +1000,41 @@ export default function UserCheckoutManagePage() {
                           </span>
                         </td>
                         <td className="px-3 py-3.5 text-center whitespace-nowrap">
-                          {link ? (
-                            <a
-                              href={link.href}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex items-center gap-1.5 rounded-md border border-teal-200/60 bg-teal-50 px-2.5 py-1.5 text-xs font-semibold text-[#087f80] transition-colors hover:bg-teal-100 hover:text-[#065e5f]"
-                            >
-                              {link.label}
-                              <ExternalLink className="h-3 w-3" />
-                            </a>
-                          ) : (
-                            <span className="text-gray-400">-</span>
-                          )}
+                          <div className="inline-flex items-center gap-1.5">
+                            {link ? (
+                              <a
+                                href={link.href}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-md border border-teal-200/60 bg-teal-50 px-2.5 py-1.5 text-xs font-semibold text-[#087f80] transition-colors hover:bg-teal-100 hover:text-[#065e5f]"
+                              >
+                                {link.label}
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                            {showHeaderActions && (
+                              <button
+                                type="button"
+                                disabled={Boolean(editDisabledReason)}
+                                onClick={() => {
+                                  const latestRestriction = editRestriction(row, user?.email)
+                                  if (!latestRestriction) setEditingRow(row)
+                                }}
+                                title={editDisabledReason || 'Sửa phiếu'}
+                                className={cn(
+                                  'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition-colors',
+                                  editDisabledReason
+                                    ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 opacity-70'
+                                    : 'border-[#f3b4bd] bg-[#fff7f8] text-[#b00020] hover:bg-[#fff1f3]',
+                                )}
+                              >
+                                {editDisabledReason ? <LockKeyhole className="h-3 w-3" /> : <PencilLine className="h-3 w-3" />}
+                                Sửa phiếu
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )
@@ -1166,6 +1107,19 @@ export default function UserCheckoutManagePage() {
             </div>
           )}
         </section>
+
+        {editingRow && (
+          <EditCheckoutModal
+            record={editingRow}
+            centers={context?.centers || []}
+            token={token}
+            onClose={() => setEditingRow(null)}
+            onSaved={() => {
+              setEditingRow(null)
+              setRefreshSignal((current) => current + 1)
+            }}
+          />
+        )}
       </PageLayoutContent>
     </PageLayout>
   )

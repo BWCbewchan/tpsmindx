@@ -27,6 +27,7 @@ type CheckoutRecord = ScoreFieldMap & {
   student_name: string | null
   student_age_label: string | null
   trial_date: string | Date | null
+  trial_time_range: string | null
   track: string | null
   trial_subject: string | null
   center_name: string | null
@@ -309,6 +310,10 @@ async function getCheckoutRecord(token: string): Promise<CheckoutRecord | null> 
           student_name,
           student_age_label,
           trial_date,
+          COALESCE(
+            NULLIF(TRIM(raw_payload->>'trialTimeRange'), ''),
+            NULLIF(TRIM(raw_payload->>'Khung giờ trải nghiệm'), '')
+          ) AS trial_time_range,
           track,
           trial_subject,
           center_name,
@@ -386,6 +391,9 @@ export default async function PublicCheckoutPage({
   const city = textValue(record.raw_payload?.city || record.raw_payload?.region || 'Hồ Chí Minh')
   const caseResult = textValue(record.case_result, '')
   const formattedTrialDate = formatDate(record.trial_date)
+  const formattedTrialDateTime = record.trial_time_range
+    ? `${formattedTrialDate} | ${record.trial_time_range}`
+    : formattedTrialDate
   const numericScore =
     record.total_score != null && record.total_score !== '' ? Number(record.total_score) : null
   const proficiencyLevel = getProficiencyLevel(numericScore)
@@ -514,7 +522,7 @@ export default async function PublicCheckoutPage({
               </div>
               <div className="student-info-column">
                 <InfoRow label="Tuổi" value={record.student_age_label} />
-                <InfoRow label="Ngày trải nghiệm" value={formattedTrialDate} />
+                <InfoRow label="Ngày trải nghiệm" value={formattedTrialDateTime} />
                 <InfoRow label="Tỉnh/ Thành phố" value={city} />
                 {/* Đổi "Sale phụ trách" thành "Tư vấn phụ trách" */}
                 <InfoRow label="Tư vấn phụ trách" value={record.sales_owner_name} />

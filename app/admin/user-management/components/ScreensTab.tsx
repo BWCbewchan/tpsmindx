@@ -91,8 +91,8 @@ export default function ScreensTab() {
     }, [confirmHide.open, showForm]);
 
     useEffect(() => {
-        loadScreens();
-    }, []);
+        if (token) void loadScreens();
+    }, [token]);
 
     useEffect(() => {
         const savedMode = window.localStorage.getItem(DISPLAY_MODE_STORAGE_KEY);
@@ -106,11 +106,12 @@ export default function ScreensTab() {
     }, [displayMode]);
 
     async function loadScreens() {
+        if (!token) return;
         try {
             setLoading(true);
             const res = await fetch('/api/app-auth/screens?includeInactive=true', { headers: authHeaders(token) });
             const data = await res.json();
-            if (data.screens) {
+            if (res.ok && Array.isArray(data.screens)) {
                 setScreens(data.screens);
             } else {
                 throw new Error(data.error || 'Không tải được danh mục màn hình');

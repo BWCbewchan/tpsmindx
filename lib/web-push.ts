@@ -153,7 +153,7 @@ export function getVapidConfig(): VapidConfig | null {
   const publicKey = String(process.env.VAPID_PUBLIC_KEY || '').trim()
   const privateKey = String(process.env.VAPID_PRIVATE_KEY || '').trim()
   const subject = String(
-    process.env.VAPID_SUBJECT || 'mailto:teaching@mindx.edu.vn',
+    process.env.VAPID_SUBJECT || 'https://www.tpsmindx.com/user/quan-ly-phan-hoi',
   ).trim()
 
   if (!publicKey || !privateKey || !subject) return null

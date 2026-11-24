@@ -8,7 +8,7 @@ ecdh.generateKeys()
 const output = [
   `VAPID_PUBLIC_KEY=${ecdh.getPublicKey().toString('base64url')}`,
   `VAPID_PRIVATE_KEY=${ecdh.getPrivateKey().toString('base64url')}`,
-  'VAPID_SUBJECT=mailto:teaching@mindx.edu.vn',
+  'VAPID_SUBJECT=https://www.tpsmindx.com/user/quan-ly-phan-hoi',
 ].join('\n')
 
 if (process.argv.includes('--write')) {

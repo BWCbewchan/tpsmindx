@@ -1,6 +1,6 @@
 import pool from './db';
 import { getPublicBaseUrl } from './public-base-url';
-import { sendWebPush } from './web-push';
+import { sendMonitoredWebPush as sendWebPush } from './web-push-delivery';
 import { sendTelegramMessage } from './telegram-delivery.mjs';
 
 interface NotificationPayload {

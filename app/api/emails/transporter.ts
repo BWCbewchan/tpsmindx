@@ -1,4 +1,6 @@
 import nodemailer from 'nodemailer'
+import { canSafelyFailoverEmail } from '@/lib/email-delivery-policy'
+import { classifyEmailError } from '@/lib/email-monitoring'
 
 import { ensureEmailLogoInHtml, prepareEmailForSend } from '@/lib/email-branding'
 import {
@@ -8,6 +10,7 @@ import {
   recordEmailAccountVerification,
   selectNextEmailSenderAccount,
   type ResolvedEmailSenderAccount,
+  type EmailSenderAccountListItem,
 } from '@/lib/email-accounts'
 import {
   normalizeEmailRecipients,
@@ -38,6 +41,10 @@ export interface MailSendResult {
 function createAccountTransporter(account: ResolvedEmailSenderAccount) {
   return nodemailer.createTransport({
     service: 'gmail',
+    connectionTimeout: 8_000,
+    greetingTimeout: 8_000,
+    socketTimeout: 15_000,
+    dnsTimeout: 5_000,
     auth: {
       user: account.email,
       pass: account.appPassword,
@@ -45,8 +52,12 @@ function createAccountTransporter(account: ResolvedEmailSenderAccount) {
   })
 }
 
-export async function getMailTransportConfiguration() {
-  const summary = await getEmailAccountConfigurationSummary()
+export async function getMailTransportConfiguration(accounts?: EmailSenderAccountListItem[]) {
+  const ready = accounts?.filter(account => account.isActive && account.credentialConfigured)
+  const summary = accounts && ready ? {
+    configured: ready.length > 0, senderEmail: ready[0]?.email || null,
+    activeAccountCount: ready.length, totalAccountCount: accounts.length,
+  } : await getEmailAccountConfigurationSummary()
   return {
     configured: summary.configured,
     userConfigured: summary.configured,
@@ -66,40 +77,29 @@ export async function verifyMailTransport(accountId?: number): Promise<{
   senderEmail?: string
 }> {
   const startedAt = Date.now()
-  const account = accountId
-    ? await getEmailSenderAccount(accountId)
-    : await getFirstActiveEmailSenderAccount()
-  if (!account) {
-    return {
-      ok: false,
-      durationMs: Date.now() - startedAt,
-      error: 'GMAIL_NOT_CONFIGURED',
-    }
-  }
-
+  let account: ResolvedEmailSenderAccount | null = null
+  let transport: ReturnType<typeof createAccountTransporter> | null = null
   try {
-    await createAccountTransporter(account).verify()
+    account = accountId ? await getEmailSenderAccount(accountId) : await getFirstActiveEmailSenderAccount()
+    if (!account) return { ok: false, durationMs: Date.now() - startedAt, error: 'Chưa có tài khoản gửi mail đủ cấu hình.' }
+    transport = createAccountTransporter(account)
+    await transport.verify()
     await recordEmailAccountVerification(account.id, true)
-    return {
-      ok: true,
-      durationMs: Date.now() - startedAt,
-      accountId: account.id,
-      senderEmail: account.email,
-    }
+    return { ok: true, durationMs: Date.now() - startedAt, accountId: account.id, senderEmail: account.email }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    await recordEmailAccountVerification(account.id, false, message)
-    return {
-      ok: false,
-      durationMs: Date.now() - startedAt,
-      error: message,
-      accountId: account.id,
-      senderEmail: account.email,
-    }
+    if (accountId || account) await recordEmailAccountVerification(account?.id || accountId!, false, message)
+    return { ok: false, durationMs: Date.now() - startedAt, error: message, accountId: account?.id || accountId, senderEmail: account?.email }
+  } finally {
+    transport?.close()
   }
 }
 
 export async function sendMail(payload: MailPayload): Promise<MailSendResult> {
+  return sendMailAttempt(payload, [])
+}
+
+async function sendMailAttempt(payload: MailPayload, excludedIds: number[]): Promise<MailSendResult> {
   const startedAt = Date.now()
   const toRecipients = normalizeEmailRecipients(payload.to)
   const ccRecipients = normalizeEmailRecipients(payload.cc)
@@ -115,7 +115,8 @@ export async function sendMail(payload: MailPayload): Promise<MailSendResult> {
   try {
     account = senderAccountId
       ? await getEmailSenderAccount(senderAccountId)
-      : await selectNextEmailSenderAccount()
+      : await selectNextEmailSenderAccount(excludedIds)
+    if (account && !account.isActive) throw Object.assign(new Error('Tài khoản gửi mail đang tắt. Hãy bật tài khoản trước khi gửi.'), { code: 'GMAIL_NOT_CONFIGURED' })
   } catch (error) {
     const durationMs = Date.now() - startedAt
     await recordEmailDelivery({
@@ -154,10 +155,11 @@ export async function sendMail(payload: MailPayload): Promise<MailSendResult> {
     return { sent: false, warning: 'GMAIL_NOT_CONFIGURED', durationMs }
   }
 
+  const transport = createAccountTransporter(account)
   try {
     const html = ensureEmailLogoInHtml(mailOptions.html)
     const { html: preparedHtml, attachments } = prepareEmailForSend(html)
-    const info = await createAccountTransporter(account).sendMail({
+    const info = await transport.sendMail({
       from: `"${account.displayName}" <${account.email}>`,
       ...mailOptions,
       html: preparedHtml,
@@ -166,7 +168,13 @@ export async function sendMail(payload: MailPayload): Promise<MailSendResult> {
     const durationMs = Date.now() - startedAt
     const messageId = String(info?.messageId ?? '')
     const response = String(info?.response ?? '')
+    const rejected = Array.isArray(info?.rejected) ? info.rejected : []
+    const accepted = Array.isArray(info?.accepted) ? info.accepted : []
+    if (rejected.length > 0 && accepted.length === 0) {
+      throw Object.assign(new Error('SMTP từ chối toàn bộ người nhận.'), { code: 'EENVELOPE', command: 'RCPT TO', responseCode: 550 })
+    }
 
+    await recordEmailAccountVerification(account.id, true).catch(() => {})
     await recordEmailDelivery({
       status: 'sent',
       senderAccountId: account.id,
@@ -191,6 +199,7 @@ export async function sendMail(payload: MailPayload): Promise<MailSendResult> {
 
     return {
       sent: true,
+      ...(rejected.length ? { warning: 'PARTIAL_RECIPIENT_REJECTION' } : {}),
       messageId: messageId || undefined,
       response: response || undefined,
       durationMs,
@@ -199,6 +208,11 @@ export async function sendMail(payload: MailPayload): Promise<MailSendResult> {
     }
   } catch (error) {
     const durationMs = Date.now() - startedAt
+    const failure = classifyEmailError(error)
+    if (['authentication', 'network', 'quota'].includes(failure.category)) {
+      // Pause routing briefly, without changing the administrator's is_active flag.
+      await recordEmailAccountVerification(account.id, false, failure.message).catch(() => {})
+    }
     await recordEmailDelivery({
       status: 'failed',
       senderAccountId: account.id,
@@ -216,6 +230,13 @@ export async function sendMail(payload: MailPayload): Promise<MailSendResult> {
         senderAccountSource: account.source,
       },
     })
+    if (!senderAccountId && excludedIds.length < 1 && canSafelyFailoverEmail(error)) {
+      transport.close()
+      const fallback = await sendMailAttempt(payload, [...excludedIds, account.id])
+      if (fallback.sent) return fallback
+    }
     throw error
+  } finally {
+    transport.close()
   }
 }

@@ -2,7 +2,10 @@ import { rejectIfEmailNotSelf, requireBearerSession } from '@/lib/datasource-api
 import { withApiProtection } from '@/lib/api-protection';
 import pool from '@/lib/db';
 import { getSignedObjectUrl, isSupabaseS3Configured, parseStoragePath } from '@/lib/supabase-s3';
-import { NextRequest, NextResponse } from 'next/server';
+import { after, NextRequest, NextResponse } from 'next/server';
+import { notifyFeedbackTelegram } from '@/lib/feedback-telegram';
+
+export const maxDuration = 60;
 
 const ADMIN_ROLES = new Set(['super_admin', 'admin']);
 const VALID_STATUSES = new Set(['new', 'in_progress', 'done']);
@@ -197,6 +200,9 @@ export const POST = withApiProtection(async (request: NextRequest) => {
     );
 
     const row = result.rows[0];
+    after(async () => {
+      await notifyFeedbackTelegram(row, 'created').catch(() => console.error('[feedback] Telegram notification failed for ticket:', row.id));
+    });
     const hydrated = await hydrateFeedbackRow(row, new Map<string, string>());
     return NextResponse.json({ success: true, item: hydrated });
   } catch (error: any) {
@@ -274,7 +280,14 @@ export const PATCH = withApiProtection(async (request: NextRequest) => {
       [id, status, adminNote || null, adminReply || null, adminImageUrls ? JSON.stringify(adminImageUrls) : null, auth.sessionEmail]
     );
 
-    return NextResponse.json({ success: true, item: await hydrateFeedbackRow(result.rows[0], new Map<string, string>()) });
+    const updated = result.rows[0];
+    // Only this mutation triggers an update alert; GET never replays history.
+    if (currentStatus !== status || adminNote !== undefined || adminReply !== undefined || adminImageUrls !== undefined) {
+      after(async () => {
+        await notifyFeedbackTelegram(updated, 'updated', auth.sessionEmail).catch(() => console.error('[feedback] Telegram notification failed for ticket:', updated.id));
+      });
+    }
+    return NextResponse.json({ success: true, item: await hydrateFeedbackRow(updated, new Map<string, string>()) });
   } catch (error: any) {
     return NextResponse.json(
       { success: false, error: error?.message || 'Không thể cập nhật feedback' },

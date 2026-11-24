@@ -1,7 +1,5 @@
 'use client'
 import { useQueryState } from '@/lib/use-query-state'
-import { getStaticCommunication, mergeStaticCommunications } from '@/lib/static-communications'
-import { TeacherEventRegistrationModal } from '@/components/TeacherEventRegistrationModal'
 
 
 import { EmptyState } from '@/components/EmptyState'
@@ -81,7 +79,7 @@ export default function TruyenthongDashboardPage() {
         fetchPostsArray<Post>,
         { revalidateOnFocus: false, dedupingInterval: 60000 }
     )
-    const posts = mergeStaticCommunications(Array.isArray(rawPosts) ? rawPosts : [], { status: filterStatus, search: searchTerm })
+    const posts = Array.isArray(rawPosts) ? rawPosts : []
 
     const tabs = [
         { id: 'all',       label: 'Tất cả',   count: posts.length },
@@ -95,7 +93,6 @@ export default function TruyenthongDashboardPage() {
             title="Trung tâm Truyền thông"
             description="Quản lý và theo dõi toàn bộ bài viết, sự kiện và thông báo nội bộ."
         >
-            <TeacherEventRegistrationModal mode="admin" />
             {/* Quick Actions */}
             <div className="flex flex-wrap items-center gap-3 mb-8">
                 <Button asChild variant="mindx" className="gap-2 shadow-sm font-semibold">
@@ -146,7 +143,7 @@ export default function TruyenthongDashboardPage() {
 
             {/* Posts List */}
             <div className="border border-gray-200 rounded-2xl bg-white shadow-sm overflow-hidden">
-                {isLoading && posts.length === 0 ? (
+                {isLoading ? (
                     <div className="p-4">
                         <TableSkeleton rows={5} columns={4} />
                     </div>
@@ -252,7 +249,7 @@ export default function TruyenthongDashboardPage() {
 
 
                                             {/* Edit */}
-                                            {!getStaticCommunication(post.slug) && <Link href={`/admin/truyenthong/posts/${post.slug}/edit`}>
+                                            <Link href={`/admin/truyenthong/posts/${post.slug}/edit`}>
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
@@ -261,7 +258,7 @@ export default function TruyenthongDashboardPage() {
                                                     <Pencil className="h-3.5 w-3.5" />
                                                     Chỉnh sửa
                                                 </Button>
-                                            </Link>}
+                                            </Link>
                                         </div>
                                     </div>
                                 </li>

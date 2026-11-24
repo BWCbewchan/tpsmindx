@@ -1,10 +1,10 @@
+import { sendMonitoredWebPush as sendWebPush } from '@/lib/web-push-delivery'
 import { requireSameOriginMutation } from '@/lib/api-security'
 import { requireBearerSession } from '@/lib/datasource-api-auth'
 import pool from '@/lib/db'
 import {
   getVapidConfig,
   isAllowedPushEndpoint,
-  sendWebPush,
 } from '@/lib/web-push'
 import { NextRequest, NextResponse } from 'next/server'
 

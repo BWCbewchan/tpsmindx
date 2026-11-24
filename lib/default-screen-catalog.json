@@ -550,5 +550,21 @@
     "sort_order": 66,
     "description": "",
     "is_active": true
+  },
+  {
+    "route_path": "/admin/quan-ly-portfolio-giao-vien",
+    "label": "Quản Lý Portfolio Giáo Viên",
+    "group_name": "Quản lý Giáo viên & Vận hành",
+    "sort_order": 67,
+    "description": "Danh sách và quản lý Portfolio giáo viên. Các giới hạn truy cập HC hiện có vẫn được áp dụng.",
+    "is_active": true
+  },
+  {
+    "route_path": "/admin/tieu-chi-cham-diem",
+    "label": "Quản lý Tiêu chí Chấm điểm",
+    "group_name": "Quản lý Chuyên môn",
+    "sort_order": 68,
+    "description": "Quản lý bộ tiêu chí, nhóm tiêu chí và thang điểm chấm demo theo khóa học.",
+    "is_active": true
   }
 ]

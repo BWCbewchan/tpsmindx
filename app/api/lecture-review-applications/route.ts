@@ -98,9 +98,17 @@ export async function GET(request: NextRequest) {
       conditions.push(`center_id = ${addValue(centerId)}`)
     }
 
-    const reviewer = String(searchParams.get('reviewer') || '').trim().slice(0, 255)
-    if (reviewer) {
-      conditions.push(`reviewer_name = ${addValue(reviewer)}`)
+    const reviewerForAccount = access.assignedReviewer
+    const isManagerOrAdmin = access.isSystemAdmin
+
+    // Nếu người dùng là giám khảo, chỉ cho phép xem các phiếu của chính mình
+    if (reviewerForAccount) {
+      conditions.push(`reviewer_name = ${addValue(reviewerForAccount)}`)
+    } else {
+      const reviewer = String(searchParams.get('reviewer') || '').trim().slice(0, 255)
+      if (reviewer) {
+        conditions.push(`reviewer_name = ${addValue(reviewer)}`)
+      }
     }
 
     const block = String(searchParams.get('block') || '').trim()
@@ -154,6 +162,11 @@ export async function GET(request: NextRequest) {
          final_score,
          total_lesson,
          training_status,
+         evaluation_format,
+         evaluation_details,
+         evaluation_general_feedback,
+         evaluated_at,
+         evaluated_by_name,
          created_at,
          COUNT(*) OVER()::integer AS total_count
        FROM lecture_review_applications
@@ -163,11 +176,12 @@ export async function GET(request: NextRequest) {
       values,
     )
     const total = Number(result.rows[0]?.total_count || 0)
-    const reviewerForAccount = LECTURE_REVIEW_REVIEWER_BY_EMAIL[access.email]
+    // Quyền chấm/sửa điểm: Chỉ dành cho Ban giám khảo và Super Admin
+    const canScoreForUser = access.isSuperAdmin || Boolean(reviewerForAccount)
     const rows = result.rows.map((row) => ({
       ...row,
-      can_score:
-        Boolean(reviewerForAccount) && row.reviewer_name === reviewerForAccount,
+      can_score: canScoreForUser,
+      can_delete: access.canDelete,
     }))
 
     return NextResponse.json({
@@ -178,6 +192,9 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         totalPages: Math.max(1, Math.ceil(total / limit)),
+        currentReviewer: reviewerForAccount || null,
+        isManagerOrAdmin,
+        canDelete: access.canDelete,
       },
     })
   } catch (error) {

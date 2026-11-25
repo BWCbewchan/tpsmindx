@@ -1,0 +1,654 @@
+.overlay { position:fixed; inset:0; z-index:10020; display:flex; align-items:center; justify-content:center; background:rgb(24 24 22 / 56%); padding:24px; }
+.dialog { width:min(100%,960px); max-height:calc(100dvh - 48px); display:flex; flex-direction:column; background:#fcfaf6; color:#292623; border:1px solid #e1d6c4; border-radius:16px; box-shadow:0 24px 90px rgb(0 0 0 / 22%); outline:none; overflow:hidden; animation:honors-enter .2s ease-out; }
+.close { display:flex; align-items:center; justify-content:center; flex:none; border:1px solid #dfd8cc; background:transparent; color:#62594c; border-radius:50%; width:38px; height:38px; transition:background .15s; }
+.close:hover { background:#f0eade; }
+.dialog button:focus-visible { outline:2px solid var(--color-ring); outline-offset:3px; }
+.scrollArea { overflow-y:auto; overscroll-behavior:contain; min-height:0; }
+.content { padding:18px 48px 0; animation:honors-enter .16s ease-out; }
+.podium { display:grid; grid-template-columns:1fr 1.16fr 1fr; gap:20px; align-items:end; max-width:740px; margin:30px auto 0; }
+.podium[data-count='1'] { grid-template-columns:minmax(0,260px); justify-content:center; }
+.podium[data-count='2'] { grid-template-columns:repeat(2,minmax(0,1fr)); max-width:520px; }
+.teacher { min-width:0; display:flex; flex-direction:column; align-items:center; --frame:#a4a9aa; --badge:#647178; }
+.teacher[data-rank='3'] { --frame:#ba9372; --badge:#906344; }
+.winner { --frame:#b28d44; --badge:#8f1731; }
+.portraitFrame { position:relative; padding:6px; border:1px solid var(--frame); border-radius:50%; width:144px; height:144px; flex:none; }
+.winner .portraitFrame { width:166px; height:166px; border-color:#ba964e; padding:7px; }
+.portrait { width:100%; height:100%; display:flex; align-items:center; justify-content:center; border-radius:50%; overflow:hidden; background:#e9e3d7; }
+.portrait img { width:100%; height:100%; object-fit:cover; object-position:center 26%; }
+.initials { font-size:45px; font-weight:500; letter-spacing:-.06em; color:#8b7860; }
+.rank { position:absolute; bottom:-9px; left:50%; transform:translateX(-50%); width:27px; height:27px; display:flex; align-items:center; justify-content:center; border-radius:50%; background:#fffefa; border:1px solid var(--frame); color:var(--badge); font-size:13px; font-weight:700; }
+.winner .rank { color:white; background:#8f1731; border:3px solid #fcfaf6; width:32px; height:32px; bottom:-12px; }
+.crown { position:absolute; top:-27px; left:50%; transform:translateX(-50%); color:#aa8138; }
+.teacherInfo { width:100%; min-height:90px; padding:20px 5px 14px; text-align:center; }
+.teacherInfo h3 { font-size:16px; line-height:1.4; font-weight:650; letter-spacing:-.02em; overflow-wrap:anywhere; margin:0 0 6px; }
+.winner .teacherInfo h3 { color:#7e1932; }
+.teacherInfo p { font-size:10px; line-height:1.6; color:#72695e; overflow-wrap:anywhere; margin:0; }
+.score { width:100%; height:104px; display:flex; flex-direction:column; align-items:center; justify-content:center; flex:none; border:1px solid #dedad0; border-bottom:0; border-radius:9px 9px 0 0; background:#f0eeea; position:relative; }
+.teacher[data-rank='3'] .score { height:86px; background:#f2ebe2; border-color:#e1d3c3; }
+.winner .score { height:132px; color:#fff8e9; background:#8f1731; border-color:#8f1731; }
+.awardLabel { font-size:8px; font-weight:650; letter-spacing:.16em; color:#615a51; }
+.winner .awardLabel { color:#e6cd9e; }
+.score strong { font-size:29px; line-height:1; font-weight:500; letter-spacing:-.05em; font-variant-numeric:tabular-nums; margin-top:8px; }
+.score strong>span { font-size:12px; margin-left:3px; letter-spacing:0; }
+.metric { font-size:8px; letter-spacing:.15em; margin-top:5px; color:#71695e; }
+.winner .metric { color:#e6d8c3; }
+.status { min-height:300px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; text-align:center; color:#746b60; font-size:14px; line-height:1.6; }
+.status button,.stale button { text-decoration:underline; text-underline-offset:3px; color:#941d37; min-height:36px; }
+.stale { font-size:11px; color:#746b60; margin:14px 0; }
+@keyframes honors-enter { from { opacity:0; transform:translateY(7px); } to { opacity:1; transform:translateY(0); } }
+@media(min-width:641px) and (max-height:800px) {
+  .content { padding:12px 36px 0; }
+  .podium { margin-top:28px; }
+  .portraitFrame { width:116px; height:116px; }
+  .winner .portraitFrame { width:136px; height:136px; }
+  .teacherInfo { min-height:79px; padding:18px 5px 10px; }
+  .score { height:86px; }
+  .winner .score { height:110px; }
+  .teacher[data-rank='3'] .score { height:70px; }
+  .score strong { font-size:27px; }
+}
+@media(max-width:640px) {
+  .overlay { padding:10px; }
+  .dialog { max-height:calc(100dvh - 20px); border-radius:12px; }
+  .content { padding:22px 14px 0; }
+  .podium { gap:9px; grid-template-columns:1fr 1.12fr 1fr; margin-top:38px; }
+  .portraitFrame { width:82px; height:82px; padding:4px; }
+  .winner .portraitFrame { width:98px; height:98px; padding:5px; }
+  .crown { width:20px; height:20px; top:-25px; }
+  .initials { font-size:29px; }
+  .rank { width:23px; height:23px; font-size:11px; }
+  .winner .rank { width:28px; height:28px; }
+  .teacherInfo { padding:18px 0 13px; min-height:120px; }
+  .teacherInfo h3 { font-size:12px; line-height:1.5; }
+  .teacherInfo p { font-size:9px; line-height:1.5; }
+  .score { height:94px; border-radius:6px 6px 0 0; }
+  .winner .score { height:120px; }
+  .teacher[data-rank='3'] .score { height:76px; }
+  .awardLabel { font-size:7px; letter-spacing:.12em; }
+  .score strong { margin-top:8px; font-size:25px; }
+  .score strong>span { font-size:10px; margin-left:2px; }
+  .metric { font-size:7px; }
+  .status { min-height:300px; font-size:12px; }
+}
+@media(max-width:360px) {
+  .content { padding-inline:10px; }
+  .podium { gap:6px; }
+  .portraitFrame { width:72px; height:72px; }
+  .winner .portraitFrame { width:86px; height:86px; }
+  .teacherInfo h3 { font-size:11px; }
+  .score strong { font-size:22px; }
+}
+@media(prefers-reduced-motion:reduce) { .dialog,.content { animation:none; } .dialog button { transition:none; } }
+
+/* Brushed metal: directional reflection, polished rims and a shallow bevel. */
+.content { padding-top:26px; }
+.teacher { --metal-light:#f9fcff; --metal-mid:#c8d0d7; --metal-dark:#84929e; --metal-text:#26353f; }
+.teacher[data-rank='3'] { --metal-light:#f9c4a9; --metal-mid:#b76b43; --metal-dark:#713819; --metal-text:#4b2916; }
+.winner { --metal-light:#fff6ad; --metal-mid:#efc631; --metal-dark:#a77b09; --metal-text:#51380d; }
+.portraitFrame,.winner .portraitFrame {
+  border-color:var(--metal-dark);
+  background:conic-gradient(from -35deg,var(--metal-dark),var(--metal-mid) 12%,var(--metal-light) 22%,var(--metal-mid) 34%,var(--metal-dark) 44%,var(--metal-light) 57%,var(--metal-mid) 69%,var(--metal-dark) 79%,var(--metal-light) 92%,var(--metal-dark));
+  box-shadow:inset 0 0 0 1px rgb(255 255 255 / 85%),inset 0 0 0 3px rgb(45 32 12 / 13%),0 4px 9px rgb(57 43 23 / 14%);
+}
+.portrait { box-shadow:0 0 0 1px rgb(40 30 15 / 30%); }
+.rank,.winner .rank {
+  background:linear-gradient(135deg,var(--metal-light),var(--metal-mid) 37%,var(--metal-dark) 56%,var(--metal-mid) 68%,var(--metal-light));
+  color:var(--metal-text); border:1px solid var(--metal-dark);
+  box-shadow:inset 0 0 0 2px rgb(255 255 255 / 36%),0 2px 3px rgb(49 34 10 / 22%);
+  text-shadow:0 1px 0 rgb(255 255 255 / 55%);
+}
+.score,.winner .score,.teacher[data-rank='3'] .score {
+  background:
+    repeating-linear-gradient(0deg,rgb(255 255 255 / 9%) 0,rgb(255 255 255 / 9%) 1px,transparent 1px,transparent 3px),
+    linear-gradient(110deg,var(--metal-mid) 0%,var(--metal-light) 19%,var(--metal-mid) 34%,var(--metal-light) 48%,var(--metal-mid) 59%,var(--metal-dark) 78%,var(--metal-mid) 88%,var(--metal-light) 100%);
+  border:1px solid var(--metal-dark); border-bottom:0; color:var(--metal-text);
+  box-shadow:inset 0 2px 0 rgb(255 255 255 / 80%),inset 2px 0 0 rgb(255 255 255 / 45%),inset -2px 0 0 rgb(55 36 11 / 16%);
+  overflow:hidden; isolation:isolate;
+}
+.awardLabel,.winner .awardLabel,.metric,.winner .metric { color:var(--metal-text); text-shadow:0 1px 0 rgb(255 255 255 / 50%); }
+.score strong { font-weight:600; text-shadow:0 1px 0 rgb(255 255 255 / 65%); }
+.score::after { content:''; position:absolute; inset:0; background:linear-gradient(110deg,transparent 30%,rgb(255 255 255 / 8%) 40%,rgb(255 255 255 / 58%) 49%,rgb(255 255 255 / 10%) 58%,transparent 68%); transform:translateX(-130%); animation:award-sheen 8s ease-in-out 1s infinite; pointer-events:none; z-index:-1; }
+.teacher[data-rank='2'] .score::after { animation-delay:2s; }
+.teacher[data-rank='3'] .score::after { animation-delay:3s; }
+.crown { color:#ad812b; filter:drop-shadow(0 1px 0 #fff4ce); }
+@keyframes award-sheen { 0%,65% { transform:translateX(-130%); } 90%,100% { transform:translateX(130%); } }
+@media(max-width:640px) { .content { padding-top:24px; } }
+@media(prefers-reduced-motion:reduce) { .score::after { animation:none; display:none; } }
+
+.heading { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-bottom:16px; border-bottom:1px solid var(--color-border); }
+.heading h2 { font-family:inherit; font-size:16px; line-height:1.5; font-weight:600; letter-spacing:0; color:var(--color-foreground); margin:0; }
+.period { font-size:12.8px; font-weight:600; line-height:1.5; color:var(--color-primary); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.podium { margin-top:44px; }
+@media(max-width:640px) { .heading h2 { font-size:16px; } .period { font-size:12.8px; } .heading { padding-bottom:14px; gap:10px; } .podium { margin-top:42px; } }
+
+.headerActions { display:flex; align-items:center; gap:16px; flex:none; }
+@media(max-width:640px) { .headerActions { gap:8px; } .close { width:32px; height:32px; } }
+
+/* Vertical ceremonial pennants, with an enclosed portrait and pointed hem. */
+.podium { align-items:start; margin-bottom:28px; gap:22px; }
+.sashCard.sashCard {
+  position:relative; isolation:isolate; padding:32px 14px 56px;
+  border:0; border-radius:0; margin-top:36px;
+  background:linear-gradient(115deg,var(--metal-dark) 0%,var(--metal-mid) 14%,var(--metal-light) 24%,#fff 27%,var(--metal-mid) 31%,var(--metal-dark) 45%,var(--metal-light) 58%,var(--metal-mid) 70%,#fff 78%,var(--metal-dark) 100%);
+  background-size:240% 100%; background-position:0% 50%; animation:pennant-arrive .65s cubic-bezier(.2,.7,.2,1) both;
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 42px),50% 100%,0 calc(100% - 42px));
+  color:#fff3da;
+}
+.sashCard.winner { margin-top:0; padding-top:40px; padding-bottom:68px; }
+.sashCard::before {
+  content:''; position:absolute; z-index:-2; inset:5px;
+  background:linear-gradient(100deg,#651323,#851c2c 45%,#59101d);
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 41px),50% 100%,0 calc(100% - 41px));
+}
+.sashCard::after {
+  content:''; position:absolute; z-index:-1; inset:9px;
+  background:linear-gradient(110deg,var(--metal-dark),var(--metal-light),var(--metal-mid));
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 38px),50% 100%,0 calc(100% - 38px),0 0,1px 1px,1px calc(100% - 39px),50% calc(100% - 2px),calc(100% - 1px) calc(100% - 39px),calc(100% - 1px) 1px,1px 1px);
+  pointer-events:none;
+}
+.sashCard .portraitFrame { width:min(100%,144px); height:auto; aspect-ratio:1; }
+.sashCard.winner .portraitFrame { width:min(100%,166px); }
+.sashCard .crown { top:-30px; }
+.sashCard .teacherInfo { padding:24px 0 16px; min-height:112px; }
+.nameSash { padding:0; margin:0 0 8px; }
+.nameSash h3,.winner .nameSash h3 { margin:0; color:#fff4dd; font-size:16px; font-weight:600; line-height:1.5; }
+.sashCard .teacherInfo p { color:#e3c9b9; }
+.sashCard .score,.sashCard.winner .score,.sashCard[data-rank='3'] .score {
+  width:100%; height:auto; padding:18px 0 4px; border:0; border-top:1px solid var(--metal-mid);
+  border-radius:0; background:none; box-shadow:none; color:var(--metal-light); overflow:visible;
+}
+.sashCard .score::after { display:none; }
+.sashCard .awardLabel,.sashCard .metric { color:var(--metal-light); text-shadow:none; }
+.sashCard .score strong { color:var(--metal-light); text-shadow:none; }
+@media(max-width:640px) {
+  .content { padding-inline:14px; }
+  .podium { gap:10px; grid-template-columns:1fr 1.12fr 1fr; margin-top:26px; }
+  .sashCard.sashCard { padding:22px 8px 46px; margin-top:24px; }
+  .sashCard.winner { margin-top:0; padding-top:32px; padding-bottom:56px; }
+  .sashCard .teacherInfo { min-height:128px; padding:22px 0 12px; }
+  .nameSash h3,.winner .nameSash h3 { font-size:12px; }
+  .sashCard .teacherInfo p { font-size:9px; }
+  .sashCard .score { padding-top:14px; }
+  .sashCard .score strong { font-size:24px; }
+  .sashCard .crown { width:18px; height:18px; top:-24px; }
+}
+@media(max-width:360px) {
+  .podium { gap:7px; }
+  .sashCard.sashCard { padding-inline:6px; }
+  .nameSash h3,.winner .nameSash h3 { font-size:11px; }
+  .sashCard .score strong { font-size:21px; }
+}
+
+/* Light stays on the plated edge; the cloth and names remain still. */
+.sashCard[data-rank='2'] { animation-delay:-3s; }
+.sashCard[data-rank='3'] { animation-delay:-6s; }
+.sashCard::after { filter:drop-shadow(0 0 2px var(--metal-light)); }
+@keyframes plated-rim { 0%,20%,100% { background-position:0% 50%; } 60%,75% { background-position:100% 50%; } }
+@media(prefers-reduced-motion:reduce) { .sashCard.sashCard { animation:none; background-position:35% 50%; } }
+
+.trophy { width:72px; height:66px; margin:-5px 0 8px; filter:drop-shadow(0 3px 2px rgb(0 0 0 / 22%)); flex:none; }
+.sashCard.winner .trophy { width:84px; height:77px; }
+.sashCard .score { padding-top:10px; }
+@keyframes pennant-arrive { from { opacity:0; transform:translateY(20px) scale(.97); } to { opacity:1; transform:translateY(0) scale(1); } }
+.sashCard[data-rank='2'] { animation-delay:.12s; }
+.sashCard[data-rank='3'] { animation-delay:.24s; }
+@media(max-width:640px) { .trophy { width:52px; height:48px; } .sashCard.winner .trophy { width:62px; height:57px; } }
+@media(prefers-reduced-motion:reduce) { .sashCard.sashCard { animation:none; } }
+
+/* A single light band crosses the whole pennant from left to right. */
+.sashCard::after { filter:none; }
+.cardShine { position:absolute; inset:0; z-index:5; pointer-events:none; background:linear-gradient(105deg,transparent 34%,rgb(255 255 255 / 5%) 42%,rgb(255 255 255 / 22%) 50%,rgb(255 255 255 / 5%) 58%,transparent 66%); transform:translateX(-140%); animation:card-light-sweep 4.8s ease-in-out infinite; }
+.sashCard[data-rank='2'] .cardShine { animation-delay:.3s; }
+.sashCard[data-rank='3'] .cardShine { animation-delay:.6s; }
+.nameSash h3,.winner .nameSash h3 { font-size:18px; line-height:1.45; }
+@keyframes card-light-sweep { 0%,20% { transform:translateX(-140%); } 55%,100% { transform:translateX(140%); } }
+@media(max-width:640px) { .nameSash h3,.winner .nameSash h3 { font-size:14px; } }
+@media(max-width:360px) { .nameSash h3,.winner .nameSash h3 { font-size:12px; } }
+@media(prefers-reduced-motion:reduce) { .cardShine { animation:none; display:none; } }
+
+/* Fit the award board to the viewport instead of scrolling the dialog. */
+.dialog { max-height:calc(100dvh - 32px); }
+.scrollArea { overflow:hidden; display:flex; flex-direction:column; }
+.content { min-height:0; padding:18px 32px 20px; }
+.podium { margin-top:20px; margin-bottom:0; gap:18px; }
+.sashCard.sashCard { padding:20px 12px 44px; margin-top:24px; }
+.sashCard.winner { margin-top:0; padding:24px 12px 48px; }
+.sashCard .portraitFrame { width:min(100%,clamp(72px,17dvh,128px)); }
+.sashCard.winner .portraitFrame { width:min(100%,clamp(86px,20dvh,150px)); }
+.sashCard .teacherInfo { min-height:82px; padding:20px 0 10px; }
+.sashCard .trophy { width:clamp(40px,8dvh,60px); height:clamp(37px,7.4dvh,55px); margin:0 0 5px; }
+.sashCard.winner .trophy { width:clamp(48px,9dvh,70px); height:clamp(44px,8.3dvh,64px); }
+@media(max-width:640px) {
+  .overlay { padding:8px; }
+  .dialog { max-height:calc(100dvh - 16px); }
+  .content { padding:14px 12px 16px; }
+  .podium { gap:8px; margin-top:18px; }
+  .sashCard.sashCard { padding:18px 7px 42px; margin-top:18px; }
+  .sashCard.winner { margin-top:0; padding:22px 7px 46px; }
+  .sashCard .teacherInfo { min-height:106px; padding:18px 0 8px; }
+}
+@media(max-height:600px) {
+  .overlay { padding:6px; }
+  .dialog { max-height:calc(100dvh - 12px); }
+  .content { padding:10px 20px 12px; }
+  .heading { padding-bottom:8px; }
+  .podium { margin-top:10px; }
+  .sashCard.sashCard,.sashCard.winner { padding-top:14px; padding-bottom:38px; }
+  .sashCard .portraitFrame { width:min(100%,15dvh); }
+  .sashCard.winner .portraitFrame { width:min(100%,18dvh); }
+  .sashCard .teacherInfo { min-height:0; padding:14px 0 8px; }
+  .nameSash { margin-bottom:4px; }
+  .nameSash h3,.winner .nameSash h3 { font-size:14px; }
+  .sashCard .score,.sashCard.winner .score,.sashCard[data-rank='3'] .score { padding:6px 0 0; }
+  .sashCard .trophy,.sashCard.winner .trophy { width:40px; height:36px; margin-bottom:3px; }
+  .sashCard .score strong { font-size:23px; margin-top:4px; }
+}
+
+@media(max-height:420px) {
+  .sashCard .trophy,.sashCard.winner .trophy { display:none; }
+  .sashCard .portraitFrame,.sashCard.winner .portraitFrame { width:min(100%,13dvh); }
+  .sashCard.sashCard,.sashCard.winner { padding-top:10px; padding-bottom:34px; }
+  .sashCard .teacherInfo { padding-top:12px; }
+  .nameSash h3,.winner .nameSash h3 { font-size:12px; }
+  .sashCard .teacherInfo p { font-size:9px; }
+  .sashCard .score strong { font-size:21px; }
+  .podium { margin-top:8px; }
+}
+
+/* Give the full-height layout a little more presence without restoring scrolling. */
+@media(min-height:601px) {
+  .sashCard.sashCard { padding-top:26px; padding-bottom:52px; }
+  .sashCard.winner { padding-top:30px; padding-bottom:56px; }
+  .sashCard .teacherInfo { min-height:92px; padding-top:22px; }
+}
+@media(min-height:601px) and (max-width:640px) {
+  .sashCard.sashCard { padding-top:22px; padding-bottom:48px; }
+  .sashCard.winner { padding-top:26px; padding-bottom:52px; }
+  .sashCard .teacherInfo { min-height:112px; }
+}
+
+.heading h2 { color:#781a2c; font-size:20px; font-weight:650; line-height:1.4; }
+@media(max-width:640px) { .heading h2 { font-size:18px; } }
+@media(max-width:360px), (max-height:420px) { .heading h2 { font-size:16px; } }
+
+/* Liquid glass surface: opaque fallback, translucent only with backdrop support. */
+.overlay { background:rgb(18 20 26 / 42%); }
+.dialog {
+  position:relative; isolation:isolate;
+  background:#f4f3f1;
+  border:1px solid rgb(255 255 255 / 80%);
+  box-shadow:inset 0 1px 0 rgb(255 255 255 / 95%),inset 1px 0 0 rgb(255 255 255 / 45%),inset 0 -1px 0 rgb(255 255 255 / 30%),0 24px 70px rgb(13 18 27 / 25%);
+}
+.dialog::before { content:''; position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none; background:linear-gradient(125deg,rgb(255 255 255 / 42%),transparent 36%,rgb(255 255 255 / 7%) 65%,rgb(255 255 255 / 25%)); }
+.content { background:transparent; }
+.heading { border-bottom-color:rgb(110 95 99 / 16%); }
+.close { background:rgb(255 255 255 / 40%); border-color:rgb(255 255 255 / 80%); box-shadow:inset 0 1px 0 white,0 2px 6px rgb(40 30 35 / 5%); }
+.close:hover { background:rgb(255 255 255 / 75%); }
+@supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) {
+  .dialog { background:rgb(250 249 247 / 28%); -webkit-backdrop-filter:blur(28px) saturate(145%); backdrop-filter:blur(28px) saturate(145%); }
+}
+@media(prefers-reduced-transparency:reduce) { .dialog { background:#f4f3f1; -webkit-backdrop-filter:none; backdrop-filter:none; } }
+
+/* Device layout: safe areas, narrow headers and compact landscape sizing. */
+.overlay { padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left)); }
+.dialog { width:min(100%,960px); max-width:100%; max-height:calc(100dvh - max(12px,env(safe-area-inset-top)) - max(12px,env(safe-area-inset-bottom))); }
+.heading { min-width:0; }
+.heading h2 { min-width:0; overflow-wrap:anywhere; }
+.close { width:44px; height:44px; }
+.podium { grid-template-columns:minmax(0,1fr) minmax(0,1.16fr) minmax(0,1fr); }
+.sashCard { max-width:100%; }
+@media(min-width:641px) and (max-width:900px) {
+  .content { padding-inline:24px; }
+  .podium { gap:14px; }
+  .nameSash h3,.winner .nameSash h3 { font-size:16px; }
+}
+@media(max-width:640px) {
+  .content { padding-inline:10px; }
+  .podium { gap:7px; grid-template-columns:minmax(0,1fr) minmax(0,1.1fr) minmax(0,1fr); }
+  .sashCard.sashCard,.sashCard.winner { padding-inline:6px; }
+  .sashCard .portraitFrame { width:min(100%,90px); }
+  .sashCard.winner .portraitFrame { width:min(100%,108px); }
+  .nameSash h3,.winner .nameSash h3 { font-size:clamp(12px,3.3vw,14px); }
+  .sashCard .teacherInfo { min-height:112px; }
+  .sashCard .score strong { font-size:clamp(20px,5.8vw,25px); }
+  .sashCard .teacherInfo p { font-size:10px; line-height:1.45; }
+}
+@media(max-width:420px) {
+  .heading { display:grid; grid-template-columns:minmax(0,1fr) 44px; gap:3px 8px; padding-bottom:10px; }
+  .heading h2 { grid-column:1; grid-row:1; font-size:17px; }
+  .headerActions { display:contents; }
+  .period { grid-column:1; grid-row:2; font-size:12px; }
+  .close { grid-column:2; grid-row:1 / 3; }
+  .podium { margin-top:14px; gap:5px; }
+  .content { padding:12px 8px 14px; }
+  .sashCard.sashCard,.sashCard.winner { padding-inline:5px; }
+  .sashCard .teacherInfo { min-height:118px; }
+  .sashCard .trophy { width:42px; height:39px; }
+  .sashCard.winner .trophy { width:50px; height:46px; }
+}
+@media(max-height:500px) and (min-width:500px) {
+  .content { padding:8px 20px 10px; }
+  .heading { padding-bottom:6px; }
+  .podium { margin-top:8px; max-width:660px; }
+  .sashCard.sashCard,.sashCard.winner { padding:10px 9px 34px; margin-top:10px; }
+  .sashCard.winner { margin-top:0; }
+  .sashCard .portraitFrame { width:min(100%,14dvh); }
+  .sashCard.winner .portraitFrame { width:min(100%,16dvh); }
+  .sashCard .teacherInfo { min-height:0; padding:12px 0 6px; }
+  .nameSash h3,.winner .nameSash h3 { font-size:13px; }
+  .sashCard .teacherInfo p { font-size:9px; }
+  .sashCard .trophy,.sashCard.winner .trophy { display:none; }
+  .sashCard .score strong { font-size:22px; }
+  .heading h2 { font-size:17px; }
+}
+
+/* Bright header remains legible over the translucent glass. */
+.heading h2,.heading .period { color:#fffaf0; text-shadow:0 1px 2px rgb(30 15 22 / 85%),0 0 7px rgb(30 15 22 / 40%); }
+.heading .close { color:#fffaf0; background:rgb(32 24 30 / 36%); border-color:rgb(255 255 255 / 65%); box-shadow:inset 0 1px 0 rgb(255 255 255 / 25%); }
+.heading .close:hover { background:rgb(32 24 30 / 52%); }
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) { .heading h2,.heading .period { color:#781a2c; text-shadow:none; } }
+@media(prefers-reduced-transparency:reduce) { .heading h2,.heading .period { color:#781a2c; text-shadow:none; } }
+
+/* Quieter mobile composition: keep the awards, reduce competing decoration. */
+@media(max-width:640px) {
+  .dialog { border-radius:16px; }
+  .content { padding:14px 10px 18px; }
+  .heading h2 { font-size:16px; }
+  .heading .period { font-size:11px; }
+  .podium { gap:8px; margin-top:20px; grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .sashCard.sashCard { padding:18px 7px 40px; margin-top:14px; }
+  .sashCard.winner { padding:20px 7px 42px; margin-top:0; }
+  .sashCard .portraitFrame { width:min(100%,68px); padding:3px; }
+  .sashCard.winner .portraitFrame { width:min(100%,78px); padding:4px; }
+  .sashCard .rank { display:none; }
+  .sashCard .teacherInfo { min-height:94px; padding:12px 0 8px; }
+  .nameSash h3,.winner .nameSash h3 { font-size:13px; line-height:1.45; }
+  .sashCard .teacherInfo p { font-size:9px; line-height:1.5; }
+  .nameSash { margin-bottom:6px; }
+  .sashCard .score,.sashCard.winner .score,.sashCard[data-rank='3'] .score { padding:9px 0 0; }
+  .sashCard .trophy,.sashCard.winner .trophy { width:36px; height:33px; margin-bottom:5px; filter:none; }
+  .sashCard .score strong { font-size:22px; margin-top:6px; }
+  .sashCard .awardLabel { font-size:7px; letter-spacing:.06em; }
+  .sashCard .metric { font-size:7px; margin-top:4px; }
+  .cardShine { display:none; }
+  .sashCard.sashCard { animation:none; background-position:35% 50%; }
+  .sashCard::before { inset:3px; }
+  .sashCard::after { opacity:.5; }
+}
+@media(max-width:360px) {
+  .content { padding-inline:8px; }
+  .podium { gap:6px; }
+  .sashCard.sashCard,.sashCard.winner { padding-inline:5px; }
+  .nameSash h3,.winner .nameSash h3 { font-size:12px; }
+  .sashCard .teacherInfo { min-height:100px; }
+  .sashCard .score strong { font-size:20px; }
+}
+@media(max-height:420px) and (max-width:640px) {
+  .podium { margin-top:8px; }
+  .sashCard.sashCard,.sashCard.winner { padding-top:10px; padding-bottom:34px; }
+  .sashCard .portraitFrame,.sashCard.winner .portraitFrame { width:min(100%,12dvh); }
+  .sashCard .teacherInfo { min-height:0; padding-top:8px; }
+  .sashCard .trophy,.sashCard.winner .trophy { display:none; }
+  .nameSash h3,.winner .nameSash h3 { font-size:12px; }
+}
+
+/* Portrait award cards, inspired by a framed player card rather than a pennant. */
+.sashCard.sashCard {
+  padding:9px 9px 22px;
+  clip-path:polygon(0 0,43% 0,46% 5px,54% 5px,57% 0,100% 0,100% 100%,0 100%);
+  background:linear-gradient(120deg,var(--metal-dark),var(--metal-light) 19%,var(--metal-dark) 38%,var(--metal-mid) 68%,var(--metal-light) 88%,var(--metal-dark));
+  background-size:100% 100%;
+}
+.sashCard.winner { padding:9px 9px 26px; }
+.sashCard::before {
+  inset:3px;
+  clip-path:polygon(0 0,43% 0,46% 5px,54% 5px,57% 0,100% 0,100% 100%,0 100%);
+  background:radial-gradient(ellipse at 50% 48%,#5c1525 0%,#24131a 48%,#101217 85%);
+}
+.sashCard::after {
+  inset:7px; opacity:.65; clip-path:none; background:none;
+  border:1px solid var(--metal-dark); border-top:0;
+  box-shadow:inset 0 -35px 35px -35px var(--metal-mid);
+}
+.sashCard .portraitFrame,.sashCard.winner .portraitFrame {
+  width:100%; height:clamp(150px,27dvh,220px); aspect-ratio:auto;
+  padding:0; border:0; border-radius:0; box-shadow:none; background:none;
+}
+.sashCard .portrait { border-radius:0; box-shadow:none; position:relative; }
+.sashCard .portrait::after { content:''; position:absolute; inset:0; pointer-events:none; background:linear-gradient(transparent 55%,rgb(17 18 23 / 85%) 100%); }
+.sashCard .portrait img { object-position:center 23%; }
+.sashCard .rank,.sashCard.winner .rank { display:flex; bottom:-10px; z-index:2; width:25px; height:25px; }
+.sashCard .teacherInfo { position:relative; z-index:1; min-height:84px; padding:24px 4px 10px; }
+.nameSash h3,.winner .nameSash h3 { color:#fff2d8; }
+.sashCard .teacherInfo p { color:#c9bbb1; }
+.sashCard .score,.sashCard.winner .score,.sashCard[data-rank='3'] .score {
+  width:calc(100% - 12px); padding-top:12px; border-top-color:var(--metal-dark);
+}
+.sashCard .trophy,.sashCard.winner .trophy { width:48px; height:44px; margin-bottom:6px; }
+.sashCard .score strong { font-size:26px; }
+@media(max-width:640px) {
+  .podium { gap:8px; }
+  .sashCard.sashCard,.sashCard.winner { padding:7px 7px 18px; }
+  .sashCard .portraitFrame,.sashCard.winner .portraitFrame { width:100%; height:clamp(112px,23dvh,170px); }
+  .sashCard .teacherInfo { min-height:106px; padding:22px 2px 8px; }
+  .sashCard .rank,.sashCard.winner .rank { width:22px; height:22px; font-size:11px; }
+  .sashCard .trophy,.sashCard.winner .trophy { width:34px; height:31px; }
+  .sashCard .score,.sashCard.winner .score,.sashCard[data-rank='3'] .score { width:calc(100% - 4px); padding-top:9px; }
+  .sashCard .score strong { font-size:22px; }
+}
+@media(max-height:600px) {
+  .sashCard .portraitFrame,.sashCard.winner .portraitFrame { height:24dvh; }
+  .sashCard.sashCard,.sashCard.winner { padding-bottom:14px; }
+  .sashCard .teacherInfo { min-height:0; padding-top:18px; }
+  .sashCard .trophy,.sashCard.winner .trophy { width:32px; height:29px; }
+}
+@media(max-height:420px) {
+  .sashCard .portraitFrame,.sashCard.winner .portraitFrame { height:20dvh; }
+  .sashCard .trophy,.sashCard.winner .trophy { display:none; }
+  .sashCard .score strong { font-size:21px; }
+}
+@media(max-width:360px) { .sashCard .score strong { font-size:20px; } }
+
+/* Refined portrait cards: clean metal edges, full image, restrained light. */
+.sashCard.sashCard,.sashCard.winner {
+  padding:5px 5px 20px;
+  clip-path:polygon(0 0,calc(100% - 15px) 0,100% 15px,100% 100%,15px 100%,0 calc(100% - 15px));
+  animation:pennant-arrive .65s cubic-bezier(.2,.7,.2,1) both;
+}
+.sashCard[data-rank='2'] { animation-delay:.12s; }
+.sashCard[data-rank='3'] { animation-delay:.24s; }
+.sashCard::before { inset:2px; clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px)); background:radial-gradient(ellipse at 50% 45%,#3b1722,#111319 72%); }
+.sashCard::after { inset:9px; opacity:.45; border:1px solid var(--metal-dark); border-top:0; box-shadow:none; }
+.sashCard .portraitFrame,.sashCard.winner .portraitFrame { height:clamp(155px,28dvh,225px); }
+.sashCard .portrait::after { background:linear-gradient(180deg,transparent 38%,rgb(17 19 25 / 24%) 65%,#16141c 100%); }
+.sashCard .portrait img { transition:transform .65s cubic-bezier(.2,.7,.2,1); }
+.sashCard .teacherInfo { margin-top:-10px; padding:22px 10px 12px; min-height:86px; }
+.nameSash h3,.winner .nameSash h3 { font-size:18px; font-weight:600; letter-spacing:-.015em; }
+.sashCard .teacherInfo p { color:#bcb4af; font-size:11px; }
+.sashCard .rank,.sashCard.winner .rank { width:28px; height:28px; bottom:-7px; }
+.sashCard .score,.sashCard.winner .score,.sashCard[data-rank='3'] .score { width:calc(100% - 30px); padding-top:12px; border-top-color:color-mix(in srgb,var(--metal-mid) 40%,transparent); }
+.sashCard .trophy,.sashCard.winner .trophy { width:48px; height:44px; filter:drop-shadow(0 3px 4px rgb(0 0 0 / 30%)); }
+.sashCard .awardLabel { font-size:8px; letter-spacing:.12em; }
+.sashCard .score strong { font-size:29px; font-weight:600; }
+.sashCard .metric { opacity:.75; }
+.cardShine { display:block; animation:card-light-sweep 4.8s ease-in-out infinite; background:linear-gradient(105deg,transparent 35%,rgb(255 255 255 / 3%) 43%,rgb(255 255 255 / 18%) 50%,rgb(255 255 255 / 3%) 57%,transparent 65%); }
+@media(hover:hover) and (pointer:fine) { .sashCard:hover .portrait img { transform:scale(1.035); } }
+@media(max-width:640px) {
+  .sashCard.sashCard,.sashCard.winner { padding:4px 4px 16px; }
+  .sashCard .portraitFrame,.sashCard.winner .portraitFrame { height:clamp(114px,23dvh,170px); }
+  .sashCard .teacherInfo { min-height:108px; padding:22px 5px 8px; }
+  .nameSash h3,.winner .nameSash h3 { font-size:13px; }
+  .sashCard .teacherInfo p { font-size:9px; }
+  .sashCard .rank,.sashCard.winner .rank { width:23px; height:23px; }
+  .sashCard .score,.sashCard.winner .score,.sashCard[data-rank='3'] .score { width:calc(100% - 14px); padding-top:9px; }
+  .sashCard .trophy,.sashCard.winner .trophy { width:34px; height:31px; }
+  .sashCard .score strong { font-size:22px; }
+  .sashCard .awardLabel { font-size:7px; letter-spacing:.05em; }
+  .cardShine { opacity:.55; animation-duration:6s; }
+}
+@media(max-height:600px) {
+  .sashCard .portraitFrame,.sashCard.winner .portraitFrame { height:23dvh; }
+  .sashCard .teacherInfo { min-height:0; padding-top:20px; padding-bottom:8px; }
+  .sashCard.sashCard,.sashCard.winner { padding-bottom:12px; }
+  .sashCard .trophy,.sashCard.winner .trophy { width:32px; height:29px; }
+  .sashCard .score strong { font-size:23px; }
+}
+@media(max-height:420px) {
+  .sashCard .portraitFrame,.sashCard.winner .portraitFrame { height:18dvh; }
+  .sashCard .trophy,.sashCard.winner .trophy { display:none; }
+  .nameSash h3,.winner .nameSash h3 { font-size:12px; }
+  .sashCard .score strong { font-size:21px; }
+}
+@media(max-width:360px) { .nameSash h3,.winner .nameSash h3 { font-size:12px; } .sashCard .score strong { font-size:20px; } }
+@media(prefers-reduced-motion:reduce) { .sashCard.sashCard { animation:none; } .cardShine { animation:none; display:none; } .sashCard .portrait img { transition:none; transform:none; } }
+
+/* Preserve this card design, restoring all four corners only. */
+.sashCard.sashCard,.sashCard.winner { clip-path:none; border-radius:8px; overflow:hidden; }
+.sashCard::before { clip-path:none; border-radius:6px; }
+.sashCard::after { border-radius:3px; }
+.sashCard .portrait { border-radius:4px 4px 0 0; }
+
+/* Rank colors belong to the awards, not the card perimeter. */
+.sashCard.sashCard,.sashCard.winner { background:#111319; border:0; box-shadow:none; }
+.sashCard::before { inset:0; border:0; }
+.sashCard::after { display:none; }
+
+/* Soft backlight behind each card; no metallic perimeter. */
+.podium { position:relative; isolation:isolate; }
+.podium::before { content:''; position:absolute; z-index:-1; inset:10% -12px -8px; pointer-events:none; background:radial-gradient(ellipse at 16% 55%,rgb(192 213 233 / 22%),transparent 29%),radial-gradient(ellipse at 50% 46%,rgb(255 214 110 / 26%),transparent 34%),radial-gradient(ellipse at 84% 55%,rgb(206 126 85 / 22%),transparent 29%); filter:blur(14px); }
+@media(max-width:640px) { .podium::before { inset:12% -4px -6px; opacity:.75; filter:blur(10px); } }
+
+/* Slow RGB backlight behind the complete group of cards. */
+.podium::before {
+  inset:6% -14px -10px;
+  background:linear-gradient(115deg,rgb(244 67 112 / 30%),rgb(113 91 242 / 27%),rgb(51 190 225 / 28%),rgb(99 211 160 / 24%),rgb(244 67 112 / 30%));
+  background-size:300% 100%; filter:blur(22px); opacity:.85;
+  animation:honors-rgb 12s ease-in-out infinite;
+}
+@keyframes honors-rgb { 0%,100% { background-position:0% 50%; } 50% { background-position:100% 50%; } }
+@media(max-width:640px) { .podium::before { inset:8% -6px -6px; opacity:.6; filter:blur(15px); } }
+@media(prefers-reduced-motion:reduce) { .podium::before { animation:none; background-position:50% 50%; } }
+
+/* Independent RGB aura around each card. */
+.podium::before { display:none; }
+.cardAura { position:relative; isolation:isolate; min-width:0; margin-top:24px; border-radius:8px; }
+.cardAura[data-rank='1'] { margin-top:0; }
+.cardAura::before { content:''; position:absolute; z-index:-1; inset:-5px; border-radius:12px; pointer-events:none; background:conic-gradient(from 0deg,#f35585,#8b67f4,#47c9ec,#69dbab,#f5b46c,#f35585); filter:blur(10px); opacity:.48; animation:card-aura-color 10s linear infinite; }
+.cardAura[data-rank='2']::before { animation-delay:-3s; }
+.cardAura[data-rank='3']::before { animation-delay:-6s; }
+.cardAura .sashCard.sashCard { width:100%; margin-top:0; }
+@keyframes card-aura-color { from { filter:blur(10px) hue-rotate(0deg); } to { filter:blur(10px) hue-rotate(360deg); } }
+@media(max-width:640px) { .cardAura { margin-top:14px; } .cardAura[data-rank='1'] { margin-top:0; } .cardAura::before { inset:-3px; opacity:.35; } }
+@media(max-height:500px) { .cardAura { margin-top:10px; } }
+@media(prefers-reduced-motion:reduce) { .cardAura::before { animation:none; } }
+
+/* Rank-colored backlight, with no RGB hue cycling. */
+.cardAura::before { animation:none; background:#c4d8ec; filter:blur(10px); opacity:.42; }
+.cardAura[data-rank='1']::before { background:#efc631; opacity:.5; }
+.cardAura[data-rank='3']::before { background:#c47b51; opacity:.44; }
+@media(max-width:640px) { .cardAura::before { opacity:.3; } .cardAura[data-rank='1']::before { opacity:.38; } .cardAura[data-rank='3']::before { opacity:.32; } }
+
+/* Dark photographic vignette fades inward from every edge. */
+.sashCard .portrait::after {
+  background:
+    linear-gradient(90deg,rgb(10 11 15 / 40%),transparent 10%,transparent 90%,rgb(10 11 15 / 40%)),
+    linear-gradient(180deg,rgb(10 11 15 / 28%),transparent 14%,transparent 62%,rgb(17 19 25 / 35%) 84%,#16141c 100%);
+  box-shadow:inset 0 0 7px 1px rgb(0 0 0 / 15%);
+}
+
+/* TPS red glow within the card, fading to the existing dark footer. */
+.sashCard::before {
+  background:radial-gradient(ellipse at 50% 38%,color-mix(in srgb,var(--color-primary) 72%,#111319) 0%,color-mix(in srgb,var(--color-primary) 36%,#111319) 45%,#111319 88%);
+}
+
+/* TPS red backlight around every card. */
+.cardAura::before,
+.cardAura[data-rank='1']::before,
+.cardAura[data-rank='2']::before,
+.cardAura[data-rank='3']::before {
+  background:var(--color-primary);
+  opacity:.44;
+  animation:none;
+}
+@media(max-width:640px) {
+  .cardAura::before,
+  .cardAura[data-rank='1']::before,
+  .cardAura[data-rank='2']::before,
+  .cardAura[data-rank='3']::before { opacity:.32; }
+}
+
+/* Black cards with TPS red light outside. */
+.sashCard.sashCard,.sashCard.winner { background:#101115; }
+.sashCard::before { background:#101115; }
+
+/* Red-to-black depth inside the card. */
+.sashCard::before { background:linear-gradient(165deg,#69132b 0%,#3d1322 46%,#101115 100%); }
+
+/* Rank frame starts below the portrait and surrounds the award details. */
+.sashCard .teacherInfo {
+  width:calc(100% - 8px); margin-top:0;
+  border:1px solid var(--metal-mid); border-bottom:0;
+  padding-top:18px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--metal-mid) 10%,transparent),transparent);
+}
+.sashCard .score,.sashCard.winner .score,.sashCard[data-rank='3'] .score {
+  width:calc(100% - 8px); border:1px solid var(--metal-mid); border-top:0;
+  border-radius:0 0 4px 4px; padding-bottom:12px;
+  box-shadow:inset 0 -1px 0 color-mix(in srgb,var(--metal-light) 30%,transparent);
+}
+@media(max-width:640px) {
+  .sashCard .teacherInfo,.sashCard .score,.sashCard.winner .score,.sashCard[data-rank='3'] .score { width:calc(100% - 6px); }
+  .sashCard .teacherInfo { padding-top:14px; }
+  .sashCard .score,.sashCard.winner .score,.sashCard[data-rank='3'] .score { padding-bottom:10px; }
+}
+
+/* Rank frame follows the outer lower half, beginning at the portrait edge. */
+.sashCard .teacherInfo { width:calc(100% - 8px); border:0; background:none; }
+.sashCard .score,.sashCard.winner .score,.sashCard[data-rank='3'] .score { border:0; box-shadow:none; }
+.sashCard::after {
+  display:block; inset:calc(5px + clamp(155px,28dvh,225px)) 0 0;
+  border:2px solid var(--metal-mid); border-radius:0 0 8px 8px;
+  opacity:1; background:none; box-shadow:inset 0 -1px 0 var(--metal-light); z-index:3;
+}
+@media(max-width:640px) { .sashCard::after { top:calc(4px + clamp(114px,23dvh,170px)); border-width:1px; } }
+@media(max-height:600px) { .sashCard::after { top:calc(5px + 23dvh); } }
+@media(max-height:600px) and (max-width:640px) { .sashCard::after { top:calc(4px + 23dvh); } }
+@media(max-height:420px) { .sashCard::after { top:calc(5px + 18dvh); } }
+@media(max-height:420px) and (max-width:640px) { .sashCard::after { top:calc(4px + 18dvh); } }
+
+.sashCard::after { border-top:0; }
+
+/* Lower frame fades away toward the portrait. */
+.sashCard::after {
+  -webkit-mask-image:linear-gradient(to bottom,transparent 0%,rgb(0 0 0 / 25%) 15%,#000 45%,#000 100%);
+  mask-image:linear-gradient(to bottom,transparent 0%,rgb(0 0 0 / 25%) 15%,#000 45%,#000 100%);
+}
+
+.sashCard::after { border-width:3px; border-top-width:0; }
+@media(max-width:640px) { .sashCard::after { border-width:2px; border-top-width:0; } }
+
+/* Circular rank insignia with two extended lines. */
+.teacher[data-rank='3'] { --metal-light:#ffe2c0; --metal-mid:#e4a172; --metal-dark:#ab6841; --metal-text:#5c301a; }
+.medallion { width:100%; height:56px; flex:none; margin:0 0 8px; overflow:visible; }
+@media(max-width:640px) { .medallion { height:42px; margin-bottom:7px; } }
+@media(max-height:500px) { .medallion { height:32px; margin-bottom:4px; } }
+
+.medallion { height:76px; }
+@media(max-width:640px) { .medallion { height:58px; } }
+@media(max-height:500px) { .medallion { height:40px; } }
+
+/* Let teacher details take their natural height, without a blank spacer. */
+.sashCard .teacherInfo { min-height:0; padding-bottom:8px; }
+.sashCard .score,.sashCard.winner .score,.sashCard[data-rank='3'] .score { padding-top:4px; }
+@media(max-width:640px) { .sashCard .teacherInfo { min-height:0; padding-bottom:6px; } }
+
+.innerStroke { position:absolute; inset:7px; border:1px solid var(--metal-mid); border-radius:4px; opacity:.28; pointer-events:none; z-index:4; }
+@media(max-width:640px) { .innerStroke { inset:5px; opacity:.24; } }
+
+.innerStroke { border-width:2px; opacity:.4; }
+@media(max-width:640px) { .innerStroke { opacity:.35; } }
+
+.innerStroke {
+  -webkit-mask-image:linear-gradient(to top,#000 0%,#000 18%,rgb(0 0 0 / 35%) 34%,transparent 46%);
+  mask-image:linear-gradient(to top,#000 0%,#000 18%,rgb(0 0 0 / 35%) 34%,transparent 46%);
+}

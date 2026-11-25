@@ -15,6 +15,14 @@ export const LECTURE_REVIEW_MANAGER_ROLE_CODES = [
   'TC',
 ] as const
 
+export const LECTURE_REVIEW_DELETE_ROLE_CODES = [
+  'SUPER_ADMIN',
+  'TEGL',
+  'TEGL+',
+  'TM',
+  'TOM',
+] as const
+
 export const LECTURE_REVIEW_LEGACY_LEADERS = [
   {
     code: 'legacy-huynh-minh-nhut',
@@ -92,6 +100,30 @@ export type LectureReviewAccess = {
   email: string
   displayName: string
   roleCodes: string[]
+  isSystemAdmin: boolean
+  isSuperAdmin: boolean
+  assignedReviewer: string | null
+  canDelete: boolean
+}
+
+export function resolveReviewerForUser(
+  rawEmail: string,
+  displayName?: string | null,
+): string | null {
+  const email = rawEmail.trim().toLowerCase()
+  if (LECTURE_REVIEW_REVIEWER_BY_EMAIL[email]) {
+    return LECTURE_REVIEW_REVIEWER_BY_EMAIL[email]
+  }
+  if (displayName) {
+    const normName = displayName.toLowerCase().trim()
+    for (const reviewer of LECTURE_REVIEW_REVIEWERS) {
+      const cleanRev = reviewer.toLowerCase().replace(/^(thầy|cô)\s+/, '').trim()
+      if (normName.includes(cleanRev) || cleanRev.includes(normName)) {
+        return reviewer
+      }
+    }
+  }
+  return null
 }
 
 function normalizeRoleCode(value: unknown): string {
@@ -146,10 +178,12 @@ export async function resolveLectureReviewAccess(
       }
     | undefined
 
+  const userSystemRole = normalizeRoleCode(appUser?.role)
   const roleCodes = Array.from(
     new Set([
       ...((appUser?.role_codes || []).map(normalizeRoleCode)),
       normalizeRoleCode(leader?.role_code),
+      userSystemRole,
     ].filter(Boolean)),
   )
   const systemRole = String(appUser?.role || '').trim().toLowerCase()
@@ -160,15 +194,31 @@ export async function resolveLectureReviewAccess(
   const hasAllowedRole = roleCodes.some((code) =>
     (LECTURE_REVIEW_ALLOWED_ROLE_CODES as readonly string[]).includes(code),
   )
-  const isSystemAdmin = ['super_admin', 'admin'].includes(systemRole)
+  const isSystemAdmin = ['super_admin', 'admin', 'manager'].includes(systemRole)
+  const isSuperAdmin = systemRole === 'super_admin'
+  const displayName =
+    String(appUser?.display_name || leader?.full_name || email).trim() || email
+  const assignedReviewer = resolveReviewerForUser(email, displayName)
+
+  // Chỉ cho phép Super Admin và cấp từ TEGL trở lên (TEGL, TEGL+, TM, TOM) có quyền xóa
+  const canDelete =
+    isSuperAdmin ||
+    roleCodes.some((code) =>
+      (LECTURE_REVIEW_DELETE_ROLE_CODES as readonly string[]).includes(
+        String(code).trim().toUpperCase(),
+      ),
+    )
 
   return {
-    allowed: appUserActive && leaderActive && (isSystemAdmin || hasAllowedRole),
+    allowed: appUserActive && leaderActive && (isSystemAdmin || hasAllowedRole || Boolean(assignedReviewer)),
     appUserId: appUser?.id ?? null,
     email,
-    displayName:
-      String(appUser?.display_name || leader?.full_name || email).trim() || email,
+    displayName,
     roleCodes,
+    isSystemAdmin,
+    isSuperAdmin,
+    assignedReviewer,
+    canDelete,
   }
 }
 

@@ -418,3 +418,143 @@ export function getDaysDifference(
   const diffMs = Math.abs(d2.getTime() - d1.getTime())
   return Math.floor(diffMs / (1000 * 60 * 60 * 24))
 }
+
+/**
+ * Định dạng ngày giờ chuẩn GMT+7 (Asia/Ho_Chi_Minh)
+ * Định dạng: DD/MM/YYYY HH:mm (nếu có giờ phút) hoặc DD/MM/YYYY (nếu chỉ có ngày hoặc 00:00)
+ */
+export function formatDateTimeGMT7(
+  val?: string | Date | number | null,
+  options?: { showTime?: boolean }
+): string {
+  if (!val) return ''
+  const d = typeof val === 'string' || typeof val === 'number' ? new Date(val) : val
+  if (isNaN(d.getTime())) return typeof val === 'string' ? val : ''
+
+  const formatter = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+
+  const parts = formatter.formatToParts(d)
+  const getPart = (type: string) => parts.find((p) => p.type === type)?.value || ''
+
+  const day = getPart('day')
+  const month = getPart('month')
+  const year = getPart('year')
+  const hour = getPart('hour')
+  const minute = getPart('minute')
+
+  // Kiểm tra chuỗi date-only dạng YYYY-MM-DD
+  const isDateOnly = typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val.trim())
+
+  if (isDateOnly || options?.showTime === false) {
+    return `${day}/${month}/${year}`
+  }
+
+  const hasTime = options?.showTime === true || (hour !== '00' || minute !== '00')
+  if (hasTime) {
+    return `${day}/${month}/${year} ${hour}:${minute}`
+  }
+
+  return `${day}/${month}/${year}`
+}
+
+/**
+ * Định dạng Ngày và Giờ duyệt giảng chuẩn GMT+7
+ * Hỗ trợ date dạng "2026-11-14" và time dạng "16:35" hoặc "16:35:00"
+ * Kết quả: "14/11/2026 16:35" hoặc "14/11/2026" (nếu không có giờ)
+ */
+export function formatReviewDateTime(
+  dateVal?: string | null,
+  timeVal?: string | null
+): string {
+  if (!dateVal) return '-'
+
+  // Tách ngày YYYY-MM-DD
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dateVal).trim())
+  let day = ''
+  let month = ''
+  let year = ''
+
+  if (dateMatch) {
+    year = dateMatch[1]
+    month = dateMatch[2]
+    day = dateMatch[3]
+  } else {
+    // Nếu là ISO Date string, dùng Intl GMT+7
+    const d = new Date(dateVal)
+    if (isNaN(d.getTime())) return String(dateVal)
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+    const parts = formatter.formatToParts(d)
+    day = parts.find((p) => p.type === 'day')?.value || ''
+    month = parts.find((p) => p.type === 'month')?.value || ''
+    year = parts.find((p) => p.type === 'year')?.value || ''
+  }
+
+  const dateStr = `${day}/${month}/${year}`
+
+  // Xử lý time nếu có
+  if (timeVal && typeof timeVal === 'string' && timeVal.trim() !== '') {
+    const timeMatch = /^(\d{1,2}):(\d{2})/.exec(timeVal.trim())
+    if (timeMatch) {
+      const h = timeMatch[1].padStart(2, '0')
+      const min = timeMatch[2]
+      return `${dateStr} ${h}:${min}`
+    }
+  }
+
+  // Nếu bản thân dateVal có chứa giờ phút (ISO string) khác 00:00 trong GMT+7
+  if (typeof dateVal === 'string' && dateVal.includes('T')) {
+    const d = new Date(dateVal)
+    if (!isNaN(d.getTime())) {
+      const timeFormatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Ho_Chi_Minh',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })
+      const tParts = timeFormatter.formatToParts(d)
+      const hour = tParts.find((p) => p.type === 'hour')?.value || ''
+      const minute = tParts.find((p) => p.type === 'minute')?.value || ''
+      if (hour && minute && (hour !== '00' || minute !== '00')) {
+        return `${dateStr} ${hour}:${minute}`
+      }
+    }
+  }
+
+  return dateStr
+}
+
+/**
+ * Chuyển timestamp sang định dạng YYYY-MM-DDTHH:mm theo giờ GMT+7 (Asia/Ho_Chi_Minh)
+ * Dùng cho input type="datetime-local"
+ */
+export function toDateTimeLocalGMT7(val?: string | Date | null): string {
+  if (!val) return ''
+  const d = typeof val === 'string' ? new Date(val) : val
+  if (isNaN(d.getTime())) return ''
+
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+  const parts = formatter.formatToParts(d)
+  const getPart = (type: string) => parts.find((p) => p.type === type)?.value || ''
+  return `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}`
+}

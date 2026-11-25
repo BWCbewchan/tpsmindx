@@ -652,3 +652,26 @@
   -webkit-mask-image:linear-gradient(to top,#000 0%,#000 18%,rgb(0 0 0 / 35%) 34%,transparent 46%);
   mask-image:linear-gradient(to top,#000 0%,#000 18%,rgb(0 0 0 / 35%) 34%,transparent 46%);
 }
+
+/* Inner frame fades from both ends toward its center. */
+.innerStroke {
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 10%,rgb(0 0 0 / 25%) 32%,transparent 48%,transparent 55%,rgb(0 0 0 / 25%) 72%,#000 92%,#000 100%);
+  mask-image:linear-gradient(to bottom,#000 0%,#000 10%,rgb(0 0 0 / 25%) 32%,transparent 48%,transparent 55%,rgb(0 0 0 / 25%) 72%,#000 92%,#000 100%);
+}
+
+/* Outer lower frame also fades toward its midpoint. */
+.sashCard::after {
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 10%,rgb(0 0 0 / 25%) 32%,transparent 48%,transparent 55%,rgb(0 0 0 / 25%) 72%,#000 92%,#000 100%);
+  mask-image:linear-gradient(to bottom,#000 0%,#000 10%,rgb(0 0 0 / 25%) 32%,transparent 48%,transparent 55%,rgb(0 0 0 / 25%) 72%,#000 92%,#000 100%);
+}
+
+/* Extend the outer frame from the top of the portrait to the card base. */
+.sashCard.sashCard::after { inset:0; border-top-width:3px; border-radius:inherit; }
+@media(max-width:640px) { .sashCard.sashCard::after { border-top-width:2px; } }
+
+.sashCard.sashCard::after { border-top:3px solid var(--metal-mid); }
+@media(max-width:640px) { .sashCard.sashCard::after { border-top-width:2px; } }
+
+/* Match the apparent weight of the top and bottom outer edges. */
+.sashCard.sashCard::after { border-width:3px; border-style:solid; border-color:var(--metal-mid); box-shadow:none; }
+@media(max-width:640px) { .sashCard.sashCard::after { border-width:2px; } }

@@ -67,6 +67,7 @@ type TeacherAccount = {
   roleCode?: string
   roleShortName: string
   roleName: string
+  roleShortNames?: string[]
 }
 
 type Student = {
@@ -201,9 +202,23 @@ type TeacherRow = {
   id: string
   fullName: string
   email: string
+  username?: string
   imageUrl: string | null
   roleShortName: string
   roleName: string
+  roles?: string[]
+}
+
+function normalizeRoleName(role: string): string {
+  const trimmed = String(role || '').trim()
+  const upper = trimmed.toUpperCase()
+  if (upper === 'SUPPLY' || upper === 'SUPPLY TEACHER' || upper.includes('SUPPLY')) return 'Supply'
+  if (upper === 'JUDGE' || upper === 'BGK' || upper.includes('GIÁM KHẢO') || upper.includes('GIAM KHAO') || upper.includes('JUDGE')) return 'Judge'
+  if (upper === 'LEC' || upper === 'LECTURER' || upper.includes('GIẢNG VIÊN') || upper.includes('GIANG VIEN')) return 'LEC'
+  if (upper === 'TA' || upper === 'TEACHING ASSISTANT' || upper.includes('TRỢ GIẢNG') || upper.includes('TRO GIANG')) return 'TA'
+  if (upper === 'CM' || upper === 'CLASS MANAGEMENT' || upper.includes('QUẢN LÝ')) return 'CM'
+  if (upper === 'OPERATOR' || upper.includes('VẬN HÀNH') || upper.includes('VAN HANH')) return 'Operator'
+  return trimmed
 }
 
 function accessRoleLabels(roles: string[]): string[] {
@@ -499,31 +514,83 @@ function studentInfoForTooltip(cls: AttendanceClass, student: Student) {
 function teacherRowsForClass(cls: AttendanceClass): TeacherRow[] {
   const rows = new Map<string, TeacherRow>()
 
+  const addOrUpdateTeacher = (
+    teacher: any,
+    roleShort: string,
+    roleFull: string,
+    imageUrl?: string | null,
+    extraRoles?: string[],
+  ) => {
+    const fullName = String(teacher.fullName || '').trim() || String(teacher.username || '').trim() || 'Giảng viên'
+    const username = String(teacher.username || '').trim()
+    const email = String(teacher.email || '').trim() || (username ? `${username}@mindx.edu.vn` : '')
+    const id = String(teacher.id || '').trim()
+    const key = id || email || username || fullName
+    if (!key) return
+
+    let matchedKey = rows.has(key) ? key : undefined
+    if (!matchedKey) {
+      for (const [rowKey, row] of rows.entries()) {
+        if (id && (rowKey === id || row.id === id)) { matchedKey = rowKey; break }
+        if (email && row.email && email.toLowerCase() === row.email.toLowerCase()) { matchedKey = rowKey; break }
+        if (username && row.username && username.toLowerCase() === row.username.toLowerCase()) { matchedKey = rowKey; break }
+      }
+    }
+
+    const roleSource = roleShort ? roleShort.split(',') : (roleFull ? roleFull.split(',') : [])
+    const currentRoles = [
+      ...roleSource,
+      ...(extraRoles || []),
+    ].map((s: string) => normalizeRoleName(s)).filter(Boolean)
+
+    if (matchedKey) {
+      const existing = rows.get(matchedKey)!
+      const existingRoleSource = existing.roleShortName
+        ? existing.roleShortName.split(',')
+        : (existing.roleName ? existing.roleName.split(',') : [])
+      const existingRoles = [
+        ...existingRoleSource,
+        ...(existing.roles || []),
+      ].map((s) => normalizeRoleName(s)).filter(Boolean)
+      const merged = Array.from(new Set([...existingRoles, ...currentRoles]))
+      existing.roles = merged
+      existing.roleShortName = merged.join(', ')
+      existing.roleName = merged.join(', ')
+      if (!existing.imageUrl && imageUrl) existing.imageUrl = imageUrl
+      if ((!existing.fullName || existing.fullName === existing.email) && fullName) existing.fullName = fullName
+      if (!existing.email && email) existing.email = email
+      if (!existing.username && username) existing.username = username
+    } else {
+      const uniqueRoles = Array.from(new Set(currentRoles))
+      rows.set(key, {
+        id: key,
+        fullName,
+        email,
+        username,
+        imageUrl: imageUrl || null,
+        roleShortName: uniqueRoles.join(', '),
+        roleName: uniqueRoles.join(', '),
+        roles: uniqueRoles,
+      })
+    }
+  }
+
+  // 1. Thêm tất cả giáo viên từ allTeachers
   cls.allTeachers.forEach((teacher) => {
-    const name = teacherName(teacher)
-    const key = teacher.id || teacher.email || teacher.username || name
-    rows.set(key, {
-      id: key,
-      fullName: name,
-      email: teacher.email,
-      imageUrl: null,
-      roleShortName: teacher.roleShortName,
-      roleName: teacher.roleName,
+    addOrUpdateTeacher(teacher, teacher.roleShortName || '', teacher.roleName || '', null, teacher.roleShortNames)
+  })
+
+  // 2. Thêm giáo viên từ slots
+  cls.slots.forEach((slot) => {
+    (slot.teachers || []).forEach((t) => {
+      addOrUpdateTeacher(t, t.roleShortName || '', t.roleName || '', null, t.roleShortNames)
     })
   })
 
-  cls.slots.flatMap((slot) => slot.teacherAttendance).forEach((attendance, index) => {
-    const name = teacherAttendanceName(attendance)
-    const key = String(attendance.teacher?.id || attendance.teacher?.email || attendance._id || `${name}-${index}`)
-    const existing = rows.get(key)
-    rows.set(key, {
-      id: key,
-      fullName: name,
-      email: String(attendance.teacher?.email || ''),
-      imageUrl: attendance.teacher?.imageUrl || null,
-      roleShortName: existing?.roleShortName || '',
-      roleName: existing?.roleName || '',
-    })
+  // 3. Bổ sung từ teacherAttendance của các buổi học
+  cls.slots.flatMap((slot) => slot.teacherAttendance).forEach((attendance) => {
+    const attTeacher = attendance.teacher || {}
+    addOrUpdateTeacher(attTeacher, '', '', attTeacher.imageUrl)
   })
 
   return Array.from(rows.values())
@@ -842,12 +909,6 @@ function getScheduleList(cls: AttendanceClass): string[] {
     .filter(Boolean)
 
   return Array.from(new Set(entries))
-}
-
-function scheduleText(cls: AttendanceClass): string {
-  const unique = getScheduleList(cls)
-  if (unique.length === 0) return '-'
-  return unique.slice(0, 2).join('; ') + (unique.length > 2 ? ` (+${unique.length - 2})` : '')
 }
 
 function classProgress(cls: AttendanceClass): { done: number; total: number; percent: number } {
@@ -1277,7 +1338,7 @@ function getGradingPermission(
     cls.lecTeachers?.some((name) => name.toLowerCase().trim() === userName) ||
     cls.classTeachers?.some((t) => {
       const r = (t.roleShortName || t.roleName || '').toUpperCase()
-      const isLecRole = r === 'LEC' || r.includes('LECTURER') || r.includes('GIANG VIEN')
+      const isLecRole = r === 'LEC' || r.includes('LECTURER') || r.includes('GIANG VIEN') || r.includes('LEC')
       const match =
         (t.email && t.email.toLowerCase() === userEmail) ||
         (t.username && t.username.toLowerCase() === userEmail) ||
@@ -1289,7 +1350,7 @@ function getGradingPermission(
     cls.accessRoles?.includes('JUDGE_SESSION_14') ||
     cls.allTeachers?.some((t) => {
       const r = (t.roleShortName || t.roleName || '').toUpperCase()
-      const isJudgeRole = r === 'JUDGE' || r === 'BGK' || r.includes('GIAM KHAO')
+      const isJudgeRole = r === 'JUDGE' || r === 'BGK' || r.includes('GIAM KHAO') || r.includes('JUDGE')
       const match =
         (t.email && t.email.toLowerCase() === userEmail) ||
         (t.username && t.username.toLowerCase() === userEmail) ||
@@ -1454,22 +1515,46 @@ function StudentDemoGradingModal({
   const { user } = useAuth()
   const perm = useMemo(() => getGradingPermission(cls, user), [cls, user])
 
-  // Xác định tên GV phụ trách (Lec) của lớp
+  // Xác định tên GV phụ trách (role Lec) của lớp
   const lecName = useMemo(() => {
+    // 1. Tìm trong allTeachers giáo viên có roleShortName là LEC hoặc roleName chứa Lecturer / Giảng viên
+    const lecFromAll = (cls.allTeachers || [])
+      .filter((t) => {
+        const r = (t.roleShortName || t.roleName || '').toUpperCase()
+        return r === 'LEC' || r.includes('LECTURER') || r.includes('GIANG VIEN') || r.includes('GIẢNG VIÊN')
+      })
+      .map((t) => t.fullName)
+      .filter(Boolean)
+
+    if (lecFromAll.length > 0) {
+      return Array.from(new Set(lecFromAll)).join(', ')
+    }
+
+    // 2. Tìm trong classTeachers
+    const lecFromClass = (cls.classTeachers || [])
+      .filter((t) => {
+        const r = (t.roleShortName || t.roleName || '').toUpperCase()
+        return r === 'LEC' || r.includes('LECTURER') || r.includes('GIANG VIEN') || r.includes('GIẢNG VIÊN')
+      })
+      .map((t) => t.fullName)
+      .filter(Boolean)
+
+    if (lecFromClass.length > 0) {
+      return Array.from(new Set(lecFromClass)).join(', ')
+    }
+
+    // 3. Fallback vào cls.lecTeachers nếu có
     if (cls.lecTeachers && cls.lecTeachers.length > 0) {
       return cls.lecTeachers.join(', ')
     }
-    const foundLec = cls.classTeachers?.find((t) => {
-      const r = (t.roleShortName || t.roleName || '').toUpperCase()
-      return r === 'LEC' || r.includes('LECTURER') || r.includes('GIANG VIEN')
-    })
-    if (foundLec?.fullName) return foundLec.fullName
-    return cls.allTeacherNames?.[0] || cls.operatorName || ''
+
+    return ''
   }, [cls])
 
   // Xác định user hiện tại có phải là Lec và/hoặc Judge của lớp không
   const { isCurrentLec, isCurrentJudge } = useMemo(() => {
     const userEmail = (user?.email || '').trim().toLowerCase()
+    const userPrefix = userEmail ? userEmail.split('@')[0] : ''
     const userName = (user?.displayName || (user as any)?.name || '').trim().toLowerCase()
 
     const hasLecAccess = Boolean(
@@ -1484,10 +1569,12 @@ function StudentDemoGradingModal({
       (userName && cls.lecTeachers?.some((name) => name.toLowerCase() === userName)) ||
       cls.allTeachers?.some((t) => {
         const email = (t.email || '').toLowerCase()
+        const username = (t.username || '').toLowerCase()
         const name = (t.fullName || '').toLowerCase()
         const role = (t.roleShortName || t.roleName || '').toUpperCase()
-        const isLecRole = role === 'LEC' || role.includes('LECTURER') || role.includes('GIANG VIEN')
-        return isLecRole && (email === userEmail || (userName && name === userName))
+        const isLecRole = role === 'LEC' || role.includes('LECTURER') || role.includes('GIANG VIEN') || role.includes('LEC')
+        const isUserMatch = (email && email === userEmail) || (userPrefix && username && username === userPrefix) || (userName && name === userName)
+        return isLecRole && isUserMatch
       })
     )
 
@@ -1495,10 +1582,12 @@ function StudentDemoGradingModal({
       hasJudgeAccess ||
       cls.allTeachers?.some((t) => {
         const email = (t.email || '').toLowerCase()
+        const username = (t.username || '').toLowerCase()
         const name = (t.fullName || '').toLowerCase()
         const role = (t.roleShortName || t.roleName || '').toUpperCase()
-        const isJudgeRole = role === 'JUDGE' || role === 'BGK' || role.includes('GIAM KHAO')
-        return isJudgeRole && (email === userEmail || (userName && name === userName))
+        const isJudgeRole = role === 'JUDGE' || role === 'BGK' || role.includes('GIAM KHAO') || role.includes('JUDGE')
+        const isUserMatch = (email && email === userEmail) || (userPrefix && username && username === userPrefix) || (userName && name === userName)
+        return isJudgeRole && isUserMatch
       })
     )
 
@@ -2043,17 +2132,23 @@ function StudentDemoGradingModal({
                         <>
                           <th className="py-2.5 px-2 text-center">
                             <div>Ghi chú Lec</div>
-                            {lecName && <div className="text-[10px] font-normal opacity-90 truncate max-w-[125px] mx-auto">({lecName})</div>}
+                            {lecName ? (
+                              <div className="text-[10px] font-normal opacity-90 truncate max-w-[130px] mx-auto" title={lecName}>({lecName})</div>
+                            ) : null}
                           </th>
                           <th className="py-2.5 px-2 text-center">
                             <div>Ghi chú Judge</div>
-                            {judgeInfo.name && <div className="text-[10px] font-normal opacity-90 truncate max-w-[125px] mx-auto">({judgeInfo.name})</div>}
+                            {judgeInfo.name ? (
+                              <div className="text-[10px] font-normal opacity-90 truncate max-w-[130px] mx-auto" title={judgeInfo.name}>({judgeInfo.name})</div>
+                            ) : null}
                           </th>
                         </>
                       ) : (
                         <th className="py-2.5 px-2 text-center">
-                          <div>Ghi chú</div>
-                          {lecName && <div className="text-[10px] font-normal opacity-90 truncate max-w-[170px] mx-auto">({lecName})</div>}
+                          <div>Ghi chú Lec</div>
+                          {lecName ? (
+                            <div className="text-[10px] font-normal opacity-90 truncate max-w-[170px] mx-auto" title={lecName}>({lecName})</div>
+                          ) : null}
                         </th>
                       )}
                       <th className="py-2.5 px-2 text-center">Tổng Điểm</th>
@@ -2506,8 +2601,11 @@ function ClassAttendanceDrawer({
   })
   const teacherRows = teacherRowsForClass(cls)
   const normalizedCurrentUserEmail = String(user?.email || '').trim().toLowerCase()
+  const userPrefix = normalizedCurrentUserEmail ? normalizedCurrentUserEmail.split('@')[0] : ''
   const currentTeacher = teacherRows.find(
-    (teacher) => teacher.email.trim().toLowerCase() === normalizedCurrentUserEmail,
+    (teacher) =>
+      (teacher.email && teacher.email.trim().toLowerCase() === normalizedCurrentUserEmail) ||
+      (userPrefix && teacher.username && teacher.username.trim().toLowerCase() === userPrefix),
   )
   const selectedTeacherRows = selectedSlot
     ? teacherRows.filter((teacher) => teacherIsAssignedForSelectedSite(selectedSlot, teacher))
@@ -2719,6 +2817,15 @@ function ClassAttendanceDrawer({
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                     {classStatusLabel(cls.status)}
                   </span>
+                  {accessRoleLabels(cls.accessRoles).length > 0 ? (
+                    <div className="flex flex-wrap items-center gap-1">
+                      {accessRoleLabels(cls.accessRoles).map((role) => (
+                        <span key={role} className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                          {role}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
                 <p className="mt-1 truncate text-sm text-gray-700">
                   {cls.courseName || cls.courseShortName || 'Khóa học'}
@@ -2971,11 +3078,33 @@ function ClassAttendanceDrawer({
                               <span className="ml-1.5 text-[11px] text-gray-400">(Bạn)</span>
                             ) : null}
                           </span>
-                          {teacher.roleShortName || teacher.roleName ? (
-                            <span className="mt-0.5 block truncate text-[11px] text-gray-500">
-                              {teacher.roleShortName || teacher.roleName}
-                            </span>
-                          ) : null}
+                          {(() => {
+                            const isCurrent = currentTeacher?.id === teacher.id
+                            const teacherRoleSource = teacher.roleShortName
+                              ? teacher.roleShortName.split(',')
+                              : (teacher.roleName ? teacher.roleName.split(',') : [])
+                            const rolesFromTeacher = [
+                              ...teacherRoleSource,
+                              ...(teacher.roles || []),
+                              ...(isCurrent ? accessRoleLabels(cls.accessRoles) : []),
+                            ].map((r) => normalizeRoleName(r)).filter(Boolean)
+                            const allRoles = Array.from(new Set(rolesFromTeacher))
+
+                            if (allRoles.length === 0) return null
+
+                            return (
+                              <div className="mt-1 flex flex-wrap gap-1">
+                                {allRoles.map((role) => (
+                                  <span
+                                    key={role}
+                                    className="rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-medium text-gray-600"
+                                  >
+                                    {role}
+                                  </span>
+                                ))}
+                              </div>
+                            )
+                          })()}
                         </div>
                       </div>
                     </td>
@@ -3735,7 +3864,7 @@ export default function TeacherClassesPage() {
                     <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Tên</th>
                     <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Khóa học</th>
                     <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Cơ sở</th>
-                    <th className="border-b border-gray-200 px-4 py-3">Phụ trách vận hành lớp</th>
+                    <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Phụ trách lớp học</th>
                     <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Trạng thái</th>
                     <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Bắt đầu</th>
                     <th className="border-b border-gray-200 px-4 py-3 whitespace-nowrap">Kết thúc</th>
@@ -3747,6 +3876,7 @@ export default function TeacherClassesPage() {
                   {pagedClasses.map((cls) => {
                     const progress = classProgress(cls)
                     const centre = cls.centreShortName || cls.centreName || '-'
+                    const schedules = getScheduleList(cls)
 
                     return (
                       <tr key={cls.id} className="group border-b border-gray-100 odd:bg-white even:bg-gray-50/40 hover:bg-[#fff8fa]">
@@ -3794,7 +3924,9 @@ export default function TeacherClassesPage() {
                           </span>
                         </td>
                         <td className="border-b border-gray-100 px-4 py-4 font-normal text-gray-800">
-                          {cls.operatorName || '-'}
+                          <span className="block truncate text-sm text-gray-900" title={cls.operatorName || 'Chưa có vận hành'}>
+                            {cls.operatorName || '-'}
+                          </span>
                         </td>
                         <td className="border-b border-gray-100 px-4 py-4 whitespace-nowrap">
                           <span className={cn('text-sm font-medium', classStatusTextClass(cls.status))}>
@@ -3808,9 +3940,17 @@ export default function TeacherClassesPage() {
                           {formatDate(cls.endDate)}
                         </td>
                         <td className="border-b border-gray-100 px-4 py-4 text-xs font-normal text-gray-700">
-                          <span className="block max-w-[220px] truncate whitespace-nowrap" title={scheduleText(cls)}>
-                            {scheduleText(cls)}
-                          </span>
+                          {schedules.length === 0 ? (
+                            <span className="text-gray-400">-</span>
+                          ) : (
+                            <div className="flex flex-col gap-1 min-w-[130px]" title={schedules.join('\n')}>
+                              {schedules.map((schedule, idx) => (
+                                <span key={idx} className="block whitespace-nowrap text-xs text-gray-800">
+                                  {schedule}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </td>
                         <td className="border-b border-gray-100 px-4 py-4">
                           <div className="w-24">

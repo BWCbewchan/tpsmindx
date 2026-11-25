@@ -847,3 +847,10 @@ import { toast } from '@/lib/app-toast'
 
 > **Maintainer note**: Keep this document updated whenever new components, tokens, or conventions are added.
 > Last updated: 2025-05-21
+
+
+## Component Design Contracts
+
+### Teacher honors modal
+
+Follow [the teacher honors modal design](docs/design/teacher-honors/DESIGN.md) for this component. It uses TPS Exo typography and brand/foreground/border tokens. Its gold, silver and bronze finishes are isolated component tokens for award decoration. The approved header contains only a compact screen name, plain red month and close control; no logo, kicker/title/description hero, slogan, feature tabs or month badge.

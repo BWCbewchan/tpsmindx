@@ -39,3 +39,11 @@ Mọi lần gửi failed/skipped và trường hợp SMTP từ chối một ph�
 Cảnh báo có tài khoản gửi, loại lỗi, mã SMTP, nguồn gọi, loại mail, Log ID, liên kết nhật ký và hướng xử lý. Không gửi tiêu đề, nội dung, danh sách người nhận hay thông báo lỗi thô chứa dữ liệu nhạy cảm. Cảnh báo phản ánh từng lần thử, kể cả khi tài khoản dự phòng có thể gửi thành công sau đó.
 
 Khóa advisory trong transaction cùng dấu thời gian trong metadata giới hạn một cảnh báo cho mỗi nhóm tài khoản/loại lỗi/mã lỗi/nguồn/loại mail trong 5 phút trên các instance. Nếu Telegram báo lỗi, bỏ dấu chặn để lần lỗi email tiếp theo thử cảnh báo lại. Không có hàng đợi gửi lại Telegram. Request Telegram có giới hạn thời gian, lỗi được giữ trong console và không thay đổi kết quả gửi mail. Không dùng email làm kênh dự phòng cho cảnh báo này để tránh vòng lặp.
+
+## Khôi phục mail bị bỏ qua từ 23/11/2026
+
+Đã gửi bù 26 mail qua HR: 20 yêu cầu xin nghỉ, 5 xác nhận dạy thay và 1 thư mời duyệt giảng. SMTP đã nhận đầy đủ người nhận. Log gốc chuyển sang sent sau xác nhận, giữ lỗi/trạng thái ban đầu và thời gian gửi bù trong metadata; không tạo thêm log sent để tránh đếm đôi. Giao diện hiển thị Đã gửi bù.
+
+Script scripts/recover-skipped-emails-20261123.cjs mặc định chỉ kiểm tra. Thêm --apply mới gửi thật. Chỉ xử lý skipped từ 23/11 với mã 23505 hoặc GMAIL_NOT_CONFIGURED; đối chiếu mail sent cùng thực thể, khóa chạy đồng thời và dừng nếu có claim SMTP chưa rõ kết quả. Không tự chạy lại claim chưa đối soát. Nội dung dựng từ dữ liệu nghiệp vụ hiện tại, người nhận và tiêu đề giữ theo log gốc. Không sửa trạng thái phiếu xin nghỉ/duyệt giảng.
+
+Local đã đồng bộ khóa mã hóa với credential hiện hữu; không đổi mật khẩu trong database. Lỗi 23505 cho thấy có tiến trình cũ còn đồng bộ tài khoản env; code hiện tại chỉ đọc tài khoản database. Cần bảo đảm deployment dùng bản code này và cùng khóa mã hóa để lỗi không tái diễn.

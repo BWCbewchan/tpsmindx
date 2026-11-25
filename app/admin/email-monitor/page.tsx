@@ -1139,7 +1139,7 @@ export default function EmailMonitorPage() {
                     <tr key={log.id} onClick={() => setSelectedLog(log)} className="cursor-pointer hover:bg-slate-50">
                       <td className="px-5 py-4">
                         <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${statusClass(log.status)}`}>
-                          {STATUS_LABELS[log.status] || log.status}
+                          {log.status === 'sent' && log.metadata?.recoveredAt ? 'Đã gửi bù' : STATUS_LABELS[log.status] || log.status}
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-5 py-4 text-xs text-slate-600">{formatDateTime(log.created_at)}</td>
@@ -1411,6 +1411,10 @@ export default function EmailMonitorPage() {
               </div>
               {[
                 ['Người gửi', selectedLog.sender_email || '—'],
+                ...(selectedLog.metadata?.recoveredAt ? [
+                  ['Gửi bù lúc', formatDateTime(String(selectedLog.metadata.recoveredAt))],
+                  ['Lỗi trước khi gửi bù', String(selectedLog.metadata.recoveryOriginalError || '—')],
+                ] : []),
                 ['To', selectedLog.to_recipients.join(', ') || '—'],
                 ['CC', selectedLog.cc_recipients.join(', ') || '—'],
                 ['Loại email', selectedLog.email_type],

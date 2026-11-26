@@ -1,3 +1,4 @@
+import { normalizePublicImageUrl } from '@/lib/public-image-url'
 import { requireBearerAdminOrSuper, requireBearerAdminOrSuperMutation } from '@/lib/auth-server'
 import pool from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
@@ -24,9 +25,9 @@ type OutfitPayload = {
 }
 
 const OUTFIT_ASSET_VERSION = 'db-outfits-20260621'
-const asset = (path: string | null | undefined) => path ? `${path}?v=${OUTFIT_ASSET_VERSION}` : null
+const asset = (path: string | null | undefined) => path ? `${normalizePublicImageUrl(path)}?v=${OUTFIT_ASSET_VERSION}` : null
 const frameSet = (slug: string, frames: number) =>
-  Array.from({ length: Math.max(1, frames) }, (_, i) => asset(`/mascot/${slug}/frame-${i + 1}.png`)!)
+  Array.from({ length: Math.max(1, frames) }, (_, i) => asset(`/mascot/${slug}/frame-${i + 1}.webp`)!)
 
 function normalizeRow(row: any) {
   const colors = Array.isArray(row.colors) ? row.colors : []
@@ -48,8 +49,8 @@ function normalizeRow(row: any) {
     jumpFrames: Array.isArray(row.jump_frames) ? row.jump_frames.map((src: string) => asset(src)) : null,
     waveFrames: Array.isArray(row.wave_frames) ? row.wave_frames.map((src: string) => asset(src)) : null,
     staticMode: row.static_mode,
-    previewStatic: asset(row.preview_static ?? `/mascot/${row.slug}.png`),
-    spriteBase: asset(row.sprite_base ?? `/mascot/${row.slug}-sheet.png`),
+    previewStatic: asset(row.preview_static ?? `/mascot/${row.slug}.webp`),
+    spriteBase: asset(row.sprite_base ?? `/mascot/${row.slug}-sheet.webp`),
     available: row.available && row.status === 'ready',
     tag: row.tag ?? 'new',
     color: row.color ?? colors[0] ?? '#a1001f',
@@ -89,8 +90,8 @@ async function upsertOutfit(payload: OutfitPayload) {
   const status = payload.status === 'draft' ? 'draft' : 'ready'
   const color = text(payload.color, colors[0] ?? '#a1001f')
   const bgColor = text(payload.bgColor, '#fff5f5')
-  const previewStatic = payload.previewStatic ?? `/mascot/${slug}.png`
-  const spriteBase = payload.spriteBase ?? `/mascot/${slug}-sheet.png`
+  const previewStatic = payload.previewStatic ?? `/mascot/${slug}.webp`
+  const spriteBase = payload.spriteBase ?? `/mascot/${slug}-sheet.webp`
 
   const result = await pool.query(
     `

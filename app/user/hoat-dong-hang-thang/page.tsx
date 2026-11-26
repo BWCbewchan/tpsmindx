@@ -2835,7 +2835,7 @@ export default function MonthlyActivitiesPage() {
             <div
               className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-35"
               style={{
-                backgroundImage: `url('/images/teachers-day-bg.jpg')`,
+                backgroundImage: `url('/images/teachers-day-bg.webp')`,
               }}
             />
           )}
@@ -2923,14 +2923,14 @@ export default function MonthlyActivitiesPage() {
                           <div
                             className="sm:hidden w-full aspect-[16/7] rounded-lg overflow-hidden mb-3 bg-cover bg-center border border-rose-200 shadow-2xs"
                             style={{
-                              backgroundImage: `url('/images/teachers-day-bg.jpg')`,
+                              backgroundImage: `url('/images/teachers-day-bg.webp')`,
                             }}
                           />
                           {/* Panoramic right-anchored background on desktop */}
                           <div
                             className="hidden sm:block pointer-events-none absolute inset-0 bg-contain bg-right bg-no-repeat"
                             style={{
-                              backgroundImage: `url('/images/teachers-day-bg.jpg')`,
+                              backgroundImage: `url('/images/teachers-day-bg.webp')`,
                             }}
                           />
                           <div className="hidden sm:block pointer-events-none absolute inset-0 bg-gradient-to-r from-white via-white/85 to-transparent" />

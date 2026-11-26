@@ -110,7 +110,7 @@ const CustomYAxisTick = (props: any) => {
     <g transform={`translate(${x},${y})`} onClick={handleClick} style={{ cursor: 'pointer' }}>
       {/* Rank Shield Badge */}
       <image
-        href={`/images/rank-${shieldNum}.png`}
+        href={`/images/rank-${shieldNum}.webp`}
         x={-238}
         y={-18}
         width={36}
@@ -699,7 +699,7 @@ export default function Dashboard() {
                   <div className="relative flex items-center justify-between px-6 py-4 bg-slate-50/80 backdrop-blur-[2px] border-b border-slate-100 z-10 shrink-0">
                     <div className="flex items-center gap-3 min-w-0">
                       <img
-                        src={`/images/rank-${shieldNum}.png`}
+                        src={`/images/rank-${shieldNum}.webp`}
                         alt={`Hạng ${rank}`}
                         className="w-10 h-10 object-contain flex-shrink-0"
                       />

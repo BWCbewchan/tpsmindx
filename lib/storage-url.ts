@@ -1,3 +1,4 @@
+import { normalizePublicImageUrl } from './public-image-url';
 /**
  * Normalize storage URLs through the authenticated storage endpoint.
  *
@@ -42,6 +43,7 @@ function makeStorageProxyUrl(bucket: string, key: string): string {
   if (shouldUseStableImageStream(bucket, decodedKey)) {
     params.set('stream', '1')
   }
+  if (/\.(png|jpe?g|gif|avif)$/i.test(key) && bucket !== 'mindx-teacher-certificates') params.set('format', 'webp');
   return `/api/storage-image?${params.toString()}`;
 }
 
@@ -53,6 +55,7 @@ function normalizeLegacyProxyUrl(url: string): string {
     parsed.searchParams.delete('proxy');
     const bucket = parsed.searchParams.get('bucket')
     const key = parsed.searchParams.get('key')
+    if (key && /\.(png|jpe?g|gif|avif)$/i.test(key) && bucket !== 'mindx-teacher-certificates') parsed.searchParams.set('format', 'webp')
     if (
       bucket &&
       key &&
@@ -87,6 +90,8 @@ export function normalizeStorageUrl(url: string | null | undefined): string {
   if (url.startsWith('/api/storage-image')) {
     return normalizeLegacyProxyUrl(url);
   }
+
+  if (url.startsWith('/')) return normalizePublicImageUrl(url);
 
   if (url.startsWith('s3://')) {
     return s3UriToProxyUrl(url) ?? url;

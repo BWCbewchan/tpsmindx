@@ -45,12 +45,12 @@ export function isStaticOutfit(outfit: MascotOutfit): boolean {
 }
 
 // ─── Frame sets ──────────────────────────────────────────────────────────────
-const WALK_FRAMES_DEFAULT = Array.from({ length: 25 }, (_, i) => `/mascot/walk/frame-${i + 1}.png`)
+const WALK_FRAMES_DEFAULT = Array.from({ length: 25 }, (_, i) => `/mascot/walk/frame-${i + 1}.webp`)
 const OUTFIT_ASSET_VERSION = 'bdn-siu-arms-refresh-20260621'
 const outfitAsset = (path: string) => `${path}?v=${OUTFIT_ASSET_VERSION}`
 const outfitFrameSet = (slug: string) => Array.from(
   { length: 25 },
-  (_, i) => outfitAsset(`/mascot/${slug}/frame-${i + 1}.png`),
+  (_, i) => outfitAsset(`/mascot/${slug}/frame-${i + 1}.webp`),
 )
 const VIETNAM_FRAMES = outfitFrameSet('mascot-vn')
 const PORTUGAL_FRAMES = outfitFrameSet('mascot-bdn')
@@ -58,8 +58,8 @@ const BRAZIL_FRAMES = outfitFrameSet('mascot-bz')
 const FRANCE_FRAMES = outfitFrameSet('mascot-phap')
 const ARGENTINA_FRAMES = outfitFrameSet('mascot-argen')
 const STANDREAD_FRAMES    = [
-  '/mascot/standAndRead/tải xuống.png',
-  ...Array.from({ length: 23 }, (_, i) => `/mascot/standAndRead/tải xuống (${i + 1}).png`),
+  '/mascot/standAndRead/tải xuống.webp',
+  ...Array.from({ length: 23 }, (_, i) => `/mascot/standAndRead/tải xuống (${i + 1}).webp`),
 ]
 
 // ─── Danh sách trang phục ────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ export const MASCOT_OUTFITS: MascotOutfit[] = [
     jumpFrames: null,    // fallback default jump
     waveFrames: null,    // fallback default wave
     staticMode: false,   // ← luồng cũ: walk/turn/jump
-    previewStatic: '/mascot/walk.png',
+    previewStatic: '/mascot/walk.webp',
     spriteBase: null,
     available: true,
     tag: 'default',
@@ -85,8 +85,8 @@ export const MASCOT_OUTFITS: MascotOutfit[] = [
     jumpFrames: null,
     waveFrames: null,
     staticMode: true,
-    previewStatic: outfitAsset('/mascot/mascot-vn.png'),
-    spriteBase: outfitAsset('/mascot/mascot-vn-sheet.png'),
+    previewStatic: outfitAsset('/mascot/mascot-vn.webp'),
+    spriteBase: outfitAsset('/mascot/mascot-vn-sheet.webp'),
     available: true,
     tag: 'new',
     color: '#dc2626',
@@ -99,8 +99,8 @@ export const MASCOT_OUTFITS: MascotOutfit[] = [
     jumpFrames: null,
     waveFrames: null,
     staticMode: true,
-    previewStatic: outfitAsset('/mascot/mascot-bdn.png'),
-    spriteBase: outfitAsset('/mascot/mascot-bdn-sheet.png'),
+    previewStatic: outfitAsset('/mascot/mascot-bdn.webp'),
+    spriteBase: outfitAsset('/mascot/mascot-bdn-sheet.webp'),
     available: true,
     tag: 'new',
     color: '#16a34a',
@@ -113,8 +113,8 @@ export const MASCOT_OUTFITS: MascotOutfit[] = [
     jumpFrames: null,
     waveFrames: null,
     staticMode: true,
-    previewStatic: outfitAsset('/mascot/mascot-bz.png'),
-    spriteBase: outfitAsset('/mascot/mascot-bz-sheet.png'),
+    previewStatic: outfitAsset('/mascot/mascot-bz.webp'),
+    spriteBase: outfitAsset('/mascot/mascot-bz-sheet.webp'),
     available: true,
     tag: 'new',
     color: '#eab308',
@@ -127,8 +127,8 @@ export const MASCOT_OUTFITS: MascotOutfit[] = [
     jumpFrames: null,
     waveFrames: null,
     staticMode: true,
-    previewStatic: outfitAsset('/mascot/mascot-phap.png'),
-    spriteBase: outfitAsset('/mascot/mascot-phap-sheet.png'),
+    previewStatic: outfitAsset('/mascot/mascot-phap.webp'),
+    spriteBase: outfitAsset('/mascot/mascot-phap-sheet.webp'),
     available: true,
     tag: 'new',
     color: '#2563eb',
@@ -141,8 +141,8 @@ export const MASCOT_OUTFITS: MascotOutfit[] = [
     jumpFrames: null,
     waveFrames: null,
     staticMode: true,
-    previewStatic: outfitAsset('/mascot/mascot-argen.png'),
-    spriteBase: outfitAsset('/mascot/mascot-argen-sheet.png'),
+    previewStatic: outfitAsset('/mascot/mascot-argen.webp'),
+    spriteBase: outfitAsset('/mascot/mascot-argen-sheet.webp'),
     available: true,
     tag: 'new',
     color: '#38bdf8',
@@ -322,7 +322,7 @@ function OutfitFlameBanner({ outfit, isSelected }: { outfit: MascotOutfit; isSel
     >
       <span className={`outfit-flame-mark outfit-flame-mark-${theme.flag}`}>
         <img
-          src={theme.flag === 'dynamic' && outfit.flagCode ? `https://flagcdn.com/${outfit.flagCode}.svg` : '/mascot/ui/football-icon.png'}
+          src={theme.flag === 'dynamic' && outfit.flagCode ? `https://flagcdn.com/${outfit.flagCode}.svg` : '/mascot/ui/football-icon.webp'}
           alt=""
           draggable={false}
         />

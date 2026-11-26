@@ -430,7 +430,7 @@ export function LectureReviewPublicCalendar() {
                                   {meta.label} · {event.manager_leader_name}
                                 </span>
                                 <span className="mt-0.5 block truncate text-[10px] text-gray-500">
-                                  GV: {event.reviewer_name}
+                                  BGK: {event.reviewer_name}
                                 </span>
                               </button>
                             )
@@ -587,7 +587,7 @@ export function LectureReviewPublicCalendar() {
 
                         <div className="mt-3 divide-y divide-gray-100 border-t border-gray-100">
                           <InfoItem icon={<UsersRound className="h-4 w-4" />} label="Leader/TE quản lý" value={event.manager_leader_name} />
-                          <InfoItem icon={<UserRound className="h-4 w-4" />} label="Giáo viên đăng ký" value={event.reviewer_name} />
+                          <InfoItem icon={<UserRound className="h-4 w-4" />} label="Ban giám khảo" value={event.reviewer_name} />
                           <InfoItem icon={<MapPin className="h-4 w-4" />} label="Cơ sở" value={event.center_name} />
                         </div>
                       </article>

@@ -117,3 +117,7 @@ Theo yêu cầu lùi hai lần chỉnh sửa: khôi phục bản thẻ nền t�
 Bản vừa khôi phục giữ nguyên nền và hiệu ứng, chỉ bỏ clip góc vát để đủ bốn góc, bo nhẹ 8px.
 
 Bỏ khung kim loại vàng/bạc/đồng quanh thẻ modal và viền trong. Thẻ giữ nền tối; màu thứ hạng chỉ ở cúp, nhãn và điểm.
+
+## Vỏ modal tinh gọn
+
+Theo phản hồi mới, bỏ Liquid Glass/blur và nền trong: vỏ modal dùng color-card TPS, tiêu đề màu foreground, tháng đỏ, nút đóng trung tính. Tăng khoảng đệm đáy 36px desktop/28px mobile. Hai thẻ bên ngắn hơn nhờ giảm chiều cao ảnh và huy chương, căn giữa theo chiều dọc cạnh hạng nhất. Giữ hiệu ứng trong thẻ và không thêm trang trí vào vỏ.

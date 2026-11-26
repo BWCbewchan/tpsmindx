@@ -675,3 +675,39 @@
 /* Match the apparent weight of the top and bottom outer edges. */
 .sashCard.sashCard::after { border-width:3px; border-style:solid; border-color:var(--metal-mid); box-shadow:none; }
 @media(max-width:640px) { .sashCard.sashCard::after { border-width:2px; } }
+
+/* Quiet dialog shell; let the award cards carry the visual detail. */
+.overlay { background:rgb(15 18 23 / 55%); }
+.overlay .dialog {
+  background:var(--color-card); color:var(--color-foreground);
+  -webkit-backdrop-filter:none; backdrop-filter:none;
+  border:1px solid var(--color-border); border-radius:16px;
+  box-shadow:0 20px 64px rgb(0 0 0 / 22%);
+}
+.dialog::before { display:none; }
+.content { padding:24px 32px 36px; }
+.heading { border-bottom:1px solid var(--color-border); padding-bottom:16px; }
+.heading h2 { color:var(--color-foreground); text-shadow:none; font-size:20px; }
+.heading .period { color:var(--color-primary); text-shadow:none; }
+.heading .close { color:var(--color-muted-foreground); background:transparent; border:1px solid var(--color-border); box-shadow:none; }
+.heading .close:hover { background:var(--color-muted); }
+.podium { margin-top:28px; margin-bottom:0; align-items:center; }
+.podium .cardAura { margin-top:0; }
+.cardAura[data-rank='2'] .portraitFrame,.cardAura[data-rank='3'] .portraitFrame { height:clamp(136px,24dvh,192px); }
+.cardAura[data-rank='2'] .medallion,.cardAura[data-rank='3'] .medallion { height:62px; }
+@media(max-width:640px) {
+  .content { padding:18px 12px 28px; }
+  .heading { padding-bottom:12px; }
+  .heading h2 { font-size:17px; }
+  .podium { margin-top:22px; }
+  .cardAura[data-rank='2'] .portraitFrame,.cardAura[data-rank='3'] .portraitFrame { height:clamp(100px,20dvh,146px); }
+  .cardAura[data-rank='2'] .medallion,.cardAura[data-rank='3'] .medallion { height:48px; }
+}
+@media(max-height:600px) {
+  .content { padding:10px 20px 18px; }
+  .heading { padding-bottom:8px; }
+  .podium { margin-top:12px; }
+  .cardAura[data-rank='2'] .portraitFrame,.cardAura[data-rank='3'] .portraitFrame { height:19dvh; }
+  .cardAura[data-rank='2'] .medallion,.cardAura[data-rank='3'] .medallion { height:34px; }
+}
+@media(max-height:420px) { .cardAura[data-rank='2'] .portraitFrame,.cardAura[data-rank='3'] .portraitFrame { height:15dvh; } }

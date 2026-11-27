@@ -335,7 +335,7 @@ function extractTeachersFromClassSites(sites: any[]): any[] {
   if (!Array.isArray(sites)) return [];
   const assignments: any[] = [];
   sites.forEach((site) => {
-    const teachers = Array.isArray(site?.teachers) ? site.teachers : [];
+    const teachers: any[] = Array.isArray(site?.teachers) ? site.teachers : [];
     teachers.forEach((t) => {
       if (t && t.isActive !== false && t.teacher) {
         assignments.push(t);

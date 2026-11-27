@@ -258,7 +258,7 @@ export async function exportLectureReviewsToExcel(rows: LectureReviewExportItem[
       return match
     })
 
-    sheetXml = sheetXml.replace(/(<row r="(\d+)"[^>]*>)([\s\S]*?)(<\/row>)/, (match, p1, rNum, p2, p3) => {
+    sheetXml = sheetXml.replace(/(<row r="(\d+)"[^>]*>)([\s\S]*?)(<\/row>)/, (match, p1: string, rNum: string, p2: string, p3: string) => {
       const r = parseInt(rNum, 10)
       if (r >= 5) {
         const isAlt = r % 2 === 1

@@ -10,19 +10,19 @@ export const metadata: Metadata = {
 
 /** Thứ tự frame walk — mỗi ảnh là một pha của chu kỳ đi bộ */
 const WALK_FRAMES = [
-  '/mascot/walk/frame-1.png',
-  '/mascot/walk/frame-2.png',
-  '/mascot/walk/frame-3.png',
-  '/mascot/walk/frame-4.png',
-  '/mascot/walk/frame-5.png',
+  '/mascot/walk/frame-1.webp',
+  '/mascot/walk/frame-2.webp',
+  '/mascot/walk/frame-3.webp',
+  '/mascot/walk/frame-4.webp',
+  '/mascot/walk/frame-5.webp',
 ] as const;
 
 const JUMP_FRAMES = [
-  '/mascot/jump/frame-1.png',
-  '/mascot/jump/frame-2.png',
-  '/mascot/jump/frame-3.png',
-  '/mascot/jump/frame-4.png',
-  '/mascot/jump/frame-5.png',
+  '/mascot/jump/frame-1.webp',
+  '/mascot/jump/frame-2.webp',
+  '/mascot/jump/frame-3.webp',
+  '/mascot/jump/frame-4.webp',
+  '/mascot/jump/frame-5.webp',
 ] as const;
 
 export default function BaoTriPage() {

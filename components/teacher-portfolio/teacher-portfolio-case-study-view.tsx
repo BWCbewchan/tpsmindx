@@ -16,7 +16,7 @@ import { PortfolioMobileMenu } from '@/components/student-portfolio/portfolio-mo
 import { PortfolioPdfDownloadButton } from '@/components/student-portfolio/portfolio-pdf-download-button'
 import { TeacherPortfolioProgressRail } from '@/components/teacher-portfolio/teacher-portfolio-progress-rail'
 import type { TeacherPortfolioDto } from '@/lib/teacher-portfolio/types'
-import logoTechAi from '@/logo_tech_ai_trong_suot.png'
+import logoTechAi from '@/logo_tech_ai_trong_suot.webp'
 import {
   formatTeacherPortfolioDate,
   teacherPortfolioInitials,

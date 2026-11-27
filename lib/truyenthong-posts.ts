@@ -12,7 +12,7 @@ import type { PoolClient } from 'pg';
 
 const POST_IDENTIFIER_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
 const TRUYENTHONG_ADMIN_PATH = '/admin/truyenthong';
-export const DEFAULT_TRUYENTHONG_POST_IMAGE = '/images/default-post.png';
+export const DEFAULT_TRUYENTHONG_POST_IMAGE = '/images/default-post.webp';
 
 export const TRUYENTHONG_POST_TYPES = [
   'tin-tức',

@@ -13,7 +13,7 @@ import { PortfolioAnalyticsTracker } from '@/components/student-portfolio/portfo
 import { PortfolioMobileMenu } from '@/components/student-portfolio/portfolio-mobile-menu';
 import { PortfolioPdfDownloadButton } from '@/components/student-portfolio/portfolio-pdf-download-button';
 import { PortfolioSideProgressNav } from '@/components/student-portfolio/portfolio-side-progress-nav';
-import logoTechAi from '@/logo_tech_ai.jpg';
+import logoTechAi from '@/logo_tech_ai.webp';
 
 export async function generateMetadata({
   params,

@@ -137,6 +137,54 @@ const GET_ATTENDANCE_CLASS_BY_ID_QUERY = /* graphql */ `
   }
 `;
 
+const FIND_PAGINATION_CLASS_SITE_QUERY = /* graphql */ `
+query FindPaginationClassSite($classId: String!) {
+  findPaginationClassSite(payload: {filter: {classId: $classId}}) {
+    total
+    data {
+      _id
+      name
+      centre {
+        id
+        name
+        __typename
+      }
+      createdAt
+      lastModifiedAt
+      operator {
+        id
+        username
+        displayName
+        __typename
+      }
+      operationMethodId
+      studentIds
+      teachers {
+        _id
+        teacher {
+          id
+          username
+          fullName
+          __typename
+        }
+        role {
+          id
+          name
+          shortName
+          description
+          isActive
+          __typename
+        }
+        isActive
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+`;
+
 const UPDATE_SLOT_ATTENDANCE_MUTATION = /* graphql */ `
   mutation UpdateSlotAttendance($payload: SlotAttendanceCommand!) {
     classes {
@@ -225,26 +273,100 @@ function classMatchesCentreFilter(cls: any, centreFilter: string): boolean {
     .some((value) => lookupTokensMatch(value, centreFilter));
 }
 
-function teacherAssignmentsForClass(cls: any): any[] {
+async function fetchClassSitesByClassId(
+  classId: string,
+  authHeader: string,
+): Promise<any[]> {
+  const normalizedClassId = String(classId || '').trim();
+  if (!normalizedClassId) return [];
+
+  try {
+    const result = await callAttendanceRead<{
+      data?: {
+        findPaginationClassSite?: {
+          total?: number;
+          data?: any[];
+        };
+      };
+    }>(
+      {
+        query: FIND_PAGINATION_CLASS_SITE_QUERY,
+        operationName: 'FindPaginationClassSite',
+        variables: { classId: normalizedClassId },
+      },
+      authHeader,
+    );
+    const data = result?.data?.findPaginationClassSite?.data;
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.warn(`[diem-danh-lop-hoc] Failed to fetch class sites for class ${normalizedClassId}:`, error);
+    return [];
+  }
+}
+
+async function fetchClassSitesMapForClasses(
+  classIds: string[],
+  authHeader: string,
+): Promise<Map<string, any[]>> {
+  const map = new Map<string, any[]>();
+  const uniqueIds = Array.from(new Set(classIds.map((id) => String(id || '').trim()).filter(Boolean)));
+  if (uniqueIds.length === 0) return map;
+
+  const BATCH_SIZE = 20;
+  for (let i = 0; i < uniqueIds.length; i += BATCH_SIZE) {
+    const batch = uniqueIds.slice(i, i + BATCH_SIZE);
+    const results = await Promise.allSettled(
+      batch.map((id) => fetchClassSitesByClassId(id, authHeader)),
+    );
+    batch.forEach((id, index) => {
+      const res = results[index];
+      if (res.status === 'fulfilled' && Array.isArray(res.value)) {
+        map.set(id, res.value);
+      } else {
+        map.set(id, []);
+      }
+    });
+  }
+
+  return map;
+}
+
+function extractTeachersFromClassSites(sites: any[]): any[] {
+  if (!Array.isArray(sites)) return [];
+  const assignments: any[] = [];
+  sites.forEach((site) => {
+    const teachers: any[] = Array.isArray(site?.teachers) ? site.teachers : [];
+    teachers.forEach((t) => {
+      if (t && t.isActive !== false && t.teacher) {
+        assignments.push(t);
+      }
+    });
+  });
+  return assignments;
+}
+
+function teacherAssignmentsForClass(cls: any, classSitesFromQuery?: any[]): any[] {
   const slots = Array.isArray(cls?.slots) ? cls.slots : [];
-  const classSites = Array.isArray(cls?.classSites) ? cls.classSites : [];
+  const effectiveClassSites = Array.isArray(classSitesFromQuery) && classSitesFromQuery.length > 0
+    ? classSitesFromQuery
+    : (Array.isArray(cls?.classSites) ? cls.classSites : []);
 
   return [
     ...(cls?.teachers || []),
     ...slots.flatMap((slot: any) => slot?.teachers || []),
     ...slots.flatMap((slot: any) => slot?.teacherAttendance || []),
-    ...classSites.flatMap((classSite: any) => classSite?.teachers || []),
-    ...classSites.flatMap((classSite: any) =>
+    ...effectiveClassSites.flatMap((classSite: any) => classSite?.teachers || []),
+    ...effectiveClassSites.flatMap((classSite: any) =>
       (classSite?.classSiteSlots || []).flatMap((slot: any) => slot?.teachers || []),
     ),
   ];
 }
 
-function classMatchesTeacherFilter(cls: any, teacherFilter: string): boolean {
+function classMatchesTeacherFilter(cls: any, teacherFilter: string, classSitesFromQuery?: any[]): boolean {
   const target = normalizeLookupText(teacherFilter);
   if (!target) return true;
 
-  return teacherAssignmentsForClass(cls).some((assignment: any) => {
+  return teacherAssignmentsForClass(cls, classSitesFromQuery).some((assignment: any) => {
     if (assignment?.isActive === false) return false;
     const teacher = assignment?.teacher || {};
     const exactValues = [teacher?.id, teacher?.user, teacher?.email, teacher?.code, teacher?.username];
@@ -280,22 +402,22 @@ function classRoleForAssignment(
   assignment: any,
 ): { id: string; code: string; shortName: string; name: string } {
   const roleId = String(assignment?.role?.id || assignment?.role?._id || '').trim();
-  const knownById = CLASS_ROLE_BY_ID[roleId];
-  if (knownById) return { id: roleId, ...knownById };
+  const rawShortName = String(assignment?.role?.shortName || '').trim();
+  const rawName = String(assignment?.role?.name || '').trim();
 
   const values = roleValues(assignment);
-  let known: { code: string; shortName: string; name: string } | null = null;
+  let code = '';
 
   if (values.some((role) => role === 'JUDGE' || role === 'BGK' || role.includes('GIAM KHAO'))) {
-    known = { code: 'JUDGE', shortName: 'Judge', name: 'Judge' };
+    code = 'JUDGE';
   } else if (values.some((role) => role === 'LEC' || role.includes('LECTURER') || role.includes('GIANG VIEN'))) {
-    known = { code: 'LEC', shortName: 'LEC', name: 'Lecturer' };
+    code = 'LEC';
   } else if (values.some((role) => role === 'SUPPLY' || role.includes('SUPPLY TEACHER') || role.includes('DAY THAY'))) {
-    known = { code: 'SUPPLY', shortName: 'Supply', name: 'Supply teacher' };
+    code = 'SUPPLY';
   } else if (values.some((role) => role === 'MENTOR' || role.includes('NGUOI HUONG DAN'))) {
-    known = { code: 'MENTOR', shortName: 'Mentor', name: 'Mentor' };
+    code = 'MENTOR';
   } else if (values.some((role) => role === 'ST 18+' || role.includes('SUPER TEACHER 18'))) {
-    known = { code: 'ST_18_PLUS', shortName: 'ST 18+', name: 'Super Teacher 18+' };
+    code = 'ST_18_PLUS';
   } else if (values.some((role) =>
     role === 'TA' ||
     role === 'TG' ||
@@ -306,27 +428,44 @@ function classRoleForAssignment(
     role.includes('ASSISTANT') ||
     role.includes('SUPPORTER')
   )) {
-    known = { code: 'TA', shortName: 'TA', name: 'Teacher Assisstant' };
+    code = 'TA';
+  } else if (roleId && CLASS_ROLE_BY_ID[roleId]) {
+    code = CLASS_ROLE_BY_ID[roleId].code;
   }
+
+  // Lấy chính xác shortName và name từ LMS payload, chỉ fallback khi trường đó rỗng
+  const shortName = rawShortName || (roleId && CLASS_ROLE_BY_ID[roleId]?.shortName) || rawName || code;
+  const name = rawName || (roleId && CLASS_ROLE_BY_ID[roleId]?.name) || rawShortName || code;
 
   return {
     id: roleId,
-    code: known?.code || '',
-    shortName: known?.shortName || String(assignment?.role?.shortName || '').trim(),
-    name: known?.name || String(assignment?.role?.name || '').trim(),
+    code,
+    shortName,
+    name,
   };
 }
 
 function teacherMatches(assignment: any, userEmail: string): boolean {
   if (assignment?.isActive === false) return false;
 
+  const normalizedUserEmail = normalizeEmail(userEmail);
   const teacherEmail = normalizeEmail(assignment?.teacher?.email);
-  return Boolean(teacherEmail && teacherEmail === userEmail);
+  if (teacherEmail && teacherEmail === normalizedUserEmail) return true;
+
+  const username = String(assignment?.teacher?.username || '').trim().toLowerCase();
+  if (username && normalizedUserEmail) {
+    const userPrefix = normalizedUserEmail.split('@')[0];
+    if (username === userPrefix || normalizedUserEmail === `${username}@mindx.edu.vn`) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function hasMatchingTeacherAttendance(slot: any, userEmail: string): boolean {
   return (slot?.teacherAttendance || []).some((attendance: any) => {
-    return normalizeEmail(attendance?.teacher?.email) === userEmail;
+    return teacherMatches(attendance, userEmail);
   });
 }
 
@@ -343,29 +482,42 @@ function teacherAccountFromAssignment(assignment: any) {
   const teacher = assignment?.teacher || {};
   const role = classRoleForAssignment(assignment);
   const fullName = String(teacher?.fullName || '').trim();
-  const email = String(teacher?.email || '').trim();
   const username = String(teacher?.username || '').trim();
+  const email = String(teacher?.email || '').trim() || (username ? `${username}@mindx.edu.vn` : '');
   const code = String(teacher?.code || '').trim();
   const id = String(teacher?.id || '').trim();
+  const directShortName = String(assignment?.role?.shortName || '').trim();
+  const directName = String(assignment?.role?.name || '').trim();
 
   if (!fullName && !email && !username && !code && !id) return null;
 
   return {
     id,
-    fullName,
+    fullName: fullName || username || code || email,
     email,
     username,
     code,
     roleId: role.id,
     roleCode: role.code,
-    roleShortName: role.shortName,
-    roleName: role.name,
+    roleShortName: directShortName || role.shortName || directName,
+    roleName: directName || role.name || directShortName,
   };
 }
 
+function normalizeRole(role: string): string {
+  const trimmed = String(role || '').trim();
+  const upper = trimmed.toUpperCase();
+  if (upper === 'SUPPLY' || upper === 'SUPPLY TEACHER' || upper.includes('SUPPLY')) return 'Supply';
+  if (upper === 'JUDGE' || upper === 'BGK' || upper.includes('GIÁM KHẢO') || upper.includes('GIAM KHAO') || upper.includes('JUDGE')) return 'Judge';
+  if (upper === 'LEC' || upper === 'LECTURER' || upper.includes('GIẢNG VIÊN') || upper.includes('GIANG VIEN')) return 'LEC';
+  if (upper === 'TA' || upper === 'TEACHING ASSISTANT' || upper.includes('TRỢ GIẢNG') || upper.includes('TRO GIANG')) return 'TA';
+  if (upper === 'CM' || upper === 'CLASS MANAGEMENT' || upper.includes('QUẢN LÝ')) return 'CM';
+  if (upper === 'OPERATOR' || upper.includes('VẬN HÀNH') || upper.includes('VAN HANH')) return 'Operator';
+  return trimmed;
+}
+
 function uniqueTeacherAccounts(assignments: any[]) {
-  const seen = new Set<string>();
-  const accounts: Array<{
+  const map = new Map<string, {
     id: string;
     fullName: string;
     email: string;
@@ -375,19 +527,55 @@ function uniqueTeacherAccounts(assignments: any[]) {
     roleCode: string;
     roleShortName: string;
     roleName: string;
-  }> = [];
+    roleShortNames?: string[];
+  }>();
 
   assignments.forEach((assignment) => {
     if (assignment?.isActive === false) return;
     const account = teacherAccountFromAssignment(assignment);
     if (!account) return;
-    const key = account.id || account.email || account.username || account.code || account.fullName;
-    if (seen.has(key)) return;
-    seen.add(key);
-    accounts.push(account);
+    const key = account.id || account.username || account.email || account.code || account.fullName;
+    if (!key) return;
+
+    const chosenRole = account.roleShortName || account.roleName;
+    const normalizedChosen = chosenRole ? normalizeRole(chosenRole) : '';
+
+    const existing = map.get(key);
+    if (!existing) {
+      const initialRoles = normalizedChosen ? [normalizedChosen] : [];
+      map.set(key, {
+        ...account,
+        roleShortName: normalizedChosen,
+        roleName: normalizedChosen,
+        roleShortNames: initialRoles,
+      });
+    } else {
+      if (!existing.roleShortNames) {
+        existing.roleShortNames = (existing.roleShortName || existing.roleName)
+          ? (existing.roleShortName || existing.roleName).split(',').map((s) => normalizeRole(s))
+          : [];
+      }
+      if (normalizedChosen && !existing.roleShortNames.includes(normalizedChosen)) {
+        existing.roleShortNames.push(normalizedChosen);
+        existing.roleShortName = existing.roleShortNames.join(', ');
+        existing.roleName = existing.roleShortNames.join(', ');
+      }
+      if ((!existing.fullName || existing.fullName === existing.username) && account.fullName) {
+        existing.fullName = account.fullName;
+      }
+      if (!existing.email && account.email) {
+        existing.email = account.email;
+      }
+      if (!existing.username && account.username) {
+        existing.username = account.username;
+      }
+      if (!existing.id && account.id) {
+        existing.id = account.id;
+      }
+    }
   });
 
-  return accounts;
+  return Array.from(map.values());
 }
 
 function teacherDisplayName(
@@ -396,14 +584,17 @@ function teacherDisplayName(
   return account.fullName || account.username || account.email || account.code;
 }
 
-function userRolesForClass(cls: any, userEmail: string): string[] {
+function userRolesForClass(cls: any, userEmail: string, classSitesFromQuery?: any[]): string[] {
   const roles = new Set<string>();
   const slots = sortedSlots(cls);
   const session14 = slots[SESSION_COUNT - 1];
-  const classSiteAssignments = (cls?.classSites || []).flatMap((classSite: any) =>
+  const queryClassSites = Array.isArray(classSitesFromQuery) && classSitesFromQuery.length > 0
+    ? classSitesFromQuery
+    : (cls?.classSites || []);
+  const classSiteAssignments = queryClassSites.flatMap((classSite: any) =>
     classSite?.teachers || [],
   );
-  const classSiteSlotAssignments = (cls?.classSites || []).flatMap((classSite: any) =>
+  const classSiteSlotAssignments = queryClassSites.flatMap((classSite: any) =>
     (classSite?.classSiteSlots || []).flatMap((slot: any) => slot?.teachers || []),
   );
   const assignments = [
@@ -421,7 +612,7 @@ function userRolesForClass(cls: any, userEmail: string): string[] {
   });
 
   const session14Id = String(session14?._id || '');
-  const session14SiteAssignments = (cls?.classSites || []).flatMap((classSite: any) =>
+  const session14SiteAssignments = queryClassSites.flatMap((classSite: any) =>
     (classSite?.classSiteSlots || [])
       .filter((slot: any) => String(slot?.classSlotId || '') === session14Id)
       .flatMap((slot: any) => slot?.teachers || []),
@@ -445,9 +636,9 @@ function userRolesForClass(cls: any, userEmail: string): string[] {
   return Array.from(roles);
 }
 
-function hasTeacherAccessToClass(cls: any, userEmail: string): boolean {
+function hasTeacherAccessToClass(cls: any, userEmail: string, classSitesFromQuery?: any[]): boolean {
   const email = normalizeEmail(userEmail);
-  return Boolean(email) && userRolesForClass(cls, email).length > 0;
+  return Boolean(email) && userRolesForClass(cls, email, classSitesFromQuery).length > 0;
 }
 
 function dateInputToIso(value: string | null, endOfDay: boolean): string | undefined {
@@ -599,6 +790,7 @@ function mapClass(
   userEmail: string,
   isSuperAdmin = false,
   hasScopedManagerAccess = false,
+  classSitesFromQuery?: any[],
 ) {
   const students = (cls?.students || [])
     .filter((row: any) => row?.activeInClass !== false)
@@ -610,12 +802,29 @@ function mapClass(
 
   const rawSortedSlots = sortedSlots(cls);
   const rawClassSites = Array.isArray(cls?.classSites) ? cls.classSites : [];
+  const querySites = Array.isArray(classSitesFromQuery) && classSitesFromQuery.length > 0
+    ? classSitesFromQuery
+    : [];
+
+  const effectiveClassSites = querySites.length > 0
+    ? querySites.map((site: any) => {
+        const existing = rawClassSites.find(
+          (raw: any) => String(raw?._id || '') === String(site?._id || ''),
+        );
+        return {
+          ...site,
+          classSiteSlots: existing?.classSiteSlots || [],
+        };
+      })
+    : rawClassSites;
+
+  const siteTeacherAssignments = extractTeachersFromClassSites(effectiveClassSites);
   const rawClassSiteTeachers = rawClassSites.flatMap((classSite: any) => classSite?.teachers || []);
-  const rawClassSiteSlotTeachers = rawClassSites.flatMap((classSite: any) =>
+  const rawClassSiteSlotTeachers = effectiveClassSites.flatMap((classSite: any) =>
     (classSite?.classSiteSlots || []).flatMap((slot: any) => slot?.teachers || []),
   );
   const classSiteTeachersBySlot = new Map<string, any[]>();
-  rawClassSites.forEach((classSite: any) => {
+  effectiveClassSites.forEach((classSite: any) => {
     (classSite?.classSiteSlots || []).forEach((classSiteSlot: any) => {
       const slotId = String(classSiteSlot?.classSlotId || '');
       if (!slotId) return;
@@ -628,6 +837,7 @@ function mapClass(
   const rawSlotTeacherAssignments = rawSortedSlots.flatMap((slot: any) => slot?.teachers || []);
   const rawSlotTeacherAttendance = rawSortedSlots.flatMap((slot: any) => slot?.teacherAttendance || []);
   const allRawTeacherAssignments = [
+    ...siteTeacherAssignments,
     ...(cls?.teachers || []),
     ...rawSlotTeacherAssignments,
     ...rawClassSiteTeachers,
@@ -645,19 +855,26 @@ function mapClass(
       ],
     }, index, students.length));
 
-  const classTeachers = uniqueTeacherAccounts(cls?.teachers || []);
+  const classTeachers = uniqueTeacherAccounts([
+    ...siteTeacherAssignments,
+    ...(cls?.teachers || []),
+  ]);
   const slotTeachers = uniqueTeacherAccounts([
     ...rawSlotTeacherAssignments,
     ...rawSlotTeacherAttendance,
   ]);
   const allTeachers = uniqueTeacherAccounts([
+    ...siteTeacherAssignments,
     ...allRawTeacherAssignments,
     ...rawSlotTeacherAttendance,
   ]);
 
   const lecTeachers = allRawTeacherAssignments
     .filter((teacher: any) => teacher?.isActive !== false)
-    .filter((teacher: any) => classRoleForAssignment(teacher).code === 'LEC')
+    .filter((teacher: any) => {
+      const role = classRoleForAssignment(teacher);
+      return role.code === 'LEC' || role.shortName.toUpperCase() === 'LEC';
+    })
     .map((teacher: any) => teacherDisplayName(teacherAccountFromAssignment(teacher) || {
       fullName: '',
       username: '',
@@ -666,7 +883,7 @@ function mapClass(
     }))
     .filter(Boolean);
 
-  const operator = cls?.operator || {};
+  const operator = cls?.operator || effectiveClassSites[0]?.operator || {};
   const operatorName = String(operator?.displayName || '').trim() || [
     operator?.firstName,
     operator?.middleName,
@@ -695,7 +912,7 @@ function mapClass(
     courseLineName: cls?.course?.courseLine?.name || '',
     centreName: cls?.centre?.name || '',
     centreShortName: cls?.centre?.shortName || cls?.centre?.name || '',
-    classSites: rawClassSites
+    classSites: effectiveClassSites
       .map((classSite: any) => ({
         id: String(classSite?._id || ''),
         name: String(classSite?.name || '').trim() || 'Default',
@@ -715,10 +932,10 @@ function mapClass(
     allTeacherNames: allTeachers.map(teacherDisplayName).filter(Boolean),
     lecTeachers: Array.from(new Set(lecTeachers)),
     accessRoles: isSuperAdmin
-      ? Array.from(new Set(['MANAGER', 'SUPER_ADMIN', ...userRolesForClass(cls, userEmail)]))
+      ? Array.from(new Set(['MANAGER', 'SUPER_ADMIN', ...userRolesForClass(cls, userEmail, effectiveClassSites)]))
       : hasScopedManagerAccess
-        ? Array.from(new Set(['MANAGER', ...userRolesForClass(cls, userEmail)]))
-        : userRolesForClass(cls, userEmail),
+        ? Array.from(new Set(['MANAGER', ...userRolesForClass(cls, userEmail, effectiveClassSites)]))
+        : userRolesForClass(cls, userEmail, effectiveClassSites),
     students,
     slots,
   };
@@ -1121,27 +1338,42 @@ export async function GET(request: NextRequest) {
     }
 
     const ALLOWED_STATUSES = new Set(['RUNNING', 'FINISHED', 'PREPARING']);
-    const uniqueClasses = Array.from(
+    const candidateClasses = Array.from(
       new Map(
         allClasses
           .filter((cls: any) => ALLOWED_STATUSES.has(normalizeStatus(cls?.status)))
-          .filter((cls: any) =>
-            isSuperAdmin ||
-            (hasScopedLeaderAccess && auth.accessibleCenters.some((centre) => classMatchesCentre(cls, centre))) ||
-            hasTeacherAccessToClass(cls, userEmail),
-          )
           .filter((cls: any) => classMatchesCentreFilter(cls, centreParam))
-          .filter((cls: any) => classMatchesTeacherFilter(cls, teacherParam))
           .filter((cls: any) => !classIdParam || String(cls?.id || '') === classIdParam)
           .map((cls: any) => [String(cls.id), cls]),
       ).values(),
     );
 
+    // Truy vấn FindPaginationClassSite từ LMS theo classId để lấy chính xác fullName trong teacher và shortName trong role
+    const candidateClassIds = candidateClasses.map((cls: any) => String(cls?.id || '')).filter(Boolean);
+    const classSitesMap = await fetchClassSitesMapForClasses(candidateClassIds, authHeader);
+
+    // Lọc lại các lớp mà người dùng có quyền truy cập hoặc khớp bộ lọc giảng viên
+    const uniqueClasses = candidateClasses.filter((cls: any) => {
+      const sites = classSitesMap.get(String(cls.id)) || [];
+      const hasAccess = isSuperAdmin ||
+        (hasScopedLeaderAccess && auth.accessibleCenters.some((centre) => classMatchesCentre(cls, centre))) ||
+        hasTeacherAccessToClass(cls, userEmail, sites);
+
+      if (!hasAccess) return false;
+      return classMatchesTeacherFilter(cls, teacherParam, sites);
+    });
+
     const nowVn = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Ho_Chi_Minh' }));
     const todayMs = new Date(nowVn.getFullYear(), nowVn.getMonth(), nowVn.getDate()).getTime();
 
     const classes = uniqueClasses
-      .map((cls) => mapClass(cls, userEmail, isSuperAdmin, hasScopedLeaderAccess))
+      .map((cls) => mapClass(
+        cls,
+        userEmail,
+        isSuperAdmin,
+        hasScopedLeaderAccess,
+        classSitesMap.get(String(cls.id)),
+      ))
       .filter((cls) => cls.id)
       .sort((a, b) => compareClassesByRecency(a, b, todayMs));
 
@@ -1230,7 +1462,10 @@ export async function POST(request: NextRequest) {
   const userEmail = normalizeEmail(auth.sessionEmail);
 
   try {
-    const freshClass = await fetchAttendanceClassById(classId, authHeader);
+    const [freshClass, freshClassSites] = await Promise.all([
+      fetchAttendanceClassById(classId, authHeader),
+      fetchClassSitesByClassId(classId, authHeader),
+    ]);
     if (!freshClass || String(freshClass.id || '') !== classId) {
       return NextResponse.json({ success: false, message: 'Không tìm thấy lớp trên LMS.' }, { status: 404 });
     }
@@ -1241,7 +1476,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const classSite = (freshClass.classSites || []).find(
+    const allSites = (freshClassSites && freshClassSites.length > 0)
+      ? freshClassSites
+      : (freshClass.classSites || []);
+    const classSite = allSites.find(
       (item: any) => String(item?._id || '') === classSiteId,
     );
     const slot = (freshClass.slots || []).find(
@@ -1336,7 +1574,7 @@ export async function POST(request: NextRequest) {
         success: true,
         unchanged: true,
         message: 'Dữ liệu trên LMS đã trùng với nội dung điểm danh.',
-        class: mapClass(freshClass, userEmail),
+        class: mapClass(freshClass, userEmail, false, false, freshClassSites),
       });
     }
 
@@ -1382,7 +1620,7 @@ export async function POST(request: NextRequest) {
         message: mutationError
           ? 'LMS phản hồi không rõ ràng nhưng TPS đã đọc lại và xác nhận dữ liệu được lưu.'
           : 'Đã lưu và xác nhận dữ liệu điểm danh trên LMS.',
-        class: mapClass(verifiedClass, userEmail),
+        class: mapClass(verifiedClass, userEmail, false, false, freshClassSites),
       });
     }
 

@@ -13,18 +13,18 @@ interface MascotProps {
 
 const ANIMATION_FRAMES: Record<MascotAnimation, string[]> = {
   standAndRead: [
-    '/mascot/standAndRead/1.png',
-    '/mascot/standAndRead/tải xuống.png',
-    ...Array.from({ length: 23 }, (_, i) => `/mascot/standAndRead/tải xuống (${i + 1}).png`),
+    '/mascot/standAndRead/1.webp',
+    '/mascot/standAndRead/tải xuống.webp',
+    ...Array.from({ length: 23 }, (_, i) => `/mascot/standAndRead/tải xuống (${i + 1}).webp`),
   ],
-  walk: Array.from({ length: 25 }, (_, i) => `/mascot/walk/frame-${i + 1}.png`),
-  jump: Array.from({ length: 25 }, (_, i) => `/mascot/jump/frame-${i + 1}.png`),
+  walk: Array.from({ length: 25 }, (_, i) => `/mascot/walk/frame-${i + 1}.webp`),
+  jump: Array.from({ length: 25 }, (_, i) => `/mascot/jump/frame-${i + 1}.webp`),
   wave: [], // To be populated if needed
   verify: [], // To be populated if needed
   turn: [], // To be populated if needed
   review: [], // To be populated if needed
-  walkToSit: Array.from({ length: 25 }, (_, i) => `/mascot/walkToSit/frame-${i + 1}.png`),
-  sitToStand: Array.from({ length: 25 }, (_, i) => `/mascot/sittostand/frame-${i + 1}.png`),
+  walkToSit: Array.from({ length: 25 }, (_, i) => `/mascot/walkToSit/frame-${i + 1}.webp`),
+  sitToStand: Array.from({ length: 25 }, (_, i) => `/mascot/sittostand/frame-${i + 1}.webp`),
 };
 
 export const Mascot: React.FC<MascotProps> = ({

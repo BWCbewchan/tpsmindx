@@ -705,7 +705,7 @@ export function BirthdayWishPopup({
                     data-export="cake"
                   >
                     <Image
-                      src="/images/mindx-birthday-cake.png"
+                      src="/images/mindx-birthday-cake.webp"
                       alt="Bánh sinh nhật MindX"
                       width={280}
                       height={280}

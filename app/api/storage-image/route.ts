@@ -1,3 +1,4 @@
+import { encodeWebpImage } from '@/lib/webp-image';
 import { requireCandidateSession } from '@/lib/candidate-session';
 import pool from '@/lib/db';
 import { isDatabaseUnavailableError } from '@/lib/db-helpers';
@@ -237,7 +238,9 @@ export async function GET(request: NextRequest) {
     // seek/reconnect, which exhausted the Storage egress quota. The browser
     // follows the 307 to the signed URL and does Range requests directly.
     // `stream=1` remains as an escape hatch.
+    const wantsWebp = searchParams.get('format') === 'webp' && /\.(png|jpe?g|gif|avif)$/i.test(key) && bucket !== TEACHER_CERTIFICATES_BUCKET;
     const forceStream =
+      wantsWebp ||
       searchParams.get('stream') === '1' ||
       bucket === TEACHER_CERTIFICATES_BUCKET ||
       (!isVideo &&
@@ -271,7 +274,16 @@ export async function GET(request: NextRequest) {
       return new NextResponse('Not found', { status: 404 });
     }
 
-    const stream = result.Body.transformToWebStream();
+    // Authorization above is identical for original and optimized responses.
+    // Limit buffering; large objects retain the original streaming path.
+    let optimizedBody: Buffer | null = null;
+    let originalBody: Uint8Array | null = null;
+    if (wantsWebp && result.ContentLength != null && result.ContentLength <= 12 * 1024 * 1024) {
+      originalBody = await result.Body.transformToByteArray();
+      try { optimizedBody = await encodeWebpImage(originalBody); }
+      catch { /* Return source bytes on unsupported/corrupt images. */ }
+    }
+    const stream = originalBody ? null : result.Body.transformToWebStream();
     const isTeacherCertificate = bucket === TEACHER_CERTIFICATES_BUCKET;
     const headers: Record<string, string> = {
       'Content-Type': isTeacherCertificate
@@ -296,11 +308,16 @@ export async function GET(request: NextRequest) {
     if (result.ContentLength != null) {
       headers['Content-Length'] = String(result.ContentLength);
     }
+    if (originalBody) {
+      headers['Content-Length'] = String((optimizedBody || originalBody).byteLength);
+      if (optimizedBody) headers['Content-Type'] = 'image/webp';
+      delete headers['Accept-Ranges'];
+    }
     if (result.ContentRange) {
       headers['Content-Range'] = result.ContentRange;
     }
 
-    return new NextResponse(stream, {
+    return new NextResponse(originalBody ? new Uint8Array(optimizedBody || originalBody) : stream, {
       status: isVideo && rangeHeader && result.ContentRange ? 206 : 200,
       headers,
     });

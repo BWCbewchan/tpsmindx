@@ -26,10 +26,10 @@ import {
 } from '@/components/mascot/MascotOutfitModal'
 
 // ─── Mascot constants ────────────────────────────────────────────────────────
-const WALK_FRAMES = Array.from({ length: 25 }, (_, i) => `/mascot/walk/frame-${i + 1}.png`)
-const JUMP_FRAMES = Array.from({ length: 25 }, (_, i) => `/mascot/jump/frame-${i + 1}.png`)
-const TURN_FRAMES = Array.from({ length: 25 }, (_, i) => `/mascot/turn_new/frame-${i + 1}.png`)
-const WAVE_FRAMES = Array.from({ length: 25 }, (_, i) => `/mascot/wave/frame-${i + 1}.png`)
+const WALK_FRAMES = Array.from({ length: 25 }, (_, i) => `/mascot/walk/frame-${i + 1}.webp`)
+const JUMP_FRAMES = Array.from({ length: 25 }, (_, i) => `/mascot/jump/frame-${i + 1}.webp`)
+const TURN_FRAMES = Array.from({ length: 25 }, (_, i) => `/mascot/turn_new/frame-${i + 1}.webp`)
+const WAVE_FRAMES = Array.from({ length: 25 }, (_, i) => `/mascot/wave/frame-${i + 1}.webp`)
 const AMPLITUDE = 100          // px left/right travel
 const WALK_PX_PER_SEC = 40     // pixels per second while walking/jumping
 const WALK_FPS = 20            // sprite animation fps for walk

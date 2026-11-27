@@ -15,6 +15,14 @@ import {
   LECTURE_REVIEW_CALENDAR_PATH,
 } from '@/lib/lecture-review-calendar-access'
 import { formatReviewDateTime, formatDateTimeGMT7 } from '@/lib/format-date'
+import {
+  exportLectureReviewsToExcel,
+  formatEvaluationScore10,
+  formatTheoryScore10,
+  formatScoreDisplay,
+  computeFinalScore,
+  computeTrainingStatus,
+} from '@/lib/lecture-review-export'
 import { cn } from '@/lib/utils'
 import {
   AlertTriangle,
@@ -24,6 +32,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Download,
   ExternalLink,
   FilePlus2,
   FileText,
@@ -129,81 +138,6 @@ function displayValue(value: unknown): string {
   return String(value).replace('.', ',')
 }
 
-function formatEvaluationScore10(score: unknown): number | null {
-  if (score === null || score === undefined || score === '') return null
-  const num = Number(score)
-  if (isNaN(num) || num <= 0) return null
-  const val = num > 10 ? (num / 125) * 10 : num
-  return Math.round(val * 10) / 10
-}
-
-function formatTheoryScore10(score: unknown): number | null {
-  if (score === null || score === undefined || score === '') return null
-  const num = Number(score)
-  if (isNaN(num) || num <= 0) return null
-  const val = num > 10 ? (num / 100) * 10 : num
-  return Math.round(val * 10) / 10
-}
-
-function formatScoreDisplay(val: number | null): string | null {
-  if (val === null) return null
-  return val.toFixed(1)
-}
-
-function computeFinalScore(row: {
-  evaluation_score?: number | string | null
-  theory_score?: number | string | null
-  final_score?: number | string | null
-}): string | null {
-  const dg = formatEvaluationScore10(row.evaluation_score)
-  const lt = formatTheoryScore10(row.theory_score)
-
-  // Điểm tổng kết = 70% điểm DG + 30% điểm LT
-  if (dg !== null && lt !== null) {
-    const finalVal = 0.7 * dg + 0.3 * lt
-    return (Math.round(finalVal * 10) / 10).toFixed(1)
-  }
-  if (dg !== null && lt === null) {
-    const finalVal = 0.7 * dg
-    return (Math.round(finalVal * 10) / 10).toFixed(1)
-  }
-  if (dg === null && lt !== null) {
-    const finalVal = 0.3 * lt
-    return (Math.round(finalVal * 10) / 10).toFixed(1)
-  }
-  return null
-}
-
-function computeTrainingStatus(row: {
-  theory_score?: number | string | null
-  evaluation_score?: number | string | null
-  final_score?: number | string | null
-  total_lesson?: number | string | null
-}) {
-  const hasLT = formatTheoryScore10(row.theory_score) !== null
-  const hasDG = formatEvaluationScore10(row.evaluation_score) !== null
-  const hasTotal = computeFinalScore(row) !== null
-  const hasLessons =
-    row.total_lesson !== null &&
-    row.total_lesson !== undefined &&
-    String(row.total_lesson).trim() !== '' &&
-    !isNaN(Number(row.total_lesson)) &&
-    Number(row.total_lesson) > 0
-
-  const isCompleted = hasLT && hasDG && hasTotal && hasLessons
-  const missing: string[] = []
-  if (!hasDG) missing.push('Điểm duyệt giảng')
-  if (!hasLT) missing.push('Điểm lý thuyết')
-  if (!hasTotal) missing.push('Tổng điểm')
-  if (!hasLessons) missing.push('Tổng số bài học')
-
-  return {
-    label: isCompleted ? 'Đã hoàn thành tập huấn' : 'Chưa hoàn thành tập huấn',
-    isCompleted,
-    missing,
-  }
-}
-
 function FilterField({
   label,
   icon,
@@ -243,6 +177,24 @@ export function LectureReviewManagementClient() {
   const [currentReviewer, setCurrentReviewer] = useState<string | null>(null)
   const [confirmDeleteTarget, setConfirmDeleteTarget] = useState<RegistrationRow | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [exporting, setExporting] = useState(false)
+
+  async function handleExportExcel() {
+    if (rows.length === 0) {
+      toast.error('Không có dữ liệu trong bảng để xuất file Excel')
+      return
+    }
+    setExporting(true)
+    try {
+      await exportLectureReviewsToExcel(rows)
+      toast.success(`Đã xuất ${rows.length} phiếu đăng ký ra file Excel thành công!`)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Có lỗi khi xuất file Excel'
+      toast.error(msg)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   async function handleDeleteApplication() {
     if (!confirmDeleteTarget) return
@@ -458,6 +410,20 @@ export function LectureReviewManagementClient() {
                 <RefreshCcw className="h-3.5 w-3.5" />
                 Làm mới
               </button>
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                disabled={exporting || rows.length === 0}
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-xs font-bold text-emerald-800 transition hover:bg-emerald-100 hover:border-emerald-400 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 shadow-2xs"
+                title="Xuất danh sách hiện tại ra file Excel"
+              >
+                {exporting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-emerald-700" />
+                ) : (
+                  <Download className="h-3.5 w-3.5 text-emerald-700" />
+                )}
+                Xuất dữ liệu
+              </button>
             </div>
           </div>
 
@@ -607,7 +573,7 @@ export function LectureReviewManagementClient() {
                       'Cơ sở',
                       'Họ và tên ứng viên',
                       'Mã LMS',
-                      'Giáo viên đăng ký',
+                      'Ban giám khảo',
                       'Tài liệu duyệt giảng',
                       'Ngày đăng ký duyệt giảng',
                       'Trạng thái chấm',

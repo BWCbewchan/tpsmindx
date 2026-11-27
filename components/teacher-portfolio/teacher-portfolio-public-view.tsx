@@ -24,7 +24,7 @@ import { TeacherPortfolioEditorialView } from '@/components/teacher-portfolio/te
 import { TeacherPortfolioProgressRail } from '@/components/teacher-portfolio/teacher-portfolio-progress-rail'
 import { resolveTeacherPortfolioPresentation } from '@/components/teacher-portfolio/teacher-portfolio-presentation'
 import type { TeacherPortfolioDto, TeacherPortfolioTemplate } from '@/lib/teacher-portfolio/types'
-import logoTechAi from '@/logo_tech_ai_trong_suot.png'
+import logoTechAi from '@/logo_tech_ai_trong_suot.webp'
 import { AchievementReviewControls } from './achievement-review-controls'
 
 function formatDate(value: string | null): string {

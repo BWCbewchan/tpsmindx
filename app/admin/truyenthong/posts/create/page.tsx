@@ -158,7 +158,7 @@ export default function CreatePostPage() {
         setLoading(true)
 
         try {
-            const defaultImage = '/images/default-post.png'
+            const defaultImage = '/images/default-post.webp'
             let featured_image = defaultImage
 
             // Upload images if exist

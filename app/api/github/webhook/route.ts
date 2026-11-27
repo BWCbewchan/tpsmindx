@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
   }
   // Vercel sometimes sends a commit SHA as deployment.ref. Resolve only the
   // current release branches, never infer a personal branch from "Preview".
-  if (event === 'deployment_status' && payload?.deployment_status?.state === 'success'
+  if (event === 'deployment_status' && ['success', 'failure', 'error'].includes(payload?.deployment_status?.state)
     && /^[a-f0-9]{40}$/i.test(payload?.deployment?.ref || '')
     && payload?.repository?.full_name === 'BWCbewchan/tpsmindx') {
     try {

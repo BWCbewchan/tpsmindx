@@ -44,9 +44,9 @@ test('push reports actor, branch, escaped commits and release branch changes', (
    commits: Array.from({length:7},()=>({id:'123456789',message:'Fix <script>\nprivate body',author:{name:'A & B'}}))}));
   assert.match(message,/Người push: developer/);
   assert.ok(message.includes(branch)); assert.match(message,/Fix &lt;script&gt;/);
-  assert.match(message,/A &amp; B/); assert.match(message,/2 commit khác/);
+  assert.match(message,/4 commit khác/);
   assert.ok(!message.includes('private body'));
-  if(branch !== 'kydai') assert.match(message,/có thay đổi/);
+  if(branch !== 'kydai') assert.match(message,/Đã lên nhánh/);
  }
  assert.equal(format('push',wrap({ref:'refs/tags/v1'})),null);
 });
@@ -59,20 +59,22 @@ test('all PR lifecycle events are silent', () => {
  }
 });
 
-test('only successful preview and main deployments announce the next version',()=>{
- for(const branch of ['preview','main']){
- const p=wrap({deployment:{ref:branch,sha:'abcdef123',environment:branch==='main'?'Production':'Preview'},deployment_status:{state:'success',environment_url:'https://example.test'}});
- const message=format('deployment_status',p);assert.match(message,/build thành công/);assert.match(message,/Phiên bản tiếp theo/);
- if(branch==='main') {
-  assert.ok(message.includes('href="https://tmsmindx.vercel.app/"'));
-  assert.ok(!message.includes('https://example.test'));
-  assert.match(message,/staging.*Thành viên thực hiện chức năng vui lòng test lại/);
-  assert.equal(format('deployment_status',{...p,deployment_status:{state:'success'}}),message);
- } else assert.ok(message.includes('https://example.test'));
- for(const state of ['pending','in_progress','failure','error','inactive'])assert.equal(format('deployment_status',{...p,deployment_status:{state}}),null);
+test('preview success is silent, failures alert and main success links staging',()=>{
+ for(const branch of ['preview','main']) {
+  const p=wrap({deployment:{ref:branch,sha:'abcdef123',environment:branch==='main'?'Production':'Preview'},deployment_status:{state:'success',environment_url:'https://example.test'}});
+  if(branch==='preview') assert.equal(format('deployment_status',p),null);
+  else {const message=format('deployment_status',p);assert.match(message,/sẵn sàng trên staging/);assert.ok(message.includes('href="https://tmsmindx.vercel.app/"'));assert.ok(!message.includes('https://example.test'));}
+  for(const state of ['failure','error']) assert.match(format('deployment_status',{...p,deployment_status:{state,log_url:'https://example.test/log'}}),/build không thành công/);
+  for(const state of ['pending','in_progress','inactive']) assert.equal(format('deployment_status',{...p,deployment_status:{state}}),null);
  }
- assert.equal(format('deployment_status',wrap({deployment:{ref:'kydai',environment:'Preview'},deployment_status:{state:'success'}})),null);
+ assert.equal(format('deployment_status',wrap({deployment:{ref:'personal',environment:'Preview'},deployment_status:{state:'failure'}})),null);
 });
+test('automation branches and main-to-preview sync pushes are silent',()=>{
+ for(const branch of ['automation/sync-main-abcd','dependabot/npm','renovate/deps']) assert.equal(format('push',wrap({ref:`refs/heads/${branch}`})),null);
+ assert.equal(format('push',wrap({sender:{login:'github-actions[bot]'},ref:'refs/heads/preview',head_commit:{message:'Merge pull request #373 from BWCbewchan/automation/sync-main-abc'}})),null);
+ assert.ok(format('push',wrap({sender:{login:'github-actions[bot]'},ref:'refs/heads/preview',head_commit:{message:'Merge pull request #374 from BWCbewchan/developer'}})));
+});
+
 test('mismatched environment and unknown branches are never called ready',()=>{
  assert.equal(format('deployment_status',wrap({deployment:{ref:'main',environment:'Preview'},deployment_status:{state:'success'}})),null);
  assert.equal(format('deployment_status',wrap({deployment:{ref:'abcdef123',environment:'Preview'},deployment_status:{state:'success'}})),null);

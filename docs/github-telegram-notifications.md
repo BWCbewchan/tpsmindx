@@ -4,13 +4,17 @@
 
 Đăng ký **Pushes**, **Deployment statuses** và **Workflow runs**. Tắt Pull requests.
 Workflow runs chỉ gửi cảnh báo khi workflow tên `CI` kết thúc với `failure`: nhánh, SHA, tác giả commit, người chạy, tối đa 3 annotations lỗi và link Actions. Không gửi trạng thái bắt đầu, thành công hoặc hủy. Nếu GitHub API không trả chi tiết, vẫn gửi cảnh báo kèm link. Không gửi raw logs.
-Mỗi push báo người push, nhánh, SHA, tối đa 5 commit (tác giả và tiêu đề), kèm link xem toàn bộ thay đổi. Push vào `preview`/`main` được ghi rõ là nhánh có thay đổi và đang chờ build. Push tag bị bỏ qua.
-Bot bỏ qua toàn bộ sự kiện PR, kể cả mở, cập nhật và merge. Thay đổi sau merge vẫn được báo qua Pushes.
-Chỉ báo deploy `success` của `preview`/`main`, kèm SHA và link chạy phiên bản tiếp theo. Không báo deploy đang chạy/lỗi hoặc build nhánh cá nhân.
-Khi Vercel gửi SHA trong deployment.ref, endpoint đối chiếu SHA hiện tại của nhánh qua GitHub API trước khi thông báo.
-Tin Preview dùng câu "sẵn sàng chạy thử" và URL deployment. Tin main ghi rõ đây là staging, nhắc thành viên thực hiện chức năng test lại và luôn dùng link cố định `https://tmsmindx.vercel.app/`, kể cả khi payload không có URL. Không tự tăng số phiên bản.
+Luồng thông báo rút gọn:
 
+1. Nhánh cá nhân: báo người push, nhánh, SHA và tối đa 3 tiêu đề commit.
+2. Push/merge vào preview: báo “Đã lên nhánh preview”. Preview build thành công không gửi thêm tin.
+3. Build preview hoặc main thất bại/error: báo nhánh, SHA và link log nếu có.
+4. Push/merge vào main: báo “Đã lên nhánh main”.
+5. Main build thành công: báo sẵn sàng và link [Mở phiên bản mới (staging)](https://tmsmindx.vercel.app/).
 
+Bỏ thông báo push từ automation/, dependabot/, renovate/ và push đồng bộ main → preview do github-actions[bot]. Merge nhánh cá nhân vào preview vẫn báo. Sự kiện PR vẫn im lặng. CI thất bại vẫn giữ cảnh báo riêng; CI nhánh nội bộ không báo.
+
+Khi Vercel gửi SHA trong deployment.ref, endpoint đối chiếu SHA hiện tại của nhánh qua GitHub API cho cả success/failure/error. Chỉ thông báo đúng preview/main và môi trường tương ứng. Không thay đổi điều kiện tự merge: preview vẫn phải có deployment success trước khi lên main.
 
 Endpoint hiện có: `/api/github/webhook`. Giữ nguyên bot GitHub và nhóm chat hiện có; không dùng bot cảnh báo bảo mật.
 
@@ -19,7 +23,7 @@ Endpoint hiện có: `/api/github/webhook`. Giữ nguyên bot GitHub và nhóm c
 Trong GitHub repository Settings → Webhooks, sửa webhook đang trỏ tới endpoint này (không tạo webhook thứ hai gây tin trùng). Content type: `application/json`. Chọn các sự kiện:
 
 - Pushes: người push và danh sách commit; thông báo thay đổi của preview/main.
-- Deployment statuses: chỉ Preview/main build thành công, kèm SHA và link mở phiên bản mới.
+- Deployment statuses: báo lỗi build preview/main; main thành công gửi link staging, preview thành công im lặng.
 - Workflow runs: chỉ CI thất bại, yêu cầu thành viên sửa và push lại.
 
 Vercel Git integration phải gửi deployment status về GitHub. Tên môi trường lấy từ payload, không suy luận từ tên nhánh vì ref có thể là SHA.

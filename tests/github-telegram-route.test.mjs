@@ -71,7 +71,7 @@ test('notification route preserves legacy configuration and enforces configured 
     const sha = 'a'.repeat(40);
     const payload = JSON.stringify({ repository: { full_name: 'BWCbewchan/tpsmindx' },
       deployment: { ref: sha, sha, environment: 'Preview' },
-      deployment_status: { state: 'success', environment_url: 'https://preview.example.test' } });
+      deployment_status: { state: 'failure', log_url: 'https://preview.example.test' } });
     sent = [];
     globalThis.fetch = async (url, options) => {
       if (String(url).startsWith('https://api.github.com/')) return Response.json({ commit: { sha } });
@@ -79,7 +79,7 @@ test('notification route preserves legacy configuration and enforces configured 
     };
     assert.equal((await POST(request(payload, 'deployment_status'))).status, 200);
     assert.equal(sent.length, 1);
-    assert.match(sent[0].text, /preview build thành công/);
+    assert.match(sent[0].text, /preview build không thành công/);
     globalThis.fetch = async () => Response.json({ commit: { sha: 'b'.repeat(40) } });
     const stale = await POST(request(payload, 'deployment_status'));
     assert.equal((await stale.json()).message, 'Event ignored');
